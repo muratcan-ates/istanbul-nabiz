@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "istanbul-nabiz": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["-m", "ibb_mcp.server"],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "NABIZ_GTFS_DIR": "${workspaceFolder}/data/reference/gtfs",
+        "NABIZ_PLACES_CSV": "${workspaceFolder}/data/reference/places.csv"
+      }
+    }
+  }
+}
