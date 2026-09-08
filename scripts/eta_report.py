@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""Measure how wrong the bus arrival estimates actually are.
+
+The README promises a *measured* ETA error rather than a plausible one, and this is the
+script that produces it. Nothing here calls İBB: it reads two series the collector already
+wrote and joins them.
+
+**Predictions** come from ``eta_predictions``: at time ``T`` we said vehicle ``D`` would
+reach stop ``S`` in ``N`` minutes, by method ``M``.
+
+**Observations** come from ``iett_line_snapshot``: every tick records which stop each
+vehicle is nearest to. The first tick at which vehicle ``D`` reports stop ``S`` is the tick
+at which it arrived. That is the only ground truth available — İETT publishes no arrival
+feed — and it is coarse in a way worth stating plainly:
+
+* The arrival is located to within one collection interval (three minutes), so a perfect
+  predictor would still show a mean absolute error of roughly half an interval.
+* A vehicle that passes a stop between two ticks is never observed there at all, and its
+  predictions stay unresolved rather than being scored as wrong.
+* ``yakinDurakKodu`` is *nearest* stop, not *stopped at*: a bus in traffic beside a stop
+  reports it. This inflates measured arrivals slightly earlier than the real ones.
+
+All three limitations are reported alongside the number, because an ETA error quoted
+without its measurement window is not a measurement.
+
+Usage::
+
+    .venv/bin/python scripts/eta_report.py
+    .venv/bin/python scripts/eta_report.py --json eval/results/eta.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import collections
+import datetime as dt
+import gzip
+import json
+import os
+import pathlib
+import statistics
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+#: A prediction is scored only if the vehicle is later seen at the stop within this
+#: window. Beyond it the pairing is more likely to be a different trip of the same
+#: vehicle than the journey we predicted.
+MATCH_HORIZON = dt.timedelta(minutes=90)
+
+#: The collector's watched-line cadence. Half of it is the floor on measurable accuracy.
+TICK_INTERVAL_MINUTES = 3.0
+
+
+def lake_dir() -> pathlib.Path:
+    return pathlib.Path(os.getenv("NABIZ_LAKE_DIR", ROOT / "data" / "lake"))
+
+
+def read_source(source: str) -> list[dict]:
+    directory = lake_dir() / source
+    if not directory.exists():
+        return []
+    rows: list[dict] = []
+    for path in sorted(directory.rglob("*.ndjson.gz")):
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            rows.extend(json.loads(line) for line in fh if line.strip())
+    return rows
+
+
+def parse_ts(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def observed_arrivals(snapshots: list[dict]) -> dict[tuple[str, str, str], list[dt.datetime]]:
+    """When each vehicle was first seen at each stop, per continuous visit.
+
+    A vehicle sits at (or beside) a stop for several ticks and returns on the next trip,
+    so consecutive ticks reporting the same stop collapse into one arrival and a later
+    return is recorded as a second one.
+    """
+    by_vehicle: dict[tuple[str, str], list[tuple[dt.datetime, str]]] = collections.defaultdict(list)
+    for row in snapshots:
+        stamp = parse_ts(row.get("snapshot_ts_utc"))
+        stop = row.get("nearest_stop_code")
+        if stamp is None or not stop:
+            continue
+        by_vehicle[(row["line_code"], row["door_no"])].append((stamp, stop))
+
+    arrivals: dict[tuple[str, str, str], list[dt.datetime]] = collections.defaultdict(list)
+    for (line, door), entries in by_vehicle.items():
+        entries.sort()
+        previous_stop: str | None = None
+        for stamp, stop in entries:
+            if stop != previous_stop:
+                arrivals[(line, door, stop)].append(stamp)
+            previous_stop = stop
+    return arrivals
+
+
+def score(predictions: list[dict], arrivals: dict[tuple[str, str, str], list[dt.datetime]]) -> dict:
+    """Pair each prediction with the next observed arrival and compute the error."""
+    scored: list[dict] = []
+    unresolved = 0
+
+    for prediction in predictions:
+        made_at = parse_ts(prediction.get("predicted_at_utc"))
+        minutes = prediction.get("eta_minutes")
+        if made_at is None or minutes is None:
+            continue
+        key = (prediction["line_code"], prediction["door_no"], prediction["stop_code"])
+        candidates = [t for t in arrivals.get(key, []) if made_at <= t <= made_at + MATCH_HORIZON]
+        if not candidates:
+            unresolved += 1
+            continue
+        actual = min(candidates)
+        predicted_for = made_at + dt.timedelta(minutes=float(minutes))
+        error = (predicted_for - actual).total_seconds() / 60.0
+        scored.append(
+            {
+                "line_code": prediction["line_code"],
+                "stop_code": prediction["stop_code"],
+                "door_no": prediction["door_no"],
+                "method": prediction.get("method"),
+                "confidence": prediction.get("confidence"),
+                "predicted_minutes": float(minutes),
+                "actual_minutes": (actual - made_at).total_seconds() / 60.0,
+                "error_minutes": error,
+            }
+        )
+
+    def summarise(items: list[dict]) -> dict:
+        if not items:
+            return {"n": 0}
+        errors = [abs(item["error_minutes"]) for item in items]
+        signed = [item["error_minutes"] for item in items]
+        return {
+            "n": len(items),
+            "mae_minutes": round(statistics.fmean(errors), 2),
+            "median_abs_error_minutes": round(statistics.median(errors), 2),
+            "bias_minutes": round(statistics.fmean(signed), 2),
+            "p90_abs_error_minutes": round(sorted(errors)[int(0.9 * (len(errors) - 1))], 2),
+            "within_2_min_pct": round(100.0 * sum(e <= 2 for e in errors) / len(errors), 1),
+            "within_5_min_pct": round(100.0 * sum(e <= 5 for e in errors) / len(errors), 1),
+        }
+
+    by_method: dict[str, list[dict]] = collections.defaultdict(list)
+    for item in scored:
+        by_method[item["method"] or "unknown"].append(item)
+
+    return {
+        "predictions_total": len(predictions),
+        "predictions_scored": len(scored),
+        "predictions_unresolved": unresolved,
+        "resolution_rate_pct": round(100.0 * len(scored) / len(predictions), 1) if predictions else 0.0,
+        "overall": summarise(scored),
+        "by_method": {method: summarise(items) for method, items in sorted(by_method.items())},
+        "measurement_floor_minutes": TICK_INTERVAL_MINUTES / 2,
+    }
+
+
+def render(report: dict) -> str:
+    lines = ["# ETA accuracy", ""]
+    total, done = report["predictions_total"], report["predictions_scored"]
+    if not total:
+        return "No ETA predictions collected yet. Run scripts/collect_forever.py first."
+    lines += [
+        f"{done} of {total} predictions resolved ({report['resolution_rate_pct']}%); "
+        f"{report['predictions_unresolved']} vehicles were never observed at the target stop "
+        f"within {int(MATCH_HORIZON.total_seconds() // 60)} minutes.",
+        "",
+    ]
+    if not done:
+        lines.append("Nothing scored yet — the collector needs to run long enough for a watched")
+        lines.append("vehicle to actually reach a target stop.")
+        return "\n".join(lines)
+
+    overall = report["overall"]
+    lines += [
+        "| Metric | Value |",
+        "|---|---|",
+        f"| Mean absolute error | {overall['mae_minutes']} min |",
+        f"| Median absolute error | {overall['median_abs_error_minutes']} min |",
+        f"| Bias (positive = predicted late) | {overall['bias_minutes']} min |",
+        f"| p90 absolute error | {overall['p90_abs_error_minutes']} min |",
+        f"| Within 2 minutes | {overall['within_2_min_pct']}% |",
+        f"| Within 5 minutes | {overall['within_5_min_pct']}% |",
+        f"| Sample size | {overall['n']} |",
+        "",
+        "## By method",
+        "",
+        "| Method | n | MAE (min) | Within 2 min | Within 5 min |",
+        "|---|---|---|---|---|",
+    ]
+    for method, stats in report["by_method"].items():
+        if not stats["n"]:
+            continue
+        lines.append(
+            f"| `{method}` | {stats['n']} | {stats['mae_minutes']} | "
+            f"{stats['within_2_min_pct']}% | {stats['within_5_min_pct']}% |"
+        )
+    lines += [
+        "",
+        "## How this is measured, and what limits it",
+        "",
+        f"- Arrivals are observed by the collector's watched-line tick, so they are located to "
+        f"within {TICK_INTERVAL_MINUTES:.0f} minutes. A perfect predictor would still show a mean "
+        f"absolute error near {report['measurement_floor_minutes']:.1f} minutes.",
+        "- A vehicle that passes a stop between two ticks is never observed there; its predictions "
+        "stay unresolved rather than being counted as wrong.",
+        "- İETT reports the *nearest* stop, not a stop event, so a bus held in traffic beside a stop "
+        "registers as arrived slightly early.",
+        "",
+        "İBB publishes no arrival feed, so this is the best ground truth available. The numbers above "
+        "are honest about that rather than quoting a figure the method cannot support.",
+    ]
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--json", type=pathlib.Path, help="also write the raw report here")
+    args = parser.parse_args(argv)
+
+    predictions = read_source("eta_predictions")
+    snapshots = read_source("iett_line_snapshot")
+    report = score(predictions, observed_arrivals(snapshots))
+    report["snapshot_rows"] = len(snapshots)
+
+    text = render(report)
+    print(text)
+
+    out = ROOT / "eval" / "results" / "eta.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text + "\n", encoding="utf-8")
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(report, indent=1), encoding="utf-8")
+    print(f"\nwritten: {out.relative_to(ROOT)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

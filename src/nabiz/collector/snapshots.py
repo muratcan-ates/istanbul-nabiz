@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 from ibb_mcp.cache import TTLCache
@@ -210,6 +210,63 @@ async def snapshot_fleet(ctx: SourceContext) -> list[dict[str, Any]]:
         }
         for bus in buses
     ]
+
+
+# --------------------------------------------------------------------------------------
+# İETT watched lines — the only source of ETA ground truth
+# --------------------------------------------------------------------------------------
+async def snapshot_lines(ctx: SourceContext, line_codes: Sequence[str]) -> list[dict[str, Any]]:
+    """Positions on specific lines, including the stop each bus is nearest to.
+
+    This exists because :func:`snapshot_fleet` cannot answer the question the project
+    promises to measure. The whole-fleet feed gives a door number, a coordinate and a
+    speed, but no line and no stop — so it can never tell you that bus C-331 reached
+    4. Levent Metro at 09:41. ``GetHatOtoKonum_json`` does: it carries ``guzergahkodu``
+    and ``yakinDurakKodu``, and ``yakinDurakKodu`` joins to GTFS ``stop_code`` (verified
+    31/31 on line 500T).
+
+    Pairing consecutive snapshots therefore yields observed arrivals: the moment a
+    vehicle's nearest stop becomes S is the moment it arrived at S. Those observations are
+    what turn the ETA from a plausible number into a measured one — see
+    ``scripts/eta_report.py``.
+
+    Cost is the reason this watches a handful of lines rather than the network: one call
+    per line per tick, against İETT's documented 100 requests/hour.
+
+    Schema (stable, ``iett_line_snapshot``):
+
+    line_code           str      the line asked for, normalised
+    route_code          str?     ``guzergahkodu``, joins to GTFS ``route_code``
+    door_no             str      vehicle identity; never the plate
+    nearest_stop_code   str?     ``yakinDurakKodu``, joins to GTFS ``stop_code``
+    direction           str?     headsign as reported
+    lat / lon           float?   WGS84, repaired
+    ts_utc              str?     the vehicle's own position timestamp
+    snapshot_ts_utc     str      the tick that produced the row
+    """
+    source = IettSource(ctx)
+    rows: list[dict[str, Any]] = []
+    for line_code in line_codes:
+        read = await _read(f"iett_line:{line_code}", lambda code=line_code: source.line_positions(code))
+        if read is None:
+            continue
+        buses, provenance = read
+        stamp = iso_utc(_observed_at(provenance))
+        rows.extend(
+            {
+                "line_code": (bus.line_code or line_code).upper(),
+                "route_code": bus.route_code,
+                "door_no": bus.door_no,
+                "nearest_stop_code": bus.nearest_stop_code,
+                "direction": bus.direction,
+                "lat": bus.lat,
+                "lon": bus.lon,
+                "ts_utc": iso_utc(bus.reported_at),
+                "snapshot_ts_utc": stamp,
+            }
+            for bus in buses
+        )
+    return rows
 
 
 # --------------------------------------------------------------------------------------
