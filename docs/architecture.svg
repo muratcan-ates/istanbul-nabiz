@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 560" width="1040" height="560" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">İstanbul Nabız architecture</title>
+  <desc id="desc">İBB live open data endpoints feed an Azure Functions collector and a shared, rate-limited cache. The collector writes snapshots to a Delta lake and Azure Data Explorer. The ibb-mcp server on Container Apps serves twelve tools to the Nabız agent, VS Code Copilot and Claude.</desc>
+
+  <style>
+    .bg    { fill: #ffffff; }
+    .band  { fill: #f6f7f9; stroke: #e2e5ea; }
+    .bandt { fill: #6b7280; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+    .box   { fill: #ffffff; stroke: #cbd2dc; rx: 8; }
+    .ibb   { fill: #fdf3e7; stroke: #e0a458; }
+    .az    { fill: #eaf2fd; stroke: #5b9bd5; }
+    .store { fill: #eef7ee; stroke: #6aa84f; }
+    .cli   { fill: #f3eefb; stroke: #8e7cc3; }
+    .t     { fill: #1f2933; font-size: 13px; font-weight: 600; }
+    .s     { fill: #616e7c; font-size: 11px; }
+    .edge  { stroke: #9aa5b1; fill: none; stroke-width: 1.6; }
+    .edged { stroke: #9aa5b1; fill: none; stroke-width: 1.6; stroke-dasharray: 5 4; }
+    .elabel{ fill: #52606d; font-size: 10.5px; }
+    .note  { fill: #7b8794; font-size: 11px; }
+    @media (prefers-color-scheme: dark) {
+      .bg   { fill: #0f1216; }
+      .band { fill: #161a20; stroke: #2b323b; }
+      .bandt{ fill: #98a2b3; }
+      .box  { fill: #1a1f26; stroke: #39414c; }
+      .ibb  { fill: #2a2118; stroke: #b8823f; }
+      .az   { fill: #16222f; stroke: #4a86c8; }
+      .store{ fill: #17241a; stroke: #5c9448; }
+      .cli  { fill: #221c2e; stroke: #7d6bb5; }
+      .t    { fill: #e6e9ee; }
+      .s    { fill: #98a2b3; }
+      .edge, .edged { stroke: #6b7683; }
+      .elabel, .note { fill: #98a2b3; }
+    }
+  </style>
+
+  <rect class="bg" width="1040" height="560"/>
+
+  <!-- ============ İBB sources ============ -->
+  <rect class="band" x="16" y="44" width="228" height="404" rx="10"/>
+  <text class="bandt" x="30" y="66">İBB AÇIK VERİ · kayıt yok</text>
+
+  <rect class="box ibb" x="32" y="80" width="196" height="52"/>
+  <text class="t" x="44" y="101">İSPARK</text>
+  <text class="s" x="44" y="118">249 otopark · tek çağrı · ~10 dk</text>
+
+  <rect class="box ibb" x="32" y="142" width="196" height="60"/>
+  <text class="t" x="44" y="163">İETT (SOAP)</text>
+  <text class="s" x="44" y="180">hat konumları + filo + tarife</text>
+  <text class="s" x="44" y="195">100 istek/saat sınırı</text>
+
+  <rect class="box ibb" x="32" y="212" width="196" height="52"/>
+  <text class="t" x="44" y="233">GTFS</text>
+  <text class="s" x="44" y="250">15.386 durak · 2.876 güzergâh</text>
+
+  <rect class="box ibb" x="32" y="274" width="196" height="52"/>
+  <text class="t" x="44" y="295">Metro İstanbul</text>
+  <text class="s" x="44" y="312">arıza durumu · erişilebilirlik</text>
+
+  <rect class="box ibb" x="32" y="336" width="196" height="44"/>
+  <text class="t" x="44" y="357">Trafik indeksi</text>
+  <text class="s" x="44" y="372">5 dk · 30 gün geçmiş</text>
+
+  <rect class="box ibb" x="32" y="390" width="196" height="44"/>
+  <text class="t" x="44" y="411">Hava kalitesi</text>
+  <text class="s" x="44" y="426">28 istasyon · saatlik · 2023→</text>
+
+  <!-- ============ Azure ============ -->
+  <rect class="band" x="286" y="44" width="452" height="404" rx="10"/>
+  <text class="bandt" x="300" y="66">AZURE · Bicep + azd</text>
+
+  <rect class="box az" x="302" y="80" width="200" height="66"/>
+  <text class="t" x="314" y="101">PoliteClient + TTLCache</text>
+  <text class="s" x="314" y="118">≥6 sn/host · 80 istek/saat</text>
+  <text class="s" x="314" y="133">tek uçuş · bayat veri yedeği</text>
+
+  <rect class="box az" x="302" y="164" width="200" height="66"/>
+  <text class="t" x="314" y="185">Functions (Flex)</text>
+  <text class="s" x="314" y="202">5 zamanlayıcı · toplayıcı</text>
+  <text class="s" x="314" y="217">İBB'nin tutmadığı tarihçe</text>
+
+  <rect class="box store" x="302" y="248" width="200" height="60"/>
+  <text class="t" x="314" y="269">ADLS Gen2 · Delta Lake</text>
+  <text class="s" x="314" y="286">bronze / silver / gold</text>
+
+  <rect class="box store" x="302" y="326" width="200" height="60"/>
+  <text class="t" x="314" y="347">Azure Data Explorer</text>
+  <text class="s" x="314" y="364">KQL · profiller · ETA günlüğü</text>
+
+  <rect class="box az" x="538" y="164" width="184" height="82"/>
+  <text class="t" x="550" y="185">ibb-mcp</text>
+  <text class="s" x="550" y="202">Container Apps · minReplicas 0</text>
+  <text class="s" x="550" y="217">12 parametrik araç</text>
+  <text class="s" x="550" y="232">stdio + streamable HTTP</text>
+
+  <rect class="box az" x="538" y="264" width="184" height="60"/>
+  <text class="t" x="550" y="285">Nabız web</text>
+  <text class="s" x="550" y="302">FastAPI + harita · veri yaşı</text>
+
+  <rect class="box az" x="538" y="344" width="184" height="52"/>
+  <text class="t" x="550" y="365">Application Insights</text>
+  <text class="s" x="550" y="382">OpenTelemetry izleri</text>
+
+  <!-- ============ Clients ============ -->
+  <rect class="band" x="780" y="44" width="244" height="404" rx="10"/>
+  <text class="bandt" x="794" y="66">MCP İSTEMCİLERİ</text>
+
+  <rect class="box cli" x="796" y="96" width="212" height="74"/>
+  <text class="t" x="808" y="117">Nabız ajanı</text>
+  <text class="s" x="808" y="134">TR/EN · sayısal sadakat</text>
+  <text class="s" x="808" y="149">LLM yoksa deterministik mod</text>
+
+  <rect class="box cli" x="796" y="188" width="212" height="60"/>
+  <text class="t" x="808" y="209">VS Code Copilot</text>
+  <text class="s" x="808" y="226">Claude · Copilot Studio</text>
+
+  <rect class="box cli" x="796" y="272" width="212" height="74"/>
+  <text class="t" x="808" y="293">LLM (env ile değişir)</text>
+  <text class="s" x="808" y="310">Azure OpenAI / Foundry</text>
+  <text class="s" x="808" y="325">Foundry Local (M1, Metal)</text>
+
+  <!-- ============ Edges ============ -->
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa5b1"/>
+    </marker>
+  </defs>
+
+  <!-- Six sources converge on one bus rather than six arrows, because that is the point:
+       every read in the system goes through a single rate-limited client. -->
+  <path class="edge" d="M228,106 H252 V113"/>
+  <path class="edge" d="M228,172 H252"/>
+  <path class="edge" d="M228,300 H252"/>
+  <path class="edge" d="M228,358 H252"/>
+  <path class="edge" d="M228,412 H252 V113"/>
+  <path class="edge" d="M252,106 V412"/>
+  <path class="edge" marker-end="url(#a)" d="M252,113 H302"/>
+  <path class="edged" marker-end="url(#a)" d="M228,238 H272 V196 H302"/>
+  <text class="elabel" x="256" y="212">statik</text>
+
+  <path class="edge" marker-end="url(#a)" d="M402,146 V164"/>
+  <text class="elabel" x="410" y="160">tek yukarı akış</text>
+  <path class="edge" marker-end="url(#a)" d="M402,230 V248"/>
+  <path class="edge" marker-end="url(#a)" d="M402,308 V326"/>
+
+  <path class="edge" marker-end="url(#a)" d="M502,113 H520 V190 H538"/>
+  <text class="elabel" x="506" y="106">canlı okuma</text>
+  <path class="edge" marker-end="url(#a)" d="M502,356 H520 V228 H538"/>
+  <text class="elabel" x="506" y="348">geçmiş</text>
+
+  <path class="edge" marker-end="url(#a)" d="M722,190 H760 V133 H796"/>
+  <path class="edge" marker-end="url(#a)" d="M722,216 H796"/>
+  <path class="edge" marker-end="url(#a)" d="M630,264 V246"/>
+  <path class="edged" marker-end="url(#a)" d="M796,300 H756 V150 H722 V190"/>
+  <path class="edge" marker-end="url(#a)" d="M630,324 V344"/>
+
+  <!-- ============ Footer ============ -->
+  <text class="note" x="16" y="480">Her araç yanıtı kaynak adresi ve verinin yaşını taşır; hiçbir araç serbest sorgu kabul etmez.</text>
+  <text class="note" x="16" y="500">Otobüs plakası ayrıştırma sınırında düşürülür ve hiçbir yere yazılmaz. Varış saatleri tahmindir.</text>
+  <text class="note" x="16" y="520">Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0). Resmî bir İBB servisi değildir.</text>
+  <text class="note" x="16" y="540">Fabric ve Azure OpenAI kotasına bağımlı değildir; ikisi de opsiyonel yükseltmedir.</text>
+</svg>

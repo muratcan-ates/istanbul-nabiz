@@ -70,12 +70,11 @@ honestly what runs today.
 
 ## Architecture
 
-<!-- PLACEHOLDER: replace with the rendered diagram once it exists.
-     ![Architecture](docs/screenshots/architecture.png)
-     TODO(Day 6): export docs/screenshots/architecture.png from the mermaid source below. -->
+![İstanbul Nabız architecture](docs/architecture.svg)
 
-> **`docs/screenshots/architecture.png` — placeholder.** The PNG export of the diagram below is added on
-> Day 6 and will appear here, above the fold, for readers whose viewer does not render mermaid.
+Read it left to right: six İBB endpoints, one rate-limited client they all pass through, a collector that
+keeps the history İBB does not, and one MCP server that any agent can call. The mermaid source below says
+the same thing for readers who prefer text.
 
 ```mermaid
 flowchart LR

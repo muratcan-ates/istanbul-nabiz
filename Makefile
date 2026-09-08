@@ -68,5 +68,24 @@ places:  ## rebuild data/reference/places.csv from the recorded fixtures (no net
 sequences:  ## rebuild the GTFS route stop-sequence cache from data/reference/gtfs
 	$(PY) -c "from ibb_mcp.config import Settings; from ibb_mcp.gtfs import build_stop_sequences, save_stop_sequences; s = Settings.from_env(); print(save_stop_sequences(s, build_stop_sequences(s)))"
 
+collect:  ## NETWORK run the collector in the foreground until Ctrl-C (the history İBB does not keep)
+	$(PY) scripts/collect_forever.py
+
+collect-bg:  ## NETWORK start the collector detached, logging to logs/collector.log
+	@mkdir -p logs data/lake
+	@nohup $(PY) scripts/collect_forever.py > logs/collector.log 2>&1 & echo "collector started, pid $$!"
+
+collect-status:  ## what the collector has gathered so far (no network)
+	$(PY) scripts/collect_forever.py --status
+
+collect-stop:  ## stop a detached collector
+	@pkill -f collect_forever.py && echo "collector stopped" || echo "no collector running"
+
+eta:  ## measure arrival-estimate error against observed arrivals (no network)
+	$(PY) scripts/eta_report.py
+
+warmup:  ## NETWORK prime the caches before recording a demo
+	$(PY) scripts/warmup.py
+
 clean:  ## delete caches and reports — keeps .venv, data/reference and fixtures
 	rm -rf .pytest_cache .ruff_cache reports dist build && find . -path ./.venv -prune -o -name __pycache__ -type d -print0 | xargs -0 rm -rf
