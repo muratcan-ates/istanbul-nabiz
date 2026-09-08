@@ -1,0 +1,79 @@
+[
+ {
+  "name": "ispark_park",
+  "url": "https://api.ibb.gov.tr/ispark/Park",
+  "status": 200,
+  "bytes": 56397,
+  "seconds": 0.58
+ },
+ {
+  "name": "ispark_parkdetay",
+  "url": "https://api.ibb.gov.tr/ispark/ParkDetay?id=3068",
+  "status": 200,
+  "bytes": 757,
+  "seconds": 0.23
+ },
+ {
+  "name": "iett_hat_500T",
+  "url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+  "status": 200,
+  "bytes": 8049,
+  "seconds": 0.45
+ },
+ {
+  "name": "iett_fleet",
+  "url": "https://api.ibb.gov.tr/iett/FiloDurum/SeferGerceklesme.asmx",
+  "status": 200,
+  "bytes": 1117743,
+  "seconds": 2.45
+ },
+ {
+  "name": "iett_planlanan",
+  "url": "https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx",
+  "status": 200,
+  "bytes": 125335,
+  "seconds": 0.57
+ },
+ {
+  "name": "metro_status",
+  "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetServiceStatuses",
+  "status": 200,
+  "bytes": 7215,
+  "seconds": 0.3
+ },
+ {
+  "name": "metro_stations",
+  "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStations",
+  "status": 200,
+  "bytes": 70524,
+  "seconds": 0.49
+ },
+ {
+  "name": "traffic_index_1h",
+  "url": "https://api.ibb.gov.tr/tkmservices/api/TrafficData/v1/TrafficIndexHistory/1/H",
+  "status": 200,
+  "bytes": 3854,
+  "seconds": 0.2
+ },
+ {
+  "name": "aq_stations",
+  "url": "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIStations",
+  "status": 200,
+  "bytes": 4569,
+  "seconds": 0.24
+ },
+ {
+  "name": "aq_readings",
+  "url": "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId?StationId=6b7a9840-1e13-4045-a79d-0f881c4852ad&StartDate=05.09.2026%2009%3A00%3A00&EndDate=08.09.2026%2009%3A00%3A00",
+  "status": 200,
+  "bytes": 23788,
+  "seconds": 0.47
+ },
+ {
+  "name": "gtfs_package",
+  "url": "https://data.ibb.gov.tr/api/3/action/package_show?id=iett-gtfs-verisi",
+  "status": 200,
+  "bytes": 13354,
+  "seconds": 0.38
+ }
+]

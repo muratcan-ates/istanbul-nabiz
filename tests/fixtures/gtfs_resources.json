@@ -1,0 +1,44 @@
+[
+ {
+  "name": "agency",
+  "format": "CSV",
+  "size": 114,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/df13606d-194b-4587-b868-39ecdc5f8769/download/agency.csv"
+ },
+ {
+  "name": "calendar",
+  "format": "CSV",
+  "size": 232,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/6c9623b1-3858-4b37-b936-8ffa78de2a69/download/calendar.csv"
+ },
+ {
+  "name": "routes",
+  "format": "CSV",
+  "size": 812544,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/46dbe388-c8c2-45c4-ac72-c06953de56a2/download/routes.csv"
+ },
+ {
+  "name": "stop_times",
+  "format": "CSV",
+  "size": 25969605,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/23778613-16fe-4d30-b8b8-8ca934ed2978/download/stop_times.csv"
+ },
+ {
+  "name": "stops",
+  "format": "CSV",
+  "size": 1520163,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/2299bc82-983b-4bdf-8520-5cef8c555e29/download/stops.csv"
+ },
+ {
+  "name": "trips",
+  "format": "CSV",
+  "size": 5817064,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/7ff49bdd-b0d2-4a6e-9392-b598f77f5070/download/trips.csv"
+ },
+ {
+  "name": "stop_times",
+  "format": "ZIP",
+  "size": 22753052,
+  "url": "https://data.ibb.gov.tr/dataset/8540e256-6df5-4719-85bc-e64e91508ede/resource/80401c1c-c240-4a32-8f40-ef697100a681/download/stop_times.zip"
+ }
+]

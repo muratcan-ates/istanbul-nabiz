@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "istanbul-nabiz"
+version = "0.1.0"
+description = "Unofficial MCP server and city agent over İstanbul (İBB) open data, running on Azure"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Muratcan Ateş" }]
+keywords = ["mcp", "istanbul", "open-data", "azure", "ibb", "transit"]
+
+dependencies = [
+  "httpx>=0.27",
+  "pydantic>=2.7",
+  "mcp>=1.2",
+]
+
+[project.optional-dependencies]
+collector = ["azure-functions>=1.21", "azure-kusto-data>=4.5", "azure-kusto-ingest>=4.5", "azure-identity>=1.17", "deltalake>=0.19", "pyarrow>=16"]
+web = ["fastapi>=0.115", "uvicorn>=0.30", "jinja2>=3.1"]
+agent = ["agent-framework>=1.0", "openai>=1.40", "azure-monitor-opentelemetry>=1.6"]
+dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6"]
+
+[project.scripts]
+ibb-mcp = "ibb_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/muratcan-ates/istanbul-nabiz"
+Issues = "https://github.com/muratcan-ates/istanbul-nabiz/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ibb_mcp", "src/nabiz"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["error::DeprecationWarning:ibb_mcp.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]

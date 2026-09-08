@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+.azure/
+data/reference/gtfs/
+data/lake/
+*.parquet
+.DS_Store
+eval/results/*.json
+docs/screenshots/*.mov
