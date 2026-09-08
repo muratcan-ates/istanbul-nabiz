@@ -4,7 +4,7 @@
 
 > **Teslim tarihi / kanal:** `______` ← **Barbaros'un brifini bugün yazılı al** (video süresi, dil, repo public mı, yükleme adresi).
 
-> **BLUF:** İBB'nin kayıt istemeyen canlı servislerini (İSPARK doluluk, İETT otobüs konumları, Metro arıza durumu, trafik indeksi, hava kalitesi) **tek bir MCP server** (`ibb-mcp`) hâline getiriyorsun; Azure Functions bu akışları saatlik/dakikalık Delta Lake + Azure Data Explorer'a biriktiriyor (İBB'nin kendisinin tutmadığı tarihçe); Microsoft Agent Framework ile yazılmış **"İstanbul Nabız" ajanı** bu MCP server'ın ilk müşterisi olarak vatandaşın gerçek sorularına canlı, kaynak atıflı, TR/EN cevap veriyor: *"Taksim'e 20 dakikaya varıyorum, hangi otoparkta yer var, ücreti ne?"*, *"500T Kadıköy'e ne zaman gelir?"*, *"M4'te arıza var mı, Kartal istasyonunda asansör var mı?"*, *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"*. Aynı MCP server VS Code Copilot, Copilot Studio ve Claude'dan da çalışıyor. Ölçülen şeyler: görev başarı oranı, otobüs ETA hatası (dakika), sayısal sadakat, veri tazeliği. Bicep + azd + GitHub Actions; haftalık maliyet ≈ 4–12 $; Fabric'e ve Azure OpenAI kotasına bağımlı değil.
+> **BLUF:** İBB'nin kayıt istemeyen canlı servislerini (İSPARK doluluk, İETT otobüs konumları, Metro arıza durumu, trafik indeksi, hava kalitesi) **tek bir MCP server** (`ibb-mcp`) hâline getiriyorsun; Azure Functions bu akışları saatlik/dakikalık Delta Lake + Azure Data Explorer'a biriktiriyor (İBB'nin kendisinin tutmadığı tarihçe); Microsoft Agent Framework ile yazılmış **"İstanbul Nabız" ajanı** bu MCP server'ın ilk müşterisi olarak vatandaşın gerçek sorularına canlı, kaynak atıflı, TR/EN cevap veriyor: *"Taksim'e 20 dakikaya varıyorum, hangi otoparkta yer var, ücreti ne?"*, *"500T 4. Levent'e ne zaman gelir?"*, *"M4'te arıza var mı, Kartal istasyonunda asansör var mı?"*, *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"*. Aynı MCP server VS Code Copilot, Copilot Studio ve Claude'dan da çalışıyor. Ölçülen şeyler: görev başarı oranı, otobüs ETA hatası (dakika), sayısal sadakat, veri tazeliği. Bicep + azd + GitHub Actions; haftalık maliyet ≈ 4–12 $; Fabric'e ve Azure OpenAI kotasına bağımlı değil.
 
 ---
 
@@ -18,7 +18,7 @@ Nefes'in kullanıcısı hayali bir İBB operatörüydü; tahmin panosu bir ürü
 | # | Kullanıcı | Soru (TR) | Araç zinciri | Cevap ne içerir |
 |---|---|---|---|---|
 | J1 | Sürücü | "Taksim'e 20 dk sonra varıyorum, hangi otoparkta yer olur, ücreti ne?" | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | 3 otopark, anlık boş yer, tarife, yürüme mesafesi, "bu saatte genelde %X dolu" (toplanan tarihçe), güncelleme damgası |
-| J2 | Yolcu | "500T Kadıköy'e ne zaman gelir?" | `iett_stops_search` → `iett_next_arrivals` | En yakın 2 otobüs, kaç durak uzakta, tahmini dakika, son konum zamanı, planlanan sefer saati |
+| J2 | Yolcu | "500T 4. Levent'e ne zaman gelir?" | `iett_stops_search` → `iett_next_arrivals` | En yakın 2 otobüs, kaç durak uzakta, tahmini dakika, son konum zamanı, planlanan sefer saati |
 | J3 | Metro yolcusu / erişilebilirlik | "M4'te arıza var mı? Kartal'da asansör var mı?" | `metro_status` → `metro_station_info` | Canlı arıza bildirimi, asansör/yürüyen merdiven/bebek odası/WC bilgisi |
 | J4 | Koşucu / ebeveyn | "Beşiktaş'ta bugün koşu için hava ne zaman uygun?" | `air_quality_now` → `air_quality_forecast` | Şu anki AQI + baskın kirletici, 6 saatlik tahmin, "en iyi pencere", sağlık metni |
 
@@ -40,7 +40,7 @@ EnerjiIQ ele (İBB yok, EPİAŞ kaydı, Azure OpenAI + AI Search bağımlılığ
 ## 2. Customer Business Outcome (videonun ilk 30 saniyesi)
 
 - **Müşteri:** İBB Bilgi İşlem Dairesi Başkanlığı — Açık Veri Portalı ekibi. 556 veri seti, 41 API yayınlıyor ama tüketimi ölçülemeyen, ayrı ayrı SOAP/REST uçları; tek arayüz yok.
-- **Persona:** Kadıköy'de yaşayan, işe bazen arabayla bazen 500T + M4 ile giden bir İstanbullu. **Karar:** evden çıkmadan önce 1 soru.
+- **Persona:** Kartal'da oturan, işe bazen arabayla bazen 500T ile 4. Levent'e giden bir İstanbullu (500T gerçekten Şifa Sondurak–4. Levent Metro arasında, Kartal ve Maltepe köprülerinden geçiyor; 64 durak, GTFS'ten doğrulandı). **Karar:** evden çıkmadan önce 1 soru.
 - **Bugün:** aynı cevap için 3 uygulama (İSPARK, Mobiett, CepHava) + tahmin yok + "genelde" yok.
 
 **TR:** "İstanbul Nabız, İBB'nin canlı açık verisini tek bir MCP katmanına çevirip her Copilot'a takılabilir hâle getiriyor. Vatandaş tek soruyla otopark, otobüs, metro ve hava kalitesi cevabını **[T] saniyede** alıyor; 24 gerçek senaryoda görev başarısı **%[S]**, otobüs varış tahmini ortalama **[E] dakika** hata, her cevap kaynak ve zaman damgalı. İBB için sonuç: açık verinin tüketimi ölçülebilir, geliştirici bir komutla entegre oluyor."

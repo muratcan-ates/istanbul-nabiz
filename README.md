@@ -32,7 +32,7 @@ city agent as its first client. Four journeys drive the design; each one is also
 | # | Who | The question | Tool chain | What the answer contains |
 |---|---|---|---|---|
 | **J1** | Driver | *"I'm reaching Taksim in 20 minutes — which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | up to 5 car parks, live free spaces, tariff text as published, straight-line distance, "usually X% full at this hour", update stamp |
-| **J2** | Bus passenger | *"When does the 500T get to Kadıköy?"* | `iett_stops_search` → `iett_next_arrivals` | nearest vehicles, how many stops away, estimated minutes, how the estimate was derived, last position time, planned departure |
+| **J2** | Bus passenger | *"When does the 500T reach 4. Levent?"* | `iett_stops_search` → `iett_next_arrivals` | nearest vehicles, how many stops away, estimated minutes, how the estimate was derived, last position time, planned departure |
 | **J3** | Metro passenger / accessibility | *"Any disruption on M4? Is there a lift at Kartal?"* | `metro_status` → `metro_station_info` | live disruption notices, lift / escalator / baby room / WC / prayer room per station |
 | **J4** | Runner, parent | *"When is the air good enough for a run in Beşiktaş today?"* | `air_quality_now` → `air_quality_forecast` | current AQI and dominant pollutant, hourly PM10 outlook, best window, health note |
 
@@ -292,7 +292,7 @@ ilk müşterisi olarak bir şehir ajanı sunar. Her sayının yanında kaynağı
 | # | Kullanıcı | Soru | Araç zinciri |
 |---|---|---|---|
 | J1 | Sürücü | *"Taksim'e 20 dakikaya varıyorum, hangi otoparkta yer olur, ücreti ne?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` |
-| J2 | Yolcu | *"500T Kadıköy'e ne zaman gelir?"* | `iett_stops_search` → `iett_next_arrivals` |
+| J2 | Yolcu | *"500T 4. Levent'e ne zaman gelir?"* | `iett_stops_search` → `iett_next_arrivals` |
 | J3 | Metro yolcusu | *"M4'te arıza var mı? Kartal'da asansör var mı?"* | `metro_status` → `metro_station_info` |
 | J4 | Koşucu, ebeveyn | *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"* | `air_quality_now` → `air_quality_forecast` |
 

@@ -229,7 +229,7 @@ from ibb_mcp.tools import Nabiz
 async def main() -> None:
     nabiz = Nabiz()
     try:
-        arrivals = await nabiz.iett_next_arrivals(line_code="500T", stop="Kadıköy")
+        arrivals = await nabiz.iett_next_arrivals(line_code="500T", stop="4.LEVENT METRO")
         for arrival in arrivals.data["arrivals"]:
             print(arrival["eta_minutes"], "min ·", arrival["method"], "·", arrival["confidence"])
         print("as of", arrivals.provenance.observed_at, "| cached:", arrivals.provenance.cached)
