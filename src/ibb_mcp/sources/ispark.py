@@ -38,6 +38,10 @@ KEY_ALL = "ispark:all"
 #: latency budget rather than a policy: three lots is what an answer can actually show.
 ENRICH_LIMIT = 3
 
+#: Tariffs, addresses and monthly fees change on the order of months, so the detail
+#: response is cached for a day. Live occupancy never comes from it.
+DETAIL_TTL_S = 86_400.0
+
 #: Radius multipliers tried in order when the requested radius finds nothing. Returning
 #: a lot 3 km away beats returning nothing; the tool layer tells the user it widened.
 RADIUS_WIDENING = (1.0, 2.0, 3.0)
@@ -116,7 +120,11 @@ class IsparkSource:
             payload = await self.ctx.client.get_json(ISPARK_DETAIL, source="ispark", params={"id": park_id})
             return _as_rows(payload)
 
-        rows, entry = await self.ctx.cached(f"ispark:detail:{park_id}", loader, source="ispark")
+        # Only the static facility fields are consumed from this response (see enrich),
+        # so it is cached for a day rather than for the occupancy TTL.
+        rows, entry = await self.ctx.cached(
+            f"ispark:detail:{park_id}", loader, source="ispark", ttl=DETAIL_TTL_S
+        )
         raw = next((row for row in rows if _row_id(row) == park_id), None)
 
         if raw is None:
@@ -183,13 +191,27 @@ class IsparkSource:
         return [], provenance
 
     # -------------------------------------------------------------------- enrich
-    async def enrich(self, lots: list[ParkingLot]) -> list[ParkingLot]:
-        """Add tariff and ``updateDate`` to the first :data:`ENRICH_LIMIT` lots.
+    #: Fields ParkDetay adds that describe the *facility* rather than its current state.
+    #: These change on the order of months, which is why they get a day-long cache while
+    #: occupancy keeps the short one.
+    STATIC_DETAIL_FIELDS = ("tariff", "monthly_fee", "address", "work_hours")
 
-        Called with a ``find_near`` result, so the first entries are the nearest ones —
-        the lots a user is actually choosing between. Failures are swallowed per lot:
-        a missing tariff should downgrade one line of the answer, not lose the parking
-        spaces we already know about.
+    async def enrich(self, lots: list[ParkingLot]) -> list[ParkingLot]:
+        """Attach tariff, address and monthly fee to the nearest :data:`ENRICH_LIMIT` lots.
+
+        Only the *static* detail fields are merged. Live occupancy always stays as the
+        bulk ``/Park`` list reported it, for two reasons:
+
+        * Correctness. Mixing two readings taken seconds apart produced a lot that had
+          passed the "at least one free space" filter on the list and then came back full
+          from its detail record — an answer that quietly broke the promise the caller made.
+        * Speed. Because nothing live is being read, the detail response can be cached for
+          a day (:data:`DETAIL_TTL_S`) instead of five minutes. The gateway allows one
+          request every six seconds, so three tariff lookups cost 18 seconds on a cold
+          start and nothing at all afterwards.
+
+        Failures are swallowed per lot: a missing tariff should cost one line of the
+        answer, not the parking spaces already known.
         """
         if not lots:
             return []
@@ -207,9 +229,12 @@ class IsparkSource:
                 enriched.append(lot)
                 continue
             detail, _ = result
-            # park_detail rebuilt the lot from the cached list, which has no geometry
-            # relative to the user; carry the distance we already computed.
-            enriched.append(detail.model_copy(update={"distance_km": lot.distance_km}))
+            static = {
+                field: value
+                for field in self.STATIC_DETAIL_FIELDS
+                if (value := getattr(detail, field, None)) is not None
+            }
+            enriched.append(lot.model_copy(update=static))
         return enriched + list(lots[ENRICH_LIMIT:])
 
 
