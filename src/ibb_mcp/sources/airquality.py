@@ -24,7 +24,8 @@ all 744 rows, so there is no small per-call cap to work around.
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 from urllib.parse import quote
 
 from ibb_mcp.config import AQ_READINGS, AQ_STATIONS
@@ -38,7 +39,8 @@ from ibb_mcp.models import (
     utcnow,
 )
 from ibb_mcp.sources.base import SourceContext, make_provenance
-# Turkish-insensitive folding and match ranking live in metro.py; one copy, shared.
+
+# Turkish-insensitive folding and match ranking are defined once, in the metro source.
 from ibb_mcp.sources.metro import normalize_tr, rank_match
 
 #: Station coordinates and names are static; one day is plenty.
@@ -213,12 +215,16 @@ def best_window(
     24-hour mean for PM10 and would flatten exactly the variation this question asks
     about; the index is still reported, as the official band label.
 
-    Returns ``{}``-safe fields with ``found: False`` when the series cannot answer.
+    Always returns a dict; ``found`` is ``False`` when the series has nothing to rank,
+    so the caller can say "veri yok" instead of reporting an invented window.
     """
     ordered = sorted((r for r in readings if r.read_time is not None), key=lambda r: r.read_time)
     horizon = ordered[-hours:] if hours > 0 else ordered
 
-    metric = "pm10" if any(r.pm10 is not None for r in horizon) else "aqi_index"
+    # Rank on PM10 only when most of the horizon actually reports it; a single stray
+    # reading would otherwise decide the window for the whole block.
+    pm10_count = sum(1 for r in horizon if r.pm10 is not None)
+    metric = "pm10" if horizon and pm10_count * 2 >= len(horizon) else "aqi_index"
     scored = [(r, getattr(r, metric)) for r in horizon if getattr(r, metric) is not None]
     if not scored:
         return {
@@ -230,7 +236,7 @@ def best_window(
 
     # Split into runs of consecutive hours so a data gap never joins two separate blocks.
     runs: list[list[tuple[AirQualityReading, float]]] = [[scored[0]]]
-    for previous, current in zip(scored, scored[1:]):
+    for previous, current in zip(scored, scored[1:], strict=False):
         gap = (current[0].read_time - previous[0].read_time).total_seconds()
         if gap > CONTIGUITY_GAP_SECONDS:
             runs.append([current])
@@ -249,7 +255,13 @@ def best_window(
             if best is None or candidate[:2] < best[:2]:
                 best = candidate
 
-    assert best is not None  # scored is non-empty, so at least one window exists
+    if best is None:  # unreachable while `scored` is non-empty; keeps -O builds honest
+        return {
+            "found": False,
+            "metric": metric,
+            "considered_hours": len(horizon),
+            "label": "Bu istasyonda değerlendirilecek ölçüm yok.",
+        }
     mean_score, _, window = best
     first, last = window[0][0], window[-1][0]
     start_local = first.read_time.astimezone(ISTANBUL_TZ)
@@ -259,10 +271,10 @@ def best_window(
     mean_aqi = sum(aqi_values) / len(aqi_values) if aqi_values else None
     band = aqi_band(mean_aqi)
 
-    unit = "µg/m³" if metric == "pm10" else "AQI"
+    metric_label, unit = ("PM10", " µg/m³") if metric == "pm10" else ("AQI", "")
     label = (
         f"En temiz aralık {start_local:%d.%m %H:%M}–{end_local:%H:%M} "
-        f"({'PM10' if metric == 'pm10' else 'AQI'} ort. {_tr_number(mean_score)} {unit}"
+        f"({metric_label} ort. {_tr_number(mean_score)}{unit}"
     )
     if band is not None:
         label += f", hava kalitesi: {band[0]}"

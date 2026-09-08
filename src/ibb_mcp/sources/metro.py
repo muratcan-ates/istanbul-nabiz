@@ -79,6 +79,30 @@ def rank_match(query: str, candidate: str) -> int | None:
     return None
 
 
+def _hex_color(value: Any) -> str | None:
+    """Normalise the line colour to ``#RRGGBB``.
+
+    ``GetServiceStatuses`` does not send a colour string: it sends
+    ``{"Color_R": "248", "Color_G": "154", "Color_B": "186"}``. ``MetroLineStatus``
+    expects a string, so the conversion happens here rather than by touching the shared
+    model. Anything unrecognised becomes ``None`` — a wrong colour is worse than none.
+    """
+    if isinstance(value, str):
+        return value.strip() or None
+    if not isinstance(value, dict):
+        return None
+    try:
+        channels = [int(float(value[key])) for key in ("Color_R", "Color_G", "Color_B")]
+    except (KeyError, TypeError, ValueError):
+        return None
+    return "#{:02X}{:02X}{:02X}".format(*(max(0, min(255, c)) for c in channels))
+
+
+def _adapt_status(raw: dict[str, Any]) -> dict[str, Any]:
+    """Shape one status record into what :class:`MetroLineStatus` can parse."""
+    return {**raw, "LineColor": _hex_color(raw.get("LineColor"))}
+
+
 def _unwrap(payload: Any, *, source: str) -> list[dict[str, Any]]:
     """Validate the ``{Success, Error, Data}`` envelope Metro İstanbul returns.
 
@@ -116,7 +140,7 @@ class MetroSource:
             return _unwrap(payload, source="metro_status")
 
         raw, entry = await self.ctx.cached("metro:status", load, source="metro_status")
-        statuses = [MetroLineStatus.from_raw(item) for item in raw]
+        statuses = [MetroLineStatus.from_raw(_adapt_status(item)) for item in raw]
         # İBB stamps each notice individually; the freshest one dates the whole answer.
         stamps = [s.updated_at for s in statuses if s.updated_at is not None]
         provenance = make_provenance(

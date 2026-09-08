@@ -20,7 +20,8 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import re
-from typing import Any, Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
 from ibb_mcp.cache import CacheEntry

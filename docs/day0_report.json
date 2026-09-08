@@ -1,0 +1,223 @@
+{
+  "generated_at_utc": "2026-09-08T06:47:41+00:00",
+  "generated_at_local": "2026-09-08T09:47:41+03:00",
+  "args": {
+    "azure": false,
+    "no_network": true,
+    "traffic_both": false,
+    "json_only": false
+  },
+  "transport": "urllib.request (httpx not installed)",
+  "endpoint_source": "ibb_mcp.config",
+  "elapsed_seconds": 0.52,
+  "ibb_calls_spent": 0,
+  "ibb_call_budget": 6,
+  "summary": {
+    "PASS": 7,
+    "FAIL": 3,
+    "SKIP": 11
+  },
+  "checks": [
+    {
+      "id": "T1",
+      "section": "TOOLS",
+      "name": "python 3.12",
+      "status": "PASS",
+      "detail": "3.12.13 at /opt/homebrew/bin/python3.12"
+    },
+    {
+      "id": "T2",
+      "section": "TOOLS",
+      "name": "uv",
+      "status": "PASS",
+      "detail": "uv 0.11.14 (3fdfdc7d4 2026-05-12 aarch64-apple-darwin)  (/Users/muratates/.local/bin/uv)"
+    },
+    {
+      "id": "T3",
+      "section": "TOOLS",
+      "name": "az (Azure CLI)",
+      "status": "FAIL",
+      "detail": "MISSING"
+    },
+    {
+      "id": "T4",
+      "section": "TOOLS",
+      "name": "azd (Developer CLI)",
+      "status": "FAIL",
+      "detail": "MISSING"
+    },
+    {
+      "id": "T5",
+      "section": "TOOLS",
+      "name": "func (Functions Core Tools)",
+      "status": "FAIL",
+      "detail": "MISSING"
+    },
+    {
+      "id": "T6",
+      "section": "TOOLS",
+      "name": "foundry (Foundry Local)",
+      "status": "SKIP",
+      "detail": "MISSING (optional — only needed on the local-LLM path, PLAN §9)"
+    },
+    {
+      "id": "T7",
+      "section": "TOOLS",
+      "name": "git",
+      "status": "PASS",
+      "detail": "git version 2.50.1 (Apple Git-155)  (/usr/bin/git)"
+    },
+    {
+      "id": "T8",
+      "section": "TOOLS",
+      "name": "gh (GitHub CLI)",
+      "status": "PASS",
+      "detail": "gh version 2.97.0 (2026-07-31)  (/opt/homebrew/bin/gh)"
+    },
+    {
+      "id": "A1",
+      "section": "AZURE",
+      "name": "subscription / tenant / identity",
+      "status": "SKIP",
+      "detail": "not requested — pass --azure to run the subscription checks"
+    },
+    {
+      "id": "A2",
+      "section": "AZURE",
+      "name": "allowed-regions policy",
+      "status": "SKIP",
+      "detail": "not requested — pass --azure to run the subscription checks"
+    },
+    {
+      "id": "A3",
+      "section": "AZURE",
+      "name": "Functions Flex regions ∩ allowed",
+      "status": "SKIP",
+      "detail": "not requested — pass --azure to run the subscription checks"
+    },
+    {
+      "id": "A4",
+      "section": "AZURE",
+      "name": "resource providers registered",
+      "status": "SKIP",
+      "detail": "not requested — pass --azure to run the subscription checks"
+    },
+    {
+      "id": "I5",
+      "section": "İBB",
+      "name": "air quality: GetAQIStations",
+      "status": "SKIP",
+      "detail": "--no-network"
+    },
+    {
+      "id": "I6",
+      "section": "İBB",
+      "name": "air quality: 30-day window",
+      "status": "SKIP",
+      "detail": "--no-network"
+    },
+    {
+      "id": "I7",
+      "section": "İBB",
+      "name": "İSPARK: /Park",
+      "status": "SKIP",
+      "detail": "--no-network"
+    },
+    {
+      "id": "I8",
+      "section": "İBB",
+      "name": "İETT: GetHatOtoKonum_json 500T",
+      "status": "SKIP",
+      "detail": "--no-network"
+    },
+    {
+      "id": "I9",
+      "section": "İBB",
+      "name": "Metro: GetServiceStatuses",
+      "status": "SKIP",
+      "detail": "--no-network"
+    },
+    {
+      "id": "I10",
+      "section": "İBB",
+      "name": "traffic index: Accept header",
+      "status": "SKIP",
+      "detail": "--no-network"
+    },
+    {
+      "id": "G11",
+      "section": "GTFS",
+      "name": "stops.csv / routes.csv present",
+      "status": "PASS",
+      "detail": "stops.csv 1.5 MB, routes.csv 0.8 MB · not downloaded yet: stop_times.csv, trips.csv"
+    },
+    {
+      "id": "G12",
+      "section": "GTFS",
+      "name": "yakinDurakKodu → stop_code",
+      "status": "PASS",
+      "detail": "31/31 yakinDurakKodu → stop_code across 15390 stops (stop_id matches only 0 — join on stop_code)"
+    },
+    {
+      "id": "G13",
+      "section": "GTFS",
+      "name": "guzergahkodu → route_code",
+      "status": "PASS",
+      "detail": "2/2 guzergahkodu → route_code (500T_D_D0, 500T_G_D0) across 9279 routes"
+    }
+  ],
+  "facts": {
+    "python312": {
+      "path": "/opt/homebrew/bin/python3.12",
+      "version": "3.12.13"
+    },
+    "tools": {
+      "uv": "uv 0.11.14 (3fdfdc7d4 2026-05-12 aarch64-apple-darwin)",
+      "az": null,
+      "azd": null,
+      "func": null,
+      "foundry": null,
+      "git": "git version 2.50.1 (Apple Git-155)",
+      "gh": "gh version 2.97.0 (2026-07-31)"
+    },
+    "gtfs_files": {
+      "stops.csv": 1520163,
+      "routes.csv": 812544,
+      "stop_times.csv": null,
+      "trips.csv": null
+    },
+    "gtfs_stop_join": {
+      "buses": 31,
+      "stop_code_hits": 31,
+      "stop_id_hits": 0,
+      "stops_rows": 15390,
+      "distinct_stop_code": 15304
+    },
+    "gtfs_route_join": {
+      "live_routes": [
+        "500T_D_D0",
+        "500T_G_D0"
+      ],
+      "matched": [
+        "500T_D_D0",
+        "500T_G_D0"
+      ],
+      "routes_rows": 9279
+    }
+  },
+  "notes": [
+    "GTFS stop_times.csv, trips.csv not downloaded yet — needed for stop sequences on Day 3; URLs in tests/fixtures/gtfs_resources.json."
+  ],
+  "manual_gates": [
+    "ADX free cluster — create at https://dataexplorer.azure.com/freecluster with the SAME identity that owns the Azure subscription (a different Entra account gives you a cluster you cannot grant the Function's managed identity access to). Database name: 'nabiz'. There is no CLI for this, so this script cannot check it.",
+    "Azure OpenAI quota — deploy gpt-4.1-mini (Global Standard) at https://ai.azure.com. If the TPM quota is 0, fill https://aka.ms/oai/stuquotarequest immediately; turnaround is days, not hours (PLAN §9).",
+    "Delivery date and brief — get Barbaros's answer in writing today: video length, language, repo visibility, upload address (PLAN header).",
+    "Budget alerts — set $20 and $40 alerts in Cost Management and check the Sponsorships balance (PLAN §10 step 6)."
+  ],
+  "remedies_for_failures": {
+    "T3": "brew install azure-cli   (then: az login)",
+    "T4": "brew install azd",
+    "T5": "brew tap azure/functions && brew install azure-functions-core-tools@4"
+  },
+  "exit_code": 1
+}

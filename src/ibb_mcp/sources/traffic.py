@@ -18,7 +18,8 @@ and needs no second request.
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from ibb_mcp.config import TRAFFIC_INDEX_HISTORY
 from ibb_mcp.models import ISTANBUL_TZ, Provenance, TrafficIndexPoint, describe_traffic
@@ -40,7 +41,7 @@ MAX_DAYS = 365
 #: compare 09:00 with 06:00.
 SAME_HOUR_TOLERANCE_SECONDS = 5400.0
 
-_EPOCH = dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc)
+_EPOCH = dt.datetime(1970, 1, 1, tzinfo=dt.UTC)
 
 
 def _sort_key(point: TrafficIndexPoint) -> tuple[bool, dt.datetime]:

@@ -8,10 +8,10 @@ one produced a number:
 
 ``stop_sequence``
     A bus reports the stop it is nearest to (``yakinDurakKodu``), which joins to GTFS
-    ``stops.stop_code`` (verified 31/31 on line 500T). When that stop and the target
-    both sit on the ordered stop list of the bus's route and the bus is *before* the
-    target, the difference of their positions is how many stops away it is; multiply by
-    a per-route seconds-per-stop figure. This one follows the road the bus really drives.
+    ``stops.stop_code`` (verified 31/31 on line 500T). When that stop and the target both
+    sit on the ordered stop list of the bus's route and the bus is *before* the target,
+    the gap between their positions is how many stops away it is; multiply by a per-route
+    seconds-per-stop figure. This one follows the road the bus really drives.
 
 ``distance``
     No usable stop order — unknown route, missing stop codes, or the bus is already past
@@ -21,25 +21,24 @@ one produced a number:
 
 ``schedule``
     No live bus is approaching at all. Fall back to the planned *departures* for today's
-    day type. That answers "there is a 500T booked for 14:40", not "a bus reaches your
-    stop at 14:40" — the gap is the run time from the terminus, which we do not know.
-    Always 'low'.
+    day type: "there is a 500T booked for 14:40", not "a bus reaches your stop at 14:40".
+    The gap between those is the run time from the terminus, which we do not know. 'low'.
 
 Why no model: on day one there is no history to train on, and a wrong minute the user
 cannot interrogate is worse than a rough minute they can. Instead every estimate is
-logged to ``eta_log`` with the method and inputs that produced it; the collector later
-marks the vehicle's real arrival (that door number turning up with the target stop as
-its ``yakinDurakKodu``), turning the log into a measured ETA error — PLAN.md section
-8.3. The MAE that falls out of that is what should move the constants in
-:class:`EtaParams`, not intuition. The ``diagnostics`` dict returned beside the arrivals
-is JSON-serialisable precisely so it can be written to that log.
+logged to ``eta_log`` with the method and inputs behind it; the collector later marks the
+vehicle's real arrival (that door number turning up with the target stop as its
+``yakinDurakKodu``), turning the log into a measured ETA error — PLAN.md section 8.3. The
+MAE that falls out of that is what should move the constants in :class:`EtaParams`, not
+intuition. The ``diagnostics`` dict returned beside the arrivals is JSON-serialisable
+precisely so it can be written to that log.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import statistics
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Mapping, Protocol, Sequence
 
 from ibb_mcp.models import (
@@ -55,10 +54,8 @@ from ibb_mcp.models import (
 
 #: A scheduled row describes a departure, not a vehicle, so it carries no door number.
 NO_VEHICLE = ""
-
 #: Fallback city speed when the fleet tells us nothing (see :func:`speed_profile_from_fleet`).
 DEFAULT_SPEED_KMH = 16.0
-
 _CONFIDENCE_ORDER = ("high", "medium", "low")
 
 
@@ -72,8 +69,8 @@ def _downgrade(confidence: str) -> str:
 class EtaParams:
     """Tunable constants. Every one is a guess until ``eta_log`` says otherwise.
 
-    ``seconds_per_stop`` is the day-one placeholder from PLAN.md section 7 (2 minutes per
-    stop); once the collector has line×hour history, pass a per-route override through
+    ``seconds_per_stop`` is the day-one placeholder from PLAN.md section 7 (2 min/stop);
+    once the collector has line×hour history, pass a per-route override through
     ``speed_profile`` rather than editing this default.
     """
 
@@ -86,6 +83,12 @@ class EtaParams:
     high_confidence_stops: int = 8
     #: Beyond this road distance the straight-line method is little better than a guess.
     low_confidence_km: float = 6.0
+    #: How far a bus may sit from the stop it calls ``yakinDurakKodu`` before we stop
+    #: believing that claim locates it. See :func:`_claim_is_credible`.
+    max_stop_claim_km: float = 1.5
+    #: An average speed no İstanbul bus sustains. If a stop-sequence estimate implies more,
+    #: ``seconds_per_stop`` is miscalibrated for that route; say so instead of hiding it.
+    implausible_speed_kmh: float = 60.0
     #: How many planned departures to offer when falling back to the timetable.
     max_scheduled: int = 3
 
@@ -93,56 +96,37 @@ class EtaParams:
 DEFAULT_PARAMS = EtaParams()
 
 
-class StopSequenceLike(Protocol):
-    """One route direction's ordered stops (``ibb_mcp.gtfs.RouteStopSequence``).
-
-    Either a ``stop_codes`` sequence or a ``stops`` list of :class:`Stop` satisfies it.
-    """
-
-    route_code: str
-
-
 class GtfsLookup(Protocol):
-    """The two hooks this module needs from ``ibb_mcp.gtfs.GtfsIndex``.
+    """The one hook this module needs from ``ibb_mcp.gtfs.GtfsIndex``.
 
-    A protocol rather than an import: the ETA maths can then be unit-tested without
-    loading 15 000 stops, and a change to the index's constructor cannot break it.
+    A protocol rather than an import, so the ETA maths can be unit-tested without loading
+    15 000 stops and a change to the index's constructor cannot break it. Route stop
+    orders are *not* fetched through here — ``gtfs.load_stop_sequences()`` returns them as
+    a plain dict that the caller passes in as ``sequences``, which keeps this module
+    working on the day those sequences are still empty for want of ``stop_times.csv``.
     """
 
-    def stop_by_code(self, stop_code: str) -> Stop | None: ...
-
-    def sequence_for_route(self, route_code: str) -> StopSequenceLike | None: ...
+    def lookup_stop(self, stop_code: str) -> Stop | None: ...
 
 
-def _hook(index: GtfsLookup | None, method: str, table: str, key: str) -> Any:
-    """Call ``index.<method>(key)``, or fall back to a ``index.<table>`` mapping."""
-    if index is None or not key:
+def _lookup_stop(index: GtfsLookup | None, stop_code: str | None) -> Stop | None:
+    """Resolve a stop code through the index, tolerating either accessor it exposes."""
+    if index is None or not stop_code:
         return None
-    getter = getattr(index, method, None)
+    getter = getattr(index, "lookup_stop", None) or getattr(index, "stop_by_code", None)
     if callable(getter):
-        return getter(key)
-    mapping = getattr(index, table, None)
-    return mapping.get(key) if isinstance(mapping, Mapping) else None
+        return getter(stop_code)
+    mapping = getattr(index, "by_stop_code", None)
+    return mapping.get(stop_code) if isinstance(mapping, Mapping) else None
 
 
-def _resolve_sequence(
-    route_code: str | None,
-    sequences: Mapping[str, StopSequenceLike] | None,
-    index: GtfsLookup | None,
-) -> StopSequenceLike | None:
-    """Ordered stop list for a route, preferring the caller's own mapping."""
-    if route_code and sequences and route_code in sequences:
-        return sequences[route_code]
-    return _hook(index, "sequence_for_route", "sequences", route_code or "")
-
-
-def _stop_positions(sequence: StopSequenceLike | None) -> dict[str, int]:
+def _stop_positions(sequence: Any) -> dict[str, int]:
     """Map ``stop_code`` -> position along the route.
 
     On a loop route a stop appears twice; first occurrence wins, which keeps "stops away"
     positive for a bus approaching the first time and under-counts one on its second pass.
-    Under-counting is the safer error: it is wrong by a whole loop, so ``eta_log`` exposes
-    it loudly instead of it hiding as a plausible number.
+    Under-counting is the safer error: being wrong by a whole loop shows up loudly in
+    ``eta_log`` instead of hiding as a plausible number.
     """
     if sequence is None:
         return {}
@@ -154,13 +138,6 @@ def _stop_positions(sequence: StopSequenceLike | None) -> dict[str, int]:
         if code is not None:
             positions.setdefault(str(code), position)
     return positions
-
-
-def _seconds_per_stop(route_code: str | None, speed_profile: Mapping[str, float] | None, params: EtaParams) -> float:
-    """Per-route seconds between consecutive stops, else the global default."""
-    if speed_profile and route_code and (value := float(speed_profile.get(route_code) or 0)) > 0:
-        return value
-    return params.seconds_per_stop
 
 
 def speed_profile_from_fleet(fleet: list[BusPosition]) -> float:
@@ -179,15 +156,41 @@ def speed_profile_from_fleet(fleet: list[BusPosition]) -> float:
     return round(min(40.0, max(8.0, statistics.median(speeds))), 1)
 
 
-# --------------------------------------------------------------------------------------
-# the estimator
-# --------------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class _Ctx:
+    """Everything the per-bus helpers need, so their signatures stay readable."""
+
+    target: Stop
+    index: GtfsLookup | None
+    sequences: Mapping[str, Any] | None
+    speed_profile: Mapping[str, float] | None
+    params: EtaParams
+    moment: dt.datetime
+    diagnostics: dict[str, Any] = field(default_factory=dict)
+
+    def note(self, text: str) -> None:
+        if text not in self.diagnostics["notes"]:
+            self.diagnostics["notes"].append(text)
+
+    def sequence_for(self, route_code: str | None) -> Any:
+        """Ordered stop list for a route, or None while ``stop_times.csv`` is absent."""
+        if not route_code or not self.sequences:
+            return None
+        return self.sequences.get(route_code) or self.sequences.get(route_code.upper())
+
+    def seconds_per_stop(self, route_code: str | None) -> float:
+        profile = self.speed_profile
+        if profile and route_code and (value := float(profile.get(route_code) or 0)) > 0:
+            return value
+        return self.params.seconds_per_stop
+
+
 def estimate_arrivals(
     *,
     buses: list[BusPosition],
     target: Stop,
     index: GtfsLookup | None = None,
-    sequences: Mapping[str, StopSequenceLike] | None = None,
+    sequences: Mapping[str, Any] | None = None,
     scheduled: list[PlannedDeparture] | None = None,
     speed_profile: Mapping[str, float] | None = None,
     params: EtaParams = DEFAULT_PARAMS,
@@ -201,67 +204,63 @@ def estimate_arrivals(
 
     Returns arrivals sorted soonest-first and capped at ``params.max_results``, plus a
     JSON-serialisable diagnostics dict explaining what was discarded and why. Nothing is
-    invented: an empty list with populated diagnostics is a legitimate answer that the
+    invented: an empty list with populated diagnostics is a legitimate answer, one the
     agent should read out as "I cannot tell you right now".
     """
-    moment = now or utcnow()
-    diagnostics: dict[str, Any] = {
-        "now": moment.isoformat(),
-        "target_stop_code": target.stop_code,
-        "buses_received": len(buses),
-        "dropped_stale": 0,
-        "dropped_unlocatable": 0,
-        "dropped_passed_target": 0,
-        "unknown_age": 0,
-        "methods": {"stop_sequence": 0, "distance": 0, "schedule": 0},
-        "sequence_routes": [],
-        "notes": [],
-        "params": asdict(params),
-    }
+    ctx = _Ctx(
+        target=target,
+        index=index,
+        sequences=sequences,
+        speed_profile=speed_profile,
+        params=params,
+        moment=now or utcnow(),
+        diagnostics={
+            "now": (now or utcnow()).isoformat(),
+            "target_stop_code": target.stop_code,
+            "buses_received": len(buses),
+            "dropped_stale": 0,
+            "dropped_unlocatable": 0,
+            "dropped_passed_target": 0,
+            "unknown_age": 0,
+            "methods": {"stop_sequence": 0, "distance": 0, "schedule": 0},
+            "sequence_routes": [],
+            "notes": [],
+            "params": asdict(params),
+        },
+    )
 
-    fresh = _drop_stale(buses, moment, params, diagnostics)
-    arrivals = [
-        arrival
-        for bus in fresh
-        if (arrival := _estimate_one(bus, target, index, sequences, speed_profile, params, diagnostics)) is not None
-    ]
-
+    fresh = _drop_stale(buses, ctx)
+    arrivals = [a for bus in fresh if (a := _estimate_one(bus, ctx)) is not None]
     if not arrivals:
         if fresh:
-            diagnostics["notes"].append("live_buses_present_but_none_approaching")
-        arrivals = _from_schedule(scheduled, target, moment, params, diagnostics)
+            ctx.note("live_buses_present_but_none_approaching")
+        arrivals = _from_schedule(scheduled, ctx)
 
     for arrival in arrivals:
-        diagnostics["methods"][arrival.method] = diagnostics["methods"].get(arrival.method, 0) + 1
+        ctx.diagnostics["methods"][arrival.method] = ctx.diagnostics["methods"].get(arrival.method, 0) + 1
     arrivals.sort(key=lambda a: (a.eta_minutes if a.eta_minutes is not None else 1e9, a.stops_away or 0))
 
     capped = arrivals[: max(1, params.max_results)]
-    diagnostics["estimated"] = len(arrivals)
-    diagnostics["returned"] = len(capped)
-    return capped, diagnostics
+    ctx.diagnostics["estimated"] = len(arrivals)
+    ctx.diagnostics["returned"] = len(capped)
+    return capped, ctx.diagnostics
 
 
-def _drop_stale(
-    buses: list[BusPosition],
-    moment: dt.datetime,
-    params: EtaParams,
-    diagnostics: dict[str, Any],
-) -> list[BusPosition]:
-    """Discard positions older than ``max_bus_age_s``; record the ages of those we kept.
+def _drop_stale(buses: list[BusPosition], ctx: _Ctx) -> list[BusPosition]:
+    """Discard positions older than ``max_bus_age_s``; record the ages of those we keep.
 
-    A ten-minute-old position has moved several stops since. Pretending otherwise is
+    A ten-minute-old position has moved several stops since; pretending otherwise is
     exactly the confident-but-wrong number this project refuses to emit. Positions with no
     timestamp are kept but counted, and their arrivals lose a notch of confidence later.
     """
-    kept: list[BusPosition] = []
-    ages: list[float] = []
+    diagnostics, kept, ages = ctx.diagnostics, [], []
     for bus in buses:
         if bus.reported_at is None:
             diagnostics["unknown_age"] += 1
             kept.append(bus)
             continue
-        age = (moment - bus.reported_at).total_seconds()
-        if age > params.max_bus_age_s:
+        age = (ctx.moment - bus.reported_at).total_seconds()
+        if age > ctx.params.max_bus_age_s:
             diagnostics["dropped_stale"] += 1
             continue
         ages.append(max(0.0, age))
@@ -270,80 +269,106 @@ def _drop_stale(
         diagnostics["oldest_used_age_s"] = round(max(ages), 1)
         diagnostics["median_age_s"] = round(statistics.median(ages), 1)
     if diagnostics["dropped_stale"]:
-        diagnostics["notes"].append(
-            f"dropped_{diagnostics['dropped_stale']}_positions_older_than_{params.max_bus_age_s:.0f}s"
-        )
+        ctx.note(f"dropped_{diagnostics['dropped_stale']}_positions_older_than_{ctx.params.max_bus_age_s:.0f}s")
     if diagnostics["unknown_age"]:
-        diagnostics["notes"].append("positions_without_timestamp_were_downgraded")
+        ctx.note("positions_without_timestamp_were_downgraded")
     return kept
 
 
-def _estimate_one(
-    bus: BusPosition,
-    target: Stop,
-    index: GtfsLookup | None,
-    sequences: Mapping[str, StopSequenceLike] | None,
-    speed_profile: Mapping[str, float] | None,
-    params: EtaParams,
-    diagnostics: dict[str, Any],
-) -> BusArrival | None:
+def _estimate_one(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     """One bus, one stop: sequence method when the route order allows it, else distance."""
-    positions = _stop_positions(_resolve_sequence(bus.route_code, sequences, index))
-    if positions and bus.route_code and bus.route_code not in diagnostics["sequence_routes"]:
-        diagnostics["sequence_routes"].append(bus.route_code)
+    positions = _stop_positions(ctx.sequence_for(bus.route_code))
+    if positions and bus.route_code and bus.route_code not in ctx.diagnostics["sequence_routes"]:
+        ctx.diagnostics["sequence_routes"].append(bus.route_code)
 
-    target_index = positions.get(target.stop_code)
+    target_index = positions.get(ctx.target.stop_code)
     bus_index = positions.get(bus.nearest_stop_code) if bus.nearest_stop_code else None
-
-    if target_index is None or bus_index is None:
-        return _distance_arrival(bus, target, index, params, diagnostics)
+    if target_index is None or bus_index is None or not _claim_is_credible(bus, ctx):
+        return _distance_arrival(bus, ctx)
     if bus_index > target_index:
         # Past the stop in this route direction; it is not coming back on this trip.
-        diagnostics["dropped_passed_target"] += 1
+        ctx.diagnostics["dropped_passed_target"] += 1
         return None
 
     stops_away = target_index - bus_index
-    seconds = stops_away * _seconds_per_stop(bus.route_code, speed_profile, params)
-    confidence = "high" if stops_away <= params.high_confidence_stops else "medium"
+    if stops_away == 0:
+        # "Zero stops away" carries no time information — the bus shares a nearest stop
+        # with the rider, which on a line with 2 km spacing can still be a kilometre of
+        # driving. Multiplying zero by anything says "0 dakika", the one answer guaranteed
+        # to be wrong. Fall through to geometry, keeping the honest stops_away=0.
+        near = _distance_arrival(bus, ctx)
+        return near.model_copy(update={"stops_away": 0}) if near else None
+
+    straight_km = _straight_km(bus.lat, bus.lon, ctx.target)
+    minutes = stops_away * ctx.seconds_per_stop(bus.route_code) / 60.0
+    confidence = "high" if stops_away <= ctx.params.high_confidence_stops else "medium"
+    if not bus.reported_at:
+        confidence = _downgrade(confidence)
+    # Do not override the preferred method with a global speed guess — an express line's
+    # seconds_per_stop is legitimately large. But if the estimate implies a speed no bus
+    # sustains, the constant is wrong for this route: flag it so eval can retune it rather
+    # than letting a confident, too-early number reach the rider.
+    if straight_km and minutes > 0 and straight_km / (minutes / 60.0) > ctx.params.implausible_speed_kmh:
+        confidence = _downgrade(confidence)
+        ctx.note(f"seconds_per_stop_looks_low_for_{bus.route_code}")
     return _arrival(
         bus,
-        target,
+        ctx.target,
         stops_away=stops_away,
-        distance_km=_straight_km(bus.lat, bus.lon, target),
-        eta_minutes=round(seconds / 60.0, 1),
+        distance_km=straight_km,
+        eta_minutes=round(minutes, 1),
         method="stop_sequence",
-        confidence=confidence if bus.reported_at else _downgrade(confidence),
+        confidence=confidence,
     )
 
 
-def _distance_arrival(
-    bus: BusPosition,
-    target: Stop,
-    index: GtfsLookup | None,
-    params: EtaParams,
-    diagnostics: dict[str, Any],
-) -> BusArrival | None:
+def _claim_is_credible(bus: BusPosition, ctx: _Ctx) -> bool:
+    """Is the bus actually near the stop its ``yakinDurakKodu`` names?
+
+    Measured on the recorded 500T snapshot: of five buses all reporting stop 225652
+    (Kozyatağı Metro), two sat within a kilometre of it and three were 4.7-6.4 km past it,
+    northbound. So the field is not "the stop I am nearest to" — it lags, holding the last
+    stop the vehicle registered at. The code still joins cleanly to ``stops.stop_code``,
+    but using a stale claim as a position puts the bus several stops behind where it is and
+    quietly inflates every ETA on the line. When the vehicle's own coordinates contradict
+    the claim by more than ``max_stop_claim_km``, we trust the coordinates and fall back to
+    the distance method. Buses with no coordinates get the benefit of the doubt: the claim
+    is then the only position we have.
+    """
+    if bus.lat is None or bus.lon is None:
+        return True
+    claimed = _lookup_stop(ctx.index, bus.nearest_stop_code)
+    if claimed is None or claimed.lat is None or claimed.lon is None:
+        return True
+    if haversine_km(bus.lat, bus.lon, claimed.lat, claimed.lon) <= ctx.params.max_stop_claim_km:
+        return True
+    ctx.diagnostics["stop_claim_rejected"] = ctx.diagnostics.get("stop_claim_rejected", 0) + 1
+    ctx.note("stale_yakinDurakKodu_ignored_bus_position_used_instead")
+    return False
+
+
+def _distance_arrival(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     """Great-circle distance × winding factor ÷ assumed speed.
 
     Blind to direction of travel: a bus 2 km away driving the other way scores the same as
     one about to arrive. Hence the 'medium' ceiling and the diagnostics note — the agent
     should hedge the wording, not bend the number.
     """
+    target, params = ctx.target, ctx.params
     lat, lon = bus.lat, bus.lon
     if lat is None or lon is None:
         # Last resort: stand the bus at the stop it says it is nearest to.
-        proxy = _hook(index, "stop_by_code", "stops_by_code", bus.nearest_stop_code or "")
+        proxy = _lookup_stop(ctx.index, bus.nearest_stop_code)
         lat, lon = (proxy.lat, proxy.lon) if proxy else (None, None)
     if lat is None or lon is None or target.lat is None or target.lon is None:
-        diagnostics["dropped_unlocatable"] += 1
+        ctx.diagnostics["dropped_unlocatable"] += 1
         return None
 
     straight_km = haversine_km(lat, lon, target.lat, target.lon)
     road_km = straight_km * params.winding_factor
     speed = params.speed_kmh if params.speed_kmh > 0 else DEFAULT_SPEED_KMH
     confidence = "low" if road_km > params.low_confidence_km else "medium"
-    if "distance_method_is_direction_blind" not in diagnostics["notes"]:
-        diagnostics["notes"].append("distance_method_is_direction_blind")
+    ctx.note("distance_method_is_direction_blind")
     return _arrival(
         bus,
         target,
@@ -373,72 +398,54 @@ def _straight_km(lat: float | None, lon: float | None, target: Stop) -> float | 
     return round(haversine_km(lat, lon, target.lat, target.lon), 2)
 
 
-# --------------------------------------------------------------------------------------
-# timetable fallback
-# --------------------------------------------------------------------------------------
-def _from_schedule(
-    scheduled: list[PlannedDeparture] | None,
-    target: Stop,
-    moment: dt.datetime,
-    params: EtaParams,
-    diagnostics: dict[str, Any],
-) -> list[BusArrival]:
+def _from_schedule(scheduled: list[PlannedDeparture] | None, ctx: _Ctx) -> list[BusArrival]:
     """Next planned departures for today's day type, when no live bus is approaching.
 
-    ``eta_minutes`` counts to the *departure from the terminus*, not to arrival at
-    ``target``; without ``stop_times.csv`` we cannot add the run time, so the honest move
-    is to label the method 'schedule' and let the agent word it as a planned departure.
+    ``eta_minutes`` counts to the *departure from the terminus*, not to arrival at the
+    target; without ``stop_times.csv`` we cannot add the run time, so the honest move is
+    to label the method 'schedule' and let the agent word it as a planned departure.
     """
     if not scheduled:
-        diagnostics["notes"].append("no_schedule_fallback_available")
+        ctx.note("no_schedule_fallback_available")
         return []
 
-    today_code = day_type_for(moment)
-    diagnostics["schedule_day_type"] = today_code
+    today_code = day_type_for(ctx.moment)
+    ctx.diagnostics["schedule_day_type"] = today_code
     todays = [d for d in scheduled if d.day_type == today_code and d.departure_time]
     if not todays:
         # Never silently borrow another day's timetable: Sunday headways are not Tuesday's.
-        diagnostics["notes"].append(f"schedule_has_no_rows_for_day_type_{today_code}")
+        ctx.note(f"schedule_has_no_rows_for_day_type_{today_code}")
         return []
 
-    local_now = moment.astimezone(ISTANBUL_TZ)
+    local_now = ctx.moment.astimezone(ISTANBUL_TZ)
     upcoming = _upcoming_departures(todays, local_now)
     if not upcoming:
         tomorrow = (local_now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         rows = [d for d in scheduled if d.day_type == day_type_for(tomorrow) and d.departure_time]
         upcoming = _upcoming_departures(rows, tomorrow)
         if upcoming:
-            diagnostics["notes"].append("service_finished_today_showing_first_departures_of_next_day")
+            ctx.note("service_finished_today_showing_first_departures_of_next_day")
 
     arrivals = [
         BusArrival(
             line_code=departure.line_code,
-            stop_code=target.stop_code,
-            stop_name=target.name,
+            stop_code=ctx.target.stop_code,
+            stop_name=ctx.target.name,
             door_no=NO_VEHICLE,
             direction=departure.direction,
-            stops_away=None,
-            distance_km=None,
             eta_minutes=round((when - local_now).total_seconds() / 60.0, 1),
             method="schedule",
             confidence="low",
-            reported_at=None,
         )
-        for when, departure in upcoming[: max(1, params.max_scheduled)]
+        for when, departure in upcoming[: max(1, ctx.params.max_scheduled)]
     ]
     if arrivals:
-        diagnostics["notes"].append("eta_is_time_until_planned_departure_not_arrival_at_stop")
+        ctx.note("eta_is_time_until_planned_departure_not_arrival_at_stop")
     return arrivals
 
 
-def _upcoming_departures(
-    rows: list[PlannedDeparture],
-    after: dt.datetime,
-) -> list[tuple[dt.datetime, PlannedDeparture]]:
-    """Resolve ``HH:MM`` strings against ``after``'s date, keeping only later departures.
-
-    İETT writes post-midnight runs as hours >= 24 ("24:30"), which roll into the next day.
-    """
+def _upcoming_departures(rows: list[PlannedDeparture], after: dt.datetime) -> list[tuple[dt.datetime, PlannedDeparture]]:
+    """Resolve ``HH:MM`` strings against ``after``'s date, keeping only later departures."""
     resolved: list[tuple[dt.datetime, PlannedDeparture]] = []
     seen: set[str] = set()
     for row in rows:
@@ -453,6 +460,7 @@ def _upcoming_departures(
 
 
 def _resolve_clock(clock: str | None, reference: dt.datetime) -> dt.datetime | None:
+    """İETT writes post-midnight runs as hours >= 24 ("24:30"), which roll into the next day."""
     if not clock:
         return None
     parts = clock.strip().split(":")
@@ -462,5 +470,6 @@ def _resolve_clock(clock: str | None, reference: dt.datetime) -> dt.datetime | N
     if minute > 59:
         return None
     day_offset, hour = divmod(hour, 24)
-    base = reference.replace(hour=0, minute=0, second=0, microsecond=0)
-    return base + dt.timedelta(days=day_offset, hours=hour, minutes=minute)
+    return reference.replace(hour=0, minute=0, second=0, microsecond=0) + dt.timedelta(
+        days=day_offset, hours=hour, minutes=minute
+    )
