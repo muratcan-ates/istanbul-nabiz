@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+#
+# İstanbul Nabız — `azd up` provisions infra/main.bicep and deploys both services.
+#
+# azd finds each service's target resource by the `azd-service-name` tag set in Bicep:
+#   collector -> Microsoft.Web/sites   tagged azd-service-name: collector
+#   mcp       -> Microsoft.App/containerApps tagged azd-service-name: mcp
+#
+# Neither service directory is complete yet (Day 0). See docs/deploy.md, "What `azd up`
+# needs that does not exist yet" — packaging fails with a clear error until the collector's
+# function_app.py / host.json / requirements.txt and the root Dockerfile land on Days 1 and 3.
+
+name: istanbul-nabiz
+metadata:
+  template: istanbul-nabiz@0.1.0
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+services:
+  # The scheduled collector: İSPARK every 10 min, İETT fleet every 2 min, the rest hourly.
+  # It is the only component allowed to call İBB on a timer (DECISIONS #3).
+  collector:
+    project: src/nabiz/collector
+    language: python
+    host: function
+
+  # The MCP server. `remoteBuild: true` builds the image in Azure Container Registry, so no
+  # local Docker daemon is needed — which matters, because the dev machine is an M1 and the
+  # image has to be linux/amd64.
+  mcp:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true
+
+hooks:
+  # Prints the one command that cannot be expressed in Bicep: the Azure Data Explorer free
+  # cluster has no ARM resource provider (DECISIONS #1), so its ingestion grant is written
+  # by hand against the collector's client id.
+  postprovision:
+    posix:
+      shell: sh
+      continueOnError: true
+      run: |
+        # Plain $VAR, never ${VAR}: azd performs its own ${...} substitution on this file
+        # before the shell ever sees it, so ${VAR:-default} would be mangled.
+        echo ""
+        echo "MCP server:  $SERVICE_MCP_URI"
+        echo "Lake:        $NABIZ_LAKE_URL"
+        echo ""
+        echo "Azure Data Explorer is NOT provisioned by this template (the free cluster has no"
+        echo "ARM provider). Create it at https://dataexplorer.azure.com/freecluster, then run"
+        echo "this in the cluster query window, against database $NABIZ_KUSTO_DB:"
+        echo ""
+        echo "  .add database $NABIZ_KUSTO_DB ingestors ('aadapp=$NABIZ_COLLECTOR_CLIENT_ID;$AZURE_TENANT_ID')"
+        echo ""
+        echo "Then: azd env set NABIZ_KUSTO_URI https://<cluster>.<region>.kusto.windows.net"
+        echo "      azd provision"
+        echo ""

@@ -167,12 +167,23 @@ class Provenance(BaseModel):
         return max(0.0, (utcnow() - reference).total_seconds())
 
     def describe_age(self) -> str:
+        """Data age in the largest unit a person would use.
+
+        The agent says this out loud after every live number, so it has to stay readable
+        at both ends of the range. A Metro disruption notice can legitimately be six weeks
+        old, and "1034.3 saat önce" is technically right and useless.
+        """
         seconds = self.age_seconds
         if seconds < 90:
             return f"{int(seconds)} sn önce"
         if seconds < 5400:
             return f"{int(seconds // 60)} dk önce"
-        return f"{seconds / 3600:.1f} saat önce"
+        if seconds < 172_800:  # under two days, hours still read naturally
+            return f"{seconds / 3600:.1f} saat önce"
+        days = seconds / 86_400
+        if days < 60:
+            return f"{int(days)} gün önce"
+        return f"{days / 30:.0f} ay önce"
 
 
 class ToolResult(BaseModel):

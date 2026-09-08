@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>İstanbul Nabız — canlı şehir verisi</title>
+<meta name="description" content="İBB açık verisiyle otopark, otobüs, metro, trafik ve hava kalitesi. Bağımsız öğrenci projesi; resmi değildir.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<!-- The map library is the only third-party asset on the page. If the CDN is blocked the
+     onerror handler fires, app.js sees the flag and the page falls back to a list-only
+     view rather than throwing. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="/config.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="window.NABIZ_MAP_BLOCKED = true"></script>
+<script defer src="/app.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#results">İçeriğe atla</a>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="pulse" aria-hidden="true"></span>
+    <div class="brand-text">
+      <h1>İstanbul Nabız</h1>
+      <p class="tagline">Otopark · otobüs · metro · trafik · hava kalitesi — canlı İBB açık verisi</p>
+    </div>
+  </div>
+  <span class="badge-unofficial" title="Bağımsız öğrenci projesi. İBB, İETT, İSPARK veya Metro İstanbul ile bağlantısı yoktur.">resmî değildir</span>
+</header>
+
+<main>
+  <section class="ask" aria-labelledby="ask-title">
+    <h2 id="ask-title" class="sr-only">Soru sor</h2>
+    <form id="ask-form" autocomplete="off">
+      <label class="sr-only" for="q">Sorunuz</label>
+      <input id="q" name="q" type="search" enterkeyhint="search" placeholder="Taksim'de otopark var mı?" aria-describedby="ask-hint">
+      <button type="submit">Sor</button>
+    </form>
+
+    <div class="chips" role="group" aria-label="Örnek sorular">
+      <button type="button" class="chip" data-journey="parking" data-place="Taksim">Taksim'de otopark var mı?</button>
+      <button type="button" class="chip" data-journey="bus" data-line="500T">500T ne zaman gelir?</button>
+      <button type="button" class="chip" data-journey="metro" data-line="M4">M4'te arıza var mı?</button>
+      <button type="button" class="chip" data-journey="air" data-place="Beşiktaş">Beşiktaş'ta hava nasıl?</button>
+    </div>
+
+    <p class="hint" id="ask-hint">
+      Soru kutusu anahtar kelime eşlemesi yapar — bu sayfada dil modeli yoktur, her yanıt doğrudan
+      İBB uçlarından gelir. <strong>Her kart verinin yaşını gösterir.</strong>
+    </p>
+  </section>
+
+  <section id="results" aria-live="polite" aria-busy="false">
+    <div class="empty">
+      <p>Bir soru seçin ya da yazın. Örnek: <em>500T Şifa Sondurak</em>, <em>Kartal istasyonu</em>, <em>trafik</em>.</p>
+    </div>
+  </section>
+
+  <section class="map-panel" id="map-panel" hidden aria-labelledby="map-title">
+    <div class="panel-head">
+      <h2 id="map-title">Harita</h2>
+      <span class="map-source" id="map-source"></span>
+    </div>
+    <div id="map" role="img" aria-label="Sonuçların harita üzerindeki konumu"></div>
+  </section>
+</main>
+
+<footer>
+  <p id="freshness" class="freshness">Veri tazeliği yükleniyor…</p>
+  <p class="attribution" id="attribution">
+    Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı,
+    <a href="https://data.ibb.gov.tr/license" rel="noopener noreferrer" target="_blank">İBB Açık Veri Lisansı (CC BY 4.0)</a>.
+  </p>
+  <p class="disclaimer">
+    Bağımsız öğrenci projesi. İBB, İETT, İSPARK ve Metro İstanbul ile bağlantısı yoktur; onlar tarafından
+    onaylanmamıştır. Otobüs varış saatleri <strong>tahmindir</strong>, hava kalitesi çıktısı sağlık tavsiyesi değildir.
+    Yolculuk planlarken resmî İETT ve Metro İstanbul kaynaklarını esas alın.
+  </p>
+  <p class="colophon">
+    <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod</a>
+    · <span id="version">sürüm —</span>
+  </p>
+</footer>
+</body>
+</html>

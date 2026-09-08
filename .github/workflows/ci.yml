@@ -1,0 +1,157 @@
+# İstanbul Nabız — continuous integration.
+#
+# Two jobs, both offline: the repository is public and holds no secrets, so nothing here
+# reads `secrets.*` and nothing deploys. See .github/workflows/README.md for why deployment
+# is a laptop command (`azd deploy`) rather than a workflow, and for the ruff-format
+# decision encoded below.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Read-only token: this workflow only ever looks at the tree it checked out.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # PyPI is slow from some networks; give uv room before it gives up.
+  UV_HTTP_TIMEOUT: "180"
+  # Belt and braces: no job in this workflow may touch api.ibb.gov.tr. The gateway 503s
+  # after ~15 rapid calls and İETT documents 100 requests/hour, both of which are shared
+  # with every other consumer of this public data. CI must never spend that budget.
+  NABIZ_OFFLINE: "1"
+
+jobs:
+  python:
+    name: Lint, test and MCP smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache the uv download cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-py3.12-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            uv-${{ runner.os }}-py3.12-
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache the virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          # No restore-keys on purpose: a venv restored against a different dependency set
+          # would install on top of stale wheels and hide a broken pyproject.toml. The
+          # workflow file is in the key too, because the extras this job installs are named
+          # here and not in pyproject.toml — changing them has to invalidate the venv.
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pyproject.toml', '.github/workflows/ci.yml') }}
+
+      - name: Create the venv and install the project
+        # `uv venv` recreates the environment, which would defeat the cache above, so it only
+        # runs when the restored venv is missing or unusable — a cached venv whose interpreter
+        # symlink points at a hosted-tool-cache Python that has since been patched away looks
+        # present but cannot run, and would fail the install with a confusing error. The
+        # editable install runs either way: it is cheap once the wheels are cached, and it
+        # proves pyproject.toml still builds.
+        #
+        # `web` is installed alongside `dev` because the suite needs it: tests/test_web.py
+        # imports `fastapi.testclient` at module scope, so with `[dev]` alone pytest aborts
+        # during collection ("Interrupted: 1 error during collection", exit 2) and the whole
+        # test step is red. `collector` and `agent` are deliberately NOT installed — those
+        # tests stub their SDKs in sys.modules and pass without the Azure/OpenAI wheels, and
+        # keeping them out is what proves that claim on every run.
+        run: |
+          if ! .venv/bin/python -c "" 2>/dev/null; then
+            rm -rf .venv
+            uv venv -p 3.12 .venv
+          fi
+          uv pip install --python .venv/bin/python -e ".[dev,web]"
+
+      - name: Ruff lint (gate)
+        run: .venv/bin/ruff check src/ scripts/ tests/
+
+      - name: Ruff format check (advisory)
+        # Deliberately non-blocking. The project sets line-length 130 and wraps long
+        # expressions by hand for readability; `ruff format` would join most of them back
+        # into single lines. That is a style disagreement, not a defect, so it is reported
+        # and not enforced. `ruff check` above is the real gate. Reasoning in the README.
+        continue-on-error: true
+        run: .venv/bin/ruff format --check --diff src/ scripts/ tests/
+
+      - name: Pytest
+        run: .venv/bin/python -m pytest -q --junitxml=reports/junit.xml
+
+      - name: Upload the JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-junit
+          path: reports/junit.xml
+          # warn, not error: if pytest dies during collection there is no XML to upload,
+          # and a second red step would only obscure the real failure above.
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: MCP server smoke test
+        # The tests exercise the tool layer; this exercises the server that ships. It builds
+        # the real MCP server and asks it for its tool list, so a tool that fails to register
+        # (a bad signature, a broken import) fails CI here rather than inside someone's editor.
+        # NABIZ_OFFLINE=1 comes from the workflow env: no upstream call is made.
+        run: |
+          .venv/bin/ibb-mcp --help > /dev/null
+          .venv/bin/python -c "
+          import asyncio
+          from ibb_mcp.server import build_server
+          tools = asyncio.run(build_server().list_tools())
+          names = sorted(t.name for t in tools)
+          assert len(tools) == 12, f'expected 12 MCP tools, got {len(tools)}: {names}'
+          print('MCP server started offline and exposes 12 tools:')
+          print('  ' + ', '.join(names))
+          "
+
+  bicep:
+    name: Bicep build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      # `hashFiles` is evaluated against the checked-out workspace, so this guard has to sit
+      # on the steps and not on the job — at job level the workspace is still empty and the
+      # expression would always be false. The guard keeps the workflow correct on branches
+      # and history where infra/ does not exist: there the job reports and passes.
+      - name: Compile the Bicep templates
+        # Not continue-on-error: `az bicep build` is a local compile. It needs no Azure
+        # login, no subscription and no secret, so a failure here is a real template error.
+        if: hashFiles('infra/main.bicep') != ''
+        run: |
+          az bicep install
+          az bicep version
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          echo "infra/main.bicep compiled cleanly"
+
+      - name: No Bicep templates yet
+        if: hashFiles('infra/main.bicep') == ''
+        run: echo "infra/main.bicep does not exist yet — nothing to compile."

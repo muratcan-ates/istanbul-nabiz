@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "resourceGroupName": {
+      "value": "${NABIZ_RESOURCE_GROUP=}"
+    },
+    "principalId": {
+      "value": "${AZURE_PRINCIPAL_ID}"
+    },
+    "deployContainerApp": {
+      "value": "${DEPLOY_CONTAINER_APP=true}"
+    },
+    "deployContainerRegistry": {
+      "value": "${DEPLOY_CONTAINER_REGISTRY=true}"
+    },
+    "mcpContainerImage": {
+      "value": "${MCP_CONTAINER_IMAGE=}"
+    },
+    "deployMaps": {
+      "value": "${DEPLOY_MAPS=false}"
+    },
+    "kustoUri": {
+      "value": "${NABIZ_KUSTO_URI=}"
+    },
+    "kustoDatabase": {
+      "value": "${NABIZ_KUSTO_DB=nabiz}"
+    },
+    "bronzeRetentionDays": {
+      "value": "${NABIZ_BRONZE_RETENTION_DAYS=30}"
+    },
+    "mcpMaxReplicas": {
+      "value": "${NABIZ_MCP_MAX_REPLICAS=1}"
+    },
+    "dailyLogCapGb": {
+      "value": "${NABIZ_DAILY_LOG_CAP_GB=0.5}"
+    }
+  }
+}
