@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import gzip
+import json
 import logging
 import math
 import pathlib
@@ -127,28 +129,159 @@ class RouteStopSequence:
         return len(self.stop_codes)
 
 
-def load_stop_sequences(settings: Settings) -> dict[str, RouteStopSequence]:
-    """Return ``{route_code: RouteStopSequence}`` — currently always empty. Deliberately.
+#: Where the built sequence index is cached. Building it parses a 150 MB file, which is
+#: fine once at deploy time but not on every cold start of a scale-to-zero container.
+SEQUENCE_CACHE_NAME = "route_sequences.json.gz"
 
-    Real sequences need ``stop_times.csv`` (26 MB) joined to ``trips.csv`` on ``trip_id``.
-    Neither file has been downloaded or inspected, so their columns, separator and
-    encoding quirks are unverified — guessing would produce a stop order that looks
-    authoritative while being invented, and this project ships no invented data.
+#: Excel's worksheet limit, and the reason ``stop_times.csv`` cannot be trusted.
+EXCEL_ROW_LIMIT = 1_048_575
 
-    Consequence for the ETA engine: with no sequence there is no ``stops_away``, so it
-    falls back to straight-line distance (``BusArrival.method == "distance"``, lower
-    confidence) or to the planned timetable.
 
-    To finish: fetch both with :func:`download_gtfs`, verify their headers the way
-    stops/routes were verified, group ``stop_times`` by ``trip_id`` ordered by
-    ``stop_sequence``, map ``stop_id`` -> ``stop_code``, and keep the longest trip per
-    ``route_code`` as that route's canonical sequence.
+def _stop_times_path(gtfs_dir: pathlib.Path) -> pathlib.Path | None:
+    """Pick the usable ``stop_times`` file, preferring the complete one.
+
+    İBB publishes this table twice and the two disagree badly:
+
+    * ``stop_times.csv`` (26 MB, ``;`` separated) stops at exactly 1,048,575 data rows —
+      Excel's worksheet limit. It was clearly exported through a spreadsheet and silently
+      truncated, so it holds only 18,934 of 135,625 trips (14%). Line 500T has **zero**
+      rows in it, which is how this was noticed: every arrival estimate silently fell back
+      to straight-line distance.
+    * The ZIP resource unpacks to ``stop_times.txt`` (150 MB, comma separated, standard
+      GTFS) with 6,155,693 rows and full coverage.
+
+    So the ``.txt`` wins whenever it is present, and the truncated ``.csv`` is used only as
+    a last resort with a loud warning.
     """
-    path = pathlib.Path(settings.gtfs_dir) / "stop_times.csv"
+    full = gtfs_dir / "stop_times.txt"
+    if full.exists():
+        return full
+    truncated = gtfs_dir / "stop_times.csv"
+    if truncated.exists():
+        log.warning(
+            "only the truncated %s is present (Excel-limited to %d rows, ~14%% of trips); "
+            "download the ZIP resource for stop_times.txt to get complete stop sequences",
+            truncated.name,
+            EXCEL_ROW_LIMIT,
+        )
+        return truncated
+    return None
+
+
+def build_stop_sequences(settings: Settings, *, index: GtfsIndex | None = None) -> dict[str, RouteStopSequence]:
+    """Join ``stop_times.csv`` to ``trips.csv`` and produce one stop order per route variant.
+
+    Verified schema (2026-09-08, both files ``;`` separated with a UTF-8 BOM):
+
+    * ``trips.csv``      -> ``trip_id;route_id;service_id;trip_headsign;direction_id``
+    * ``stop_times.csv`` -> ``trip_id;stop_id;stop_sequence;arrival_time;departure_time;timepoint``
+
+    A route runs many trips that mostly repeat the same stop order, so the longest trip
+    per ``route_code`` is kept as that route's canonical sequence. Stop ids are translated
+    to ``stop_code`` because that is the key live vehicle telemetry reports.
+
+    Returns an empty dict when the optional files are absent; the ETA engine then falls
+    back to straight-line distance and says so in ``BusArrival.method``.
+    """
+    gtfs_dir = pathlib.Path(settings.gtfs_dir)
+    trips_path = gtfs_dir / "trips.csv"
+    times_path = _stop_times_path(gtfs_dir)
+    if not (trips_path.exists() and times_path is not None):
+        log.info("stop sequences unavailable: trips.csv or a stop_times file is missing under %s", gtfs_dir)
+        return {}
+
+    index = index or get_index(settings)
+    route_code_by_id: dict[str, str] = {
+        route.route_id: route.route_code for route in index.routes if route.route_code
+    }
+    stop_code_by_id: dict[str, str] = {
+        stop.stop_id: stop.stop_code for stop in index.stops if stop.stop_id and stop.stop_code
+    }
+
+    # trip_id -> route_code, keeping only trips whose route we can name.
+    trip_route: dict[str, str] = {}
+    with trips_path.open(encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh, delimiter=";"):
+            code = route_code_by_id.get((row.get("route_id") or "").strip())
+            if code:
+                trip_route[(row.get("trip_id") or "").strip()] = code
+
+    # Collect (sequence, stop_code) per trip. One pass, no sorting of the whole file.
+    per_trip: dict[str, list[tuple[int, str]]] = {}
+    delimiter = "," if times_path.suffix == ".txt" else ";"
+    with times_path.open(encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh, delimiter=delimiter):
+            trip_id = (row.get("trip_id") or "").strip()
+            if trip_id not in trip_route:
+                continue
+            stop_code = stop_code_by_id.get((row.get("stop_id") or "").strip())
+            if not stop_code:
+                continue
+            try:
+                order = int(row.get("stop_sequence") or 0)
+            except ValueError:
+                continue
+            per_trip.setdefault(trip_id, []).append((order, stop_code))
+
+    # Longest trip wins per route variant; ties keep the first seen for determinism.
+    best: dict[str, list[tuple[int, str]]] = {}
+    for trip_id, entries in per_trip.items():
+        code = trip_route[trip_id]
+        if len(entries) > len(best.get(code, ())):
+            best[code] = entries
+
+    sequences: dict[str, RouteStopSequence] = {}
+    for code, entries in best.items():
+        ordered = [stop_code for _, stop_code in sorted(entries, key=lambda item: item[0])]
+        deduped: list[str] = []
+        for stop_code in ordered:  # a loop route can repeat a stop; keep the first visit
+            if not deduped or deduped[-1] != stop_code:
+                deduped.append(stop_code)
+        sequences[code] = RouteStopSequence(route_code=code, stop_codes=tuple(deduped))
+
+    log.info("built %d route stop sequences from %d trips", len(sequences), len(per_trip))
+    return sequences
+
+
+def _cache_path(settings: Settings) -> pathlib.Path:
+    return pathlib.Path(settings.gtfs_dir) / SEQUENCE_CACHE_NAME
+
+
+def save_stop_sequences(settings: Settings, sequences: dict[str, RouteStopSequence]) -> pathlib.Path:
+    """Persist the built index so later processes start instantly."""
+    path = _cache_path(settings)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {code: list(seq.stop_codes) for code, seq in sequences.items()}
+    with gzip.open(path, "wt", encoding="utf-8") as fh:
+        json.dump(payload, fh)
+    return path
+
+
+def load_stop_sequences(settings: Settings) -> dict[str, RouteStopSequence]:
+    """Return ``{route_code: RouteStopSequence}``, from cache when possible.
+
+    Falls back to an empty dict rather than raising: a missing sequence index costs the
+    ETA engine its high-confidence path, it does not break the answer.
+    """
+    path = _cache_path(settings)
     if path.exists():
-        log.warning("%s exists but its schema is unverified; returning no stop sequences "
-                    "so the ETA engine keeps its distance fallback.", path)
-    return {}
+        try:
+            with gzip.open(path, "rt", encoding="utf-8") as fh:
+                payload = json.load(fh)
+            return {
+                code: RouteStopSequence(route_code=code, stop_codes=tuple(codes))
+                for code, codes in payload.items()
+            }
+        except (OSError, ValueError) as exc:
+            log.warning("stop sequence cache at %s unreadable (%r); rebuilding", path, exc)
+
+    sequences = build_stop_sequences(settings)
+    if sequences:
+        try:
+            save_stop_sequences(settings, sequences)
+        except OSError as exc:  # a read-only container filesystem must not be fatal
+            log.info("could not cache stop sequences: %r", exc)
+    return sequences
 
 
 # --------------------------------------------------------------------------------------
@@ -172,6 +305,10 @@ class GtfsIndex:
     #: How many distinct routes serve a stop; a search tie-breaker only. Empty until stop
     #: sequences exist, and an empty dict degrades gracefully to "shortest name wins".
     stop_route_counts: dict[str, int] = field(init=False, default_factory=dict, repr=False)
+    #: How many route variants :meth:`attach_stop_sequences` was given. Counted separately
+    #: from ``stop_route_counts`` (which is keyed by *stop*), so ``stats()`` cannot report
+    #: 15 000 "stop sequences" when it was handed 9 000 routes.
+    stop_sequence_count: int = field(init=False, default=0, repr=False)
     _grid: dict[tuple[int, int], list[Stop]] = field(init=False, default_factory=dict, repr=False)
     _search_rows: list[tuple[str, frozenset[str], Stop]] = field(
         init=False, default_factory=list, repr=False
@@ -225,6 +362,7 @@ class GtfsIndex:
             for code in set(sequence.stop_codes):
                 counts[code] = counts.get(code, 0) + 1
         self.stop_route_counts = counts
+        self.stop_sequence_count = len(sequences)
 
     @property
     def is_loaded(self) -> bool:
@@ -305,25 +443,52 @@ class GtfsIndex:
         return list(self.by_short_name.get(normalize_tr(short_name), ()))
 
     def route_by_code(self, route_code: str) -> Route | None:
-        """Resolve a live bus's ``guzergahkodu`` (e.g. ``500T_G_D0``)."""
-        return self.by_route_code.get(str(route_code).strip().upper()) if route_code else None
+        """Resolve a live bus's ``guzergahkodu`` (e.g. ``500T_G_D0``).
+
+        The retry covers the mirror image of the CSV's defect: the index holds repaired
+        codes, so a caller that hands over a *mojibaked* code (a future feed regression, a
+        value copied out of the raw CSV) still resolves instead of silently missing.
+        """
+        if not route_code:
+            return None
+        key = str(route_code).strip().upper()
+        hit = self.by_route_code.get(key)
+        if hit is None:
+            repaired = _fix_mojibake(key)
+            if repaired != key:
+                hit = self.by_route_code.get(repaired)
+        return hit
 
     def line_codes(self) -> list[str]:
         """Distinct line short names, for validating tool input and suggesting corrections."""
         return sorted({route.short_name for route in self.routes if route.short_name})
+
+    def source_vintage(self) -> str | None:
+        """When ``stops.csv`` was last written — the closest honest proxy for its vintage.
+
+        ``loaded_at`` is only when *this process* parsed the file, and it resets on every
+        restart; quoting it as freshness would make a months-old snapshot look minutes old.
+        """
+        path = self.gtfs_dir / STOPS_FILE
+        try:
+            return dt.datetime.fromtimestamp(path.stat().st_mtime, tz=dt.UTC).isoformat()
+        except OSError:
+            return None
 
     def stats(self) -> dict[str, Any]:
         """Diagnostics for the freshness/health tool and for the loader's own smoke test."""
         return {
             "loaded": self.is_loaded, "gtfs_dir": str(self.gtfs_dir),
             "loaded_at": self.loaded_at.isoformat(),
+            "source_vintage": self.source_vintage(),
             "stops": len(self.stops), "stops_with_code": len(self.by_stop_code),
             "stops_without_code": sum(1 for stop in self.stops if not stop.stop_code),
             "stops_dropped": self.dropped_stops, "grid_cells": len(self._grid),
             "routes": len(self.routes), "routes_with_code": len(self.by_route_code),
             "routes_dropped": self.dropped_routes,
             "line_short_names": len(self.by_short_name),
-            "stop_sequences": len(self.stop_route_counts),
+            "stop_sequences": self.stop_sequence_count,
+            "stops_with_route_counts": len(self.stop_route_counts),
         }
 
 
@@ -371,7 +536,11 @@ def _read_routes(path: pathlib.Path) -> tuple[list[Route], int]:
                 continue
             routes.append(Route(
                 route_id=route_id,
-                route_code=(row.get("route_code") or "").strip() or None,
+                # route_code is mojibaked too, in 529 of 9264 rows: the CSV holds
+                # "11Ã‡B_D_D0" while the live feed sends a clean UTF-8 "11ÇB_D_D0".
+                # Repairing it here is what makes the guzergahkodu join work for the
+                # lines whose short name carries a Turkish letter (11ÇB, 133Ş, ...).
+                route_code=_clean(row.get("route_code")),
                 short_name=_clean(row.get("route_short_name")),
                 long_name=_clean(row.get("route_long_name")),
                 description=_clean(row.get("route_desc")),
@@ -443,7 +612,14 @@ def download_gtfs(settings: Settings, resources: Sequence[str] = DEFAULT_GTFS_RE
             log.info("Downloading GTFS %s -> %s", name, destination)
             response = client.get(url)
             response.raise_for_status()
-            destination.write_bytes(response.content)
+            if not response.content:
+                raise ValueError(f"GTFS resource {name!r} came back empty from {url}")
+            # Write beside the target and rename: a connection dropped mid-body would
+            # otherwise leave a truncated stops.csv that ensure_gtfs() calls present and
+            # load() parses happily, silently serving a partial index.
+            staging = destination.with_name(destination.name + ".part")
+            staging.write_bytes(response.content)
+            staging.replace(destination)
             written[name] = destination
     if written:
         reset_index_cache()  # otherwise the process keeps serving the previous files

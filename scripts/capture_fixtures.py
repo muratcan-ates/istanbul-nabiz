@@ -10,7 +10,6 @@ Run once; fixtures land in tests/fixtures/ and a report in tests/fixtures/_captu
 
 from __future__ import annotations
 
-import gzip
 import html
 import json
 import pathlib
@@ -112,11 +111,23 @@ def main() -> int:
         save_json("ispark_parkdetay", fetch("ispark_parkdetay", f"https://api.ibb.gov.tr/ispark/ParkDetay?id={park_id}") or b"[]")
 
     print("İETT (max 3 SOAP calls)")
-    soap("iett_hat_500T", "GetHatOtoKonum_json", "<GetHatOtoKonum_json xmlns='http://tempuri.org/'><HatKodu>500T</HatKodu></GetHatOtoKonum_json>")
-    soap("iett_fleet", "GetFiloAracKonum_json", "<GetFiloAracKonum_json xmlns='http://tempuri.org/' />", limit=60)
+    soap(
+        "iett_hat_500T",
+        "GetHatOtoKonum_json",
+        "<GetHatOtoKonum_json xmlns='http://tempuri.org/'><HatKodu>500T</HatKodu></GetHatOtoKonum_json>",
+    )
+    soap(
+        "iett_fleet",
+        "GetFiloAracKonum_json",
+        "<GetFiloAracKonum_json xmlns='http://tempuri.org/' />",
+        limit=60,
+    )
 
     print("İETT planlanan sefer (shape unverified in PLAN 4.1)")
-    plan_env = "<GetPlanlananSeferSaati_json xmlns='http://tempuri.org/'><HatKodu>500T</HatKodu></GetPlanlananSeferSaati_json>"
+    plan_env = (
+        "<GetPlanlananSeferSaati_json xmlns='http://tempuri.org/'>"
+        "<HatKodu>500T</HatKodu></GetPlanlananSeferSaati_json>"
+    )
     raw = fetch(
         "iett_planlanan",
         "https://api.ibb.gov.tr/iett/UlasimAnaVeri/PlanlananSeferSaati.asmx",
@@ -137,8 +148,9 @@ def main() -> int:
             print("  ! no result element; check WSDL parameter name")
 
     print("Metro İstanbul")
-    save_json("metro_status", fetch("metro_status", "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetServiceStatuses") or b"{}")
-    save_json("metro_stations", fetch("metro_stations", "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetStations") or b"{}")
+    metro_base = "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2"
+    save_json("metro_status", fetch("metro_status", f"{metro_base}/GetServiceStatuses") or b"{}")
+    save_json("metro_stations", fetch("metro_stations", f"{metro_base}/GetStations") or b"{}")
 
     print("Trafik indeksi (Accept: application/json şart, yoksa XML döner)")
     save_json(
@@ -152,13 +164,14 @@ def main() -> int:
     )
 
     print("Hava kalitesi")
-    stations = save_json("aq_stations", fetch("aq_stations", "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIStations") or b"[]")
+    aq_base = "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler"
+    stations = save_json("aq_stations", fetch("aq_stations", f"{aq_base}/GetAQIStations") or b"[]")
     if isinstance(stations, list) and stations:
         sid = stations[0]["Id"]
         end = time.strftime("%d.%m.%Y %H:00:00")
         start = time.strftime("%d.%m.%Y %H:00:00", time.localtime(time.time() - 3 * 86400))
         url = (
-            "https://api.ibb.gov.tr/havakalitesi/OpenDataPortalHandler/GetAQIByStationId"
+            f"{aq_base}/GetAQIByStationId"
             f"?StationId={sid}&StartDate={urllib.parse.quote(start)}&EndDate={urllib.parse.quote(end)}"
         )
         save_json("aq_readings", fetch("aq_readings", url) or b"[]")

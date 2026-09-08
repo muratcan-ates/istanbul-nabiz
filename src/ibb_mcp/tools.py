@@ -110,6 +110,27 @@ class Nabiz:
     def _attribution() -> dict[str, str]:
         return {"tr": ATTRIBUTION, "en": ATTRIBUTION_EN}
 
+    @staticmethod
+    def _route_codes_for(line_code: str, buses: list[Any], index: Any) -> list[str]:
+        """Route variants a line runs, from live vehicles first and GTFS as backup."""
+        codes = {bus.route_code for bus in buses if bus.route_code}
+        if not codes:
+            codes = {r.route_code for r in index.routes_for_short_name(line_code) if r.route_code}
+        return sorted(codes)
+
+    @staticmethod
+    def _lines_serving(stop_code: str, sequences: dict[str, Any], index: Any, limit: int = 8) -> list[str]:
+        """Which lines do call at this stop, so a refusal can still be useful."""
+        names: set[str] = set()
+        for code, sequence in sequences.items():
+            if sequence.position_of(stop_code) is None:
+                continue
+            route = index.route_by_code(code)
+            names.add(route.short_name if route and route.short_name else code.split("_")[0])
+            if len(names) >= limit:
+                break
+        return sorted(names)
+
     # -- 1. places ----------------------------------------------------------------
     async def places_resolve(self, query: str, limit: int = 5) -> ToolResult:
         """Turn a place name into coordinates."""
@@ -263,8 +284,21 @@ class Nabiz:
             from ibb_mcp.gtfs import load_stop_sequences
 
             sequences = await asyncio.to_thread(load_stop_sequences, self.settings)
-        except Exception as exc:  # noqa: BLE001 - stop_times.csv is optional
+        except Exception as exc:  # noqa: BLE001 - the stop_times export is optional
             log.info("stop sequences unavailable: %r", exc)
+
+        # Refuse to estimate for a stop the line does not serve. Without this guard the
+        # distance method happily returns a three-hour "arrival" for a bus that will never
+        # come, because straight-line distance knows nothing about routes.
+        served_by = self._route_codes_for(line_code, buses, index)
+        if sequences and served_by:
+            known = [sequences[code] for code in served_by if code in sequences]
+            if known and not any(seq.position_of(target.stop_code) is not None for seq in known):
+                serving = self._lines_serving(target.stop_code, sequences, index)
+                hint = f" Bu durağa uğrayan hatlar: {', '.join(serving[:6])}." if serving else ""
+                raise ValueError(
+                    f"{line_code.upper().strip()} hattı '{target.name or target.stop_code}' durağına uğramıyor.{hint}"
+                )
 
         arrivals, diagnostics = estimate_arrivals(
             buses=buses, target=target, index=index, sequences=sequences, scheduled=scheduled, params=params

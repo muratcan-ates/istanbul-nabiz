@@ -27,8 +27,10 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import html
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -36,8 +38,12 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
+from zoneinfo import ZoneInfo
+
+ISTANBUL_TZ = ZoneInfo("Europe/Istanbul")
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPORT_PATH = ROOT / "docs" / "day0_report.json"
@@ -79,17 +85,30 @@ except ModuleNotFoundError:
 # Regions worth having near İstanbul, best first. Used to recommend one from the
 # intersection of "allowed by policy" and "supports Functions Flex Consumption".
 REGION_PREFERENCE = [
-    "westeurope", "northeurope", "swedencentral", "germanywestcentral",
-    "italynorth", "polandcentral", "uksouth", "francecentral", "switzerlandnorth",
+    "westeurope",
+    "northeurope",
+    "swedencentral",
+    "germanywestcentral",
+    "italynorth",
+    "polandcentral",
+    "uksouth",
+    "francecentral",
+    "switzerlandnorth",
 ]
 REQUIRED_PROVIDERS = [
-    "Microsoft.App", "Microsoft.Web", "Microsoft.Storage",
-    "Microsoft.Maps", "Microsoft.CognitiveServices", "Microsoft.Insights",
+    "Microsoft.App",
+    "Microsoft.Web",
+    "Microsoft.Storage",
+    "Microsoft.Maps",
+    "Microsoft.CognitiveServices",
+    "Microsoft.Insights",
 ]
 
-# Values recorded from real calls on 2026-09-08 (tests/fixtures/). A live number that
-# drifts from these is not a failure, but it means the fixtures need recapturing.
-BASELINE = {"aq_stations": 28, "ispark_lots": 249, "gtfs_stop_join": 31, "gtfs_route_join": 2}
+# Full response sizes seen on the real calls of 2026-09-08. Drift is not a failure, only a
+# hint that the fixtures need recapturing. Note these are the *upstream* counts, not the
+# fixture row counts: capture_fixtures.py trims long lists, so ispark_park.json holds 40 of
+# the 249 lots — do not "correct" this table by counting rows in tests/fixtures/.
+BASELINE = {"aq_stations": 28, "ispark_lots": 249}
 
 
 class BudgetExceeded(RuntimeError):
@@ -142,11 +161,31 @@ class Ctx:
 # ----------------------------------------------------------------------------------
 # tiny http + subprocess helpers
 # ----------------------------------------------------------------------------------
-def http(method: str, url: str, *, headers: dict[str, str] | None = None, body: bytes | None = None) -> tuple[int, bytes, dict[str, str]]:
-    hdrs = {"User-Agent": UA, **(headers or {})}
+def http(
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    body: bytes | None = None,
+    drop_headers: tuple[str, ...] = (),
+) -> tuple[int, bytes, dict[str, str]]:
+    """Send one request, optionally with a default header *removed* rather than set.
+
+    `drop_headers` exists for the traffic-index probe. httpx's Client injects
+    `Accept: */*` into every request it builds, so "call it without an Accept header"
+    is impossible unless that default is popped first — and `*/*` is exactly the value
+    a content-negotiating server is most likely to answer differently from no header
+    at all, which would make the probe prove nothing. urllib sends no Accept of its
+    own, so there this argument is a no-op and the two transports agree.
+    """
+    drop = {h.lower() for h in drop_headers}
+    hdrs = {k: v for k, v in {"User-Agent": UA, **(headers or {})}.items() if k.lower() not in drop}
     if httpx is not None:
         try:
-            r = httpx.request(method, url, headers=hdrs, content=body, timeout=HTTP_TIMEOUT_S, follow_redirects=True)
+            with httpx.Client(timeout=HTTP_TIMEOUT_S, follow_redirects=True) as client:
+                for name in drop:
+                    client.headers.pop(name, None)
+                r = client.request(method, url, headers=hdrs, content=body)
         except Exception as exc:  # noqa: BLE001
             raise HttpFailure(f"{type(exc).__name__}: {exc}") from exc
         return r.status_code, r.content, {k.lower(): v for k, v in r.headers.items()}
@@ -188,7 +227,11 @@ def az_json(args: list[str], timeout: int = 90) -> Any:
 # TOOLS — local, no network
 # ----------------------------------------------------------------------------------
 def check_python(ctx: Ctx) -> tuple[str, str]:
-    exe = "/opt/homebrew/bin/python3.12" if pathlib.Path("/opt/homebrew/bin/python3.12").exists() else shutil.which("python3.12")
+    exe = (
+        "/opt/homebrew/bin/python3.12"
+        if pathlib.Path("/opt/homebrew/bin/python3.12").exists()
+        else shutil.which("python3.12")
+    )
     if not exe:
         return FAIL, "python3.12 not on PATH (the system 3.14 must not be used)"
     rc, out, err = run_cmd([exe, "-V"], timeout=20)
@@ -199,7 +242,9 @@ def check_python(ctx: Ctx) -> tuple[str, str]:
     return PASS, f"{version} at {exe}"
 
 
-def tool_check(exe: str, argv: list[str], *, required: bool, parse: Callable[[str, str], str] | None = None, why: str = "") -> Callable[[Ctx], tuple[str, str]]:
+def tool_check(
+    exe: str, argv: list[str], *, required: bool, parse: Callable[[str, str], str] | None = None, why: str = ""
+) -> Callable[[Ctx], tuple[str, str]]:
     """Build a check that reports a CLI's version, or MISSING.
 
     Optional tools report SKIP so a missing Foundry Local does not fail the whole gate.
@@ -209,11 +254,15 @@ def tool_check(exe: str, argv: list[str], *, required: bool, parse: Callable[[st
         path = shutil.which(exe)
         if not path:
             ctx.facts.setdefault("tools", {})[exe] = None
-            return (FAIL if required else SKIP), f"MISSING{'' if required else ' (optional' + (' — ' + why if why else '') + ')'}"
+            return (
+                FAIL if required else SKIP
+            ), f"MISSING{'' if required else ' (optional' + (' — ' + why if why else '') + ')'}"
         rc, out, err = run_cmd(argv)
         if rc != 0:
             ctx.facts.setdefault("tools", {})[exe] = f"error rc={rc}"
-            return (FAIL if required else SKIP), f"{path} present but `{' '.join(argv)}` exited {rc}: {(err or out)[:80]}"
+            return (
+                FAIL if required else SKIP
+            ), f"{path} present but `{' '.join(argv)}` exited {rc}: {(err or out)[:80]}"
         version = parse(out, err) if parse else next((ln for ln in (out + "\n" + err).splitlines() if ln.strip()), "?")
         version = version.strip()[:70]
         ctx.facts.setdefault("tools", {})[exe] = version
@@ -241,20 +290,26 @@ def _azure_precondition(ctx: Ctx) -> str | None:
 
 
 def check_account(ctx: Ctx) -> tuple[str, str]:
-    if (why := _azure_precondition(ctx)):
+    if why := _azure_precondition(ctx):
         return SKIP, why
     try:
         acct = az_json(["account", "show"])
     except HttpFailure as exc:
         return FAIL, f"az account show failed: {exc}"
     user = (acct.get("user") or {}).get("name", "?")
-    ctx.facts["subscription"] = {"id": acct.get("id"), "tenant": acct.get("tenantId"), "user": user, "name": acct.get("name"), "state": acct.get("state")}
+    ctx.facts["subscription"] = {
+        "id": acct.get("id"),
+        "tenant": acct.get("tenantId"),
+        "user": user,
+        "name": acct.get("name"),
+        "state": acct.get("state"),
+    }
     return PASS, f"{acct.get('name')} · sub {acct.get('id')} · tenant {acct.get('tenantId')} · {user}"
 
 
 def check_region_policy(ctx: Ctx) -> tuple[str, str]:
     """Azure for Students usually carries an 'Allowed locations' assignment; find it."""
-    if (why := _azure_precondition(ctx)):
+    if why := _azure_precondition(ctx):
         return SKIP, why
     try:
         assignments = az_json(["policy", "assignment", "list"]) or []
@@ -271,7 +326,11 @@ def check_region_policy(ctx: Ctx) -> tuple[str, str]:
             if isinstance(value, list) and ("location" in key.lower() or "region" in key.lower()):
                 allowed.extend(str(v).lower().replace(" ", "") for v in value)
     allowed = sorted(set(allowed))
-    ctx.facts["region_policy"] = {"assignments": hits, "allowed_regions": allowed, "total_assignments": len(assignments)}
+    ctx.facts["region_policy"] = {
+        "assignments": hits,
+        "allowed_regions": allowed,
+        "total_assignments": len(assignments),
+    }
     if not hits:
         ctx.note("No region policy assignment found — treat every region as allowed, but confirm before `azd up`.")
         return PASS, f"no region/location assignment among {len(assignments)} assignments — unrestricted"
@@ -281,7 +340,7 @@ def check_region_policy(ctx: Ctx) -> tuple[str, str]:
 
 
 def check_flex_regions(ctx: Ctx) -> tuple[str, str]:
-    if (why := _azure_precondition(ctx)):
+    if why := _azure_precondition(ctx):
         return SKIP, why
     try:
         rows = az_json(["functionapp", "list-flexconsumption-locations"]) or []
@@ -291,17 +350,30 @@ def check_flex_regions(ctx: Ctx) -> tuple[str, str]:
     allowed = (ctx.facts.get("region_policy") or {}).get("allowed_regions") or []
     usable = sorted(set(flex) & set(allowed)) if allowed else flex
     pick = next((r for r in REGION_PREFERENCE if r in usable), usable[0] if usable else None)
-    ctx.facts["flex_regions"] = {"flex": flex, "usable": usable, "recommended": pick, "constrained_by_policy": bool(allowed)}
+    ctx.facts["flex_regions"] = {
+        "flex": flex,
+        "usable": usable,
+        "recommended": pick,
+        "constrained_by_policy": bool(allowed),
+    }
     if not usable:
-        return FAIL, f"no overlap between the {len(allowed)} policy-allowed regions and the {len(flex)} Flex Consumption regions"
+        return (
+            FAIL,
+            f"no overlap between the {len(allowed)} policy-allowed regions "
+            f"and the {len(flex)} Flex Consumption regions",
+        )
     scope = "policy ∩ flex" if allowed else "flex (policy unrestricted)"
     ctx.note(f"Deploy region: use '{pick}'. Set AZURE_LOCATION={pick} in azd env / infra params.")
-    return PASS, f"{len(usable)} usable ({scope}) → recommend '{pick}': {', '.join(usable[:8])}{' …' if len(usable) > 8 else ''}"
+    return (
+        PASS,
+        f"{len(usable)} usable ({scope}) → recommend '{pick}': "
+        f"{', '.join(usable[:8])}{' …' if len(usable) > 8 else ''}",
+    )
 
 
 def check_providers(ctx: Ctx) -> tuple[str, str]:
     """Report registration state only — registering is a deliberate act, not a probe."""
-    if (why := _azure_precondition(ctx)):
+    if why := _azure_precondition(ctx):
         return SKIP, why
     try:
         rows = az_json(["provider", "list", "--query", "[].{ns:namespace,state:registrationState}"]) or []
@@ -328,17 +400,29 @@ def _ibb_precondition(ctx: Ctx) -> str | None:
 
 
 def check_aq_stations(ctx: Ctx) -> tuple[str, str]:
-    if (why := _ibb_precondition(ctx)):
+    if why := _ibb_precondition(ctx):
         return SKIP, why
     ctx.spend_ibb_call("GetAQIStations")
     try:
         stations = get_json(AQ_STATIONS)
     except (HttpFailure, ValueError) as exc:
         return FAIL, f"GetAQIStations: {exc}"
-    ctx.facts["aq_first_station"] = stations[0] if stations else None
     n = len(stations)
+    # An empty list is an outage, not drift: every AQ tool and the two-year backfill
+    # hang off this call, so it must fail the gate the way İSPARK's empty list does.
+    if not n:
+        ctx.facts["aq_first_station"] = None
+        return FAIL, "GetAQIStations returned an empty list"
+    first = stations[0]
+    if not isinstance(first, dict) or not first.get("Id"):
+        ctx.facts["aq_first_station"] = None
+        return FAIL, f"GetAQIStations returned {n} entries but the first has no 'Id' — payload shape changed"
+    ctx.facts["aq_first_station"] = first
     if n != BASELINE["aq_stations"]:
-        ctx.note(f"AQ station count is {n}, was {BASELINE['aq_stations']} on 2026-09-08 — recapture tests/fixtures/aq_stations.json.")
+        ctx.note(
+            f"AQ station count is {n}, was {BASELINE['aq_stations']} on 2026-09-08 "
+            "— recapture tests/fixtures/aq_stations.json."
+        )
         return PASS, f"{n} stations (expected {BASELINE['aq_stations']} — CHANGED)"
     return PASS, f"{n} stations, first '{stations[0].get('Name')}'"
 
@@ -346,15 +430,20 @@ def check_aq_stations(ctx: Ctx) -> tuple[str, str]:
 def check_aq_window(ctx: Ctx) -> tuple[str, str]:
     """A 30-day pull documents that there is no small per-call cap — the backfill plan
     (PLAN §10 step 8, two years of history) stands or falls on this."""
-    if (why := _ibb_precondition(ctx)):
+    if why := _ibb_precondition(ctx):
         return SKIP, why
     station = ctx.facts.get("aq_first_station")
     if not station:
-        return SKIP, "no station id (check 5 did not run)"
-    now = dt.datetime.now().replace(minute=0, second=0, microsecond=0)
+        return SKIP, "no usable station id — see I5"
+    # İBB reads and writes these timestamps as İstanbul wall clock, so anchor on that
+    # zone rather than the machine's, or the window silently shifts on a laptop abroad.
+    now = dt.datetime.now(ISTANBUL_TZ).replace(minute=0, second=0, microsecond=0, tzinfo=None)
     fmt = "%d.%m.%Y %H:%M:%S"
     start, end = (now - dt.timedelta(days=30)).strftime(fmt), now.strftime(fmt)
-    url = f"{AQ_READINGS}?StationId={station['Id']}&StartDate={urllib.parse.quote(start)}&EndDate={urllib.parse.quote(end)}"
+    url = (
+        f"{AQ_READINGS}?StationId={station['Id']}"
+        f"&StartDate={urllib.parse.quote(start)}&EndDate={urllib.parse.quote(end)}"
+    )
     ctx.spend_ibb_call("GetAQIByStationId 30d")
     try:
         rows = get_json(url)
@@ -362,15 +451,26 @@ def check_aq_window(ctx: Ctx) -> tuple[str, str]:
         return FAIL, f"GetAQIByStationId: {exc}"
     times = sorted(r.get("ReadTime", "") for r in rows)
     with_pm10 = sum(1 for r in rows if (r.get("Concentration") or {}).get("PM10") is not None)
-    ctx.facts["aq_window"] = {"station": station.get("Name"), "requested": [start, end], "rows": len(rows), "distinct": len(set(times)), "span": [times[0] if times else None, times[-1] if times else None], "with_pm10": with_pm10}
+    ctx.facts["aq_window"] = {
+        "station": station.get("Name"),
+        "requested": [start, end],
+        "rows": len(rows),
+        "distinct": len(set(times)),
+        "span": [times[0] if times else None, times[-1] if times else None],
+        "with_pm10": with_pm10,
+    }
     if not rows:
         return FAIL, f"30-day window for '{station.get('Name')}' returned 0 rows"
     dup = len(rows) - len(set(times))
-    return PASS, f"{len(rows)} rows ({len(set(times))} distinct{f', {dup} dup' if dup else ''}), {times[0]} → {times[-1]}, PM10 on {with_pm10}"
+    return (
+        PASS,
+        f"{len(rows)} rows ({len(set(times))} distinct{f', {dup} dup' if dup else ''}), "
+        f"{times[0]} → {times[-1]}, PM10 on {with_pm10}",
+    )
 
 
 def check_ispark(ctx: Ctx) -> tuple[str, str]:
-    if (why := _ibb_precondition(ctx)):
+    if why := _ibb_precondition(ctx):
         return SKIP, why
     ctx.spend_ibb_call("İSPARK /Park")
     try:
@@ -383,29 +483,37 @@ def check_ispark(ctx: Ctx) -> tuple[str, str]:
     if not lots:
         return FAIL, "İSPARK returned an empty list"
     if len(lots) != BASELINE["ispark_lots"]:
-        ctx.note(f"İSPARK lot count is {len(lots)}, was {BASELINE['ispark_lots']} on 2026-09-08 — expected drift, no action unless it collapses.")
+        ctx.note(
+            f"İSPARK lot count is {len(lots)}, was {BASELINE['ispark_lots']} on 2026-09-08 "
+            "— expected drift, no action unless it collapses."
+        )
     return PASS, f"{len(lots)} lots, {free} report free space, {open_now} open now"
 
 
 def check_iett_line(ctx: Ctx) -> tuple[str, str]:
-    if (why := _ibb_precondition(ctx)):
+    if why := _ibb_precondition(ctx):
         return SKIP, why
     envelope = (
-        '<?xml version="1.0" encoding="utf-8"?>'
-        '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>'
-        "<GetHatOtoKonum_json xmlns='http://tempuri.org/'><HatKodu>500T</HatKodu></GetHatOtoKonum_json>"
-        "</soap:Body></soap:Envelope>"
-    ).encode()
+        b'<?xml version="1.0" encoding="utf-8"?>'
+        b'<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>'
+        b"<GetHatOtoKonum_json xmlns='http://tempuri.org/'><HatKodu>500T</HatKodu></GetHatOtoKonum_json>"
+        b"</soap:Body></soap:Envelope>"
+    )
     ctx.spend_ibb_call("İETT GetHatOtoKonum 500T")
     try:
-        status, body, _ = http("POST", IETT_FLEET_ASMX, headers={"Content-Type": "text/xml; charset=utf-8", "SOAPAction": '"http://tempuri.org/GetHatOtoKonum_json"'}, body=envelope)
+        status, body, _ = http(
+            "POST",
+            IETT_FLEET_ASMX,
+            headers={
+                "Content-Type": "text/xml; charset=utf-8",
+                "SOAPAction": '"http://tempuri.org/GetHatOtoKonum_json"',
+            },
+            body=envelope,
+        )
     except HttpFailure as exc:
         return FAIL, f"İETT SOAP: {exc}"
     if status != 200:
         return FAIL, f"İETT SOAP returned HTTP {status} (100 req/hour cap — back off)"
-    import html
-    import re
-
     text = body.decode("utf-8", "replace")
     match = re.search(r"<GetHatOtoKonum_jsonResult>(.*?)</GetHatOtoKonum_jsonResult>", text, re.S)
     if not match:
@@ -417,14 +525,18 @@ def check_iett_line(ctx: Ctx) -> tuple[str, str]:
         buses = json.loads(payload)
     except ValueError as exc:
         return FAIL, f"result is not JSON: {exc}"
-    ctx.facts["iett_500T"] = {"vehicles": len(buses), "routes": sorted({b.get("guzergahkodu") for b in buses}), "latest": max((b.get("son_konum_zamani", "") for b in buses), default=None)}
+    ctx.facts["iett_500T"] = {
+        "vehicles": len(buses),
+        "routes": sorted({b.get("guzergahkodu") for b in buses}),
+        "latest": max((b.get("son_konum_zamani", "") for b in buses), default=None),
+    }
     if not buses:
         return FAIL, "500T returned 0 vehicles (valid at 03:00, suspicious otherwise)"
     return PASS, f"{len(buses)} vehicles on 500T, latest fix {ctx.facts['iett_500T']['latest']}"
 
 
 def check_metro(ctx: Ctx) -> tuple[str, str]:
-    if (why := _ibb_precondition(ctx)):
+    if why := _ibb_precondition(ctx):
         return SKIP, why
     ctx.spend_ibb_call("Metro GetServiceStatuses")
     try:
@@ -435,14 +547,28 @@ def check_metro(ctx: Ctx) -> tuple[str, str]:
         return FAIL, f"Success=false, Error={payload.get('Error')}"
     data = payload.get("Data") or []
     active = [d for d in data if d.get("IsActive") and (d.get("Description") or "").strip()]
-    ctx.facts["metro"] = {"entries": len(data), "active_notices": len(active), "lines": [d.get("LineName") for d in active]}
+    ctx.facts["metro"] = {
+        "entries": len(data),
+        "active_notices": len(active),
+        "lines": [d.get("LineName") for d in active],
+    }
     lines = ", ".join(str(d.get("LineName")) for d in active) or "none"
     return PASS, f"{len(active)} active notice(s) of {len(data)} entries — lines: {lines}"
 
 
 def check_traffic(ctx: Ctx) -> tuple[str, str]:
-    """The Accept header is load-bearing: without it the endpoint answers XML."""
-    if (why := _ibb_precondition(ctx)):
+    """Probe how this endpoint really behaves.
+
+    It was documented as "XML unless Accept: application/json is sent". Runs on
+    2026-09-08 showed a JSON body that is nonetheless labelled Content-Type:
+    application/xml — so the check reports what it actually sees rather than asserting
+    the old rule, and flags the content-type lie, which is the part that bites parsers.
+
+    The second arm sends *no* Accept header at all (`drop_headers`); sending `Accept: */*`
+    instead — httpx's default, which is what an unguarded second call would send — proves
+    nothing about content negotiation, because `*/*` matches whatever the server prefers.
+    """
+    if why := _ibb_precondition(ctx):
         return SKIP, why
     url = f"{TRAFFIC_INDEX_HISTORY}/1/H"
     ctx.spend_ibb_call("TrafficIndex +Accept")
@@ -457,28 +583,53 @@ def check_traffic(ctx: Ctx) -> tuple[str, str]:
     except ValueError:
         return FAIL, f"Accept: application/json still produced {headers.get('content-type')} — the API changed"
     latest = max(rows, key=lambda r: r.get("TrafficIndexDate", "")) if rows else {}
-    result = {"with_header": {"content_type": headers.get("content-type"), "rows": len(rows), "latest": latest}}
-    detail = f"JSON, {len(rows)} points, latest index {latest.get('TrafficIndex')} at {latest.get('TrafficIndexDate')}"
+    ct = headers.get("content-type") or "?"
+    result = {
+        "with_header": {
+            "content_type": ct,
+            "body": "json",
+            "rows": len(rows),
+            "latest": latest,
+            "accept_sent": "application/json",
+        }
+    }
+    detail = (
+        f"JSON body, {len(rows)} points, latest index {latest.get('TrafficIndex')} at {latest.get('TrafficIndexDate')}"
+    )
+    if "json" not in ct.lower():
+        ctx.note(
+            f"TrafficIndexHistory returns a JSON body but labels it Content-Type: {ct} "
+            "— never dispatch on the content type here, parse as JSON."
+        )
 
     if not ctx.args.traffic_both:
         result["without_header"] = "not probed (would be a 7th call; pass --traffic-both)"
         ctx.facts["traffic"] = result
-        return PASS, detail + " | no-header probe skipped to stay inside the call budget"
+        return PASS, detail + f" | Content-Type: {ct} | no-header probe skipped to stay inside the call budget"
     ctx.spend_ibb_call("TrafficIndex -Accept")
     try:
-        _s, raw, hdr2 = http("GET", url)
+        _s, raw, hdr2 = http("GET", url, drop_headers=("accept",))
     except HttpFailure as exc:
         result["without_header"] = f"error: {exc}"
         ctx.facts["traffic"] = result
         return PASS, detail + f" | no-header probe errored: {exc}"
     head = raw[:40].decode("utf-8", "replace").strip()
-    is_xml = head.startswith("<")
-    result["without_header"] = {"content_type": hdr2.get("content-type"), "starts_with": head, "is_xml": is_xml}
+    kind = "xml" if head.startswith("<") else "json" if head[:1] in ("[", "{") else "unknown"
+    ct2 = hdr2.get("content-type") or "?"
+    result["without_header"] = {"content_type": ct2, "starts_with": head, "body": kind, "accept_sent": None}
     ctx.facts["traffic"] = result
-    if not is_xml:
-        ctx.note("TrafficIndexHistory now returns JSON without an Accept header — the workaround in config.py can be relaxed.")
-        return PASS, detail + " | no-header ALSO returned JSON (behaviour changed)"
-    return PASS, detail + f" | without the header: {hdr2.get('content-type')} starting '{head[:24]}' → header confirmed required"
+    if kind == "xml":
+        return PASS, detail + f" | without the header: XML ('{head[:24]}') → Accept header confirmed REQUIRED"
+    ctx.note(
+        "TrafficIndexHistory served JSON with no Accept header at all, so the header is not strictly "
+        "required — keep sending it anyway (free, and it is the documented contract), but stop treating "
+        "XML as the default."
+    )
+    return (
+        PASS,
+        detail + f" | with no Accept header at all: also {kind.upper()} (Content-Type: {ct2}) "
+        "→ Accept not required",
+    )
 
 
 def _as_int(value: Any) -> int:
@@ -497,7 +648,7 @@ def _read_column(path: pathlib.Path, column: str) -> tuple[int, set[str]]:
     with path.open(encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh, delimiter=";"):
             rows += 1
-            if (v := (row.get(column) or "").strip()):
+            if v := (row.get(column) or "").strip():
                 values.add(v)
     return rows, values
 
@@ -513,12 +664,19 @@ def check_gtfs_files(ctx: Ctx) -> tuple[str, str]:
     later = [n for n in ("stop_times.csv", "trips.csv") if not present[n].exists()]
     if not later:
         return PASS, sizes
-    ctx.note(f"GTFS {', '.join(later)} not downloaded yet — needed for stop sequences on Day 3; URLs in tests/fixtures/gtfs_resources.json.")
+    ctx.note(
+        f"GTFS {', '.join(later)} not downloaded yet — needed for stop sequences on Day 3; "
+        "URLs in tests/fixtures/gtfs_resources.json."
+    )
     return PASS, f"{sizes} · not downloaded yet: {', '.join(later)}"
 
 
-def _load_500t(ctx: Ctx) -> list[dict] | None:
-    """Prefer the live payload this run fetched; fall back to the recorded fixture."""
+def _load_500t() -> list[dict] | None:
+    """Read the recorded 500T payload.
+
+    Deliberately the fixture and not this run's live call: the join must be verifiable
+    with --no-network, and a fixed payload makes 31/31 a number you can regress against.
+    """
     fixture = ROOT / "tests" / "fixtures" / "iett_hat_500T.json"
     if not fixture.exists():
         return None
@@ -528,7 +686,7 @@ def _load_500t(ctx: Ctx) -> list[dict] | None:
 def check_stop_join(ctx: Ctx) -> tuple[str, str]:
     """The whole ETA engine assumes yakinDurakKodu == GTFS stop_code (NOT stop_id)."""
     stops = ROOT / "data" / "reference" / "gtfs" / "stops.csv"
-    buses = _load_500t(ctx)
+    buses = _load_500t()
     if not stops.exists() or buses is None:
         return SKIP, "needs data/reference/gtfs/stops.csv and tests/fixtures/iett_hat_500T.json"
     rows, codes = _read_column(stops, "stop_code")
@@ -536,16 +694,26 @@ def check_stop_join(ctx: Ctx) -> tuple[str, str]:
     wanted = [str(b.get("yakinDurakKodu", "")).strip() for b in buses]
     hits = sum(1 for w in wanted if w in codes)
     id_hits = sum(1 for w in wanted if w in ids)
-    ctx.facts["gtfs_stop_join"] = {"buses": len(wanted), "stop_code_hits": hits, "stop_id_hits": id_hits, "stops_rows": rows, "distinct_stop_code": len(codes)}
+    ctx.facts["gtfs_stop_join"] = {
+        "buses": len(wanted),
+        "stop_code_hits": hits,
+        "stop_id_hits": id_hits,
+        "stops_rows": rows,
+        "distinct_stop_code": len(codes),
+    }
     if hits < len(wanted):
         ctx.note("Live stop codes no longer resolve 1:1 — fall back to nearest-stop-by-coordinate for ETA (PLAN §15).")
         return FAIL, f"{hits}/{len(wanted)} yakinDurakKodu resolved to stop_code (stop_id would match {id_hits})"
-    return PASS, f"{hits}/{len(wanted)} yakinDurakKodu → stop_code across {rows} stops (stop_id matches only {id_hits} — join on stop_code)"
+    return (
+        PASS,
+        f"{hits}/{len(wanted)} yakinDurakKodu → stop_code across {rows} stops "
+        f"(stop_id matches only {id_hits} — join on stop_code)",
+    )
 
 
 def check_route_join(ctx: Ctx) -> tuple[str, str]:
     routes = ROOT / "data" / "reference" / "gtfs" / "routes.csv"
-    buses = _load_500t(ctx)
+    buses = _load_500t()
     if not routes.exists() or buses is None:
         return SKIP, "needs data/reference/gtfs/routes.csv and tests/fixtures/iett_hat_500T.json"
     rows, codes = _read_column(routes, "route_code")
@@ -553,7 +721,11 @@ def check_route_join(ctx: Ctx) -> tuple[str, str]:
     hits = [w for w in wanted if w in codes]
     ctx.facts["gtfs_route_join"] = {"live_routes": wanted, "matched": hits, "routes_rows": rows}
     if len(hits) < len(wanted):
-        return FAIL, f"{len(hits)}/{len(wanted)} guzergahkodu resolved to route_code; unmatched {sorted(set(wanted) - set(hits))}"
+        return (
+            FAIL,
+            f"{len(hits)}/{len(wanted)} guzergahkodu resolved to route_code; "
+            f"unmatched {sorted(set(wanted) - set(hits))}",
+        )
     return PASS, f"{len(hits)}/{len(wanted)} guzergahkodu → route_code ({', '.join(wanted)}) across {rows} routes"
 
 
@@ -563,35 +735,60 @@ def check_route_join(ctx: Ctx) -> tuple[str, str]:
 Check = tuple[str, str, Callable[[Ctx], tuple[str, str]]]
 
 SECTIONS: list[tuple[str, list[Check]]] = [
-    ("TOOLS  (local)", [
-        ("T1", "python 3.12", check_python),
-        ("T2", "uv", tool_check("uv", ["uv", "--version"], required=True)),
-        ("T3", "az (Azure CLI)", tool_check("az", ["az", "version"], required=True, parse=_parse_az)),
-        ("T4", "azd (Developer CLI)", tool_check("azd", ["azd", "version"], required=True)),
-        ("T5", "func (Functions Core Tools)", tool_check("func", ["func", "--version"], required=True)),
-        ("T6", "foundry (Foundry Local)", tool_check("foundry", ["foundry", "--version"], required=False, why="only needed on the local-LLM path, PLAN §9")),
-        ("T7", "git", tool_check("git", ["git", "--version"], required=True)),
-        ("T8", "gh (GitHub CLI)", tool_check("gh", ["gh", "--version"], required=False, why="repo already exists; used for CI secrets")),
-    ]),
-    ("AZURE  (--azure)", [
-        ("A1", "subscription / tenant / identity", check_account),
-        ("A2", "allowed-regions policy", check_region_policy),
-        ("A3", "Functions Flex regions ∩ allowed", check_flex_regions),
-        ("A4", "resource providers registered", check_providers),
-    ]),
-    ("İBB    (network, throttled)", [
-        ("I5", "air quality: GetAQIStations", check_aq_stations),
-        ("I6", "air quality: 30-day window", check_aq_window),
-        ("I7", "İSPARK: /Park", check_ispark),
-        ("I8", "İETT: GetHatOtoKonum_json 500T", check_iett_line),
-        ("I9", "Metro: GetServiceStatuses", check_metro),
-        ("I10", "traffic index: Accept header", check_traffic),
-    ]),
-    ("GTFS   (local files)", [
-        ("G11", "stops.csv / routes.csv present", check_gtfs_files),
-        ("G12", "yakinDurakKodu → stop_code", check_stop_join),
-        ("G13", "guzergahkodu → route_code", check_route_join),
-    ]),
+    (
+        "TOOLS  (local)",
+        [
+            ("T1", "python 3.12", check_python),
+            ("T2", "uv", tool_check("uv", ["uv", "--version"], required=True)),
+            ("T3", "az (Azure CLI)", tool_check("az", ["az", "version"], required=True, parse=_parse_az)),
+            ("T4", "azd (Developer CLI)", tool_check("azd", ["azd", "version"], required=True)),
+            ("T5", "func (Functions Core Tools)", tool_check("func", ["func", "--version"], required=True)),
+            (
+                "T6",
+                "foundry (Foundry Local)",
+                tool_check(
+                    "foundry",
+                    ["foundry", "--version"],
+                    required=False,
+                    why="only needed on the local-LLM path, PLAN §9",
+                ),
+            ),
+            ("T7", "git", tool_check("git", ["git", "--version"], required=True)),
+            (
+                "T8",
+                "gh (GitHub CLI)",
+                tool_check("gh", ["gh", "--version"], required=False, why="repo already exists; used for CI secrets"),
+            ),
+        ],
+    ),
+    (
+        "AZURE  (--azure)",
+        [
+            ("A1", "subscription / tenant / identity", check_account),
+            ("A2", "allowed-regions policy", check_region_policy),
+            ("A3", "Functions Flex regions ∩ allowed", check_flex_regions),
+            ("A4", "resource providers registered", check_providers),
+        ],
+    ),
+    (
+        "İBB    (network, throttled)",
+        [
+            ("I5", "air quality: GetAQIStations", check_aq_stations),
+            ("I6", "air quality: 30-day window", check_aq_window),
+            ("I7", "İSPARK: /Park", check_ispark),
+            ("I8", "İETT: GetHatOtoKonum_json 500T", check_iett_line),
+            ("I9", "Metro: GetServiceStatuses", check_metro),
+            ("I10", "traffic index: Accept header", check_traffic),
+        ],
+    ),
+    (
+        "GTFS   (local files)",
+        [
+            ("G11", "stops.csv / routes.csv present", check_gtfs_files),
+            ("G12", "yakinDurakKodu → stop_code", check_stop_join),
+            ("G13", "guzergahkodu → route_code", check_route_join),
+        ],
+    ),
 ]
 
 # What to do when a check fails. Keyed by check id; only printed for FAILs.
@@ -601,28 +798,72 @@ REMEDIES: dict[str, str] = {
     "T3": "brew install azure-cli   (then: az login)",
     "T4": "brew install azd",
     "T5": "brew tap azure/functions && brew install azure-functions-core-tools@4",
-    "T6": "Optional today: brew tap microsoft/foundrylocal && brew install foundrylocal — needed only if the Azure OpenAI quota gate fails.",
+    "T6": (
+        "Optional today: brew tap microsoft/foundrylocal && brew install foundrylocal — needed only if the "
+        "Azure OpenAI quota gate fails."
+    ),
     "T7": "xcode-select --install",
     "T8": "brew install gh   (only needed for CI secrets and releases)",
-    "A1": "az login --use-device-code, then re-run with --azure. If the subscription is Disabled, check the spending limit before anything else.",
-    "A2": "Read the policy by hand: az policy assignment list -o table, then az policy definition show --name <id>. A region policy you cannot see will fail `azd up` at deploy time, not plan time.",
-    "A3": "No deployable region. Either request a policy exemption, or move Functions to Linux Consumption (Y1) / a Container Apps Job — see PLAN §3 fallback column.",
-    "A4": "Register the missing providers (each takes a few minutes): az provider register -n <namespace>. Deploy will fail with an opaque error otherwise.",
-    "I5": "İBB gateway did not answer. Retry in a few minutes — it 503s under load. If it stays down, Day 1 continues against tests/fixtures/ (Settings.offline=True).",
-    "I6": "Without a wide window the two-year AQ backfill (PLAN §10 step 8) is off the table; fall back to daily incremental pulls only.",
-    "I7": "İSPARK is the J1 journey's only data source. If it stays down, demo J2–J4 and note the outage in DECISIONS.md.",
-    "I8": "İETT SOAP is capped at 100 req/hour — if this fails, STOP calling it and wait an hour. Check tests/fixtures/iett_hat_500T.soap.xml for an 'ORA-' error signature.",
+    "A1": (
+        "az login --use-device-code, then re-run with --azure. If the subscription is Disabled, check the "
+        "spending limit before anything else."
+    ),
+    "A2": (
+        "Read the policy by hand: az policy assignment list -o table, then az policy definition show --name "
+        "<id>. A region policy you cannot see will fail `azd up` at deploy time, not plan time."
+    ),
+    "A3": (
+        "No deployable region. Either request a policy exemption, or move Functions to Linux Consumption (Y1) / "
+        "a Container Apps Job — see PLAN §3 fallback column."
+    ),
+    "A4": (
+        "Register the missing providers (each takes a few minutes): az provider register -n <namespace>. Deploy "
+        "will fail with an opaque error otherwise."
+    ),
+    "I5": (
+        "İBB gateway did not answer. Retry in a few minutes — it 503s under load. If it stays down, Day 1 "
+        "continues against tests/fixtures/ (Settings.offline=True)."
+    ),
+    "I6": (
+        "Without a wide window the two-year AQ backfill (PLAN §10 step 8) is off the table; fall back to daily "
+        "incremental pulls only."
+    ),
+    "I7": (
+        "İSPARK is the J1 journey's only data source. If it stays down, demo J2–J4 and note the outage in "
+        "DECISIONS.md."
+    ),
+    "I8": (
+        "İETT SOAP is capped at 100 req/hour — if this fails, STOP calling it and wait an hour. Check "
+        "tests/fixtures/iett_hat_500T.soap.xml for an 'ORA-' error signature."
+    ),
     "I9": "Metro status feeds J3. The endpoint works even though its help page 503s — retry before assuming a change.",
-    "I10": "TrafficIndexHistory changed shape. Re-probe with and without 'Accept: application/json' and update src/ibb_mcp/config.py.",
-    "G11": "Download stops.csv and routes.csv into data/reference/gtfs/ using the URLs in tests/fixtures/gtfs_resources.json (read them with encoding='utf-8-sig', delimiter=';').",
-    "G12": "The ETA engine (PLAN §7) joins live buses to GTFS on stop_code. If it breaks, switch to nearest-stop-by-haversine and report ETA as 'km + min' instead of 'n stops'.",
-    "G13": "Without the route_code join a line's direction cannot be resolved; fall back to the 'yon' free-text field from the live payload.",
+    "I10": (
+        "TrafficIndexHistory changed shape. Re-probe with and without 'Accept: application/json' and update "
+        "src/ibb_mcp/config.py."
+    ),
+    "G11": (
+        "Download stops.csv and routes.csv into data/reference/gtfs/ using the URLs in "
+        "tests/fixtures/gtfs_resources.json (read them with encoding='utf-8-sig', delimiter=';')."
+    ),
+    "G12": (
+        "The ETA engine (PLAN §7) joins live buses to GTFS on stop_code. If it breaks, switch to "
+        "nearest-stop-by-haversine and report ETA as 'km + min' instead of 'n stops'."
+    ),
+    "G13": (
+        "Without the route_code join a line's direction cannot be resolved; fall back to the 'yon' free-text "
+        "field from the live payload."
+    ),
 }
 
 MANUAL_GATES = [
-    "ADX free cluster — create at https://dataexplorer.azure.com/freecluster with the SAME identity that owns the Azure subscription (a different Entra account gives you a cluster you cannot grant the Function's managed identity access to). Database name: 'nabiz'. There is no CLI for this, so this script cannot check it.",
-    "Azure OpenAI quota — deploy gpt-4.1-mini (Global Standard) at https://ai.azure.com. If the TPM quota is 0, fill https://aka.ms/oai/stuquotarequest immediately; turnaround is days, not hours (PLAN §9).",
-    "Delivery date and brief — get Barbaros's answer in writing today: video length, language, repo visibility, upload address (PLAN header).",
+    "ADX free cluster — create at https://dataexplorer.azure.com/freecluster with the SAME identity that owns "
+    "the Azure subscription (a different Entra account gives you a cluster you cannot grant the Function's "
+    "managed identity access to). Database name: 'nabiz'. There is no CLI for this, so this script cannot check "
+    "it.",
+    "Azure OpenAI quota — deploy gpt-4.1-mini (Global Standard) at https://ai.azure.com. If the TPM quota is 0, "
+    "fill https://aka.ms/oai/stuquotarequest immediately; turnaround is days, not hours (PLAN §9).",
+    "Delivery date and brief — get Barbaros's answer in writing today: video length, language, repo visibility, "
+    "upload address (PLAN header).",
     "Budget alerts — set $20 and $40 alerts in Cost Management and check the Sponsorships balance (PLAN §10 step 6).",
 ]
 
@@ -650,7 +891,7 @@ def render(results: list[dict], ctx: Ctx, elapsed: float) -> str:
     out.append(f"{stamp:%Y-%m-%d %H:%M %Z}  ·  transport: {TRANSPORT}  ·  endpoints: {CONFIG_SOURCE}".center(100))
     out.append("=" * 100)
     head = f"  {'ID':<4} {'CHECK':<32} {'STATUS':<7} DETAIL"
-    indent = " " * 47
+    indent = " " * 48  # width of "  ID   NAME<32> STATUS " prefix
     for title, checks in SECTIONS:
         ids = {c[0] for c in checks}
         rows = [r for r in results if r["id"] in ids]
@@ -663,7 +904,10 @@ def render(results: list[dict], ctx: Ctx, elapsed: float) -> str:
     counts = {s: sum(1 for r in results if r["status"] == s) for s in (PASS, FAIL, SKIP)}
     out.append("")
     out.append("  " + "-" * 96)
-    out.append(f"  {counts[PASS]} passed · {counts[FAIL]} failed · {counts[SKIP]} skipped   ·   {ctx.ibb_calls}/{ctx.ibb_budget} İBB calls spent   ·   {elapsed:.1f}s")
+    out.append(
+        f"  {counts[PASS]} passed · {counts[FAIL]} failed · {counts[SKIP]} skipped   ·   "
+        f"{ctx.ibb_calls}/{ctx.ibb_budget} İBB calls spent   ·   {elapsed:.1f}s"
+    )
 
     out.append("")
     out.append("NEXT ACTIONS")
@@ -696,7 +940,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Day-0 readiness gate for İstanbul Nabız (PLAN.md §10).")
     ap.add_argument("--azure", action="store_true", help="run the `az` subscription checks (A1–A4)")
     ap.add_argument("--no-network", action="store_true", help="skip every İBB call (I5–I10)")
-    ap.add_argument("--traffic-both", action="store_true", help="spend a 7th İBB call proving the Accept header is required")
+    ap.add_argument(
+        "--traffic-both",
+        action="store_true",
+        help="spend a 7th İBB call fetching the traffic index without an Accept header too",
+    )
     ap.add_argument("--json-only", action="store_true", help="print only the JSON report on stdout")
     args = ap.parse_args(argv)
 
@@ -740,7 +988,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json_only:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
-        print("\r" + " " * 60 + "\r", end="", file=sys.stderr)
+        print(file=sys.stderr)  # close the progress block before the table
         print(render(results, ctx, elapsed))
         print(f"  JSON report: {REPORT_PATH.relative_to(ROOT)}\n")
     return 1 if failed else 0

@@ -67,7 +67,7 @@ class Settings:
     max_results: int = 5
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         return cls(
             gtfs_dir=pathlib.Path(os.getenv("NABIZ_GTFS_DIR", str(cls.gtfs_dir))),
             places_csv=pathlib.Path(os.getenv("NABIZ_PLACES_CSV", str(cls.places_csv))),

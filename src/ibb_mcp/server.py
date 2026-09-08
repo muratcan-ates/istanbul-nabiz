@@ -21,7 +21,6 @@ Design notes worth knowing before adding a tool:
 from __future__ import annotations
 
 import argparse
-import asyncio
 import functools
 import json
 import logging

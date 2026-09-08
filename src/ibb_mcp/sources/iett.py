@@ -3,7 +3,7 @@
 Three upstream operations live here, all behind the shared cache:
 
 * ``GetHatOtoKonum_json`` — every vehicle currently running one line,
-* ``GetFiloAracKonum_json`` — the whole fleet (~6.900 vehicles) in one shot,
+* ``GetFiloAracKonum_json`` — the whole fleet (6911 vehicles on 2026-09-08) in one shot,
 * ``GetPlanlananSeferSaati_json`` — the timetable for one line.
 
 Why the caching is not optional: İETT documents a hard limit of 100 requests per hour
@@ -54,11 +54,6 @@ LINE_CODE_RE = re.compile(r"^[A-Z0-9ÇĞİÖŞÜ][A-Z0-9ÇĞİÖŞÜ._-]{0,15}$"
 
 #: İETT day-type codes; see ``models.DAY_TYPE_LABELS``.
 DAY_TYPES = frozenset({"I", "C", "P"})
-_DAY_TYPE_ALIASES = {
-    "I": "I", "C": "C", "P": "P", "WEEKDAY": "I", "SATURDAY": "C", "SUNDAY": "P",
-    "HAFTAICI": "I", "HAFTA ICI": "I", "HAFTAİÇİ": "I", "HAFTA İÇİ": "I",
-    "CUMARTESI": "C", "CUMARTESİ": "C", "PAZAR": "P",
-}
 
 # Turkish dotted/dotless I folding: casefold() alone maps "I" to "i", which is wrong for
 # Turkish ("ISTANBUL" should fold to "ıstanbul", "İSTANBUL" to "istanbul").
@@ -69,6 +64,30 @@ _TR_FOLD = str.maketrans({"İ": "i", "I": "ı", "Î": "i", "Û": "u", "Â": "a"}
 # deaccented, punctuation-free variant as well.
 _ASCII_FOLD = str.maketrans("ıİşŞğĞüÜöÖçÇâîû", "iissgguuooccaiu")
 _PUNCT_RE = re.compile(r"[\s.,\-/()']+")
+
+#: Day-type aliases keyed by :func:`_fold_key`, never by ``.upper()``: Python upper-cases
+#: "hafta içi" to "HAFTA IÇI" (ASCII rules), which matches neither the dotted "HAFTA İÇİ"
+#: nor the plain "HAFTA ICI" spelling a table would list.
+#:
+#: The weekday names are spelled out rather than folded to a first letter, because the
+#: first letter lies in Turkish: "Pazartesi" is Monday and "Cuma" is Friday — both are
+#: ordinary weekdays ("I"), but their initials are the codes for Sunday and Saturday.
+_DAY_TYPE_ALIASES = {
+    "i": "I", "c": "C", "p": "P",
+    "haftaici": "I", "icgunu": "I", "weekday": "I", "weekdays": "I",
+    "pazartesi": "I", "monday": "I",
+    "sali": "I", "tuesday": "I",
+    "carsamba": "I", "wednesday": "I",
+    "persembe": "I", "thursday": "I",
+    "cuma": "I", "friday": "I",
+    "cumartesi": "C", "saturday": "C",
+    "pazar": "P", "sunday": "P",
+}
+
+
+def _fold_key(text: str) -> str:
+    """Accent-, case- and punctuation-insensitive lookup key for the alias tables."""
+    return _PUNCT_RE.sub("", " ".join(str(text).split()).translate(_ASCII_FOLD).casefold())
 
 
 # --------------------------------------------------------------------------------------
@@ -91,11 +110,14 @@ def normalise_day_type(day_type: str | None) -> str | None:
     """Map a day-type argument to İETT's single-letter code, or ``None`` for 'any'."""
     if day_type is None:
         return None
-    text = " ".join(str(day_type).split()).upper()
-    if not text:
+    key = _fold_key(day_type)
+    if not key:
         return None
-    resolved = _DAY_TYPE_ALIASES.get(text) or (text[0] if text[0] in DAY_TYPES else None)
+    resolved = _DAY_TYPE_ALIASES.get(key)
     if resolved is None:
+        # Deliberately no "first letter wins" fallback: it would answer "pazartesi"
+        # (Monday) with Sunday's timetable and "cuma" (Friday) with Saturday's — a wrong
+        # answer that looks right. An unknown word is refused instead.
         raise ValueError(f"Bilinmeyen gün tipi: {day_type!r} (I=hafta içi, C=cumartesi, P=pazar)")
     return resolved
 
@@ -195,6 +217,25 @@ def _latest_report(buses: Iterable[BusPosition], *, now: dt.datetime | None = No
     return max(stamps) if stamps else None
 
 
+def _redate_future_clocks(buses: Sequence[BusPosition], *, now: dt.datetime | None = None) -> list[BusPosition]:
+    """Move a fleet timestamp that lands in the future back one day.
+
+    ``GetFiloAracKonum_json`` sends a bare clock (``Saat``: "23:03:07") with no date, so
+    ``parse_ibb_datetime`` can only read it as *today* — and a vehicle whose last report
+    was before midnight then carries a timestamp hours ahead of now. Downstream that reads
+    as an age of zero, i.e. a bus parked since last night looks live. A clock ahead of us
+    can only belong to yesterday, so it is dated as such; the two-minute tolerance leaves
+    ordinary clock skew between İETT and us alone.
+    """
+    horizon = (now or utcnow()) + dt.timedelta(minutes=2)
+    return [
+        bus.model_copy(update={"reported_at": bus.reported_at - dt.timedelta(days=1)})
+        if bus.reported_at is not None and bus.reported_at > horizon
+        else bus
+        for bus in buses
+    ]
+
+
 def _line_of(record: dict[str, Any]) -> str:
     return str(record.get("hatkodu") or record.get("SHATKODU") or "").strip().upper()
 
@@ -269,7 +310,7 @@ class IettSource:
                 budget="iett",
             )
         buses = _parse_records(raw, BusPosition.from_fleet_raw, what=IETT_ACTION_FLEET_POSITIONS)
-        return [b for b in buses if b.door_no]
+        return _redate_future_clocks([b for b in buses if b.door_no])
 
     # -- timetable ---------------------------------------------------------------------
     async def schedule(
@@ -328,6 +369,10 @@ class IettSource:
         is what the timetable itself is expressed in. When the day's remaining departures
         run out, the list continues with the next day's first ones, so a late-evening
         question still gets an answer instead of an empty list.
+
+        Three service days are considered, in departure order: yesterday's after-midnight
+        tail (İETT files a 00:30 run as the previous day's ``24:30``, so just past midnight
+        those are still the next buses), then today, then tomorrow.
         """
         if limit <= 0:
             return []
@@ -342,16 +387,21 @@ class IettSource:
             pool = [d for d in pool if (d.route_code or "").upper() == wanted_route]
 
         now_minutes = local.hour * 60 + local.minute
-        today = _sorted_for_day(pool, day_type_for(local))
-        picked = [d for d, minutes in today if minutes >= now_minutes][:limit]
+        picked: list[PlannedDeparture] = []
 
-        if len(picked) < limit:
-            tomorrow = _sorted_for_day(pool, day_type_for(local + dt.timedelta(days=1)))
-            for departure, _minutes in tomorrow:
+        def take(day: dt.datetime, *, at_or_after: int) -> None:
+            for departure, minutes in _sorted_for_day(pool, day_type_for(day)):
                 if len(picked) >= limit:
-                    break
-                if departure not in picked:
+                    return
+                if minutes >= at_or_after and departure not in picked:
                     picked.append(departure)
+
+        # Yesterday's 24:xx/25:xx runs depart *today*, after midnight. Skipping them makes
+        # a 00:05 question answer with the morning's first bus while the 00:30 one is still
+        # to come; ``+ 24 * 60`` puts yesterday's clock on the same axis as ours.
+        take(local - dt.timedelta(days=1), at_or_after=24 * 60 + now_minutes)
+        take(local, at_or_after=now_minutes)
+        take(local + dt.timedelta(days=1), at_or_after=0)
         return picked
 
 

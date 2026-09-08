@@ -47,7 +47,9 @@ def describe_availability(lot: ParkingLot) -> str:
     """One short Turkish phrase for how full a lot is.
 
     The agent says this out loud, so it must never overstate: an unknown occupancy says
-    so instead of guessing, and "çok yer var" is reserved for genuinely empty lots.
+    so instead of guessing, and a lot with a handful of bays left reads "az yer kaldı"
+    whatever the percentage says — five free bays in a 1000-bay garage are gone by the
+    time the driver arrives.
     """
     empty = lot.empty
     if empty is None:
@@ -156,7 +158,10 @@ class IsparkSource:
         lots, provenance = await self.list_parks()
         settings = self.ctx.settings
         base_radius = settings.default_radius_km if radius_km is None else radius_km
-        cap = min(limit or settings.max_results, settings.max_results)
+        # Clamped, not just min()'d: a negative limit would become a negative slice bound
+        # and quietly return *more* rows than max_results allows.
+        requested = settings.max_results if limit is None else limit
+        cap = max(0, min(requested, settings.max_results))
 
         candidates: list[ParkingLot] = []
         for lot in lots:

@@ -38,8 +38,9 @@ from __future__ import annotations
 
 import datetime as dt
 import statistics
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Protocol
 
 from ibb_mcp.models import (
     ISTANBUL_TZ,
@@ -57,6 +58,17 @@ NO_VEHICLE = ""
 #: Fallback city speed when the fleet tells us nothing (see :func:`speed_profile_from_fleet`).
 DEFAULT_SPEED_KMH = 16.0
 _CONFIDENCE_ORDER = ("high", "medium", "low")
+
+
+def _as_aware(moment: dt.datetime) -> dt.datetime:
+    """A naive moment is Istanbul local time, the convention ``parse_ibb_datetime`` uses.
+
+    Without this a naive ``now`` either raises against the aware upstream timestamps or,
+    when there is no live bus to compare it with, silently reads as the *server's* local
+    time and picks the wrong day type — an Azure box runs UTC, which is a three-hour error
+    in the timetable fallback.
+    """
+    return moment if moment.tzinfo else moment.replace(tzinfo=ISTANBUL_TZ)
 
 
 def _downgrade(confidence: str) -> str:
@@ -207,15 +219,17 @@ def estimate_arrivals(
     invented: an empty list with populated diagnostics is a legitimate answer, one the
     agent should read out as "I cannot tell you right now".
     """
+    # One clock read: the moment written to eta_log must be the moment the maths used.
+    moment = _as_aware(now) if now is not None else utcnow()
     ctx = _Ctx(
         target=target,
         index=index,
         sequences=sequences,
         speed_profile=speed_profile,
         params=params,
-        moment=now or utcnow(),
+        moment=moment,
         diagnostics={
-            "now": (now or utcnow()).isoformat(),
+            "now": moment.isoformat(),
             "target_stop_code": target.stop_code,
             "buses_received": len(buses),
             "dropped_stale": 0,
@@ -252,6 +266,13 @@ def _drop_stale(buses: list[BusPosition], ctx: _Ctx) -> list[BusPosition]:
     A ten-minute-old position has moved several stops since; pretending otherwise is
     exactly the confident-but-wrong number this project refuses to emit. Positions with no
     timestamp are kept but counted, and their arrivals lose a notch of confidence later.
+
+    A timestamp in the *future* is the same problem in disguise: İETT stamps the fleet feed
+    with a bare clock ("09:08:55") that ``parse_ibb_datetime`` must date to today in
+    Istanbul, so a reading taken at 23:59 and fetched a minute after midnight lands almost
+    a full day ahead. Clamping that age to zero would let a day-old position through as the
+    freshest thing on the line, so the timestamp is discarded and the bus is treated as
+    having none at all — kept, counted, downgraded.
     """
     diagnostics, kept, ages = ctx.diagnostics, [], []
     for bus in buses:
@@ -260,6 +281,11 @@ def _drop_stale(buses: list[BusPosition], ctx: _Ctx) -> list[BusPosition]:
             kept.append(bus)
             continue
         age = (ctx.moment - bus.reported_at).total_seconds()
+        if age < -ctx.params.max_bus_age_s:
+            diagnostics["future_dated"] = diagnostics.get("future_dated", 0) + 1
+            diagnostics["unknown_age"] += 1
+            kept.append(bus.model_copy(update={"reported_at": None}))
+            continue
         if age > ctx.params.max_bus_age_s:
             diagnostics["dropped_stale"] += 1
             continue
@@ -270,6 +296,8 @@ def _drop_stale(buses: list[BusPosition], ctx: _Ctx) -> list[BusPosition]:
         diagnostics["median_age_s"] = round(statistics.median(ages), 1)
     if diagnostics["dropped_stale"]:
         ctx.note(f"dropped_{diagnostics['dropped_stale']}_positions_older_than_{ctx.params.max_bus_age_s:.0f}s")
+    if diagnostics.get("future_dated"):
+        ctx.note(f"{diagnostics['future_dated']}_positions_dated_in_the_future_timestamp_discarded")
     if diagnostics["unknown_age"]:
         ctx.note("positions_without_timestamp_were_downgraded")
     return kept
@@ -356,10 +384,14 @@ def _distance_arrival(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     """
     target, params = ctx.target, ctx.params
     lat, lon = bus.lat, bus.lon
+    borrowed = False
     if lat is None or lon is None:
-        # Last resort: stand the bus at the stop it says it is nearest to.
+        # Last resort: stand the bus at the stop it says it is nearest to. On the recorded
+        # 500T snapshot that claim was up to 6.4 km out (see :func:`_claim_is_credible`),
+        # so a position borrowed this way costs a notch of confidence.
         proxy = _lookup_stop(ctx.index, bus.nearest_stop_code)
         lat, lon = (proxy.lat, proxy.lon) if proxy else (None, None)
+        borrowed = lat is not None and lon is not None
     if lat is None or lon is None or target.lat is None or target.lon is None:
         ctx.diagnostics["dropped_unlocatable"] += 1
         return None
@@ -369,6 +401,12 @@ def _distance_arrival(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     speed = params.speed_kmh if params.speed_kmh > 0 else DEFAULT_SPEED_KMH
     confidence = "low" if road_km > params.low_confidence_km else "medium"
     ctx.note("distance_method_is_direction_blind")
+    if borrowed:
+        ctx.diagnostics["position_from_claimed_stop"] = ctx.diagnostics.get("position_from_claimed_stop", 0) + 1
+        ctx.note("position_borrowed_from_yakinDurakKodu_not_the_vehicle")
+        confidence = _downgrade(confidence)
+    if not bus.reported_at:
+        confidence = _downgrade(confidence)
     return _arrival(
         bus,
         target,
@@ -376,7 +414,7 @@ def _distance_arrival(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
         distance_km=round(straight_km, 2),
         eta_minutes=round(road_km / speed * 60.0, 1),
         method="distance",
-        confidence=confidence if bus.reported_at else _downgrade(confidence),
+        confidence=confidence,
     )
 
 
@@ -423,8 +461,11 @@ def _from_schedule(scheduled: list[PlannedDeparture] | None, ctx: _Ctx) -> list[
         tomorrow = (local_now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         rows = [d for d in scheduled if d.day_type == day_type_for(tomorrow) and d.departure_time]
         upcoming = _upcoming_departures(rows, tomorrow)
-        if upcoming:
-            ctx.note("service_finished_today_showing_first_departures_of_next_day")
+        ctx.note(
+            "service_finished_today_showing_first_departures_of_next_day"
+            if upcoming
+            else f"schedule_exhausted_no_rows_for_day_type_{day_type_for(tomorrow)}"
+        )
 
     arrivals = [
         BusArrival(
@@ -441,10 +482,16 @@ def _from_schedule(scheduled: list[PlannedDeparture] | None, ctx: _Ctx) -> list[
     ]
     if arrivals:
         ctx.note("eta_is_time_until_planned_departure_not_arrival_at_stop")
+    if len({a.direction for a in arrivals if a.direction}) > 1:
+        # Both directions of the line depart from their own terminus; without stop_times we
+        # cannot tell which one passes the rider's stop, so say so rather than pick one.
+        ctx.note("schedule_rows_cover_both_directions_not_filtered_to_this_stop")
     return arrivals
 
 
-def _upcoming_departures(rows: list[PlannedDeparture], after: dt.datetime) -> list[tuple[dt.datetime, PlannedDeparture]]:
+def _upcoming_departures(
+    rows: list[PlannedDeparture], after: dt.datetime
+) -> list[tuple[dt.datetime, PlannedDeparture]]:
     """Resolve ``HH:MM`` strings against ``after``'s date, keeping only later departures."""
     resolved: list[tuple[dt.datetime, PlannedDeparture]] = []
     seen: set[str] = set()

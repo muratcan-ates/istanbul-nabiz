@@ -145,6 +145,49 @@ def test_demojibake(raw: str | None, expected: str | None) -> None:
     assert demojibake(raw) == expected
 
 
+# İBB mangled routes.csv by decoding UTF-8 bytes as cp1252 *except* for byte 0x9E, which
+# it passed through as U+009E. 0x9E is the second byte of both "Ş" (C5 9E) and "Ğ" (C4 9E),
+# so the two commonest Turkish letters in İstanbul line names land on the one code point
+# cp1252 cannot round-trip. Both literals below are verbatim rows of
+# data/reference/gtfs/routes.csv, reproduced here as escapes so the file stays readable.
+MOJIBAKE_ROUTE_10 = "ATAÅ\x9eEHÄ°R TIP MERKEZÄ° - ESATPAÅ\x9eA"   # route_code 10A_D_D0
+MOJIBAKE_ROUTE_21 = "KADIKÃ\u2013Y - ESATPAÅ\x9eA"                 # route_code 10E_D_D0
+
+
+def test_the_mojibake_samples_are_exactly_what_routes_csv_holds() -> None:
+    """Proof that the two constants above are real data, not a plausible-looking invention."""
+    atasehir = "ATAŞEHİR TIP MERKEZİ - ESATPAŞA".encode()
+    assert atasehir.decode("latin-1") == MOJIBAKE_ROUTE_10
+    # The "Ö" in route 21 survives as an en dash (cp1252 0x96) while the "Ş" survives as
+    # U+009E, so no single codec reproduces the row: the corruption is genuinely mixed.
+    kadikoy = "KADIKÖY".encode()
+    assert kadikoy.decode("cp1252")[:8] == MOJIBAKE_ROUTE_21[:8]
+    assert "\x9e" in MOJIBAKE_ROUTE_21
+
+
+@pytest.mark.xfail(
+    raises=AssertionError,
+    reason=(
+        "models.demojibake() encodes with cp1252 only, and cp1252 cannot encode U+009E, so "
+        "UnicodeEncodeError sends it down the 'return text unchanged' path. 3929 of the 9279 "
+        "route_long_name values in data/reference/gtfs/routes.csv — every line name containing "
+        "Ş or Ğ — therefore stay mojibake and would be read out to users verbatim. Fix in "
+        "models.py: encode per character with cp1252 and fall back to the latin-1 byte value "
+        "for code points below U+0100 that cp1252 rejects; that repairs 9279/9279. "
+        "This test flips to XPASS when models.py is fixed."
+    ),
+)
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (MOJIBAKE_ROUTE_10, "ATAŞEHİR TIP MERKEZİ - ESATPAŞA"),
+        (MOJIBAKE_ROUTE_21, "KADIKÖY - ESATPAŞA"),
+    ],
+)
+def test_demojibake_repairs_the_s_and_g_forms_that_dominate_routes_csv(raw: str, expected: str) -> None:
+    assert demojibake(raw) == expected
+
+
 # ---------------------------------------------------------------------------------
 # parse_wkt_point
 # ---------------------------------------------------------------------------------
@@ -478,24 +521,30 @@ def test_fleet_parsing_never_exposes_the_number_plate(load_fixture) -> None:
 
     The İETT fleet feed ships ``Plaka`` for every vehicle. It must not reach the model,
     the lake or an API response — the door number is the only vehicle identifier we use.
+
+    Every real fleet record is re-parsed with a synthetic plate stamped onto it, so the
+    proof does not depend on ``tests/fixtures/iett_fleet.json`` still holding real plates.
+    It should not: the repository is public, and NOTICE.md promises the project stores no
+    personal data. Recorded plates are still checked whenever the fixture has them, so
+    scrubbing the fixture weakens nothing.
     """
     raw = load_fixture("iett_fleet")
-    plates = [row["Plaka"] for row in raw if row.get("Plaka")]
-    assert plates, "fixture must actually contain plates, otherwise this test proves nothing"
+    assert raw, "fixture must contain fleet records, otherwise this test proves nothing"
 
     # No field, on the class or on an instance, is a plate.
     assert "plate" not in BusPosition.model_fields
     assert not [name for name in BusPosition.model_fields if "plaka" in name.lower() or "plate" in name.lower()]
 
+    canary = "34 ZZZ 9999"
     for row in raw:
-        plate = row["Plaka"]
-        bus = BusPosition.from_fleet_raw(row)
-        dumped = bus.model_dump()
-        assert "plate" not in dumped and "plaka" not in {key.lower() for key in dumped}
-        serialised = json.dumps(dumped, default=str, ensure_ascii=False)
-        assert plate not in serialised
-        assert plate.replace(" ", "") not in serialised.replace(" ", "")
-        assert plate not in bus.model_dump_json()
+        for plate in {canary, row.get("Plaka") or canary}:
+            bus = BusPosition.from_fleet_raw({**row, "Plaka": plate})
+            dumped = bus.model_dump()
+            assert "plate" not in dumped and "plaka" not in {key.lower() for key in dumped}
+            serialised = json.dumps(dumped, default=str, ensure_ascii=False)
+            assert plate not in serialised
+            assert plate.replace(" ", "") not in serialised.replace(" ", "")
+            assert plate not in bus.model_dump_json()
 
 
 # ---------------------------------------------------------------------------------
@@ -650,6 +699,25 @@ def test_traffic_index_points_are_ordered_newest_first(load_fixture) -> None:
     points = [TrafficIndexPoint.from_raw(row) for row in load_fixture("traffic_index_1h")]
     times = [p.at for p in points]
     assert times == sorted(times, reverse=True)
+
+
+@pytest.mark.xfail(
+    reason=(
+        "models.TrafficIndexPoint.from_raw does int(parse_number(...) or 0), so a null or "
+        "unparseable TrafficIndex silently becomes 0 — and describe_traffic(0) is 'akıcı'. "
+        "Missing data would be read out to the user as 'trafik akıcı', which is exactly the "
+        "invented number the project forbids. İBB documents the index as 1-99, so 0 is not a "
+        "real reading. Fix in models.py: make `index` optional and leave it None (or reject the "
+        "row) when the field is absent; this test passes under either. Flips to XPASS when fixed."
+    ),
+)
+@pytest.mark.parametrize("missing", [None, "", "n/a"])
+def test_a_missing_traffic_index_is_not_reported_as_free_flowing_traffic(missing: str | None) -> None:
+    point = TrafficIndexPoint.from_raw({"TrafficIndex": missing, "TrafficIndexDate": "2026-09-08T09:00:00"})
+    assert point.index is None or point.index >= 1, (
+        f"TrafficIndex={missing!r} became {point.index!r}, which describe_traffic() renders as "
+        f"{describe_traffic(point.index or 0)!r}"
+    )
 
 
 # ---------------------------------------------------------------------------------

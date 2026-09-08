@@ -41,7 +41,7 @@ from ibb_mcp.models import (
 from ibb_mcp.sources.base import SourceContext, make_provenance
 
 # Turkish-insensitive folding and match ranking are defined once, in the metro source.
-from ibb_mcp.sources.metro import normalize_tr, rank_match
+from ibb_mcp.sources.metro import normalize_tr, rank_match_loose, squash_punctuation
 
 #: Station coordinates and names are static; one day is plenty.
 STATIONS_TTL = 86400.0
@@ -125,12 +125,13 @@ class AirQualitySource:
         query = normalize_tr(name_or_district)
         if not query:
             return None
+        loose_query = squash_punctuation(query)
         stations, _ = await self.stations()
 
         best: tuple[int, int, AirQualityStation] | None = None
         for field_weight, attribute in ((0, "name"), (1, "address")):
             for station in stations:
-                rank = rank_match(query, normalize_tr(getattr(station, attribute)))
+                rank = rank_match_loose(query, loose_query, getattr(station, attribute))
                 if rank is None:
                     continue
                 candidate = (field_weight, rank, station)
@@ -154,14 +155,18 @@ class AirQualitySource:
         if start > end:
             raise ValueError("start, end'den sonra olamaz")
 
+        # Both the URL and the cache key use the hour-floored bounds, so two requests a
+        # few minutes apart share one upstream call *and* the provenance always cites the
+        # window that was actually fetched. Readings land on the hour and ``EndDate`` is
+        # inclusive, so flooring the end loses nothing.
         start_local, end_local = _floor_hour(start), _floor_hour(end)
         # Query params are built by hand: the verified request percent-encodes the space
         # as %20 and the colons as %3A, and we reproduce that byte for byte rather than
         # trusting the client's default form encoding ('+') against a .NET handler.
         url = (
             f"{AQ_READINGS}?StationId={quote(str(station_id), safe='')}"
-            f"&StartDate={quote(_format_ibb(start))}"
-            f"&EndDate={quote(_format_ibb(end))}"
+            f"&StartDate={quote(_format_ibb(start_local))}"
+            f"&EndDate={quote(_format_ibb(end_local))}"
         )
 
         async def load() -> list[dict[str, Any]]:

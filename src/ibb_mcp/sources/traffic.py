@@ -18,12 +18,15 @@ and needs no second request.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from collections.abc import Sequence
 from typing import Any
 
 from ibb_mcp.config import TRAFFIC_INDEX_HISTORY
 from ibb_mcp.models import ISTANBUL_TZ, Provenance, TrafficIndexPoint, describe_traffic
 from ibb_mcp.sources.base import SourceContext, make_provenance
+
+log = logging.getLogger("ibb_mcp.sources.traffic")
 
 #: Aggregation buckets the endpoint accepts. Anything else 404s at the gateway.
 VALID_PERIODS: dict[str, str] = {
@@ -78,6 +81,10 @@ class TrafficSource:
 
         async def load() -> list[dict[str, Any]]:
             if self.ctx.settings.offline:
+                if (days, bucket) != (1, "H"):
+                    # Only the 1/H window was ever recorded; say so rather than let a
+                    # demo quote hourly numbers under a '/7/D' citation in silence.
+                    log.info("offline: only the 1/H traffic fixture exists; serving it for %d/%s", days, bucket)
                 return self.ctx.load_fixture("traffic_index_1h")
             # accept_json=True is load-bearing: the endpoint returns XML by default.
             payload = await self.ctx.client.get_json(url, source="traffic", accept_json=True)
@@ -98,6 +105,16 @@ class TrafficSource:
         points, provenance = await self.index_history(days=1, period="H")
         newest = next((p for p in reversed(points) if p.at is not None), None)
         return newest, provenance
+
+    @staticmethod
+    def compare_with_yesterday(points: Sequence[TrafficIndexPoint]) -> dict[str, Any]:
+        """Method form of :func:`compare_with_yesterday`, for callers holding a source.
+
+        The tool layer reaches the comparison through the source it already has
+        (``self._source("traffic").compare_with_yesterday(...)``); exposing it here keeps
+        that call site working without giving the function hidden state.
+        """
+        return compare_with_yesterday(points)
 
 
 def compare_with_yesterday(points: Sequence[TrafficIndexPoint]) -> dict[str, Any]:

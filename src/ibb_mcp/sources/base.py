@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from ibb_mcp.cache import CacheEntry, TTLCache
 from ibb_mcp.config import SOURCE_URLS, Settings
@@ -33,7 +34,7 @@ class SourceContext:
         client: PoliteClient | None = None,
         cache: TTLCache | None = None,
         settings: Settings | None = None,
-    ) -> "SourceContext":
+    ) -> SourceContext:
         return cls(
             client=client or PoliteClient(),
             cache=cache or TTLCache(),
@@ -67,7 +68,7 @@ def make_provenance(
     url: str | None = None,
 ) -> Provenance:
     """Build the provenance stamp attached to every tool result."""
-    observed = entry.stored_at_utc if entry is not None else dt.datetime.now(dt.timezone.utc)
+    observed = entry.stored_at_utc if entry is not None else dt.datetime.now(dt.UTC)
     return Provenance(
         source=source,
         source_url=url or SOURCE_URLS.get(source, ""),

@@ -79,6 +79,34 @@ def rank_match(query: str, candidate: str) -> int | None:
     return None
 
 
+#: Added to a rank that only survived punctuation squashing, so a hit on the real
+#: spelling always outranks a loose one ("Levent" keeps beating "4.Levent").
+LOOSE_RANK_PENALTY = 3
+
+
+def squash_punctuation(folded: str) -> str:
+    """Keep only letters and digits of an already :func:`normalize_tr`-folded string."""
+    return "".join(ch for ch in folded if ch.isalnum())
+
+
+def rank_match_loose(query: str, loose_query: str, candidate: str | None) -> int | None:
+    """:func:`rank_match` with a punctuation-insensitive second chance.
+
+    İBB spells one station several ways — the payload's ``Name`` says ``AYSE KADIN``,
+    ``50. YIL BASTABYA`` and ``HASTANE - ADLIYE`` where ``Description`` says
+    ``Ayşekadın``, ``50.Yıl-Baştabya`` and ``Hastane-Adliye`` — and a user types a fourth
+    variant. Comparing the squashed forms absorbs spacing, dots and hyphens without
+    loosening the match into per-word soup. ``query``/``loose_query`` are the folded and
+    squashed forms of the user's text, hoisted out of the candidate loop.
+    """
+    folded = normalize_tr(candidate)
+    rank = rank_match(query, folded)
+    if rank is not None:
+        return rank
+    loose = rank_match(loose_query, squash_punctuation(folded))
+    return None if loose is None else loose + LOOSE_RANK_PENALTY
+
+
 def _hex_color(value: Any) -> str | None:
     """Normalise the line colour to ``#RRGGBB``.
 
@@ -189,14 +217,19 @@ class MetroSource:
         Interchange names repeat across lines (``Yenikapı`` appears on M1A, M1B and M2),
         so every matching line is returned rather than an arbitrary winner; the caller
         decides whether to ask which line the user meant.
+
+        Matching falls back to a punctuation-insensitive comparison, because İBB's own
+        two spellings of a station disagree about spaces and hyphens: someone asking for
+        "Hastane Adliye" or "4. Levent" means ``Hastane-Adliye`` and ``4.Levent``.
         """
         query = normalize_tr(name)
         if not query:
             return []
+        loose_query = squash_punctuation(query)
         stations, _ = await self.stations()
         scored: list[tuple[int, str, int, MetroStation]] = []
         for station in stations:
-            rank = rank_match(query, normalize_tr(station.name))
+            rank = rank_match_loose(query, loose_query, station.name)
             if rank is None:
                 continue
             scored.append((rank, station.line_name or "", station.order or 0, station))

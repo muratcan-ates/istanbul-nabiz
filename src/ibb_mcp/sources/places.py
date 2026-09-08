@@ -88,7 +88,7 @@ class PlaceIndex:
 
     # -- construction ------------------------------------------------------------
     @classmethod
-    def load(cls, settings: Settings | None = None) -> "PlaceIndex":
+    def load(cls, settings: Settings | None = None) -> PlaceIndex:
         settings = settings or Settings.from_env()
         path = settings.places_csv
         if not path.exists():

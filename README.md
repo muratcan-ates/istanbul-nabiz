@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/muratcan-ates/istanbul-nabiz/actions)
 [![tests](https://img.shields.io/badge/tests-see%20CI-lightgrey)](https://github.com/muratcan-ates/istanbul-nabiz/actions)
 [![licence](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
-[![data](https://img.shields.io/badge/data-%C4%B0BB%20Open%20Data%20(CC%20BY%204.0)-blue)](https://data.ibb.gov.tr/license)
+[![data](https://img.shields.io/badge/data-%C4%B0BB%20Open%20Data%20%C2%B7%20CC%20BY%204.0-blue)](https://data.ibb.gov.tr/license)
 [![python](https://img.shields.io/badge/python-3.12-blue)](pyproject.toml)
 
 > **This is not an official İBB service.** İstanbul Nabız is an independent student project. It is not
@@ -31,7 +31,7 @@ city agent as its first client. Four journeys drive the design; each one is also
 
 | # | Who | The question | Tool chain | What the answer contains |
 |---|---|---|---|---|
-| **J1** | Driver | *"I'm reaching Taksim in 20 minutes — which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | up to 5 car parks, live free spaces, tariff text as published, walking distance, "usually X% full at this hour", update stamp |
+| **J1** | Driver | *"I'm reaching Taksim in 20 minutes — which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | up to 5 car parks, live free spaces, tariff text as published, straight-line distance, "usually X% full at this hour", update stamp |
 | **J2** | Bus passenger | *"When does the 500T get to Kadıköy?"* | `iett_stops_search` → `iett_next_arrivals` | nearest vehicles, how many stops away, estimated minutes, how the estimate was derived, last position time, planned departure |
 | **J3** | Metro passenger / accessibility | *"Any disruption on M4? Is there a lift at Kartal?"* | `metro_status` → `metro_station_info` | live disruption notices, lift / escalator / baby room / WC / prayer room per station |
 | **J4** | Runner, parent | *"When is the air good enough for a run in Beşiktaş today?"* | `air_quality_now` → `air_quality_forecast` | current AQI and dominant pollutant, hourly PM10 outlook, best window, health note |
@@ -61,8 +61,8 @@ honestly what runs today.
 |---|---|---|
 | İBB client, cache, models, GTFS repair, ETA engine | **working** | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py` |
 | 12 tool implementations behind one façade | **working** | `src/ibb_mcp/tools.py`, `src/ibb_mcp/sources/` |
-| Recorded fixtures for all 6 upstreams + test suite | **working** | `tests/fixtures/`, `tests/` |
-| MCP server entry point (`ibb-mcp`, stdio + streamable HTTP) | **planned** — Day 2 | `src/ibb_mcp/server.py` |
+| Recorded fixtures for all 6 upstreams + fixture-backed test suite (188 passed, 6 xfailed, no network — Day 0) | **working** | `tests/fixtures/`, `tests/` |
+| MCP server entry point (`ibb-mcp`, stdio + streamable HTTP), 12 tools + `ibb://attribution` | **working** — stdio verified against a real MCP client | `src/ibb_mcp/server.py` |
 | Collector Functions, Delta Lake, ADX tables | **planned** — Day 1 | `src/nabiz/collector/`, `kql/` |
 | Agent (Microsoft Agent Framework) and web UI | **planned** — Days 4–5 | `src/nabiz/{agent,web}/` |
 | Bicep + `azd` infrastructure, GitHub Actions CI | **planned** — Day 1 | `infra/`, `.github/workflows/` |
@@ -174,7 +174,7 @@ uv pip install -e ".[dev]"
 
 # Run the tests — no network is touched: the fixture-backed transport in
 # tests/conftest.py raises if any test tries to reach İBB.
-pytest -q
+pytest -q          # Day 0: 188 passed, 6 xfailed in 0.2s
 ```
 
 **Reference data.** `data/reference/places.csv` (276 places: metro stations, air-quality stations,
@@ -183,10 +183,16 @@ export is *not* committed (1.5 MB `stops.csv` + 812 KB `routes.csv`); download i
 `data/reference/gtfs/` — `ibb_mcp.gtfs.download_gtfs` does this, and the resource URLs are recorded in
 `tests/fixtures/gtfs_resources.json`.
 
-**Probe the live endpoints** (optional, hits İBB — see the politeness note above):
+**Check the environment** — `scripts/probe_day0.py` is the pre-flight gate: 21 numbered checks over the
+local toolchain, the Azure subscription's regional constraints, the six İBB endpoints and the live-bus →
+GTFS join, printed as a PASS/FAIL/SKIP table with a "next actions" block and written to
+`docs/day0_report.json`. Exit code 0 when nothing failed, so it also works as a CI gate.
 
 ```bash
-python scripts/capture_fixtures.py     # 11 calls, ≥ 7 s apart -> tests/fixtures/
+./.venv/bin/python scripts/probe_day0.py               # toolchain + İBB + GTFS (6 gateway calls, 6 s apart)
+./.venv/bin/python scripts/probe_day0.py --no-network  # local checks only, safe to re-run
+./.venv/bin/python scripts/probe_day0.py --azure       # ... plus the az subscription checks
+./.venv/bin/python scripts/capture_fixtures.py         # re-record tests/fixtures/ (11 calls, ≥ 7 s apart)
 ```
 
 **Offline mode.** `NABIZ_OFFLINE=1` makes every source read from `tests/fixtures/` instead of the network,
@@ -194,15 +200,18 @@ which is how the demo stays reproducible on a bad conference wifi. Other setting
 `NABIZ_GTFS_DIR`, `NABIZ_PLACES_CSV`, `NABIZ_FIXTURES_DIR`, `NABIZ_RADIUS_KM`, `NABIZ_MAX_RESULTS`
 (`src/ibb_mcp/config.py`).
 
-**Run the MCP server** — *planned, Day 2*. The console entry point `ibb-mcp` is declared in
-`pyproject.toml`; `src/ibb_mcp/server.py` lands with the MCP wiring:
+**Run the MCP server.** `src/ibb_mcp/server.py` registers all 12 tools plus an
+`ibb://attribution` resource on the console entry point `ibb-mcp` declared in `pyproject.toml`.
+Verified over stdio against a real MCP client on Day 0; the *hosted* HTTP deployment on Container
+Apps is still Day 3:
 
 ```bash
-ibb-mcp                 # stdio transport, for a local client   (planned)
-ibb-mcp --http --port 8080   # streamable HTTP, as deployed on Container Apps   (planned)
+ibb-mcp                                  # stdio transport, for a local client
+ibb-mcp --offline                        # stdio, served from tests/fixtures (reproducible demo)
+ibb-mcp --transport http --port 8080     # streamable HTTP, the shape deployed on Container Apps
 ```
 
-Until then the same 12 tools are callable directly from Python:
+The same 12 tools are also callable directly from Python, which is how the contract tests drive them:
 
 ```python
 import asyncio
@@ -300,8 +309,9 @@ ilk müşterisi olarak bir şehir ajanı sunar. Her sayının yanında kaynağı
   bulunmayan hiçbir sayıyı kabul etmez.
 
 **Durum:** yedi günlük sprintin 0. günü. Bugün çalışan: İBB istemcisi, önbellek, modeller, GTFS onarımı,
-ETA motoru, 12 aracın uygulaması ve fixture tabanlı test paketi. Planlanan: MCP sunucu giriş noktası
-(2. gün), toplayıcı + ADX (1. gün), ajan ve web arayüzü (4–5. gün), Bicep/`azd` ve CI (1. gün), eval
+ETA motoru, 12 aracın uygulaması, fixture tabanlı test paketi ve **MCP sunucusu** (`ibb-mcp`; stdio
+üzerinden gerçek bir MCP istemcisiyle doğrulandı). Planlanan: toplayıcı + ADX (1. gün), MCP'nin Container
+Apps üzerinde barındırılması (3. gün), ajan ve web arayüzü (4–5. gün), Bicep/`azd` ve CI (1. gün), eval
 (5. gün). Ayrıntılı tablo yukarıdaki *Project status* bölümünde; kararların gerekçesi
 [DECISIONS.md](DECISIONS.md) içinde; kurulum [docs/mcp-usage.md](docs/mcp-usage.md) içinde.
 

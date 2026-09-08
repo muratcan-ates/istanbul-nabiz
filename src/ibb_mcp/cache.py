@@ -17,12 +17,12 @@ import asyncio
 import datetime as dt
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
 
 log = logging.getLogger("ibb_mcp.cache")
 
-T = TypeVar("T")
 
 #: Per-source time-to-live in seconds. Tuned to how fast the upstream actually moves and
 #: to how hard we are willing to hit the gateway.
@@ -40,7 +40,7 @@ DEFAULT_TTL = {
 
 
 @dataclass
-class CacheEntry(Generic[T]):
+class CacheEntry[T]:
     value: T
     stored_at: float
     stored_at_utc: dt.datetime
@@ -83,7 +83,7 @@ class TTLCache:
     def peek(self, key: str) -> CacheEntry[Any] | None:
         return self._entries.get(key)
 
-    async def get_or_fetch(
+    async def get_or_fetch[T](
         self,
         key: str,
         loader: Callable[[], Awaitable[T]],
@@ -128,7 +128,7 @@ class TTLCache:
             new_entry = CacheEntry(
                 value=value,
                 stored_at=now,
-                stored_at_utc=dt.datetime.now(dt.timezone.utc),
+                stored_at_utc=dt.datetime.now(dt.UTC),
                 ttl=effective_ttl,
             )
             self._entries[key] = new_entry
@@ -148,7 +148,7 @@ class TTLCache:
         for source, stats in self.stats.items():
             age = None
             if stats.last_success_utc is not None:
-                age = (dt.datetime.now(dt.timezone.utc) - stats.last_success_utc).total_seconds()
+                age = (dt.datetime.now(dt.UTC) - stats.last_success_utc).total_seconds()
             out[source] = {
                 "last_success_utc": stats.last_success_utc.isoformat() if stats.last_success_utc else None,
                 "age_seconds": None if age is None else round(age, 1),

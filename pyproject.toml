@@ -40,7 +40,7 @@ asyncio_mode = "auto"
 filterwarnings = ["error::DeprecationWarning:ibb_mcp.*"]
 
 [tool.ruff]
-line-length = 120
+line-length = 130
 target-version = "py312"
 
 [tool.ruff.lint]

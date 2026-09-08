@@ -118,7 +118,7 @@ def parse_ibb_datetime(value: str | None) -> dt.datetime | None:
     formats = ("%d.%m.%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S")
     for fmt in formats:
         try:
-            return dt.datetime.strptime(text, fmt).replace(tzinfo=ISTANBUL_TZ).astimezone(dt.timezone.utc)
+            return dt.datetime.strptime(text, fmt).replace(tzinfo=ISTANBUL_TZ).astimezone(dt.UTC)
         except ValueError:
             continue
     # Bare clock time (İETT fleet "Saat"): assume today in Istanbul.
@@ -127,7 +127,7 @@ def parse_ibb_datetime(value: str | None) -> dt.datetime | None:
     except ValueError:
         return None
     today = dt.datetime.now(ISTANBUL_TZ).date()
-    return dt.datetime.combine(today, clock, tzinfo=ISTANBUL_TZ).astimezone(dt.timezone.utc)
+    return dt.datetime.combine(today, clock, tzinfo=ISTANBUL_TZ).astimezone(dt.UTC)
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -141,7 +141,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def utcnow() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return dt.datetime.now(dt.UTC)
 
 
 # --------------------------------------------------------------------------------------
@@ -213,7 +213,7 @@ class ParkingLot(BaseModel):
         return round(100.0 * (self.capacity - self.empty) / self.capacity, 1)
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "ParkingLot":
+    def from_raw(cls, raw: dict[str, Any]) -> ParkingLot:
         return cls(
             park_id=int(raw["parkID"]),
             name=str(raw.get("parkName") or "").strip(),
@@ -257,7 +257,7 @@ class BusPosition(BaseModel):
     operator: str | None = None
 
     @classmethod
-    def from_line_raw(cls, raw: dict[str, Any]) -> "BusPosition":
+    def from_line_raw(cls, raw: dict[str, Any]) -> BusPosition:
         """Parse a ``GetHatOtoKonum_json`` record (per-line query)."""
         return cls(
             door_no=str(raw.get("kapino") or "").strip(),
@@ -272,7 +272,7 @@ class BusPosition(BaseModel):
         )
 
     @classmethod
-    def from_fleet_raw(cls, raw: dict[str, Any]) -> "BusPosition":
+    def from_fleet_raw(cls, raw: dict[str, Any]) -> BusPosition:
         """Parse a ``GetFiloAracKonum_json`` record (whole fleet). Plate is discarded."""
         return cls(
             door_no=str(raw.get("KapiNo") or "").strip(),
@@ -326,7 +326,7 @@ class PlannedDeparture(BaseModel):
     service_type: str | None = None
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "PlannedDeparture":
+    def from_raw(cls, raw: dict[str, Any]) -> PlannedDeparture:
         return cls(
             line_code=str(raw.get("SHATKODU") or "").strip(),
             route_code=(raw.get("SGUZERAH") or "").strip() or None,
@@ -375,7 +375,7 @@ class MetroLineStatus(BaseModel):
     color: str | None = None
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "MetroLineStatus":
+    def from_raw(cls, raw: dict[str, Any]) -> MetroLineStatus:
         return cls(
             line_id=int(v) if (v := parse_number(raw.get("LineId"))) is not None else None,
             line_name=(raw.get("LineName") or "").strip() or None,
@@ -405,7 +405,7 @@ class MetroStation(BaseModel):
         return None if self.lifts is None else self.lifts > 0
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "MetroStation":
+    def from_raw(cls, raw: dict[str, Any]) -> MetroStation:
         detail = raw.get("DetailInfo") or {}
         return cls(
             station_id=int(v) if (v := parse_number(raw.get("Id"))) is not None else None,
@@ -430,7 +430,7 @@ class TrafficIndexPoint(BaseModel):
     at: dt.datetime | None = None
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "TrafficIndexPoint":
+    def from_raw(cls, raw: dict[str, Any]) -> TrafficIndexPoint:
         return cls(
             index=int(parse_number(raw.get("TrafficIndex")) or 0),
             at=parse_ibb_datetime(raw.get("TrafficIndexDate")),
@@ -461,7 +461,7 @@ class AirQualityStation(BaseModel):
     distance_km: float | None = None
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "AirQualityStation":
+    def from_raw(cls, raw: dict[str, Any]) -> AirQualityStation:
         lat, lon = parse_wkt_point(raw.get("Location"))
         return cls(
             station_id=str(raw["Id"]),
@@ -492,7 +492,7 @@ class AirQualityReading(BaseModel):
     color: str | None = None
 
     @classmethod
-    def from_raw(cls, raw: dict[str, Any]) -> "AirQualityReading":
+    def from_raw(cls, raw: dict[str, Any]) -> AirQualityReading:
         conc = raw.get("Concentration") or {}
         aqi = raw.get("AQI") or {}
         return cls(
