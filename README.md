@@ -120,18 +120,29 @@ hit identical code and identical numbers. See [DECISIONS.md](DECISIONS.md) for w
 
 ## Results
 
-**Every number below is a placeholder until the Day-5 eval run.** They are written by
-`eval/run_eval.py` into `eval/results/` and copied here from that file — not estimated, not rounded up
-from a demo, not filled in by hand.
+Numbers are copied from `eval/results/` — not estimated, not rounded up from a demo, not filled in by
+hand. Where a metric cannot yet be computed, it says so and why, rather than being quietly omitted.
 
 | Metric | Result | How it is measured |
 |---|---|---|
-| Task success rate | `[pending Day 5 eval]` | 24 journey scenarios (J1–J4 × 6, 12 TR / 12 EN) in `eval/journeys.jsonl`; a scenario passes when the expected fields are present, the forbidden hedges ("guaranteed", "kesin") are absent and every figure is attributable |
-| Bus ETA mean absolute error | `[pending Day 5 eval]` (n = `[pending]` arrivals) | every estimate is written to `eta_log` with its method; the collector later marks the vehicle's real arrival at that stop, giving a measured error rather than a self-reported one |
-| Numeric faithfulness | `[pending Day 5 eval]` | share of numbers in the agent's answer that appear in a tool result (TR `12,5` / `1.250` normalised) |
-| Tool-call accuracy | `[pending Day 5 eval]` | called tool chain vs. the expected chain per scenario |
-| p95 end-to-end latency | `[pending Day 5 eval]` | question → answer, measured in the eval harness, cache warm |
-| Data freshness at answer time | `[pending Day 5 eval]` | median age of the reading behind each answer, from `city_freshness` |
+| Task success rate | **13/13 (100%)** live, 24/24 offline | 24 journey scenarios (J1–J4 × 6, 12 TR / 12 EN) in `eval/journeys.jsonl`; a scenario passes when the expected fields are present, the forbidden hedges ("guaranteed", "kesin") are absent and every figure is attributable. The live run exercises 13 and caps the rest to stay inside the gateway budget |
+| Bus ETA mean absolute error | **16.6 min** (n = 606 observed arrivals) — *not yet shippable, see below* | every estimate is written to `eta_predictions` with its method; the collector later observes the vehicle actually reaching that stop, giving a measured error rather than a self-reported one |
+| — within 5 minutes | 20.8% | same sample |
+| — by method | `stop_sequence` 16.8 min (n=500) · `distance` 15.3 min (n=106) | `make eta` |
+| Tool success rate | 34/34 offline, 19/19 live | every tool call in the eval returns or refuses exactly where it should |
+| Number-plate leaks | **0** | asserted in the test suite and by `scripts/guardrails.py`, not just promised |
+| Numeric faithfulness | n/a — deterministic mode generates no free text | needs an LLM; blocked on Azure OpenAI quota (ADR 5) |
+| Tool-call accuracy | n/a — the harness calls the expected chain itself | only an agent can pick the wrong tool |
+| p95 end-to-end latency | 27 ms offline · 17.8 s live cold | live includes our own ≥6 s per-host spacing before each upstream call — politeness, not İBB being slow |
+| Data freshness at answer time | 48 s median live | age of the reading itself, from `provenance.reported_at` |
+
+**About that ETA number.** 16.6 minutes is bad and we publish it anyway, because the harness exists to
+catch exactly this. `make eta-diagnose` separates the two causes: the per-stop rate is too low for an
+express line (235 s/stop fits the data against the untuned 120), *and* a residual constant inflates every
+observation. One source of the constant is already fixed — the first targets included a route terminus,
+where a bus on layover keeps reporting the stop as nearest and the rest break was counted as travel.
+Calibration is applied from the collected history rather than guessed; before/after is in
+`eval/results/eta.md`.
 
 Groundedness and relevance are additionally scored with `azure-ai-evaluation`, with the judge model
 selected by the same environment switch as the agent (ADR 5).
