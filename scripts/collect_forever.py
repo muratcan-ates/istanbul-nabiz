@@ -78,12 +78,25 @@ STATE_PATH = ROOT / "data" / "lake" / ".collector_state.json"
 #: reference route (Şifa Sondurak <-> 4. Levent Metro, 64 stops).
 WATCHED_LINES: tuple[str, ...] = ("500T", "34", "15F")
 
-#: (line, stop_code) pairs the ETA is predicted for every watched-line tick. Each stop is
-#: mid-route rather than a terminus: predicting arrival at a terminus is trivially easy
-#: and would flatter the error.
+#: (line, stop_code) pairs the ETA is predicted for on every watched-line tick.
+#:
+#: All mid-route, and that is a correction rather than a preference. The first run used
+#: ``301341`` (4. LEVENT METRO), which is the *terminus* of 500T. A bus sits there on
+#: layover while still reporting it as its nearest stop, so "arrival" absorbed the whole
+#: rest break: fitting the 161 resolved predictions gave ``actual ≈ 17 min + 1.6 min/stop``,
+#: and a 17-minute constant is not a property of traffic. Terminus targets were dropped
+#: before any calibration was attempted, because calibrating against a measurement
+#: artefact would have baked it into the engine.
+#:
+#: Positions are taken at roughly 30%, 50% and 70% along each route so the sample spans
+#: both free-flowing and congested sections.
 ETA_TARGETS: tuple[tuple[str, str], ...] = (
-    ("500T", "224661"),  # KARAKAYA, towards 4. Levent
-    ("500T", "301341"),  # 4.LEVENT METRO
+    ("500T", "205501"),  # ATATÜRK CADDESİ (~30% along)
+    ("500T", "261262"),  # MEHMET ALİ TUNGA CAMİ (~50%)
+    ("500T", "206042"),  # ANADOLU ADALET SARAYI (~70%)
+    ("15F", "219532"),  # PAŞABAHÇE (~30%)
+    ("15F", "260141"),  # ŞEHİT MURAT AKDEMİR (~50%)
+    ("34", "900121"),  # DARÜLACEZE PERPA (~50%, metrobüs)
 )
 
 INTERVALS_S = {

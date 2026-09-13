@@ -77,29 +77,66 @@ def parse_ts(value: str | None) -> dt.datetime | None:
         return None
 
 
-def observed_arrivals(snapshots: list[dict]) -> dict[tuple[str, str, str], list[dt.datetime]]:
-    """When each vehicle was first seen at each stop, per continuous visit.
+def _sequences() -> dict:
+    """Route stop orders, used to tell a real approach from a layover. Optional."""
+    try:
+        from ibb_mcp.config import Settings
+        from ibb_mcp.gtfs import load_stop_sequences
 
-    A vehicle sits at (or beside) a stop for several ticks and returns on the next trip,
-    so consecutive ticks reporting the same stop collapse into one arrival and a later
-    return is recorded as a second one.
+        return load_stop_sequences(Settings.from_env())
+    except Exception:  # noqa: BLE001 - the report still works without them, just looser
+        return {}
+
+
+def observed_arrivals(
+    snapshots: list[dict],
+    *,
+    require_approach: bool = True,
+) -> dict[tuple[str, str, str], list[dt.datetime]]:
+    """When each vehicle actually arrived at each stop, having travelled to it.
+
+    Consecutive ticks reporting the same stop collapse into one arrival, and a later
+    return is a second one.
+
+    ``require_approach`` is the part that matters. Without it, *any* first sighting at a
+    stop counts, which quietly includes two things that are not arrivals:
+
+    * a bus resting at a terminus, still reporting it as nearest for the whole layover,
+    * a bus reaching the stop on the opposite direction's run.
+
+    Both inflate the measured travel time. With the route stop order available, an arrival
+    is recorded only when the vehicle's previous sighting was at an *earlier* stop on the
+    same route — that is, it moved forward into this one. When no sequence is known for a
+    route the check cannot be applied and the sighting is kept, so the report degrades
+    rather than silently dropping data.
     """
-    by_vehicle: dict[tuple[str, str], list[tuple[dt.datetime, str]]] = collections.defaultdict(list)
+    sequences = _sequences() if require_approach else {}
+
+    by_vehicle: dict[tuple[str, str], list[tuple[dt.datetime, str, str | None]]] = collections.defaultdict(list)
     for row in snapshots:
         stamp = parse_ts(row.get("snapshot_ts_utc"))
         stop = row.get("nearest_stop_code")
         if stamp is None or not stop:
             continue
-        by_vehicle[(row["line_code"], row["door_no"])].append((stamp, stop))
+        by_vehicle[(row["line_code"], row["door_no"])].append((stamp, stop, row.get("route_code")))
 
     arrivals: dict[tuple[str, str, str], list[dt.datetime]] = collections.defaultdict(list)
     for (line, door), entries in by_vehicle.items():
         entries.sort()
-        previous_stop: str | None = None
-        for stamp, stop in entries:
-            if stop != previous_stop:
-                arrivals[(line, door, stop)].append(stamp)
-            previous_stop = stop
+        previous: tuple[str, str | None] | None = None
+        for stamp, stop, route in entries:
+            if previous is None or previous[0] != stop:
+                approached = True
+                if require_approach and previous is not None:
+                    sequence = sequences.get(route or "") or sequences.get(previous[1] or "")
+                    if sequence is not None:
+                        here = sequence.position_of(stop)
+                        before = sequence.position_of(previous[0])
+                        # Both known and moving forward, or the check does not apply.
+                        approached = here is None or before is None or before < here
+                if approached:
+                    arrivals[(line, door, stop)].append(stamp)
+            previous = (stop, route)
     return arrivals
 
 
@@ -222,17 +259,89 @@ def render(report: dict) -> str:
     return "\n".join(lines)
 
 
+def diagnose(predictions: list[dict], arrivals: dict[tuple[str, str, str], list[dt.datetime]]) -> str:
+    """Ask whether the error is the model's fault or the measurement's.
+
+    The engine predicts ``stops_away * seconds_per_stop``, a straight line through the
+    origin. If that shape is right, the best-fitting rate should beat the current default.
+    If instead the best fit needs a large constant term, the extra time is being added
+    before the journey starts — which is a property of how arrivals are observed, not of
+    traffic, and calibrating the rate against it would bake the artefact into the engine.
+
+    On the first 115 resolved predictions (500T, one evening) both signals appeared at
+    once: the best pure rate, 165 s/stop, does beat the untuned 120 s/stop default
+    (12.8 min against 14.3), *and* adding a ~17 minute constant cuts the error further to
+    8.8. So the rate is genuinely too low for an express line in evening traffic, and
+    something is also inflating every observation by a fixed amount. Only the first is
+    safe to act on; a 17-minute constant is not a bus leaving a stop.
+
+    A caution learned the hard way here: bound the rate search wide. An earlier ad-hoc
+    scan capped it at 90 s/stop, hit the boundary, and concluded no rate could help —
+    the opposite of the truth.
+    """
+    samples: dict[str, list[tuple[int, float]]] = collections.defaultdict(list)
+    for prediction in predictions:
+        made_at = parse_ts(prediction.get("predicted_at_utc"))
+        stops_away = prediction.get("stops_away")
+        if made_at is None or not stops_away or stops_away <= 0:
+            continue
+        key = (prediction["line_code"], prediction["door_no"], prediction["stop_code"])
+        candidates = [t for t in arrivals.get(key, []) if made_at <= t <= made_at + MATCH_HORIZON]
+        if candidates:
+            samples[prediction["line_code"]].append(
+                (int(stops_away), (min(candidates) - made_at).total_seconds() / 60.0)
+            )
+
+    if not samples:
+        return "No resolved stop-sequence predictions yet; nothing to diagnose."
+
+    out = ["## Diagnosis: model error or measurement error?", ""]
+    out += ["| Line | n | current 120 s/stop | best rate alone | best constant + rate |", "|---|---|---|---|---|"]
+    verdicts: list[str] = []
+    for line, data in sorted(samples.items()):
+        current = statistics.fmean(abs(n * 2.0 - actual) for n, actual in data)
+        best_rate = min(
+            ((r, statistics.fmean(abs(n * r / 60 - actual) for n, actual in data)) for r in range(10, 900, 5)),
+            key=lambda item: item[1],
+        )
+        best_pair = min(
+            (
+                (c / 2, r, statistics.fmean(abs(c / 2 + n * r / 60 - actual) for n, actual in data))
+                for c in range(0, 60, 1)
+                for r in range(10, 600, 10)
+            ),
+            key=lambda item: item[2],
+        )
+        out.append(
+            f"| {line} | {len(data)} | {current:.1f} min | {best_rate[0]} s/stop -> {best_rate[1]:.1f} min | "
+            f"{best_pair[0]:.1f} min + {best_pair[1]} s/stop -> {best_pair[2]:.1f} min |"
+        )
+        if best_pair[0] >= 5 and best_rate[1] >= current:
+            verdicts.append(
+                f"- **{line}: measurement, not model.** No per-stop rate beats the untuned default, and the "
+                f"best fit needs a {best_pair[0]:.0f}-minute constant. Fix how arrivals are observed before "
+                f"tuning the engine."
+            )
+        else:
+            verdicts.append(f"- **{line}: the rate is tunable.** {best_rate[0]} s/stop would cut the error.")
+    return "\n".join(out + ["", *verdicts])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", type=pathlib.Path, help="also write the raw report here")
+    parser.add_argument("--diagnose", action="store_true", help="is the error the model's or the measurement's?")
     args = parser.parse_args(argv)
 
     predictions = read_source("eta_predictions")
     snapshots = read_source("iett_line_snapshot")
-    report = score(predictions, observed_arrivals(snapshots))
+    arrivals = observed_arrivals(snapshots)
+    report = score(predictions, arrivals)
     report["snapshot_rows"] = len(snapshots)
 
     text = render(report)
+    if args.diagnose:
+        text += "\n\n" + diagnose(predictions, arrivals)
     print(text)
 
     out = ROOT / "eval" / "results" / "eta.md"

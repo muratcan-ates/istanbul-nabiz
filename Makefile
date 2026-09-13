@@ -84,6 +84,9 @@ collect-stop:  ## stop a detached collector
 eta:  ## measure arrival-estimate error against observed arrivals (no network)
 	$(PY) scripts/eta_report.py
 
+eta-diagnose:  ## is the arrival error the model's fault or the measurement's? (no network)
+	$(PY) scripts/eta_report.py --diagnose
+
 warmup:  ## NETWORK prime the caches before recording a demo
 	$(PY) scripts/warmup.py
 
