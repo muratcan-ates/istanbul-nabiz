@@ -109,7 +109,9 @@ def report(profile: OccupancyProfile, target: pathlib.Path | None) -> dict[str, 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", type=pathlib.Path, default=None, help="output path (default: data/reference/occupancy_profile.json)")
+    parser.add_argument(
+        "--out", type=pathlib.Path, default=None, help="output path (default: data/reference/occupancy_profile.json)"
+    )
     parser.add_argument("--dry-run", action="store_true", help="compute and report, but do not write the file")
     parser.add_argument("--json", action="store_true", help="also print the coverage stats as JSON")
     args = parser.parse_args()

@@ -1,0 +1,43 @@
+{
+ "schema_version": 1,
+ "generated_at": "2026-09-13T15:00:23.037729+00:00",
+ "min_samples": 20,
+ "default_seconds_per_stop": 120.0,
+ "constant_seconds": 0.0,
+ "overall": {
+  "seconds_per_stop": 230.0,
+  "samples": 503,
+  "mae_minutes": 12.37,
+  "baseline_mae_minutes": 16.76
+ },
+ "lines": {
+  "500T": {
+   "seconds_per_stop": 230.0,
+   "samples": 503,
+   "mae_minutes": 12.37,
+   "baseline_mae_minutes": 16.76
+  }
+ },
+ "cells": {
+  "500T|evening": {
+   "seconds_per_stop": 385.0,
+   "samples": 60,
+   "mae_minutes": 7.65,
+   "baseline_mae_minutes": 13.22
+  },
+  "500T|midday": {
+   "seconds_per_stop": 250.0,
+   "samples": 342,
+   "mae_minutes": 11.52,
+   "baseline_mae_minutes": 18.2
+  },
+  "500T|night": {
+   "seconds_per_stop": 160.0,
+   "samples": 101,
+   "mae_minutes": 12.54,
+   "baseline_mae_minutes": 13.96
+  }
+ },
+ "refused": {},
+ "note": "Fitted by scripts/calibrate_eta.py from eta_predictions x iett_line_snapshot. Rate only; constant_seconds is deliberately 0.0."
+}

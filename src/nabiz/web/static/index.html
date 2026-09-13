@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>İstanbul Nabız — canlı şehir verisi</title>
-<meta name="description" content="İBB açık verisiyle otopark, otobüs, metro, trafik ve hava kalitesi. Bağımsız öğrenci projesi; resmi değildir.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E">
+<meta name="description" content="İBB açık verisiyle otopark, otobüs, metro, trafik ve hava kalitesi. Her kart verinin yaşını gösterir. Bağımsız öğrenci projesi; resmi değildir.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e13" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c2142c'/%3E%3Cpath d='M4 17h5l2.5-7 4 13 3-9 2 3h7' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/style.css">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-<!-- The map library is the only third-party asset on the page. If the CDN is blocked the
-     onerror handler fires, app.js sees the flag and the page falls back to a list-only
-     view rather than throwing. -->
+<link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+<!-- The map library is the only third-party asset on the page. If the CDN is blocked or
+     404s, the onerror handler fires, app.js sees the flag and the answer is rendered as a
+     location list instead — the page never depends on a network it does not control.
+     Append ?nomap=1 to the URL to exercise that fallback deliberately. -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script defer src="/config.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="window.NABIZ_MAP_BLOCKED = true"></script>
@@ -20,56 +24,171 @@
 <body>
 <a class="skip-link" href="#results">İçeriğe atla</a>
 
+<!-- Icon sprite. Inline so the page keeps working with zero extra requests. -->
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-park" viewBox="0 0 24 24"><path d="M8.5 17V7h3.7a3.15 3.15 0 0 1 0 6.3H8.5"/><rect x="3" y="3" width="18" height="18" rx="4"/></symbol>
+  <symbol id="i-bus" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="14" rx="3"/><path d="M4 10h16M7.5 21v-2M16.5 21v-2"/><circle cx="8" cy="14" r="1.1"/><circle cx="16" cy="14" r="1.1"/></symbol>
+  <symbol id="i-metro" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="13" rx="4"/><path d="M5 10h14M8 21l2-3M16 21l-2-3"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/></symbol>
+  <symbol id="i-air" viewBox="0 0 24 24"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8"/></symbol>
+  <symbol id="i-traffic" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4.2-5"/><circle cx="12" cy="18" r="1.4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><path d="M12 3v18M7 6h10l-2 3 2 3H7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.4l3.2 2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.5 2.9 20h18.2L12 4.5Z"/><path d="M12 10v4.2M12 17.2v.1"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.6 2.6L16 9.5"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="6" r="2.6"/><path d="M8.6 18h5.4a3.4 3.4 0 0 0 0-6.8h-4a3.4 3.4 0 0 1 0-6.8h1.4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 0-18 0"/><path d="M12 12l5-3"/><circle cx="12" cy="12" r="1.3"/></symbol>
+</svg>
+
 <header class="topbar">
-  <div class="brand">
-    <span class="pulse" aria-hidden="true"></span>
-    <div class="brand-text">
-      <h1>İstanbul Nabız</h1>
-      <p class="tagline">Otopark · otobüs · metro · trafik · hava kalitesi — canlı İBB açık verisi</p>
+  <div class="wrap topbar-inner">
+    <a class="brand" href="/" aria-label="İstanbul Nabız ana sayfa">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M3 17h5l2.6-7.4L14.9 23l3.1-9.3 2 3.3H29"/></svg>
+        <i class="brand-pulse"></i>
+      </span>
+      <span class="brand-text">
+        <b>İstanbul Nabız</b>
+        <small>canlı şehir verisi · bağımsız</small>
+      </span>
+    </a>
+
+    <div class="topbar-actions">
+      <span class="live-pill" id="live-pill" title="Kaynakların genel durumu">
+        <i class="dot" aria-hidden="true"></i><span id="live-pill-text">bağlanıyor…</span>
+      </span>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Renk temasını değiştir" title="Tema: sistem">
+        <svg class="icon" aria-hidden="true"><use href="#i-theme"></use></svg>
+      </button>
+      <span class="badge-unofficial" title="Bağımsız öğrenci projesi. İBB, İETT, İSPARK veya Metro İstanbul ile bağlantısı yoktur.">resmî değildir</span>
     </div>
   </div>
-  <span class="badge-unofficial" title="Bağımsız öğrenci projesi. İBB, İETT, İSPARK veya Metro İstanbul ile bağlantısı yoktur.">resmî değildir</span>
 </header>
 
-<main>
-  <section class="ask" aria-labelledby="ask-title">
-    <h2 id="ask-title" class="sr-only">Soru sor</h2>
-    <form id="ask-form" autocomplete="off">
+<main class="wrap">
+  <section class="hero" aria-labelledby="hero-title">
+    <h1 id="hero-title">Şehrin verisi, <em>yaşıyla birlikte</em>.</h1>
+    <p class="hero-sub">
+      Otopark, otobüs, metro, trafik ve hava kalitesi — doğrudan İBB açık veri uçlarından.
+      Her kart, gördüğünüz sayının <strong>ne zaman ölçüldüğünü</strong> söyler.
+    </p>
+
+    <form id="ask-form" autocomplete="off" role="search">
       <label class="sr-only" for="q">Sorunuz</label>
+      <span class="ask-icon" aria-hidden="true"><svg class="icon"><use href="#i-search"></use></svg></span>
       <input id="q" name="q" type="search" enterkeyhint="search" placeholder="Taksim'de otopark var mı?" aria-describedby="ask-hint">
-      <button type="submit">Sor</button>
+      <button type="submit" id="ask-submit">
+        <span>Sor</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+      </button>
     </form>
 
     <div class="chips" role="group" aria-label="Örnek sorular">
-      <button type="button" class="chip" data-journey="parking" data-place="Taksim">Taksim'de otopark var mı?</button>
-      <button type="button" class="chip" data-journey="bus" data-line="500T">500T ne zaman gelir?</button>
-      <button type="button" class="chip" data-journey="metro" data-line="M4">M4'te arıza var mı?</button>
-      <button type="button" class="chip" data-journey="air" data-place="Beşiktaş">Beşiktaş'ta hava nasıl?</button>
+      <button type="button" class="chip" data-journey="parking" data-place="Taksim" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-park"></use></svg><span class="chip-label">Taksim'de otopark var mı?</span>
+      </button>
+      <button type="button" class="chip" data-journey="bus" data-line="500T" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-bus"></use></svg><span class="chip-label">500T ne zaman gelir?</span>
+      </button>
+      <button type="button" class="chip" data-journey="metro" data-line="M4" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-metro"></use></svg><span class="chip-label">M4'te arıza var mı?</span>
+      </button>
+      <button type="button" class="chip" data-journey="air" data-place="Beşiktaş" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-air"></use></svg><span class="chip-label">Beşiktaş'ta hava nasıl?</span>
+      </button>
+      <button type="button" class="chip chip-ghost" data-journey="traffic" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-traffic"></use></svg><span class="chip-label">Trafik nasıl?</span>
+      </button>
     </div>
 
     <p class="hint" id="ask-hint">
       Soru kutusu anahtar kelime eşlemesi yapar — bu sayfada dil modeli yoktur, her yanıt doğrudan
-      İBB uçlarından gelir. <strong>Her kart verinin yaşını gösterir.</strong>
+      İBB uçlarından gelir.
     </p>
   </section>
 
-  <section id="results" aria-live="polite" aria-busy="false">
-    <div class="empty">
-      <p>Bir soru seçin ya da yazın. Örnek: <em>500T Şifa Sondurak</em>, <em>Kartal istasyonu</em>, <em>trafik</em>.</p>
+  <section class="strip" id="freshness-strip" aria-labelledby="strip-title">
+    <div class="strip-head">
+      <h2 id="strip-title"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg> Veri tazeliği</h2>
+      <div class="strip-tools">
+        <span class="strip-meta" id="strip-meta">yükleniyor…</span>
+        <button type="button" class="icon-btn" id="freshness-refresh" aria-label="Veri tazeliğini yenile" title="Yenile">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+        </button>
+      </div>
     </div>
+    <div class="strip-rail" id="strip-rail" role="list" aria-live="off"></div>
   </section>
 
-  <section class="map-panel" id="map-panel" hidden aria-labelledby="map-title">
+  <!-- Optional endpoint: rendered only when /api/alerts exists and returns something. -->
+  <section class="alerts" id="alerts-panel" hidden aria-labelledby="alerts-title">
+    <h2 id="alerts-title"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg> Şehir uyarıları</h2>
+    <div id="alerts-body"></div>
+  </section>
+
+  <div class="workspace">
+    <section id="results" aria-live="polite" aria-busy="false" aria-label="Sonuçlar" tabindex="-1">
+      <div class="welcome">
+        <h2>Ne sormak istersiniz?</h2>
+        <div class="welcome-grid">
+          <button type="button" class="journey-tile" data-journey="parking" data-place="Taksim">
+            <svg class="icon" aria-hidden="true"><use href="#i-park"></use></svg>
+            <b>Otopark</b>
+            <span>Yakındaki İSPARK otoparklarında kaç yer boş, ücreti ne?</span>
+          </button>
+          <button type="button" class="journey-tile" data-journey="arrivals" data-line="500T" data-stop="Şifa Sondurak">
+            <svg class="icon" aria-hidden="true"><use href="#i-bus"></use></svg>
+            <b>Otobüs varışı</b>
+            <span>Hat ve durak verin; tahminin hangi yöntemle üretildiğini de gösterelim.</span>
+          </button>
+          <button type="button" class="journey-tile" data-journey="metro" data-line="M4">
+            <svg class="icon" aria-hidden="true"><use href="#i-metro"></use></svg>
+            <b>Metro</b>
+            <span>Hatta bildirilmiş aksaklık var mı, istasyonda asansör var mı?</span>
+          </button>
+          <button type="button" class="journey-tile" data-journey="air" data-place="Beşiktaş">
+            <svg class="icon" aria-hidden="true"><use href="#i-air"></use></svg>
+            <b>Hava kalitesi</b>
+            <span>PM10, AQI bandı ve önümüzdeki saatlerin en temiz aralığı.</span>
+          </button>
+        </div>
+        <p class="welcome-foot">
+          Yazarak da sorabilirsiniz: <em>500T Şifa Sondurak</em> · <em>Kartal istasyonu</em> ·
+          <em>Kadıköy durağı</em> · <em>veri tazeliği</em>
+        </p>
+      </div>
+    </section>
+
+    <aside class="map-panel" id="map-panel" hidden aria-labelledby="map-title">
+      <div class="panel-head">
+        <h2 id="map-title"><svg class="icon" aria-hidden="true"><use href="#i-pin"></use></svg> Harita</h2>
+        <span class="map-source" id="map-source"></span>
+      </div>
+      <div class="map-frame">
+        <div id="map" aria-label="Sonuçların harita üzerindeki konumu" role="region"></div>
+        <div class="map-fallback" id="map-fallback" hidden>
+          <p><strong>Harita kütüphanesi yüklenemedi.</strong> Sonuçlar liste olarak gösteriliyor.</p>
+          <ul id="map-fallback-list"></ul>
+        </div>
+      </div>
+      <ul class="legend" id="map-legend" aria-label="Harita göstergesi"></ul>
+    </aside>
+  </div>
+
+  <!-- Optional endpoint: rendered only when /api/reliability exists. -->
+  <section class="panel" id="reliability-panel" hidden aria-labelledby="reliability-title">
     <div class="panel-head">
-      <h2 id="map-title">Harita</h2>
-      <span class="map-source" id="map-source"></span>
+      <h2 id="reliability-title"><svg class="icon" aria-hidden="true"><use href="#i-gauge"></use></svg> Tahmin güvenilirliği</h2>
+      <span class="panel-note">ölçülen değerler, iddia değil</span>
     </div>
-    <div id="map" role="img" aria-label="Sonuçların harita üzerindeki konumu"></div>
+    <div id="reliability-body"></div>
   </section>
 </main>
 
-<footer>
-  <p id="freshness" class="freshness">Veri tazeliği yükleniyor…</p>
+<footer class="wrap">
   <p class="attribution" id="attribution">
     Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı,
     <a href="https://data.ibb.gov.tr/license" rel="noopener noreferrer" target="_blank">İBB Açık Veri Lisansı (CC BY 4.0)</a>.
@@ -82,6 +201,7 @@
   <p class="colophon">
     <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod</a>
     · <span id="version">sürüm —</span>
+    · <span id="map-attribution">harita: OpenStreetMap</span>
   </p>
 </footer>
 </body>

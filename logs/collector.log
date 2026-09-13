@@ -10,3 +10,13 @@
 2026-09-13 17:53:58,626 INFO tick lines        rows=41      23710 ms
 2026-09-13 17:53:59,033 INFO tick metro        rows=1         407 ms
 2026-09-13 17:54:04,775 INFO tick traffic      rows=3        5741 ms
+2026-09-13 17:56:59,789 INFO tick air_quality  rows=700    175010 ms
+2026-09-13 17:57:32,946 INFO tick lines        rows=41      13080 ms
+2026-09-13 18:00:46,041 INFO tick lines        rows=44      12670 ms
+2026-09-13 18:03:49,865 INFO tick ispark       rows=247      1535 ms
+2026-09-13 18:04:09,198 INFO tick lines        rows=44      19327 ms
+2026-09-13 18:07:23,311 INFO tick lines        rows=42      13531 ms
+2026-09-13 18:10:39,405 INFO tick lines        rows=43      15654 ms
+2026-09-13 18:13:54,519 INFO tick lines        rows=42      13575 ms
+2026-09-13 18:14:15,641 INFO tick ispark       rows=247       977 ms
+2026-09-13 18:17:09,543 INFO tick lines        rows=39      13302 ms

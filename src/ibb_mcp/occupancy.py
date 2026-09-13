@@ -56,6 +56,15 @@ log = logging.getLogger("ibb_mcp.occupancy")
 #: ``occupancy_profile.json`` from an older build is rejected rather than misread.
 SCHEMA = "nabiz.occupancy_profile/1"
 
+#: A cell serialises as a positional array under the key ``"<park_id>:<class>:<hour>"``.
+#: The file is a derived artefact that is regenerated on every build and committed to a
+#: public repo; at full coverage (250 parks x 3 classes x 24 hours) the readable
+#: one-object-per-cell shape runs to several megabytes, most of it the same eight key
+#: names repeated eighteen thousand times. The array form is about a quarter of that, and
+#: writing the field order into the file as ``cell_fields`` keeps it self-describing
+#: instead of merely short — a reader never has to consult this module to decode it.
+CELL_FIELDS = ("samples", "median", "p25", "p75", "first_seen_epoch", "last_seen_epoch", "observed_days", "closed_samples")
+
 #: Minimum observations in a (park, weekday class, hour) cell before a median is reported.
 #:
 #: Three is the smallest count at which a median is a *choice* rather than an average of
@@ -69,6 +78,16 @@ MIN_SAMPLES = 3
 #: Minimum elapsed time between a cell's first and last sample. A cell holds one hour of
 #: the clock, so anything above one hour proves at least two separate dates contributed.
 #: Two hours is that boundary with room for clock skew and a shifted collection cadence.
+#:
+#: What this actually buys is honest *uncertainty*, which is easy to see by turning the
+#: guard off against the real lake. Doing that on 2026-09-13 made 2 621 cells "reportable"
+#: and produced quartile bands like 50.0–50.7 % and 47.1–47.5 %: a ±0.4-point confidence
+#: interval on how full a car park usually is. Those bands are nonsense. Snapshots ten
+#: minutes apart are almost perfectly autocorrelated — a car park does not change much in
+#: ten minutes — so six of them are one measurement repeated six times, and the
+#: interquartile range of a single sitting measures the collector's cadence rather than the
+#: variability of İstanbul's parking demand. Publishing it would be worse than saying
+#: nothing, because it would look precise.
 MIN_SPAN_HOURS = 2.0
 
 WEEKDAY_TR = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
@@ -85,14 +104,18 @@ CLASS_TR = {
 PROFILE_FILENAME = "occupancy_profile.json"
 
 
-def weekday_class(moment: dt.datetime) -> str:
-    """Which demand curve a moment belongs to — see the module docstring for why three."""
-    weekday = moment.weekday()
-    if weekday == 5:
+def weekday_class_of(weekday: int) -> str:
+    """Which demand curve a ``date.weekday()`` index belongs to (Monday is 0)."""
+    if weekday % 7 == 5:
         return "saturday"
-    if weekday == 6:
+    if weekday % 7 == 6:
         return "sunday"
     return "weekday"
+
+
+def weekday_class(moment: dt.datetime) -> str:
+    """Which demand curve a moment belongs to — see the module docstring for why three."""
+    return weekday_class_of(moment.weekday())
 
 
 def to_istanbul(moment: dt.datetime) -> dt.datetime:
@@ -150,35 +173,41 @@ class OccupancyCell:
             return 0.0
         return (self.last_seen_utc - self.first_seen_utc).total_seconds() / 3600.0
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "park_id": self.park_id,
-            "weekday_class": self.weekday_class,
-            "hour": self.hour,
-            "samples": self.samples,
-            "median": self.median,
-            "p25": self.p25,
-            "p75": self.p75,
-            "first_seen_utc": self.first_seen_utc.isoformat() if self.first_seen_utc else None,
-            "last_seen_utc": self.last_seen_utc.isoformat() if self.last_seen_utc else None,
-            "observed_days": self.observed_days,
-            "closed_samples": self.closed_samples,
-        }
+    @property
+    def key(self) -> str:
+        """The cell's identity as it appears in the JSON file."""
+        return f"{self.park_id}:{self.weekday_class}:{self.hour}"
+
+    def to_row(self) -> list[Any]:
+        """Serialise to the positional array described by :data:`CELL_FIELDS`."""
+        return [
+            self.samples,
+            self.median,
+            self.p25,
+            self.p75,
+            int(self.first_seen_utc.timestamp()) if self.first_seen_utc else None,
+            int(self.last_seen_utc.timestamp()) if self.last_seen_utc else None,
+            self.observed_days,
+            self.closed_samples,
+        ]
 
     @classmethod
-    def from_dict(cls, raw: Mapping[str, Any]) -> OccupancyCell:
+    def from_row(cls, key: str, row: list[Any]) -> OccupancyCell:
+        """Inverse of :meth:`to_row`. ``key`` is ``"<park_id>:<class>:<hour>"``."""
+        park_id, weekday_class_, hour = key.split(":")
+        samples, median, p25, p75, first, last, observed_days, closed = row
         return cls(
-            park_id=int(raw["park_id"]),
-            weekday_class=str(raw["weekday_class"]),
-            hour=int(raw["hour"]),
-            samples=int(raw["samples"]),
-            median=raw.get("median"),
-            p25=raw.get("p25"),
-            p75=raw.get("p75"),
-            first_seen_utc=_parse_ts(raw.get("first_seen_utc")),
-            last_seen_utc=_parse_ts(raw.get("last_seen_utc")),
-            observed_days=int(raw.get("observed_days", 0)),
-            closed_samples=int(raw.get("closed_samples", 0)),
+            park_id=int(park_id),
+            weekday_class=weekday_class_,
+            hour=int(hour),
+            samples=int(samples),
+            median=median,
+            p25=p25,
+            p75=p75,
+            first_seen_utc=dt.datetime.fromtimestamp(first, tz=dt.UTC) if first is not None else None,
+            last_seen_utc=dt.datetime.fromtimestamp(last, tz=dt.UTC) if last is not None else None,
+            observed_days=int(observed_days),
+            closed_samples=int(closed),
         )
 
 
@@ -226,17 +255,35 @@ class OccupancyProfile:
         fabrication the provenance rules exist to prevent.
         """
         local = to_istanbul(at)
-        klass = weekday_class(local)
-        hour = local.hour
-        window = f"{WEEKDAY_TR[local.weekday()]} {hour:02d}:00"
+        return self.lookup_weekday(park_id, local.weekday(), local.hour, at_local=local)
+
+    def lookup_weekday(
+        self,
+        park_id: int,
+        weekday: int,
+        hour: int,
+        *,
+        at_local: dt.datetime | None = None,
+    ) -> dict[str, Any]:
+        """The same answer addressed by ``date.weekday()`` index and hour instead of a moment.
+
+        A caller that has a weekday and an hour but no date ("cumartesi öğlen genelde?")
+        would otherwise have to invent a date to ask the question, and inventing a date is
+        how a plausible-looking wrong day gets into an answer.
+        """
+        weekday = int(weekday) % 7
+        hour = int(hour)
+        klass = weekday_class_of(weekday)
+        window = f"{WEEKDAY_TR[weekday]} {hour:02d}:00"
         cell = self.cell(park_id, klass, hour)
 
         base: dict[str, Any] = {
             "park_id": int(park_id),
+            "weekday": weekday,
             "weekday_class": klass,
             "hour": hour,
             "window": window,
-            "at_local": local.isoformat(),
+            "at_local": at_local.isoformat() if at_local else None,
             "coverage": self.coverage_note(),
         }
         district = (self.parks.get(int(park_id)) or {}).get("district")
@@ -352,8 +399,12 @@ class OccupancyProfile:
             "last_sample_utc": self.last_sample_utc.isoformat() if self.last_sample_utc else None,
             "min_samples": self.min_samples,
             "min_span_hours": self.min_span_hours,
+            "cell_fields": list(CELL_FIELDS),
             "parks": {str(park_id): meta for park_id, meta in sorted(self.parks.items())},
-            "cells": [cell.to_dict() for cell in sorted(self.cells.values(), key=lambda c: (c.park_id, c.weekday_class, c.hour))],
+            "cells": {
+                cell.key: cell.to_row()
+                for cell in sorted(self.cells.values(), key=lambda c: (c.park_id, c.weekday_class, c.hour))
+            },
         }
 
     @classmethod
@@ -361,7 +412,10 @@ class OccupancyProfile:
         found = raw.get("schema")
         if found != SCHEMA:
             raise ValueError(f"unsupported occupancy profile schema {found!r}, expected {SCHEMA!r}")
-        cells = [OccupancyCell.from_dict(item) for item in raw.get("cells", [])]
+        fields = tuple(raw.get("cell_fields") or CELL_FIELDS)
+        if fields != CELL_FIELDS:
+            raise ValueError(f"occupancy profile cell_fields {fields!r} do not match {CELL_FIELDS!r}")
+        cells = [OccupancyCell.from_row(key, row) for key, row in (raw.get("cells") or {}).items()]
         return cls(
             cells={(cell.park_id, cell.weekday_class, cell.hour): cell for cell in cells},
             parks={int(park_id): dict(meta) for park_id, meta in (raw.get("parks") or {}).items()},
@@ -478,7 +532,12 @@ def profile_path(settings: Settings | None = None) -> pathlib.Path:
     return settings.places_csv.parent / PROFILE_FILENAME
 
 
-def save_profile(profile: OccupancyProfile, path: pathlib.Path | None = None, *, settings: Settings | None = None) -> pathlib.Path:
+def save_profile(
+    profile: OccupancyProfile,
+    path: pathlib.Path | None = None,
+    *,
+    settings: Settings | None = None,
+) -> pathlib.Path:
     """Write the profile as JSON and return where it went."""
     target = path or profile_path(settings)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -538,25 +597,52 @@ def lookup(
     wall-clock) or aware. When no profile has been built the answer is ``available: False``
     with a note saying how to build one, never a guess.
     """
+    local = to_istanbul(at)
     profile = profile if profile is not None else load_profile(settings)
     if profile is None:
-        local = to_istanbul(at)
-        return {
-            "available": False,
-            "reason": "no_profile",
-            "park_id": int(park_id),
-            "weekday_class": weekday_class(local),
-            "hour": local.hour,
-            "window": f"{WEEKDAY_TR[local.weekday()]} {local.hour:02d}:00",
-            "at_local": local.isoformat(),
-            "samples": 0,
-            "observed_days": 0,
-            "span_hours": 0.0,
-            "coverage": "Doluluk profili henüz üretilmedi.",
-            "note": (
-                "Geçmişe dayalı doluluk profili henüz oluşturulmadı "
-                f"({PROFILE_FILENAME} yok). Toplanan anlık görüntülerden üretmek için "
-                "scripts/build_profiles.py çalıştırılmalı."
-            ),
-        }
+        return _no_profile(park_id, local.weekday(), local.hour, at_local=local)
     return profile.lookup(park_id, at)
+
+
+def lookup_weekday(
+    park_id: int,
+    weekday: int,
+    hour: int,
+    *,
+    settings: Settings | None = None,
+    profile: OccupancyProfile | None = None,
+) -> dict[str, Any]:
+    """:func:`lookup` addressed by ``date.weekday()`` index (Monday 0) and İstanbul hour.
+
+    This is the shape ``analytics.occupancy_profile(ctx, *, park_id, weekday, hour)``
+    already has, so wiring it up is a one-line delegation.
+    """
+    profile = profile if profile is not None else load_profile(settings)
+    if profile is None:
+        return _no_profile(park_id, weekday, hour)
+    return profile.lookup_weekday(park_id, weekday, hour)
+
+
+def _no_profile(park_id: int, weekday: int, hour: int, *, at_local: dt.datetime | None = None) -> dict[str, Any]:
+    """The answer when nobody has run ``scripts/build_profiles.py`` yet."""
+    weekday = int(weekday) % 7
+    hour = int(hour)
+    return {
+        "available": False,
+        "reason": "no_profile",
+        "park_id": int(park_id),
+        "weekday": weekday,
+        "weekday_class": weekday_class_of(weekday),
+        "hour": hour,
+        "window": f"{WEEKDAY_TR[weekday]} {hour:02d}:00",
+        "at_local": at_local.isoformat() if at_local else None,
+        "samples": 0,
+        "observed_days": 0,
+        "span_hours": 0.0,
+        "coverage": "Doluluk profili henüz üretilmedi.",
+        "note": (
+            "Geçmişe dayalı doluluk profili henüz oluşturulmadı "
+            f"({PROFILE_FILENAME} yok). Toplanan anlık görüntülerden üretmek için "
+            "scripts/build_profiles.py çalıştırılmalı."
+        ),
+    }

@@ -1,23 +1,23 @@
 # ETA accuracy
 
-606 of 2257 predictions resolved (26.8%); 1651 vehicles were never observed at the target stop within 90 minutes.
+607 of 2318 predictions resolved (26.2%); 1711 vehicles were never observed at the target stop within 90 minutes.
 
 | Metric | Value |
 |---|---|
-| Mean absolute error | 16.56 min |
+| Mean absolute error | 16.54 min |
 | Median absolute error | 14.66 min |
-| Bias (positive = predicted late) | -11.67 min |
+| Bias (positive = predicted late) | -11.65 min |
 | p90 absolute error | 34.78 min |
-| Within 2 minutes | 9.2% |
-| Within 5 minutes | 20.8% |
-| Sample size | 606 |
+| Within 2 minutes | 9.4% |
+| Within 5 minutes | 20.9% |
+| Sample size | 607 |
 
 ## By method
 
 | Method | n | MAE (min) | Within 2 min | Within 5 min |
 |---|---|---|---|---|
 | `distance` | 106 | 15.29 | 6.6% | 26.4% |
-| `stop_sequence` | 500 | 16.83 | 9.8% | 19.6% |
+| `stop_sequence` | 501 | 16.8 | 10.0% | 19.8% |
 
 ## How this is measured, and what limits it
 
@@ -31,6 +31,6 @@
 
 | Line | n | current 120 s/stop | best rate alone | best constant + rate |
 |---|---|---|---|---|
-| 500T | 500 | 16.8 min | 235 s/stop -> 12.4 min | 11.5 min + 150 s/stop -> 10.2 min |
+| 500T | 501 | 16.8 min | 235 s/stop -> 12.4 min | 11.5 min + 150 s/stop -> 10.2 min |
 
 - **500T: the rate is tunable.** 235 s/stop would cut the error.
