@@ -75,11 +75,14 @@ collect-bg:  ## NETWORK start the collector detached, logging to logs/collector.
 	@mkdir -p logs data/lake
 	@nohup $(PY) scripts/collect_forever.py > logs/collector.log 2>&1 & echo "collector started, pid $$!"
 
+collect-supervise:  ## NETWORK start the self-restarting collector supervisor (survives sleep and crashes)
+	@nohup bash scripts/supervise_collector.sh > /dev/null 2>&1 & echo "supervisor started"
+
 collect-status:  ## what the collector has gathered so far (no network)
 	$(PY) scripts/collect_forever.py --status
 
-collect-stop:  ## stop a detached collector
-	@pkill -f collect_forever.py && echo "collector stopped" || echo "no collector running"
+collect-stop:  ## stop the supervisor and the collector
+	@pkill -f supervise_collector.sh 2>/dev/null; pkill -f collect_forever.py && echo "collector stopped" || echo "no collector running"
 
 eta:  ## measure arrival-estimate error against observed arrivals (no network)
 	$(PY) scripts/eta_report.py

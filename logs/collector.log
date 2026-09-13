@@ -1,7 +1,12 @@
-2026-09-13 10:10:28,710 INFO tick ispark       rows=247       353 ms
-2026-09-13 10:10:46,865 INFO GTFS loaded from /Users/muratates/code/istanbul-nabiz/data/reference/gtfs: 15386 stops (4 dropped), 9274 routes (5 dropped)
-2026-09-13 10:10:46,883 INFO tick lines        rows=28      18173 ms
-2026-09-13 10:10:52,459 INFO tick metro        rows=1        5576 ms
-2026-09-13 10:11:02,886 INFO tick traffic      rows=0       10426 ms
-2026-09-13 10:13:52,877 INFO tick air_quality  rows=700    169993 ms
-2026-09-13 10:14:25,024 INFO tick lines        rows=28      12146 ms
+2026-09-13 17:46:33,785 INFO tick ispark       rows=247       385 ms
+2026-09-13 17:46:53,914 INFO GTFS loaded from /Users/muratates/code/istanbul-nabiz/data/reference/gtfs: 15386 stops (4 dropped), 9274 routes (5 dropped)
+2026-09-13 17:46:53,973 INFO tick lines        rows=41      20188 ms
+2026-09-13 17:46:57,578 INFO tick metro        rows=1        3604 ms
+2026-09-13 17:47:03,812 INFO tick traffic      rows=3        6234 ms
+2026-09-13 17:49:57,791 INFO tick air_quality  rows=700    173977 ms
+2026-09-13 17:50:06,232 INFO collector stopped; totals: {'ispark': 15337, 'eta_predictions': 2288, 'lines': 5942, 'metro': 13, 'traffic': 12, 'air_quality': 2800}
+2026-09-13 17:53:34,915 INFO tick ispark       rows=247       582 ms
+2026-09-13 17:53:58,372 INFO GTFS loaded from /Users/muratates/code/istanbul-nabiz/data/reference/gtfs: 15386 stops (4 dropped), 9274 routes (5 dropped)
+2026-09-13 17:53:58,626 INFO tick lines        rows=41      23710 ms
+2026-09-13 17:53:59,033 INFO tick metro        rows=1         407 ms
+2026-09-13 17:54:04,775 INFO tick traffic      rows=3        5741 ms
