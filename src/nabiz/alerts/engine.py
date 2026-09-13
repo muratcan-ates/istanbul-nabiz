@@ -390,6 +390,17 @@ def _cached_table(path: str, mtime_ns: int) -> Any:
     return load_table(path)
 
 
+def _repo_relative(path: Any) -> str:
+    """Render a local path for citation without leaking an absolute filesystem location.
+
+    The provenance of a bunching alert goes to every client, and an absolute path would put
+    this machine's user name in it. Keeping the last three components identifies the file
+    ("data/reference/line_reliability.json") and nothing else.
+    """
+    parts = pathlib.Path(str(path)).parts[-3:]
+    return "/".join(parts)
+
+
 def _reliability_table() -> tuple[Any, str | None]:
     module = reliability_module()
     if module is None:
@@ -423,7 +434,9 @@ async def _bunching_observations(
     generated = getattr(table, "observed_to", None) or getattr(table, "generated_at", None)
     provenance = Provenance(
         source="nabiz_reliability",
-        source_url=f"local:{getattr(module, 'DEFAULT_TABLE_PATH', 'line_reliability.json')}",
+        # Relative on purpose: an absolute path would put this machine's user name into a
+        # payload that goes to every client.
+        source_url=f"local:{_repo_relative(getattr(module, 'DEFAULT_TABLE_PATH', 'line_reliability.json'))}",
         reported_at=generated if isinstance(generated, dt.datetime) else None,
     )
     observations: dict[str, BunchingObservation] = {}

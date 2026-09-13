@@ -32,13 +32,20 @@ resolution and costs robustness.
 * *Resolution.* Arrivals are located to one collector tick (~3.2 min), so every headway is
   a multiple of the tick and the medians are quantised — a true 10-minute headway reads as
   9.6 or 12.9. See :data:`HEADWAY_RESOLUTION_MINUTES`.
-* *Missed passages inflate irregularity.* A bus passing a stop between two ticks is never
-  seen there and its two neighbouring headways merge into one double gap. Every cv here is
-  an **upper bound**: bunching can be overstated by this, never hidden by it.
+* *Missed passages inflate everything, and by how much is measurable.* A bus passing a stop
+  between two ticks is never seen there, so its two neighbouring headways merge into one
+  double gap — the median headway comes out too long and the cv too high. The share of stop
+  passages actually witnessed is not assumed: a vehicle that advanced three stop positions
+  between two ticks passed three stops and was caught at one, so the archive yields its own
+  capture rate (``stop_capture_rate``; **34–58 % across the lines collected so far**).
+  :func:`sampling_cv_floor` turns that into the cv a *perfectly regular* line would show
+  anyway, and ``cv_exceeds_floor`` says whether a cell's irregularity survives it. Both
+  headway and cv are therefore **upper bounds**, never under-statements.
 * *Samples are not independent.* One pair of buses running nose-to-tail produces a short
   headway at every stop it passes. ``samples`` counts gap observations; ``vehicles_seen``
-  and ``stops_measured`` bound the real information content. Hence the cv is computed per
-  stop first and then taken as a median across stops, never pooled.
+  (distinct door numbers on the line that hour — the fleet in service) and ``stops_measured``
+  bound the real information content. Hence the cv is computed per stop first and then taken
+  as a median across stops, never pooled.
 * *Coverage.* A cell is "this line at this hour, on the one or two days we were watching" —
   not a typical week. ``days`` and the table's observation span say exactly which.
 
@@ -644,7 +651,7 @@ def _refusal(samples: int, vehicles: int, stops_with_cv: int, capture: float | N
         )
     if capture is not None and capture < MIN_CAPTURE_RATE:
         return (
-            f"Örnekleme çok seyrek: durak geçişlerinin yalnızca %{capture * 100:.0f}'i yakalanabildi "
+            f"Örnekleme çok seyrek: durak geçişlerinde yakalama oranı yalnızca %{capture * 100:.0f} "
             f"(en az %{MIN_CAPTURE_RATE * 100:.0f} gerekiyor). Bu oranda tamamen düzenli bir hat bile "
             f"cv≈{sampling_cv_floor(capture)} gösterir, dolayısıyla ölçüm düzenlilik hakkında bir şey söylemez."
         )
@@ -709,8 +716,8 @@ def describe_cell(table: ReliabilityTable | None, line_code: str, hour: int) -> 
         f"{cell.median_headway_min} dk ortanca sefer aralığı, düzenlilik: {cell.bunching_label} "
         f"(cv {cell.headway_cv}). {cell.samples} aralık gözlemi, {cell.vehicles_seen} araç, "
         f"{cell.days} gün. Varışlar ~{table.resolution_minutes:.1f} dakikalık toplama adımıyla "
-        f"ölçüldü ve durak geçişlerinin %{(cell.stop_capture_rate or 0) * 100:.0f}'i yakalandı; "
-        f"kaçırılan geçişler hem aralığı hem düzensizliği olduğundan büyük gösterir, yani bu "
+        f"ölçüldü; durak geçişlerinde yakalama oranı %{(cell.stop_capture_rate or 0) * 100:.0f}. "
+        f"Kaçırılan geçişler hem aralığı hem düzensizliği olduğundan büyük gösterir, yani bu "
         f"değerler üst sınırdır. Bu yakalama oranında tamamen düzenli bir hat bile "
         f"cv≈{cell.cv_sampling_floor} gösterebilirdi"
         + (

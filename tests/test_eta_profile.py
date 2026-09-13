@@ -169,7 +169,7 @@ def test_from_cells_refuses_a_thin_global_too() -> None:
 
 def test_save_load_round_trip(tmp_path) -> None:
     original = EtaProfile.from_cells(
-        cells={"500T|midday": Cell(250.0, 342, mae_minutes=11.52, baseline_mae_minutes=18.2)},
+        cells={"500T|midday": Cell(250.0, 342, mae_minutes=11.52, baseline_mae_minutes=18.2, max_stops_away=25)},
         lines={"500T": Cell(230.0, 503)},
         overall=Cell(230.0, 503),
         generated_at="2026-09-13T15:00:23+00:00",
@@ -181,6 +181,9 @@ def test_save_load_round_trip(tmp_path) -> None:
     assert reloaded.cells["500T|midday"].seconds_per_stop == 250.0
     assert reloaded.cells["500T|midday"].samples == 342
     assert reloaded.cells["500T|midday"].mae_minutes == 11.52
+    assert reloaded.cells["500T|midday"].max_stops_away == 25
+    # an older file without the field must still load rather than raising
+    assert reloaded.lines["500T"].max_stops_away is None
     assert reloaded.lines["500T"].seconds_per_stop == 230.0
     assert reloaded.overall is not None and reloaded.overall.samples == 503
     assert reloaded.generated_at == "2026-09-13T15:00:23+00:00"

@@ -134,6 +134,11 @@ class Cell:
     samples: int
     mae_minutes: float | None = None
     baseline_mae_minutes: float | None = None
+    #: The largest ``stops_away`` this cell was actually fitted on. A rate fitted entirely
+    #: on 1-3 stop hops carries whatever dwell and measurement offset those short hops have
+    #: baked into its slope; multiplying it by 20 stops extrapolates far past the evidence.
+    #: Recorded so a consumer can tell that it is extrapolating instead of guessing.
+    max_stops_away: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {"seconds_per_stop": round(self.seconds_per_stop, 1), "samples": self.samples}
@@ -141,15 +146,19 @@ class Cell:
             out["mae_minutes"] = round(self.mae_minutes, 2)
         if self.baseline_mae_minutes is not None:
             out["baseline_mae_minutes"] = round(self.baseline_mae_minutes, 2)
+        if self.max_stops_away is not None:
+            out["max_stops_away"] = self.max_stops_away
         return out
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> Cell:
+        max_stops = raw.get("max_stops_away")
         return cls(
             seconds_per_stop=float(raw["seconds_per_stop"]),
             samples=int(raw.get("samples", 0)),
             mae_minutes=_opt_float(raw.get("mae_minutes")),
             baseline_mae_minutes=_opt_float(raw.get("baseline_mae_minutes")),
+            max_stops_away=None if max_stops is None else int(max_stops),
         )
 
 

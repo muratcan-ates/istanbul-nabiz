@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-13T15:18:21.181133+00:00",
+  "generated_at": "2026-09-13T15:24:15.258049+00:00",
   "observation_span": {
     "from": "2026-09-08T17:30:13.914137+00:00",
-    "to": "2026-09-13T15:17:08.789992+00:00",
-    "hours": 117.8,
+    "to": "2026-09-13T15:23:37.226560+00:00",
+    "hours": 117.9,
     "days_covered": [
       "2026-09-08",
       "2026-09-13"
     ],
-    "snapshots_read": 6278
+    "snapshots_read": 6358
   },
   "resolution_minutes": 3.2,
   "thresholds": {
@@ -197,8 +197,8 @@
       "bunching_label": null,
       "stops_per_hour_median": null,
       "median_speed_kmh": null,
-      "stop_capture_rate": 0.514,
-      "cv_sampling_floor": 0.697,
+      "stop_capture_rate": 0.55,
+      "cv_sampling_floor": 0.671,
       "cv_exceeds_floor": null,
       "reason": "Yeterli gözlem yok: 0 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak."
     },
@@ -446,10 +446,10 @@
       "line_code": "34",
       "hour": 18,
       "available": false,
-      "samples": 24,
+      "samples": 31,
       "vehicles_seen": 11,
-      "stops_measured": 16,
-      "stops_with_cv": 1,
+      "stops_measured": 19,
+      "stops_with_cv": 3,
       "days": 1,
       "median_headway_min": null,
       "headway_cv": null,
@@ -457,10 +457,10 @@
       "bunching_label": null,
       "stops_per_hour_median": null,
       "median_speed_kmh": null,
-      "stop_capture_rate": 0.544,
-      "cv_sampling_floor": 0.675,
+      "stop_capture_rate": 0.522,
+      "cv_sampling_floor": 0.691,
       "cv_exceeds_floor": null,
-      "reason": "Düzenlilik ölçülemedi: yalnızca 1 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor."
+      "reason": "Düzenlilik ölçülemedi: yalnızca 3 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor."
     },
     {
       "line_code": "34",
@@ -705,22 +705,22 @@
     {
       "line_code": "500T",
       "hour": 18,
-      "available": false,
-      "samples": 71,
-      "vehicles_seen": 32,
-      "stops_measured": 45,
-      "stops_with_cv": 4,
+      "available": true,
+      "samples": 102,
+      "vehicles_seen": 33,
+      "stops_measured": 54,
+      "stops_with_cv": 11,
       "days": 1,
-      "median_headway_min": null,
-      "headway_cv": null,
-      "bunching_score": null,
-      "bunching_label": null,
-      "stops_per_hour_median": null,
-      "median_speed_kmh": null,
-      "stop_capture_rate": 0.396,
-      "cv_sampling_floor": 0.777,
-      "cv_exceeds_floor": null,
-      "reason": "Düzenlilik ölçülemedi: yalnızca 4 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor."
+      "median_headway_min": 9.8,
+      "headway_cv": 0.571,
+      "bunching_score": 0.571,
+      "bunching_label": "biraz düzensiz",
+      "stops_per_hour_median": 36.8,
+      "median_speed_kmh": 24.9,
+      "stop_capture_rate": 0.398,
+      "cv_sampling_floor": 0.776,
+      "cv_exceeds_floor": false,
+      "reason": null
     },
     {
       "line_code": "500T",

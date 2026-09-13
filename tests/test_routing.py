@@ -17,12 +17,14 @@ import datetime as dt
 import json
 
 import pytest
+
 from ibb_mcp.gtfs import RouteStopSequence
 from ibb_mcp.http import UpstreamUnavailable
 from ibb_mcp.models import Stop, haversine_km
 from ibb_mcp.routing import (
     ASSUMPTION_TEXT,
     DEFAULT_PARAMS,
+    ROAD_CROSSINGS,
     RoutingParams,
     Waypoint,
     comfort_score,
@@ -92,7 +94,7 @@ async def test_taksim_kadikoy_is_a_crossing_and_costs_drive_and_metro(ctx) -> No
     assert option(advice, "drive").available is True
     assert option(advice, "metro").available is True
     # The bridge is named, never folded into the total in silence.
-    assert option(advice, "drive").detail["crossing"] in {c.name for c in __import__("ibb_mcp.routing", fromlist=["x"]).ROAD_CROSSINGS}
+    assert option(advice, "drive").detail["crossing"] in {crossing.name for crossing in ROAD_CROSSINGS}
     assert any(leg.kind == "delay" for leg in option(advice, "drive").legs)
 
 

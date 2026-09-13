@@ -202,7 +202,7 @@ h1, h2, h3 { letter-spacing: -.02em; }
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
 .brand-text b { font-size: 1.02rem; letter-spacing: -.025em; }
-.brand-text small { font-size: .68rem; color: var(--ink-faint); letter-spacing: .01em; }
+.brand-text small { font-size: .68rem; color: var(--ink-faint); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: .45rem; }
 
@@ -307,9 +307,9 @@ h1, h2, h3 { letter-spacing: -.02em; }
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r); box-shadow: var(--shadow-1);
 }
-.strip-head { display: flex; align-items: center; gap: .6rem; }
+.strip-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .strip-head h2 {
-  display: flex; align-items: center; gap: .35rem; margin: 0;
+  display: flex; align-items: center; gap: .35rem; margin: 0; white-space: nowrap;
   font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
   color: var(--ink-soft);
 }
@@ -538,7 +538,9 @@ h1, h2, h3 { letter-spacing: -.02em; }
 /* forecast + traffic charts */
 .chart { display: flex; align-items: flex-end; gap: 3px; height: 4.2rem; margin-top: .65rem; }
 .chart .col { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; }
-.chart .col i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--surface-3); min-height: 2px; }
+.chart .col i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--ink-soft) 38%, transparent); min-height: 2px; }
+.chart .col .v { font-size: .62rem; color: var(--ink-faint); text-align: center; font-variant-numeric: tabular-nums; margin-bottom: .15rem; }
+.chart.dense .col i { background: color-mix(in srgb, var(--ink-soft) 30%, transparent); }
 .chart .col.best i { background: var(--ok); }
 .chart .col.now i { background: var(--accent); }
 .chart-axis { display: flex; gap: 3px; margin-top: .25rem; }
@@ -572,12 +574,18 @@ h1, h2, h3 { letter-spacing: -.02em; }
 .error-card .last-known { margin-top: .6rem; padding-top: .55rem; border-top: 1px dashed var(--line); }
 .error-card .last-known h4 { margin: 0 0 .35rem; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); }
 
+.kv-list { list-style: none; margin: .55rem 0 0; padding: 0; display: grid; gap: .25rem; }
+.kv-list li {
+  display: flex; justify-content: space-between; gap: .6rem;
+  font-size: .75rem; color: var(--ink-soft);
+  border-bottom: 1px dashed var(--line); padding-bottom: .22rem;
+}
+.kv-list li:last-child { border-bottom: 0; }
+.kv-list li span:last-child { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; white-space: nowrap; }
+.kv-list code { font-size: .7rem; background: var(--surface-2); border-radius: 4px; padding: .05rem .3rem; }
+
 .diag { margin-top: .6rem; }
 .diag summary { cursor: pointer; font-size: .75rem; color: var(--ink-faint); }
-.diag ul { list-style: none; margin: .45rem 0 0; padding: 0; display: grid; gap: .25rem; }
-.diag li { font-size: .75rem; color: var(--ink-soft); display: flex; justify-content: space-between; gap: .6rem; border-bottom: 1px dashed var(--line); padding-bottom: .22rem; }
-.diag li span:last-child { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
-.diag code { font-size: .7rem; background: var(--surface-2); border-radius: 4px; padding: .05rem .3rem; }
 
 /* skeleton while a cold İSPARK answer is being fetched */
 .skeleton { display: grid; gap: .7rem; }

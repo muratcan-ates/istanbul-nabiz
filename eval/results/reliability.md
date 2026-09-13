@@ -3,10 +3,10 @@
 Derived entirely from vehicle positions this project archived; İETT publishes no headway or
 bunching data. Built by `scripts/reliability_report.py`, no network access.
 
-- Observation span: **2026-09-08 20:30 (TRT) → 2026-09-13 18:17 (TRT)** (117.8 h wall-clock, 2 calendar day(s): 2026-09-08, 2026-09-13)
-- Vehicle snapshots read: **6,278** across lines 15F, 34, 500T
-- Cells published: **14** of 39; **25** refused for want of observations
-- Cells whose cv exceeds its own sampling floor (i.e. irregularity that missed passages alone cannot explain): **3** of 14
+- Observation span: **2026-09-08 20:30 (TRT) → 2026-09-13 18:23 (TRT)** (117.9 h wall-clock, 2 calendar day(s): 2026-09-08, 2026-09-13)
+- Vehicle snapshots read: **6,358** across lines 15F, 34, 500T
+- Cells published: **15** of 39; **24** refused for want of observations
+- Cells whose cv exceeds its own sampling floor (i.e. irregularity that missed passages alone cannot explain): **3** of 15
 - Arrival resolution: **~3.2 min** (one collector tick)
 
 Hours are İstanbul local time (UTC+3).
@@ -25,6 +25,7 @@ Hours are İstanbul local time (UTC+3).
 | 500T | 14:00 | 16.0 dk | 0.584 | 0.76 | hayır | biraz düzensiz | 31 | 109 | 294 | %42 | 30.3 | 25.1 |
 | 500T | 15:00 | 16.0 dk | 0.59 | 0.767 | hayır | biraz düzensiz | 33 | 108 | 306 | %41 | 31.5 | 24.7 |
 | 500T | 16:00 | 12.9 dk | 0.588 | 0.764 | hayır | biraz düzensiz | 34 | 110 | 313 | %42 | 30.9 | 25.6 |
+| 500T | 18:00 | 9.8 dk | 0.571 | 0.776 | hayır | biraz düzensiz | 33 | 54 | 102 | %40 | 36.8 | 24.9 |
 | 500T | 20:00 | 6.4 dk | 0.888 | 0.796 | evet | kümelenme var | 35 | 47 | 99 | %37 | 34.1 | 26.9 |
 | 500T | 21:00 | 12.8 dk | 0.647 | 0.787 | hayır | kümelenme var | 33 | 91 | 308 | %38 | 40.3 | 28.4 |
 | 500T | 22:00 | 15.5 dk | 0.644 | 0.797 | hayır | kümelenme var | 27 | 95 | 261 | %36 | 42.6 | 30.3 |
@@ -42,7 +43,7 @@ Hours are İstanbul local time (UTC+3).
 | 15F | 15:00 | 49 | 7 | 1 | %54 | Düzenlilik ölçülemedi: yalnızca 1 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 15F | 16:00 | 45 | 5 | 0 | %56 | Düzenlilik ölçülemedi: yalnızca 0 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 15F | 17:00 | 4 | 5 | 0 | %48 | Yeterli gözlem yok: 4 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak. |
-| 15F | 18:00 | 0 | 5 | 0 | %51 | Yeterli gözlem yok: 0 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak. |
+| 15F | 18:00 | 0 | 5 | 0 | %55 | Yeterli gözlem yok: 0 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak. |
 | 15F | 20:00 | 1 | 5 | 0 | %36 | Yeterli gözlem yok: 1 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak. |
 | 15F | 21:00 | 20 | 5 | 0 | %40 | Düzenlilik ölçülemedi: yalnızca 0 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 15F | 22:00 | 15 | 3 | 0 | %36 | Düzenlilik ölçülemedi: yalnızca 0 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
@@ -53,12 +54,11 @@ Hours are İstanbul local time (UTC+3).
 | 34 | 15:00 | 0 | 2 | 0 | %55 | Yeterli gözlem yok: 0 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak. |
 | 34 | 16:00 | 12 | 6 | 0 | %57 | Düzenlilik ölçülemedi: yalnızca 0 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 34 | 17:00 | 4 | 10 | 0 | %38 | Yeterli gözlem yok: 4 sefer aralığı ölçülebildi, en az 12 gerekiyor. Toplayıcı bu hattı bu saatte daha uzun süre izlediğinde dolacak. |
-| 34 | 18:00 | 24 | 11 | 1 | %54 | Düzenlilik ölçülemedi: yalnızca 1 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
+| 34 | 18:00 | 31 | 11 | 3 | %52 | Düzenlilik ölçülemedi: yalnızca 3 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 34 | 20:00 | 13 | 7 | 0 | %50 | Düzenlilik ölçülemedi: yalnızca 0 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 34 | 22:00 | 26 | 5 | 0 | %52 | Düzenlilik ölçülemedi: yalnızca 0 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 | 34 | 23:00 | 0 | 1 | 0 | n/a | Bu saatte yalnızca 1 araç gözlendi; iki ardışık aracın aynı durağa varışı olmadan sefer aralığı hesaplanamaz. |
 | 500T | 17:00 | 61 | 36 | 2 | %36 | Düzenlilik ölçülemedi: yalnızca 2 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
-| 500T | 18:00 | 71 | 32 | 4 | %40 | Düzenlilik ölçülemedi: yalnızca 4 durakta en az 3 ardışık varış görüldü, en az 5 durak gerekiyor. |
 
 ## How to read this
 

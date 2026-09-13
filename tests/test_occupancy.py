@@ -327,6 +327,16 @@ def test_a_profile_from_an_older_schema_is_rejected() -> None:
         OccupancyProfile.from_dict({"schema": "nabiz.occupancy_profile/0", "cells": {}})
 
 
+def test_a_profile_whose_cells_are_a_list_is_rejected_not_crashed_on(tmp_path: pathlib.Path) -> None:
+    """Schema 1 briefly wrote ``cells`` as a list; such a file may still be on someone's disk."""
+    with pytest.raises(ValueError, match="cells"):
+        OccupancyProfile.from_dict({"schema": SCHEMA, "cells": [{"park_id": 1}]})
+
+    stale = tmp_path / "stale.json"
+    stale.write_text(json.dumps({"schema": SCHEMA, "cells": [{"park_id": 1}]}), encoding="utf-8")
+    assert load_profile(path=stale) is None  # degrades to "no history", never raises
+
+
 def test_the_cached_profile_is_reparsed_when_the_file_changes(tmp_path: pathlib.Path) -> None:
     target = tmp_path / "p.json"
     save_profile(build_profile(two_day_rows()), target)

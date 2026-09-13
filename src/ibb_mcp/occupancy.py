@@ -415,7 +415,15 @@ class OccupancyProfile:
         fields = tuple(raw.get("cell_fields") or CELL_FIELDS)
         if fields != CELL_FIELDS:
             raise ValueError(f"occupancy profile cell_fields {fields!r} do not match {CELL_FIELDS!r}")
-        cells = [OccupancyCell.from_row(key, row) for key, row in (raw.get("cells") or {}).items()]
+        raw_cells = raw.get("cells") or {}
+        if not isinstance(raw_cells, Mapping):
+            # Schema 1 shipped briefly with ``cells`` as a list of objects. Saying so beats
+            # the AttributeError a bare ``.items()`` would raise on a file someone still has.
+            raise ValueError(
+                "occupancy profile 'cells' must be an object keyed by "
+                f"'<park>:<class>:<hour>', got {type(raw_cells).__name__}"
+            )
+        cells = [OccupancyCell.from_row(key, row) for key, row in raw_cells.items()]
         return cls(
             cells={(cell.park_id, cell.weekday_class, cell.hour): cell for cell in cells},
             parks={int(park_id): dict(meta) for park_id, meta in (raw.get("parks") or {}).items()},
@@ -576,7 +584,9 @@ def load_profile(settings: Settings | None = None, path: pathlib.Path | None = N
 
     try:
         profile = OccupancyProfile.from_dict(json.loads(target.read_text(encoding="utf-8")))
-    except (ValueError, KeyError, TypeError) as exc:
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        # A profile from another build of this project is a plausible thing to find on
+        # disk, and it must degrade to "no history yet" rather than take a tool down.
         log.warning("occupancy profile at %s is unreadable: %r", target, exc)
         return None
 

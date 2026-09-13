@@ -143,6 +143,12 @@ class RoutingParams:
     disruption_penalty_minutes: float = 10.0
     # bus
     bus_access_walk_km: float = 0.8
+    #: How many stops near each end to consider. İBB registers a separate ``stop_code`` per
+    #: platform and direction, so a major interchange has fifteen-plus codes inside 250 m:
+    #: at Kartal the five nearest are all "KARTAL KÖPRÜSÜ". A small candidate list therefore
+    #: silently drops the code the line actually serves — with 8, the 500T corridor to
+    #: 4.Levent disappears because its stop sits eighth-nearest at 0.195 km.
+    bus_stop_candidates: int = 24
     bus_seconds_per_stop: float = _ETA_PARAMS.seconds_per_stop
     bus_default_headway_minutes: float = 20.0
     # comfort weights
@@ -749,34 +755,49 @@ def find_bus_pick(
 
     No transfer is invented. If no one line joins the two ends, the caller is told why: we
     hold stop sequences, not a transfer graph, and a fabricated two-bus itinerary is exactly
-    the kind of number this project refuses to print. Ranking is by the fewest stops between
-    the two, then the shortest walk, which is rate-independent — so the seconds-per-stop
-    figure can be looked up once the line is known instead of scanning twice.
+    the kind of number this project refuses to print.
+
+    Candidates are ranked by provisional minutes — walk in, ride, walk out — using the
+    untuned per-stop rate rather than by stop count alone, because counting stops boards the
+    traveller at a stop 700 m away to save one of them. The per-line calibrated rate is
+    applied afterwards, when the line is known; it scales every candidate of a line equally,
+    so it cannot reorder them, and scanning twice to get it would cost more than it buys.
     """
     if index is None or not sequences:
         return None, "GTFS durak sıraları yüklü olmadığı için otobüs seçeneği hesaplanamadı."
-    reach = params.bus_access_walk_km
-    origin_stops = {s.stop_code: s for s in index.nearest_stops(origin.lat, origin.lon, limit=8, max_km=reach) if s.stop_code}
-    near_destination = index.nearest_stops(destination.lat, destination.lon, limit=8, max_km=reach)
+    reach, limit = params.bus_access_walk_km, params.bus_stop_candidates
+    near_origin = index.nearest_stops(origin.lat, origin.lon, limit=limit, max_km=reach)
+    near_destination = index.nearest_stops(destination.lat, destination.lon, limit=limit, max_km=reach)
+    origin_stops = {s.stop_code: s for s in near_origin if s.stop_code}
     destination_stops = {s.stop_code: s for s in near_destination if s.stop_code}
     if not origin_stops or not destination_stops:
         end = "Başlangıç" if not origin_stops else "Varış"
         return None, f"{end} noktasının {reach:.1f} km yakınında otobüs durağı yok."
 
-    best: tuple[tuple[int, float], _BusPick] | None = None
+    per_minute_km = params.walk_kmh / (60.0 * params.walk_winding)
+    best: tuple[float, _BusPick] | None = None
     for route_code, sequence in sequences.items():
-        for origin_code, origin_stop in origin_stops.items():
-            if origin_code not in sequence.stop_codes:
-                continue
-            for destination_code, destination_stop in destination_stops.items():
-                gap = sequence.stops_between(origin_code, destination_code)
-                if not gap:
+        codes = set(sequence.stop_codes)
+        # Reject in two set operations before touching the ordering: 2 876 route variants
+        # times two dozen candidate stops at each end is a lot of tuple scanning otherwise.
+        boarding = origin_stops.keys() & codes
+        if not boarding or not (alighting := destination_stops.keys() & codes):
+            continue
+        positions: dict[str, int] = {}
+        for position, code in enumerate(sequence.stop_codes):
+            positions.setdefault(code, position)  # first occurrence, as stops_between reads it
+        for origin_code in boarding:
+            for destination_code in alighting:
+                gap = positions[destination_code] - positions[origin_code]
+                if gap <= 0:  # the target is behind the bus on this variant
                     continue
-                walk = (origin_stop.distance_km or 0.0) + (destination_stop.distance_km or 0.0)
+                origin_stop, destination_stop = origin_stops[origin_code], destination_stops[destination_code]
+                walk_km = (origin_stop.distance_km or 0.0) + (destination_stop.distance_km or 0.0)
+                minutes = walk_km / per_minute_km + gap * params.bus_seconds_per_stop / 60.0
+                if best is not None and minutes >= best[0]:
+                    continue
                 line_code = getattr(index.route_by_code(route_code), "short_name", None) or route_code
-                candidate = _BusPick(route_code, line_code, origin_stop, destination_stop, gap)
-                if best is None or (gap, walk) < best[0]:
-                    best = ((gap, walk), candidate)
+                best = (minutes, _BusPick(route_code, line_code, origin_stop, destination_stop, gap))
     if best is None:
         return None, (
             "İki ucun yakınındaki durakları aynı sırada geçen tek bir İETT hattı yok; "
@@ -853,6 +874,10 @@ def seconds_per_stop_for(
     seconds, provenance = profile.seconds_per_stop_for(line_code, moment)
     if provenance == "default":
         return seconds, "Bu hat için ölçüm yok; kalibre edilmemiş varsayılan oran."
+    if provenance.startswith("global"):
+        # Saying "500T için ölçülen" when the number came from every line pooled together
+        # would overstate what was measured; the agent repeats this sentence verbatim.
+        return seconds, f"{line_code} için ayrı ölçüm yok; tüm hatlardan ölçülen genel oran ({provenance})."
     return seconds, f"{line_code} için ölçülen oran ({provenance})."
 
 

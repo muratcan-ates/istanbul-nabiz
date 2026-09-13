@@ -66,6 +66,13 @@ AQI_BAND_EN = {
     "hazardous": "hazardous",
 }
 
+#: ``ibb_mcp.reliability``'s Turkish headway verdicts, for the English half of an alert.
+BUNCHING_EN = {
+    "düzenli": "regular",
+    "biraz düzensiz": "somewhat irregular",
+    "kümelenme var": "bunched",
+}
+
 HEALTH_DISCLAIMER_TR = "Sağlık tavsiyesi değildir."
 HEALTH_DISCLAIMER_EN = "Not health advice."
 
@@ -572,7 +579,7 @@ class BusBunchingRule:
             facts_en.append(f"median headway {observation.median_headway_min:g} min")
         if observation.headway_cv is not None:
             citations.append(Citation(label="Aralık değişkenliği (cv)", value=observation.headway_cv, provenance=provenance))
-            facts_tr.append(f"değişkenlik cv {_tr_number(observation.headway_cv, digits=2)}")
+            facts_tr.append(f"değişkenlik cv {_tr_number(observation.headway_cv, digits=3)}")
             facts_en.append(f"headway cv {observation.headway_cv:g}")
         if observation.samples is not None:
             citations.append(Citation(label="Gözlem sayısı", value=observation.samples, provenance=provenance))
@@ -580,6 +587,7 @@ class BusBunchingRule:
         hour_tr = f"saat {observation.hour:02d} civarında " if observation.hour is not None else ""
         hour_en = f"around {observation.hour:02d}:00 " if observation.hour is not None else ""
         label = observation.label or "kümelenme var"
+        label_en = BUNCHING_EN.get(label, label)
         detail_tr = f": {', '.join(facts_tr)}" if facts_tr else ""
         detail_en = f": {', '.join(facts_en)}" if facts_en else ""
         window_tr = f" {observation.window_note}" if observation.window_note else ""
@@ -593,7 +601,7 @@ class BusBunchingRule:
                 f"{window_tr} (Nabız hat düzenlilik ölçümü, {_age_tr(provenance)})"
             ),
             message_en=(
-                f"Headways measured on {line} {hour_en}are irregular ({label}){detail_en}. "
+                f"Headways measured on {line} {hour_en}are irregular ({label_en}){detail_en}. "
                 "This summarises past observations; it is not a live disruption notice. "
                 f"(Nabız headway measurement, {_age_en(provenance)})"
             ),

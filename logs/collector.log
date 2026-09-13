@@ -20,3 +20,8 @@
 2026-09-13 18:13:54,519 INFO tick lines        rows=42      13575 ms
 2026-09-13 18:14:15,641 INFO tick ispark       rows=247       977 ms
 2026-09-13 18:17:09,543 INFO tick lines        rows=39      13302 ms
+2026-09-13 18:20:23,858 INFO tick lines        rows=40      13682 ms
+2026-09-13 18:23:38,449 INFO tick lines        rows=40      13722 ms
+2026-09-13 18:24:20,016 INFO tick ispark       rows=247      1228 ms
+2026-09-13 18:26:54,876 INFO tick lines        rows=39      13962 ms
+2026-09-13 18:30:11,898 INFO tick lines        rows=36      15581 ms

@@ -372,14 +372,53 @@ async def test_bunching_context_is_built_from_the_real_reliability_table(
     alert = result["alerts"][0]
     assert alert["kind"] == "bus_bunching"
     assert "kümelenme var" in alert["message_tr"]
-    assert alert["citations"][0]["provenance"]["source"] == "nabiz_reliability"
+    assert "(bunched)" in alert["message_en"]  # the Turkish verdict is translated, not pasted
+    citation = alert["citations"][0]
+    assert citation["provenance"]["source"] == "nabiz_reliability"
+    # The citation goes to every client: it must name the file, not this machine's home dir.
+    assert citation["provenance"]["source_url"] == "local:data/reference/line_reliability.json"
+    assert "/Users/" not in citation["provenance"]["source_url"]
 
 
-async def test_bunching_reports_why_it_is_unavailable_instead_of_firing(ctx: SourceContext) -> None:
-    # No reliability table has been built in this checkout, so the check must explain itself.
+async def test_bunching_reports_why_it_is_unavailable_instead_of_firing(
+    ctx: SourceContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Silence must come with a reason, whether the module, the table or the cell is missing."""
+    payload = subscription(rules=[{"kind": "bus_bunching", "line": "500T"}])
+
+    monkeypatch.setattr("nabiz.alerts.engine.reliability_module", lambda: None)
+    no_module = await check_alerts(ctx, payload)
+    assert no_module["alerts"] == []
+    assert "modül" in no_module["unavailable"]["reliability"]
+    monkeypatch.undo()
+
+    monkeypatch.setattr("nabiz.alerts.engine._reliability_table", lambda: (None, "Tablo henüz üretilmedi."))
+    no_table = await check_alerts(ctx, payload)
+    assert no_table["alerts"] == []
+    assert no_table["unavailable"]["reliability"] == "Tablo henüz üretilmedi."
+
+
+async def test_a_cell_the_reliability_module_refuses_to_score_produces_no_alert(
+    ctx: SourceContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``available: False`` means "not measurable", never "no bunching" — and never an alert."""
+    reliability = pytest.importorskip("ibb_mcp.reliability")
+    hour = dt.datetime.now(dt.timezone(dt.timedelta(hours=3))).hour
+    table = reliability.ReliabilityTable(
+        cells=[
+            reliability.LineHourStats(
+                line_code="500T",
+                hour=hour,
+                available=False,
+                samples=3,
+                reason="3 sefer aralığı ölçülebildi, en az 12 gerekiyor.",
+            )
+        ]
+    )
+    monkeypatch.setattr("nabiz.alerts.engine._reliability_table", lambda: (table, None))
     result = await check_alerts(ctx, subscription(rules=[{"kind": "bus_bunching", "line": "500T"}]))
     assert result["alerts"] == []
-    assert "reliability" in result["unavailable"]
+    assert "düzenlilik verisi yok" in result["unavailable"]["reliability"]
 
 
 # --------------------------------------------------------------------------------------
@@ -487,6 +526,33 @@ def test_evaluation_never_writes_a_coordinate_to_a_log_record() -> None:
 
     assert alerts, "the fixture must produce alerts, otherwise this proves nothing"
     assert handler.records, "no log record captured — the capture itself is broken"
+    blob = _captured_text(handler)
+    for secret in (str(SECRET_LAT), str(SECRET_LON), SECRET_LABEL, "40.91", "29.18"):
+        assert secret not in blob, f"{secret!r} reached a log record: {blob}"
+
+
+async def test_the_whole_request_path_logs_no_coordinate(ctx: SourceContext) -> None:
+    """Not just the pure evaluation: the fetch path (nearest-station search) too.
+
+    ``build_context`` is the only code that ever sees a coordinate, and it hands it to the
+    air-quality source. This captures every record produced by the whole call.
+    """
+    handler = _CaptureHandler()
+    root = logging.getLogger()
+    previous = root.level
+    root.addHandler(handler)
+    root.setLevel(logging.DEBUG)
+    try:
+        payload = subscription(
+            places=[{"key": "home", "label": SECRET_LABEL, "lat": SECRET_LAT, "lon": SECRET_LON}],
+            rules=[{"kind": "air_quality", "place": "home", "aqi_threshold": 10}],
+        )
+        result = await check_alerts(ctx, payload)
+    finally:
+        root.removeHandler(handler)
+        root.setLevel(previous)
+
+    assert result["alert_count"] == 1  # the path really ran end to end
     blob = _captured_text(handler)
     for secret in (str(SECRET_LAT), str(SECRET_LON), SECRET_LABEL, "40.91", "29.18"):
         assert secret not in blob, f"{secret!r} reached a log record: {blob}"

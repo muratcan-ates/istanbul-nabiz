@@ -74,10 +74,27 @@ Sample = collections.namedtuple("Sample", "line_code hour bucket stops_away actu
 
 
 def collect_samples() -> tuple[list[Sample], dict[str, int]]:
-    """Pair every stop-sequence prediction in the lake with the arrival that resolved it."""
+    """Pair every stop-sequence prediction in the lake with the arrival that resolved it.
+
+    Predictions made in the final ``MATCH_HORIZON`` of the collection window are thrown
+    away. They are **right-censored**: a prediction can only resolve if the vehicle is
+    observed arriving, so near the end of the window the slow journeys have not happened
+    yet and only the fast ones are visible. Measured on the live lake at 18:20 on
+    2026-09-13 the difference is not subtle — the last 39 rows had a median of 1.27
+    minutes per stop against 5.31 for the mature ones, and they were all in the evening
+    bucket, which had just collapsed the fitted evening rate from 385 to 80 s/stop.
+    Calibrating while the collector runs would otherwise fit whatever the last half hour
+    happened to look like.
+    """
     predictions = read_source("eta_predictions")
     snapshots = read_source("iett_line_snapshot")
     arrivals = observed_arrivals(snapshots)
+
+    observed_until = max(
+        (stamp for row in snapshots if (stamp := parse_ts(row.get("snapshot_ts_utc"))) is not None),
+        default=None,
+    )
+    mature_before = observed_until - MATCH_HORIZON if observed_until else None
 
     counters = {
         "predictions": len(predictions),
@@ -85,6 +102,7 @@ def collect_samples() -> tuple[list[Sample], dict[str, int]]:
         "stop_sequence": 0,
         "resolved": 0,
         "unresolved": 0,
+        "censored": 0,
     }
     samples: list[Sample] = []
     for prediction in predictions:
@@ -93,6 +111,9 @@ def collect_samples() -> tuple[list[Sample], dict[str, int]]:
         if made_at is None or not stops_away or int(stops_away) <= 0:
             continue
         counters["stop_sequence"] += 1
+        if mature_before is not None and made_at > mature_before:
+            counters["censored"] += 1
+            continue
         key = (prediction["line_code"], prediction["door_no"], prediction["stop_code"])
         candidates = [t for t in arrivals.get(key, []) if made_at <= t <= made_at + MATCH_HORIZON]
         if not candidates:
@@ -170,6 +191,7 @@ def build_profile(samples: list[Sample], *, min_samples: int) -> EtaProfile:
             samples=len(group),
             mae_minutes=mae,
             baseline_mae_minutes=mae_at(group, DEFAULT_SECONDS_PER_STOP),
+            max_stops_away=max(s.stops_away for s in group),
         )
 
     return EtaProfile.from_cells(
@@ -248,10 +270,13 @@ def render(
             "Run scripts/collect_forever.py until a watched vehicle reaches a target stop."
         )
 
+    horizon_minutes = int(MATCH_HORIZON.total_seconds() // 60)
     lines += [
         f"{counters['resolved']} of {counters['stop_sequence']} stop-sequence predictions resolved "
         f"({counters['unresolved']} unresolved) out of {counters['predictions']} predictions and "
         f"{counters['snapshots']} position snapshots.",
+        f"{counters.get('censored', 0)} predictions were made inside the last {horizon_minutes} minutes of "
+        "collection and are excluded: only the journeys fast enough to have finished would be visible.",
         "",
         f"Baseline: the engine's current fixed {DEFAULT_SECONDS_PER_STOP:.0f} s/stop.",
         f"After: the profile's fallback chain (line+bucket -> line -> global -> {DEFAULT_SECONDS_PER_STOP:.0f}).",
