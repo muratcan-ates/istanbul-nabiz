@@ -47,6 +47,7 @@ import logging
 import os
 import pathlib
 import signal
+import subprocess
 import sys
 import time
 
@@ -112,8 +113,22 @@ def _now() -> float:
     return time.monotonic()
 
 
+def _process_start(pid: int) -> str:
+    """The start time ``ps`` reports for ``pid``, or "" when it cannot tell."""
+    with contextlib.suppress(OSError, subprocess.SubprocessError):
+        out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, timeout=5)
+        return out.stdout.strip()
+    return ""
+
+
 class SingleInstance:
-    """A pid lock, so two runs cannot double the request rate against İBB."""
+    """A pid lock, so two runs cannot double the request rate against İBB.
+
+    The lock holds the pid and the start time of the process that took it. A live pid alone
+    is not proof: after a reboot or a kill -9 the exit path never runs, and the old pid can
+    belong to an unrelated process, which used to keep the collector down until someone
+    noticed. A lock written before the start time was recorded falls back to the pid check.
+    """
 
     def __init__(self, path: pathlib.Path) -> None:
         self.path = path
@@ -123,13 +138,16 @@ class SingleInstance:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.path.exists():
             try:
-                pid = int(self.path.read_text().strip())
+                pid_line, _, start = self.path.read_text().strip().partition("\n")
+                pid = int(pid_line)
                 os.kill(pid, 0)
+                if start and _process_start(pid) != start:
+                    raise ProcessLookupError(pid)
             except (ValueError, ProcessLookupError, PermissionError):
                 log.warning("stale lock at %s, taking over", self.path)
             else:
                 raise SystemExit(f"collector already running as pid {pid} ({self.path})")
-        self.path.write_text(str(os.getpid()))
+        self.path.write_text(f"{os.getpid()}\n{_process_start(os.getpid())}\n")
         self.acquired = True
         return self
 
