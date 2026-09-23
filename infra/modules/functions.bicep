@@ -1,12 +1,20 @@
 // The collector — Azure Functions on the Flex Consumption plan (Python 3.12, 512 MB).
 //
-// It is the only thing in the system allowed to call İBB on a schedule (DECISIONS #3): one
-// collector, one set of timers, roughly 6,000 executions a week. Flex Consumption is the
+// OPTIONAL SINCE DECISIONS #10, AND OFF BY DEFAULT (`deployCollectorFunction`). The
+// collector now runs as scheduled Container Apps Jobs (modules/collectorjobs.bicep): the
+// five timers below never collected the watched lines or the ETA prediction log, and the
+// app was never deployable as packaged (docs/deploy.md). It stays in the template as the
+// documented fallback for a region where Container Apps is refused. Do not run it next to
+// the jobs: two collectors are two İETT budgets against one documented limit of 100/hour.
+//
+// When enabled, it is the one collector allowed to call İBB on a schedule (DECISIONS #3):
+// one set of timers, roughly 6,000 executions a week. Flex Consumption is the
 // right plan because it scales to zero between timer ticks and bills per GB-second, so the
 // whole thing costs cents rather than the ~$13/month an always-on B1 plan would.
 //
-// Identity: a USER-assigned managed identity, not a system-assigned one. Two reasons that
-// matter in practice:
+// Identity: a USER-assigned managed identity, not a system-assigned one — created in
+// modules/collectoridentity.bicep and shared with the jobs, so the ADX grant written
+// against its client id survives a change of host. Two reasons it is user-assigned:
 //   1. Flex Consumption reads its own deployment package out of a blob container with its
 //      identity. A system-assigned identity does not exist until the app is created, so the
 //      role assignment it needs to read that container can only be made afterwards, and the
@@ -19,11 +27,14 @@
 @description('Region for the plan and the function app.')
 param location string
 
-@description('Tags applied to every resource. azd-service-name is added on the site itself.')
+@description('Tags applied to every resource.')
 param tags object
 
 @description('Stable per-environment suffix for resource names.')
 param resourceToken string
+
+@description('Name of the existing collector identity (modules/collectoridentity.bicep), which already holds Storage Blob Data Contributor on the lake.')
+param collectorIdentityName string
 
 @description('Name of the existing ADLS Gen2 account holding the lake and the deployment container.')
 param storageAccountName string
@@ -64,9 +75,8 @@ var roles = {
   // Deployment container + host storage need Owner: the Functions host takes blob leases
   // for timer singleton locks, which Contributor alone does not always cover.
   storageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
-  // Named explicitly as well: it is the least privilege the collector's own lake writes
-  // need, and it is what a reviewer expects to see on a data-plane identity.
-  storageBlobDataContributor: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+  // (Storage Blob Data Contributor — the collector's own lake writes — is granted with the
+  // identity in collectoridentity.bicep, because every host needs it.)
   // Identity-based AzureWebJobsStorage uses queues and tables for host bookkeeping.
   storageQueueDataContributor: '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
   storageTableDataContributor: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
@@ -75,15 +85,12 @@ var roles = {
 
 var storageRoleIds = [
   roles.storageBlobDataOwner
-  roles.storageBlobDataContributor
   roles.storageQueueDataContributor
   roles.storageTableDataContributor
 ]
 
-resource collectorIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-collector-${resourceToken}'
-  location: location
-  tags: tags
+resource collectorIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: collectorIdentityName
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
@@ -138,8 +145,10 @@ resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: 'func-nabiz-${resourceToken}'
   location: location
-  // azd matches this tag to the `collector` service in azure.yaml.
-  tags: union(tags, { 'azd-service-name': 'collector' })
+  // No azd-service-name tag any more: azure.yaml no longer declares a `collector` service,
+  // because the default deployment has no Function for azd to find (DECISIONS #10). Code
+  // reaches this app, when it is enabled, through the Functions tooling instead.
+  tags: tags
   kind: 'functionapp,linux'
   identity: {
     type: 'UserAssigned'

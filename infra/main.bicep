@@ -11,8 +11,8 @@
 //   * Azure AI Search  — Basic is ~$2.42/day even completely idle. That is the entire
 //                        credit in six weeks for a service this project does not need:
 //                        every tool is parametric, there is no retrieval layer (DECISIONS #2).
-//   * Stream Analytics — no free tier at all; the collector Function does the same job.
-//   * Data Factory     — data flows bill per vCore-hour; the collector is a timer.
+//   * Stream Analytics — no free tier at all; the scheduled collector jobs do the same job.
+//   * Data Factory     — data flows bill per vCore-hour; the collector is a cron schedule.
 //   * Marketplace      — anything from Marketplace bills outside the credit and can charge
 //                        a card directly.
 //   * Azure Data Explorer — the free cluster (DECISIONS #1) is created OUTSIDE ARM at
@@ -24,8 +24,15 @@
 //
 // Region policy: Azure for Students carries a hidden "Allowed resource deployment regions"
 // policy assignment (typically ~5 regions, and the list differs per subscription). Pick
-// `location` from the intersection of that policy and the Functions Flex Consumption region
-// list — docs/deploy.md walks through the two commands that produce it.
+// `location` from that policy's list, among regions that offer Container Apps — and, only if
+// you turn the optional Function collector back on, Functions Flex Consumption too.
+// docs/deploy.md walks through the commands that produce the list.
+//
+// The collector (DECISIONS #10) runs as scheduled Container Apps Jobs in the same
+// environment as the MCP server and from the same image. The jobs are deployed once an
+// image exists — after the first `azd deploy mcp`, the next `azd provision` creates them —
+// because the only alternative is a placeholder image, and a placeholder web server in a
+// scheduled job runs until replicaTimeout on every tick and bills for all of it.
 
 targetScope = 'subscription'
 
@@ -39,7 +46,7 @@ targetScope = 'subscription'
 param environmentName string
 
 @minLength(1)
-@description('Region for every regional resource. MUST be allowed by the subscription region policy AND support Functions Flex Consumption — see docs/deploy.md.')
+@description('Region for every regional resource. MUST be allowed by the subscription region policy and offer Container Apps (and Functions Flex Consumption, if deployCollectorFunction) — see docs/deploy.md.')
 param location string
 
 @description('Override the generated resource group name. Empty means rg-<environmentName>.')
@@ -54,8 +61,51 @@ param deployContainerApp bool = true
 @description('Create an Azure Container Registry so azd can build the MCP image remotely (no local Docker). Basic is ~$1.17/week — the largest single line item in this template. Set false and supply mcpContainerImage from a public registry to avoid it.')
 param deployContainerRegistry bool = true
 
-@description('Pin the MCP server image instead of letting azd build one. Required when deployContainerRegistry is false. Empty means a public placeholder image runs until `azd deploy` pushes the real one.')
+@description('Pin the MCP server image instead of letting azd build one. Required when deployContainerRegistry is false. Empty means the image azd last deployed (mcpDeployedImage), or a public placeholder before there is one. The collector jobs run the same image.')
 param mcpContainerImage string = ''
+
+@description('The image azd last deployed to the mcp service. azd records it as SERVICE_MCP_IMAGE_NAME after `azd deploy mcp`; empty before the first deploy. Passing it back in keeps a later `azd provision` from reverting the MCP app to the placeholder, and gives the collector jobs their image.')
+param mcpDeployedImage string = ''
+
+@description('Run the collector as scheduled Container Apps Jobs (DECISIONS #10). Needs deployContainerApp — the jobs share its environment — and an image (mcpContainerImage or mcpDeployedImage). Without an image the jobs are skipped rather than deployed with a placeholder.')
+param deployCollectorJobs bool = true
+
+@description('The collector jobs: name (lowercase; the job becomes caj-<name>-<token>), cron (five fields, UTC), sources (comma-separated, exactly as `python -m nabiz.collector.job --sources` takes them) and replicaTimeout in seconds. MUST equal nabiz.collector.job.SCHEDULES: tests/test_collector_job.py compares the two, because the İETT budget arithmetic (66 requests in the peak hour against an in-process limit of 80) is done over that list.')
+param collectorJobSchedules array = [
+  {
+    name: 'lines'
+    cron: '*/3 * * * *'
+    sources: 'lines'
+    replicaTimeout: 170
+  }
+  {
+    name: 'city'
+    cron: '1-59/10 * * * *'
+    sources: 'ispark,fleet'
+    replicaTimeout: 300
+  }
+  {
+    name: 'metro'
+    cron: '5 * * * *'
+    sources: 'metro'
+    replicaTimeout: 300
+  }
+  {
+    name: 'traffic'
+    cron: '10 */6 * * *'
+    sources: 'traffic'
+    replicaTimeout: 300
+  }
+  {
+    name: 'airquality'
+    cron: '16 */12 * * *'
+    sources: 'air_quality'
+    replicaTimeout: 900
+  }
+]
+
+@description('Deploy the Flex Consumption Function collector (five timers, no watched lines, no ETA log). Superseded by the jobs in DECISIONS #10 and off by default: running both would be two İETT budgets against one documented limit.')
+param deployCollectorFunction bool = false
 
 @description('Deploy an Azure Maps Gen2 (G2) account for the web map. Defaults to false: the region policy on a student subscription frequently refuses Microsoft.Maps, and a refusal must not fail the deployment of everything else. The web UI falls back to MapLibre + OpenStreetMap.')
 param deployMaps bool = false
@@ -76,10 +126,10 @@ param bronzeRetentionDays int = 30
 @maxValue(10)
 param mcpMaxReplicas int = 1
 
-@description('Daily Log Analytics ingestion cap in GB, as a string because Bicep has no float literal. 0.5 GB/day keeps a runaway trace loop from eating the credit; the free grant is 5 GB/month.')
-param dailyLogCapGb string = '0.5'
+@description('Daily Log Analytics ingestion cap in GB, as a string because Bicep has no float literal. The free grant is 5 GB/month and each GB past it is $2.99 (West Europe), so the cap is 5 GB over a 31-day month: a runaway trace loop that hits it every day still ingests 4.96 GB and costs nothing. 0.5 would allow 15.5 GB, about $31/month.')
+param dailyLogCapGb string = '0.16'
 
-@description('Collector timer schedules (NCRONTAB, UTC). Overridable without a code change so the cadence can be slowed if the İBB gateway complains.')
+@description('Timer schedules (NCRONTAB, UTC) for the optional Function collector only; the jobs use collectorJobSchedules. Overridable without a code change so the cadence can be slowed if the İBB gateway complains.')
 param collectorSchedules object = {
   ispark: '0 */10 * * * *'
   iettFleet: '0 */2 * * * *'
@@ -95,6 +145,11 @@ param collectorSchedules object = {
 // One token per (subscription, environment, region) keeps globally-unique names stable
 // across redeploys — a changed storage account name would orphan the whole lake.
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+
+// The image the collector jobs run, when there is one: a pinned image wins, then the one
+// azd deployed. Deliberately no placeholder fallback here — see the header.
+var collectorImage = !empty(mcpContainerImage) ? mcpContainerImage : mcpDeployedImage
+var deployJobs = deployContainerApp && deployCollectorJobs && !empty(collectorImage)
 
 var tags = {
   'azd-env-name': environmentName
@@ -140,13 +195,27 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-module functions 'modules/functions.bicep' = {
+// One collector identity whichever host runs the collector, so the hand-written ADX grant
+// (`.add database ... ingestors ('aadapp=<clientId>;...')`) never has to be redone.
+module collectorIdentity 'modules/collectoridentity.bicep' = {
+  name: 'collectoridentity'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+    storageAccountName: storage.outputs.storageAccountName
+  }
+}
+
+module functions 'modules/functions.bicep' = if (deployCollectorFunction) {
   name: 'functions'
   scope: rg
   params: {
     location: location
     tags: tags
     resourceToken: resourceToken
+    collectorIdentityName: collectorIdentity.outputs.name
     storageAccountName: storage.outputs.storageAccountName
     deploymentContainerName: storage.outputs.deploymentContainerName
     bronzeContainerName: storage.outputs.bronzeContainerName
@@ -172,7 +241,28 @@ module containerapps 'modules/containerapps.bicep' = if (deployContainerApp) {
     kustoDatabase: kustoDatabase
     maxReplicas: mcpMaxReplicas
     createRegistry: deployContainerRegistry
-    containerImage: mcpContainerImage
+    containerImage: !empty(mcpContainerImage) ? mcpContainerImage : mcpDeployedImage
+    // The collector jobs pull the same image with their own identity.
+    acrPullPrincipalIds: deployCollectorJobs ? [collectorIdentity.outputs.principalId] : []
+  }
+}
+
+module collectorJobs 'modules/collectorjobs.bicep' = if (deployJobs) {
+  name: 'collectorjobs'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+    environmentId: containerapps.outputs.environmentId
+    registryLoginServer: deployContainerRegistry ? containerapps.outputs.registryLoginServer : ''
+    collectorIdentityName: collectorIdentity.outputs.name
+    storageAccountName: storage.outputs.storageAccountName
+    bronzeContainerName: storage.outputs.bronzeContainerName
+    kustoUri: kustoUri
+    kustoDatabase: kustoDatabase
+    image: collectorImage
+    schedules: collectorJobSchedules
   }
 }
 
@@ -205,18 +295,25 @@ output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = deployContainerApp ? conta
 
 output SERVICE_MCP_NAME string = deployContainerApp ? containerapps.outputs.containerAppName : ''
 output SERVICE_MCP_URI string = deployContainerApp ? containerapps.outputs.uri : ''
-output SERVICE_COLLECTOR_NAME string = functions.outputs.functionAppName
-output SERVICE_COLLECTOR_URI string = functions.outputs.uri
+// The optional Function collector; empty in the default (jobs) deployment.
+output SERVICE_COLLECTOR_NAME string = deployCollectorFunction ? functions.outputs.functionAppName : ''
+output SERVICE_COLLECTOR_URI string = deployCollectorFunction ? functions.outputs.uri : ''
+
+// Whether the collector jobs exist yet. `false` after the very first provision is expected:
+// they need an image, which exists after `azd deploy mcp` (the postprovision hook says so).
+// The job names are caj-<name>-<token>; `az containerapp job list -g <rg> -o table` shows them.
+output NABIZ_COLLECTOR_JOBS_DEPLOYED bool = deployJobs
 
 output NABIZ_STORAGE_ACCOUNT string = storage.outputs.storageAccountName
 output NABIZ_LAKE_URL string = storage.outputs.blobEndpoint
 output NABIZ_KUSTO_URI string = kustoUri
 output NABIZ_KUSTO_DB string = kustoDatabase
 
-// The Function's identity, needed verbatim for the ADX grant:
+// The collector identity — the jobs', or the Function's when that is enabled — needed
+// verbatim for the ADX grant:
 //   .add database <db> ingestors ('aadapp=<clientId>;<tenantId>')
-output NABIZ_COLLECTOR_CLIENT_ID string = functions.outputs.identityClientId
-output NABIZ_COLLECTOR_PRINCIPAL_ID string = functions.outputs.principalId
+output NABIZ_COLLECTOR_CLIENT_ID string = collectorIdentity.outputs.clientId
+output NABIZ_COLLECTOR_PRINCIPAL_ID string = collectorIdentity.outputs.principalId
 
 output NABIZ_MAPS_CLIENT_ID string = deployMaps ? maps.outputs.mapsClientId : ''
 output APPLICATIONINSIGHTS_NAME string = monitoring.outputs.applicationInsightsName

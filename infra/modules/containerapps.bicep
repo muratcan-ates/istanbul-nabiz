@@ -61,8 +61,11 @@ param maxReplicas int = 1
 @description('Create an Azure Container Registry for azd remote build. False means you supply containerImage from a registry that allows anonymous pull.')
 param createRegistry bool = true
 
-@description('Image to run. Empty uses a public placeholder so the very first deployment succeeds before any image exists; azd replaces it on `azd deploy`.')
+@description('Image to run. Empty uses a public placeholder so the very first deployment succeeds before any image exists; azd replaces it on `azd deploy`. main.bicep passes the image azd last deployed, so a later `azd provision` keeps it instead of reverting to the placeholder.')
 param containerImage string = ''
+
+@description('Principal ids that may pull from the registry besides the MCP server itself — the collector identity, whose Container Apps Jobs run the same image (DECISIONS #10). Ignored when createRegistry is false.')
+param acrPullPrincipalIds array = []
 
 // A container that merely listens on the wrong port still counts as a healthy revision, so
 // the placeholder does not fail the deployment — it just returns 502 until azd pushes the
@@ -113,6 +116,21 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (crea
     principalType: 'ServicePrincipal'
   }
 }
+
+// The collector jobs pull the image with their own identity rather than borrowing this
+// app's: that keeps the MCP identity read-only on the lake and the collector's the only
+// one that writes it. Granted here because the registry is created here.
+resource collectorAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for principalId in acrPullPrincipalIds: if (createRegistry) {
+    name: guid(resourceGroup().id, 'acr', principalId, roles.acrPull)
+    scope: registry
+    properties: {
+      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.acrPull)
+      principalId: principalId
+      principalType: 'ServicePrincipal'
+    }
+  }
+]
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
@@ -250,14 +268,36 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: mcpIdentity.properties.clientId
             }
             {
-              // GTFS reference data is baked into the image; see the Dockerfile in
-              // docs/deploy.md.
+              // GTFS reference data is baked into the image when the machine running
+              // `azd deploy` has it; see the root Dockerfile.
               name: 'NABIZ_GTFS_DIR'
               value: '/app/data/reference/gtfs'
             }
             {
               name: 'NABIZ_PLACES_CSV'
               value: '/app/data/reference/places.csv'
+            }
+            {
+              // Behind the Container Apps ingress every request arrives from the ingress's
+              // address. One trusted hop makes the server read the client address the
+              // ingress appended to X-Forwarded-For, so each caller gets its own rate budget
+              // instead of all callers sharing one (src/ibb_mcp/server.py, ToolBudget).
+              // Confirm on the first deploy that the ingress appends exactly one entry.
+              name: 'NABIZ_MCP_TRUSTED_PROXY_HOPS'
+              value: '1'
+            }
+          ]
+          probes: [
+            {
+              // /healthz answers from process state and local files, never from İBB, so
+              // probing it every 30 s spends none of the shared upstream budget. The same
+              // path as the Dockerfile HEALTHCHECK.
+              type: 'Liveness'
+              httpGet: {
+                path: '/healthz'
+                port: containerPort
+              }
+              periodSeconds: 30
             }
           ]
         }

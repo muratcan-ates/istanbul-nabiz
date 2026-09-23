@@ -23,6 +23,15 @@
     "mcpContainerImage": {
       "value": "${MCP_CONTAINER_IMAGE=}"
     },
+    "mcpDeployedImage": {
+      "value": "${SERVICE_MCP_IMAGE_NAME=}"
+    },
+    "deployCollectorJobs": {
+      "value": "${DEPLOY_COLLECTOR_JOBS=true}"
+    },
+    "deployCollectorFunction": {
+      "value": "${DEPLOY_COLLECTOR_FUNCTION=false}"
+    },
     "deployMaps": {
       "value": "${DEPLOY_MAPS=false}"
     },
@@ -39,7 +48,7 @@
       "value": "${NABIZ_MCP_MAX_REPLICAS=1}"
     },
     "dailyLogCapGb": {
-      "value": "${NABIZ_DAILY_LOG_CAP_GB=0.5}"
+      "value": "${NABIZ_DAILY_LOG_CAP_GB=0.16}"
     }
   }
 }

@@ -1,0 +1,40 @@
+# What the root Dockerfile is allowed to see. This file decides what gets *uploaded*, not
+# only what gets copied: `azure.yaml` sets `remoteBuild: true`, so every `azd deploy mcp`
+# tars the working tree and sends it to Azure Container Registry. Without this file that
+# upload is ~250 MB — a 73 MB .venv, a 176 MB GTFS export and the collected lake — for an
+# image that needs about 2.5 MB of it.
+#
+# Deny everything, then re-include exactly what the Dockerfile COPYs. The allow-list is
+# the safer direction: a new directory (a lake snapshot, a downloaded dataset, an .env
+# written during a demo) is excluded by default instead of silently joining the upload,
+# and this repository is public — anything that reaches the registry has left the laptop.
+# If a build ever fails with "file not found", the fix is one `!line` here, and that is a
+# better failure than a quarter-gigabyte push nobody notices.
+*
+
+# The wheel build inputs. LICENSE and NOTICE.md are inputs too, not decoration:
+# pyproject.toml names them in `license-files`, and hatchling fails a build that cannot
+# find them.
+!pyproject.toml
+!README.md
+!LICENSE
+!NOTICE.md
+!src
+
+# The reference layer: the gazetteer, the occupancy profile the collector built, and GTFS.
+!data/reference
+
+# Byte-code caches, wherever they are. They are rebuilt in the image anyway and copying
+# them in risks shipping a .pyc whose .py has since changed.
+**/__pycache__
+**/*.py[cod]
+
+# The three GTFS tables the server never opens. stop_times.txt is 150 MB, stop_times.csv
+# 26 MB and trips.csv 5.8 MB; all three are inputs to `make sequences`, whose output —
+# route_sequences.json.gz, 127 KB — is what ibb_mcp.gtfs.load_stop_sequences actually
+# reads. Leaving them out is not only 97% of the upload: it also means a request inside a
+# scale-to-zero container can never fall into build_stop_sequences and start parsing a
+# 150 MB file, because the file is not there to parse.
+data/reference/gtfs/stop_times.txt
+data/reference/gtfs/stop_times.csv
+data/reference/gtfs/trips.csv
