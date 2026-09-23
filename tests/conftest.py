@@ -1,6 +1,6 @@
 """Shared fixtures for the whole suite.
 
-Two decisions here shape every other test file:
+Three decisions here shape every other test file:
 
 * ``src/`` is put on ``sys.path`` so the suite runs from a bare checkout, with or
   without an editable install. ``ibb_mcp`` is a namespace package, so no build step
@@ -10,14 +10,24 @@ Two decisions here shape every other test file:
   it is a real-world side effect: the gateway starts returning 503 to every service
   after roughly fifteen rapid calls and the İETT SOAP service allows 100 requests per
   hour for the whole project. A stray live call must fail loudly, not silently pass.
+  Behind that, ``_no_outbound_network`` guards *every* test, including the ones that
+  never take ``ctx``: a socket connection or a DNS lookup for anything but loopback
+  fails the test.
+* GTFS comes from ``tests/fixtures/gtfs_mini``, never from ``data/reference/gtfs``. The
+  full export is gitignored, so a test reading it passes on a laptop and fails in CI:
+  three ``test_web.py`` tests did exactly that and failed 10 of CI's first 13 runs.
 """
 
 from __future__ import annotations
 
+import atexit
 import json
 import pathlib
+import shutil
+import socket
 import sys
-from collections.abc import Callable
+import tempfile
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import httpx
@@ -27,6 +37,7 @@ TESTS_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parent
 SRC_DIR = REPO_ROOT / "src"
 FIXTURES_DIR = TESTS_DIR / "fixtures"
+GTFS_MINI_DIR = FIXTURES_DIR / "gtfs_mini"
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
@@ -48,9 +59,31 @@ def read_fixture_text(name: str) -> str:
     return (FIXTURES_DIR / name).read_text(encoding="utf-8")
 
 
+_gtfs_copy: pathlib.Path | None = None
+
+
+def gtfs_fixture_dir() -> pathlib.Path:
+    """A private, per-session copy of ``tests/fixtures/gtfs_mini``.
+
+    A copy, not the committed folder: ``load_stop_sequences`` caches the sequences it
+    builds as ``route_sequences.json.gz`` beside the tables, and a test run must not leave
+    a new file in the repository. The copy keeps that write in a temporary directory while
+    still exercising the real build from ``trips.csv`` and ``stop_times.txt``. A plain
+    function rather than a fixture because ``offline_settings()`` is also called outside
+    fixtures, for example inside ``test_collector.py``.
+    """
+    global _gtfs_copy
+    if _gtfs_copy is None:
+        scratch = pathlib.Path(tempfile.mkdtemp(prefix="nabiz-gtfs-"))
+        atexit.register(shutil.rmtree, scratch, ignore_errors=True)
+        _gtfs_copy = scratch / "gtfs"
+        shutil.copytree(GTFS_MINI_DIR, _gtfs_copy, ignore=shutil.ignore_patterns("*.py", "*.md", "__pycache__"))
+    return _gtfs_copy
+
+
 def offline_settings() -> Settings:
-    """Settings that never touch the network and read from ``tests/fixtures``."""
-    return Settings(offline=True, fixtures_dir=FIXTURES_DIR)
+    """Settings that never touch the network and read only committed test data."""
+    return Settings(offline=True, fixtures_dir=FIXTURES_DIR, gtfs_dir=gtfs_fixture_dir())
 
 
 def refuse_network(request: httpx.Request) -> httpx.Response:
@@ -58,6 +91,67 @@ def refuse_network(request: httpx.Request) -> httpx.Response:
         "A test tried to reach the network: "
         f"{request.method} {request.url}. Tests must use tests/fixtures, never İBB."
     )
+
+
+#: Loopback is allowed: an ASGI app under test, or a local server a test starts itself,
+#: is not İBB. Everything else is outbound.
+_LOOPBACK_HOSTS = {"localhost", "::1", "0.0.0.0"}
+
+
+def _is_loopback(host: object) -> bool:
+    if isinstance(host, bytes):
+        host = host.decode(errors="replace")
+    return host is None or (isinstance(host, str) and (host in _LOOPBACK_HOSTS or host.startswith("127.")))
+
+
+@pytest.fixture(autouse=True)
+def _no_outbound_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
+    """Refuse any connection or DNS lookup that would leave this machine, in every test.
+
+    ``refuse_network`` only covers clients built by the ``ctx`` fixture; a test that makes
+    its own ``httpx`` client, or a code path that builds one internally, would reach İBB
+    unnoticed. So the guard sits below every HTTP library, at the socket. Attempts are
+    recorded and the test fails at teardown even if the code under test caught the error:
+    the stale-on-error cache swallows upstream failures by design, and a guard that can be
+    swallowed is not a guard. Subprocesses (git, node, the stdio MCP server) are not
+    covered; the stdio server test starts its server with ``NABIZ_OFFLINE=1`` itself, and
+    ``make test`` and CI set it for the whole run.
+
+    The fixture's value is the attempt log, so ``tests/test_network_guard.py`` can watch it
+    fire and then clear it.
+    """
+    attempts: list[str] = []
+    real_connect, real_connect_ex, real_getaddrinfo = socket.socket.connect, socket.socket.connect_ex, socket.getaddrinfo
+
+    def outbound(sock: socket.socket, address: object) -> bool:
+        if sock.family not in (socket.AF_INET, socket.AF_INET6):
+            return False  # AF_UNIX: asyncio's self-pipe and the like
+        return not _is_loopback(address[0] if isinstance(address, tuple) else address)
+
+    def connect(sock: socket.socket, address: object) -> None:
+        if outbound(sock, address):
+            attempts.append(f"connect {address!r}")
+            raise ConnectionRefusedError(f"tests may not reach the network: {address!r}")
+        return real_connect(sock, address)
+
+    def connect_ex(sock: socket.socket, address: object) -> int:
+        if outbound(sock, address):
+            attempts.append(f"connect {address!r}")
+            raise ConnectionRefusedError(f"tests may not reach the network: {address!r}")
+        return real_connect_ex(sock, address)
+
+    def getaddrinfo(host: object, *args: Any, **kwargs: Any) -> Any:
+        if not _is_loopback(host):
+            attempts.append(f"DNS lookup {host!r}")
+            raise socket.gaierror(socket.EAI_NONAME, f"tests may not resolve {host!r}")
+        return real_getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+    yield attempts
+    if attempts:
+        pytest.fail("A test tried to reach the network (tests must use tests/fixtures, never İBB): " + "; ".join(attempts))
 
 
 @pytest.fixture(scope="session")
