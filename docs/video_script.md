@@ -25,7 +25,7 @@ make collect-status                  # toplayıcı çalışıyor mu, kaç satır
 > hiç yok, çünkü İBB geçmişi yayınlamıyor."
 >
 > "İstanbul Nabız bunu **tek bir MCP server**'a çeviriyor. **Müşterim İBB Bilgi İşlem, Açık Veri ekibi.**
-> Kullanıcı **[T] saniyede** cevap alıyor, 24 senaryoda görev başarısı **%[S]**, otobüs varış tahmini
+> Kullanıcı **[T] saniyede** cevap alıyor, 30 senaryoda görev başarısı **%[S]**, otobüs varış tahmini
 > ortalama **[E] dakika** hatayla, ve **her sayının yanında kaynağı ve verinin yaşı** var."
 
 **Söylenecek kelimeler:** Customer Business Outcome · İBB Açık Veri · Microsoft Azure · Model Context Protocol.
@@ -68,7 +68,7 @@ make collect-status                  # toplayıcı çalışıyor mu, kaç satır
 **Ekranda:** VS Code, Copilot agent modu, `.vscode/mcp.json` bir saniye görünür.
 
 > "Ürün arayüz değil, bu katman. Aynı MCP server'ı VS Code'da GitHub Copilot'a bağladım, tek satır
-> yapılandırmayla. Aynı 12 araç, aynı kaynak atıfları. Bir geliştirici kendi ajanını beş dakikada
+> yapılandırmayla. Aynı 15 araç, aynı kaynak atıfları. Bir geliştirici kendi ajanını beş dakikada
 > İstanbul verisine bağlayabilir."
 
 Copilot'a canlı sor: *"Kartal metro istasyonunda asansör var mı?"*

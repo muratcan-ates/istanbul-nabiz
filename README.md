@@ -2,9 +2,7 @@
 
 **An unofficial MCP server and city agent over İstanbul's live open data** — parking, buses, metro, traffic and air quality, with a source URL and a timestamp attached to every number.
 
-<!-- Badges. The CI badge goes live with .github/workflows/ci.yml (PLAN.md §11, Day 1). -->
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/muratcan-ates/istanbul-nabiz/actions)
-[![tests](https://img.shields.io/badge/tests-see%20CI-lightgrey)](https://github.com/muratcan-ates/istanbul-nabiz/actions)
+[![CI](https://github.com/muratcan-ates/istanbul-nabiz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/muratcan-ates/istanbul-nabiz/actions/workflows/ci.yml)
 [![licence](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 [![data](https://img.shields.io/badge/data-%C4%B0BB%20Open%20Data%20%C2%B7%20CC%20BY%204.0-blue)](https://data.ibb.gov.tr/license)
 [![python](https://img.shields.io/badge/python-3.12-blue)](pyproject.toml)
@@ -21,131 +19,151 @@
 
 ## What it does
 
-İBB publishes 556 datasets and 41 APIs behind separate SOAP and REST endpoints. There is a Mobiett app, an
-İSPARK app, a CepHava app and a Metro İstanbul app — but no single conversational surface, no open
-integration layer, and no history to answer *"how full is it **usually** at this hour?"*.
+İBB publishes many open datasets, 41 of them as APIs ([enumerated 13 Sep](docs/events_research.md)), behind
+separate SOAP and REST endpoints. There is a Mobiett app, an İSPARK app, a CepHava app and a Metro İstanbul
+app — but no single conversational surface, no open integration layer, and no history to answer *"how full
+is it **usually** at this hour?"*.
 
-Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`) that any agent can call, and ships a
-city agent as its first client. Four journeys drive the design; each one is also an eval scenario
-(PLAN.md §1):
+Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 15 tools) that any agent can call,
+and ships a web page and a city agent as its first clients. Five journeys drive the design; each has six
+eval scenarios in `eval/journeys.jsonl`:
 
 | # | Who | The question | Tool chain | What the answer contains |
 |---|---|---|---|---|
-| **J1** | Driver | *"I'm reaching Taksim in 20 minutes — which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | up to 5 car parks, live free spaces, tariff text as published, straight-line distance, "usually X% full at this hour", update stamp |
+| **J1** | Driver | *"I'm reaching Taksim in 20 minutes — which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | up to 5 car parks, live free spaces, tariff text as published, straight-line distance, "usually X% full at this hour" when the history supports it, update stamp |
 | **J2** | Bus passenger | *"When does the 500T reach 4. Levent?"* | `iett_stops_search` → `iett_next_arrivals` | nearest vehicles, how many stops away, estimated minutes, how the estimate was derived, last position time, planned departure |
 | **J3** | Metro passenger / accessibility | *"Any disruption on M4? Is there a lift at Kartal?"* | `metro_status` → `metro_station_info` | live disruption notices, lift / escalator / baby room / WC / prayer room per station |
 | **J4** | Runner, parent | *"When is the air good enough for a run in Beşiktaş today?"* | `air_quality_now` → `air_quality_forecast` | current AQI and dominant pollutant, hourly PM10 outlook, best window, health note |
-
-Cross-journey (stretch): *"Is it faster to drive or take the metro right now?"* → `traffic_index` +
-`metro_status` + `ispark_find_parking`.
+| **J5** | Commuter | *"Taksim to Kadıköy right now — car or metro? Do the 500Ts bunch at noon? Anything I should know about M4?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` | a mode comparison (never directions) with every assumption stated, measured headway history over a stated window, stateless alerts, today's traffic against its usual level |
 
 **Three things make this more than an API wrapper:**
 
 1. **It protects the upstream.** The İETT service documents a hard limit of 100 requests/hour and the İBB
-   gateway starts 503-ing *every* service after roughly fifteen rapid calls. One shared collector plus a
-   TTL cache with single-flight means N concurrent users produce at most one upstream request
-   (`src/ibb_mcp/http.py`, `src/ibb_mcp/cache.py`).
-2. **It keeps the history İBB does not.** İBB publishes current state only. Parking occupancy and fleet
-   snapshots are accumulated into Delta Lake + Azure Data Explorer, which is what makes "usually at this
-   hour" and a *measured* ETA error possible at all.
+   gateway starts 503-ing *every* service after roughly fifteen rapid calls. One shared rate-limited client
+   plus a TTL cache with single-flight means N concurrent users produce at most one upstream request
+   (`src/ibb_mcp/http.py`, `src/ibb_mcp/cache.py`); over HTTP each caller also has its own budget, priced by
+   how far upstream a tool can reach (DECISIONS #15).
+2. **It keeps the history İBB does not.** İBB publishes current state only. A collector archives parking
+   occupancy, vehicle positions and its own arrival predictions, which is what makes "usually at this
+   hour", line regularity and a *measured* ETA error possible at all.
 3. **It never invents a number.** Every tool returns a `ToolResult` carrying provenance (source URL,
    observation time, whether the read was stale). When upstream fails the answer says how old the data is
-   instead of guessing, and the eval harness rejects any number in an answer that is not in a tool result.
+   instead of guessing, an input that could not be read is reported as unknown rather than as good news,
+   and the agent's faithfulness check rejects any number in an answer that is not in a tool result.
 
-## Project status
+## Project status (23 September 2026)
 
-Day 0 of a seven-day solo sprint (PLAN.md §11). This README documents the target system and marks
-honestly what runs today.
+Nothing is deployed yet. This table describes the working tree the README is committed with; the
+day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status table PLAN.md §0.
 
 | Layer | State | Where |
 |---|---|---|
 | İBB client, cache, models, GTFS repair, ETA engine | **working** | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py` |
-| 12 tool implementations behind one façade | **working** | `src/ibb_mcp/tools.py`, `src/ibb_mcp/sources/` |
-| Recorded fixtures for all 6 upstreams + fixture-backed test suite (188 passed, 6 xfailed, no network — Day 0) | **working** | `tests/fixtures/`, `tests/` |
-| MCP server entry point (`ibb-mcp`, stdio + streamable HTTP), 12 tools + `ibb://attribution` | **working** — stdio verified against a real MCP client | `src/ibb_mcp/server.py` |
-| Collector Functions, Delta Lake, ADX tables | **planned** — Day 1 | `src/nabiz/collector/`, `kql/` |
-| Agent (Microsoft Agent Framework) and web UI | **planned** — Days 4–5 | `src/nabiz/{agent,web}/` |
-| Bicep + `azd` infrastructure, GitHub Actions CI | **planned** — Day 1 | `infra/`, `.github/workflows/` |
-| Eval harness and results | **planned** — Day 5 | `eval/` |
+| 15 MCP tools behind one façade, plus the `ibb://attribution` resource | **working** — offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
+| MCP over streamable HTTP | **working locally** — stateless, per-caller budget, optional API key, closed CORS, `/healthz`; not deployed | `src/ibb_mcp/server.py`, `tests/test_server_security.py` |
+| Derived tables | **committed, thin** — built on 13 Sep from the laptop's lake; see Results for what each supports | `data/reference/` |
+| Collector | **today:** the owner's laptop, under a supervisor; its lake holds watched-line snapshots on 4 of the 15 days from 8 to 22 Sep (DECISIONS #10). **Target:** five scheduled Container Apps Jobs, written and tested offline, not deployed | `scripts/collect_forever.py`, `src/nabiz/collector/job.py`, `infra/modules/collectorjobs.bicep` |
+| Web UI | **working locally** — every card shows the data's age; Content-Security-Policy; the alert check travels in a POST body | `src/nabiz/web/` |
+| Alerts | **working** — stateless engine behind the MCP tool and the web route; the page can check and reset a subscription but has no editor to create one yet | `src/nabiz/alerts/`, [docs/privacy.md](docs/privacy.md) |
+| City agent | **working without a model** (keyword routing and templated answers); the model path has never been evaluated on a real model | `src/nabiz/agent/` |
+| Infrastructure | **written, never deployed** — Bicep + `azd`, one `Dockerfile` for server and jobs (never built) | `infra/`, `azure.yaml`, `Dockerfile`, [docs/deploy.md](docs/deploy.md) |
+| CI | **red on `main`**: 13 of 13 runs failed between 8 and 22 Sep, 10 of them because three tests read the gitignored GTFS export ([docs/ENGINEERING.md](docs/ENGINEERING.md) §1). Fixed in this batch with a committed GTFS cut; `make ci-local` passes on a clean copy; the first green run waits for the push | `.github/workflows/ci.yml` |
+| Tests | **943 passed**, 1 skipped, 3 xfailed (two documented defects), offline, on 23 Sep — in the working tree and on the clean copy `make ci-local` builds | `tests/` |
+| Eval harness | **30 scenarios** (J1–J5). The committed results are the 24-scenario runs of 8 Sep; J5 has no committed run yet | `eval/` |
 
 ## Architecture
 
 ![İstanbul Nabız architecture](docs/architecture.svg)
 
 Read it left to right: six İBB endpoints, one rate-limited client they all pass through, a collector that
-keeps the history İBB does not, and one MCP server that any agent can call. The mermaid source below says
-the same thing for readers who prefer text.
+keeps the history İBB does not, and one tool layer that the MCP server, the web page and the agent all
+call. The Azure half is the **target**, written in `infra/` but not deployed; today the collector runs on the
+owner's laptop (the dashed box). The mermaid source below says the same thing for readers who prefer text.
 
 ```mermaid
 flowchart LR
   subgraph IBB["İBB live services (api.ibb.gov.tr, no registration)"]
     P[İSPARK Park / ParkDetay<br/>~10 min]
-    B[İETT SOAP<br/>GetHatOtoKonum_json · GetFiloAracKonum_json<br/>100 req/hour]
+    B[İETT SOAP<br/>line and fleet positions · timetable<br/>100 req/hour]
     G[(İETT GTFS<br/>stops · routes · stop_times · Mar 2026)]
-    M[Metro İstanbul REST<br/>GetServiceStatuses · GetStations]
-    T[Traffic index<br/>5 min]
-    AQ[Air quality<br/>28 stations · hourly · 2023→]
+    M[Metro İstanbul REST<br/>service status · stations]
+    T[Traffic index<br/>5 min · 28-day hourly history]
+    AQ[Air quality<br/>28 stations · hourly]
   end
-  subgraph AZ["Azure (Students, Bicep + azd)"]
-    F[Azure Functions Flex<br/>collector timers]
-    L[(ADLS Gen2<br/>bronze JSON · silver/gold Delta)]
-    K[(Azure Data Explorer free<br/>KQL · profiles · ETA log)]
-    MCP[Container Apps<br/>ibb-mcp · streamable HTTP · shared cache]
-    UI[Container Apps<br/>Nabız web: chat + Azure Maps]
-    AI[Application Insights<br/>OpenTelemetry]
+  subgraph NOW["Today: the owner's laptop"]
+    LC[collect_forever.py<br/>under a supervisor]
+    LL[(data/lake<br/>gzipped NDJSON)]
   end
-  subgraph CL["MCP clients"]
-    AG[Nabız agent<br/>Microsoft Agent Framework]
-    VS[VS Code Copilot · Copilot Studio · Claude]
+  subgraph AZ["Azure target (Bicep + azd, not deployed)"]
+    J[Container Apps Jobs x5<br/>scheduled collector]
+    BL[(Blob Storage<br/>bronze NDJSON)]
+    K[(Azure Data Explorer free<br/>optional)]
+    MCP[Container Apps<br/>ibb-mcp · stateless HTTP · /healthz]
+    AI[Application Insights<br/>allow-listed spans]
   end
-  subgraph LLM["LLM (env switch)"]
-    AO[Azure OpenAI / Foundry serverless]
-    FL[Foundry Local · M1]
+  REF[(data/reference<br/>occupancy · reliability · ETA rates)]
+  TL[Tool layer · Nabiz<br/>15 tools · shared cache · PoliteClient]
+  subgraph CL["Clients"]
+    WEB[Nabız web page]
+    AG[Nabız agent<br/>tool loop + faithfulness check]
+    VS[VS Code Copilot · Claude · any MCP client]
   end
-  P & B & M & T & AQ --> F --> L --> K
-  F -->|streaming ingest| K
-  P & B & M & T --> MCP
-  G --> MCP
-  K -->|profiles · forecast| MCP
-  MCP --> AG & VS
-  AG --> UI
+  subgraph LLM["LLM (optional, env switch)"]
+    AO[Azure OpenAI or any /chat/completions]
+    FL[Foundry Local · on-device]
+  end
+  P & B & M & T & AQ --> LC --> LL
+  P & B & M & T & AQ -. target .-> J --> BL -.-> K
+  LL -->|build_profiles · reliability_report · calibrate_eta| REF
+  P & B & M & T & AQ --> TL
+  G --> TL
+  REF --> TL
+  TL --> MCP --> VS
+  TL --> WEB
+  TL --> AG
   AG --> AO
   AG -.-> FL
-  F & MCP & UI --> AI
+  MCP & J --> AI
 ```
 
-The MCP server is the product; the agent is its first customer. Both read the same cached, provenance-
-stamped tool layer, so a question asked in VS Code Copilot and the same question asked in the Nabız web UI
-hit identical code and identical numbers. See [DECISIONS.md](DECISIONS.md) for why each box is what it is.
+The MCP server is the product; the page and the agent are its first customers. All three read the same
+cached, provenance-stamped tool layer, so a question asked in VS Code Copilot and the same question asked on
+the Nabız page hit identical code and identical numbers. See [DECISIONS.md](DECISIONS.md) for why each box
+is what it is — #10 for the collector's move to Container Apps Jobs, #14 for the rail graph behind the mode
+comparison.
 
 ## Results
 
-Numbers are copied from `eval/results/` — not estimated, not rounded up from a demo, not filled in by
-hand. Where a metric cannot yet be computed, it says so and why, rather than being quietly omitted.
+Every number below is copied from a file in `eval/results/` or `data/reference/`, and the file is named in
+the row. A fit scored on the data it was fitted on is labelled **in-sample** and is never presented as
+accuracy. Where a metric cannot be computed it says so and why.
 
-| Metric | Result | How it is measured |
+| Metric | Result | Source · how it is measured |
 |---|---|---|
-| Task success rate | **13/13 (100%)** live, 24/24 offline | 24 journey scenarios (J1–J4 × 6, 12 TR / 12 EN) in `eval/journeys.jsonl`; a scenario passes when the expected fields are present, the forbidden hedges ("guaranteed", "kesin") are absent and every figure is attributable. The live run exercises 13 and caps the rest to stay inside the gateway budget |
-| Bus ETA mean absolute error | **16.6 min** (n = 606 observed arrivals) — *not yet shippable, see below* | every estimate is written to `eta_predictions` with its method; the collector later observes the vehicle actually reaching that stop, giving a measured error rather than a self-reported one |
-| — within 5 minutes | 20.8% | same sample |
-| — by method | `stop_sequence` 16.8 min (n=500) · `distance` 15.3 min (n=106) | `make eta` |
-| Tool success rate | 34/34 offline, 19/19 live | every tool call in the eval returns or refuses exactly where it should |
-| Number-plate leaks | **0** | asserted in the test suite and by `scripts/guardrails.py`, not just promised |
-| Numeric faithfulness | n/a — deterministic mode generates no free text | needs an LLM; blocked on Azure OpenAI quota (ADR 5) |
-| Tool-call accuracy | n/a — the harness calls the expected chain itself | only an agent can pick the wrong tool |
-| p95 end-to-end latency | 27 ms offline · 17.8 s live cold | live includes our own ≥6 s per-host spacing before each upstream call — politeness, not İBB being slow |
-| Data freshness at answer time | 48 s median live | age of the reading itself, from `provenance.reported_at` |
+| Task success rate (data layer) | **24/24** offline · **13/13** live | `eval/results/20260908T084817Z-deterministic-offline.md` · `eval/results/20260908T084908Z-deterministic-live.md` (= `latest.md`), 8 Sep, J1–J4. A scenario passes when every call returns or refuses where it should and every required field is present. The live run stopped at its own 8-request ceiling after 13 scenarios; the J5 scenarios added on 23 Sep are in no committed run yet |
+| Tool success rate | 34/34 offline · 19/19 live | same two files |
+| Number-plate leaks | **0** | same two files; also asserted by the tests and by `scripts/guardrails.py` |
+| Bus ETA mean absolute error | **12.94 min** (n = 1,351 of 6,801 predictions, 8–22 Sep) — *not shippable, see below* | `eval/results/eta.md` (`make eta`): every logged prediction paired with the vehicle later observed at that stop. All of them used the untuned 120 s/stop |
+| — within 5 minutes | 27.3% | same |
+| — by method | `stop_sequence` 12.74 min (n = 1,240) · `distance` 15.16 min (n = 111) | same |
+| Calibrated ETA rates, held out | **35.82 min** against 10.18 min for the untuned rate, on the same 523 predictions made after the fit | `eval/results/eta.md`, "Held-out replay" (`make eta-holdout`): the calibration makes the estimate worse on stops it never saw |
+| Calibrated ETA rates, in-sample | 11.16 min for the per-bucket rates the tool serves, 12.37 min for the single 235 s/stop rate, both on the 500 predictions they were fitted on — fits, not accuracy | `eval/results/eta.md` ("What 12.37 and 11.2 are") · `data/reference/eta_profile.json` (`overall.mae_minutes`) |
+| Line regularity | 15 of 39 line-hour cells published, 24 refused for too few observations; 2 calendar days (8 and 13 Sep) | `eval/results/reliability.md`, `data/reference/line_reliability.json` |
+| "Usually at this hour" parking | 0 of 3,216 cells pass the profile's own guards (16,325 snapshot rows, 8–13 Sep), so the tool answers "not enough history yet" | `data/reference/occupancy_profile.json` |
+| Agent without a model | 9/24 scenarios; tool-call accuracy 41.7% exact chain; numeric faithfulness 126/126 numbers in its templated answers | `eval/results/20260908T082619Z-agent-offline.md` — keyword routing and templates, not a model |
+| Agent with a model | n/a — never evaluated on a real model | needs an LLM endpoint (DECISIONS #5) |
+| p95 end-to-end latency | 27 ms offline · 17,819 ms live, cold | `eval/results/20260908T084817Z-deterministic-offline.md` · `eval/results/20260908T084908Z-deterministic-live.md`; live includes our own ≥ 6 s spacing before each upstream call — politeness, not İBB being slow |
+| Data freshness at answer time | 48 s median, live | `eval/results/20260908T084908Z-deterministic-live.md`, age of the reading itself (`provenance.reported_at`) |
 
-**About that ETA number.** 16.6 minutes is bad and we publish it anyway, because the harness exists to
-catch exactly this. `make eta-diagnose` separates the two causes: the per-stop rate is too low for an
-express line (235 s/stop fits the data against the untuned 120), *and* a residual constant inflates every
-observation. One source of the constant is already fixed — the first targets included a route terminus,
-where a bus on layover keeps reporting the stop as nearest and the rest break was counted as travel.
-Calibration is applied from the collected history rather than guessed; before/after is in
-`eval/results/eta.md`.
-
-Groundedness and relevance are additionally scored with `azure-ai-evaluation`, with the judge model
-selected by the same environment switch as the agent (ADR 5).
+**About that ETA number.** 12.94 minutes is bad and it is published anyway, because the harness exists to
+catch exactly this. It measures the untuned 120 s/stop estimator: the collector logs every prediction at
+that rate. The per-bucket rates calibrated on 13 September, the ones the tool serves, scored 11.16 minutes
+only on the 500 predictions they were fitted on (two 500T stops; the single 235 s/stop rate scored 12.37
+there); replayed on 523 later predictions at stops the fit never saw, they scored 35.82 minutes against
+10.18 for the untuned rate. Seconds per stop belongs to a stretch of road, not
+to a line, so the next model has to account for stop spacing. `iett_next_arrivals` applies the calibrated
+rates today; which estimator it should serve is an open decision ([docs/SPRINT.md](docs/SPRINT.md), D4).
+Method, the before/after split, limits and history: `eval/results/eta.md`.
 
 ## Verified data facts
 
@@ -159,18 +177,18 @@ rarely the happy path.
 | İSPARK lots | `GET /ispark/Park` | 249 car parks: `parkID, parkName, lat, lng, capacity, emptyCapacity, workHours, parkType, freeTime, district, isOpen` | ~10 min | `lat`/`lng` arrive as **strings**; one call covers the whole city, so "parking near me" is a filter over a shared cached fetch, never a per-user request — `sources/ispark.py` |
 | İSPARK detail | `GET /ispark/ParkDetay?id=<parkID>` | adds `updateDate`, `monthlyFee`, `tariff` (free text), `address`, `areaPolygon` (WKT) | ~10 min | **An unknown id returns a plausible dummy record** (capacity 1) instead of an error, so ids are validated against the live list before the call. The tariff text is shown verbatim, never parsed — `sources/ispark.py` |
 | İETT line positions | `POST .../SeferGerceklesme.asmx`, action `GetHatOtoKonum_json` | vehicles on one line (31 for 500T at capture): `kapino, boylam, enlem, guzergahkodu, hatad, yon, son_konum_zamani, yakinDurakKodu` | seconds | The JSON is an **XML-entity-escaped string inside `<…Result>`**, and Oracle `ORA-` errors leak through as plain text in the same element — `http.extract_soap_json` |
-| İETT fleet | same service, `GetFiloAracKonum_json` | 6 911 vehicles, 1.1 MB: `Operator, Garaj, KapiNo, Saat, Boylam, Enlem, Hiz, Plaka` | seconds | **Documented limit: 100 requests/hour.** Our own budget stops at 80/hour before İBB does. `Plaka` (number plate) is dropped at the parsing boundary and never stored or returned — `http.HourlyBudget`, `models.BusPosition.from_fleet_raw`, [NOTICE.md](NOTICE.md) |
+| İETT fleet | same service, `GetFiloAracKonum_json` | 6 911 vehicles, 1.1 MB: `Operator, Garaj, KapiNo, Saat, Boylam, Enlem, Hiz, Plaka` | seconds | **Documented limit: 100 requests/hour.** Our own budget stops at 80/hour before İBB does. `Plaka` (number plate) is dropped at the parsing boundary and never stored or returned; the recorded fixtures carry synthetic plates (`00 XX 001` …) — `http.HourlyBudget`, `models.BusPosition.from_fleet_raw`, [NOTICE.md](NOTICE.md) |
 | İETT timetable | `.../PlanlananSeferSaati.asmx`, `GetPlanlananSeferSaati_json` | 702 planned departures for 500T: `SHATKODU, SGUZERAH, SYON, SGUNTIPI (I/C/P), DT` | daily | Day type is a single letter — `I` weekday, `C` Saturday, `P` Sunday — and it is a **departure** from the terminus, not an arrival at your stop; the ETA engine labels it as such — `models.day_type_for`, `eta.py` |
 | İETT GTFS | `data.ibb.gov.tr` dataset `iett-gtfs-verisi` | 15 390 stops, 9 279 routes (Mar 2026) | ~6 months | Separator is **`;`**, file has a **UTF-8 BOM**, coordinates carry thousands separators (`410.191.700.005.564` = `41.0191700005564`, 4 stops still land outside İstanbul and are dropped), and `routes.csv` text is **double-encoded mojibake** (`KADIKÃ–Y` = `KADIKÖY`) — `models.repair_coordinate`, `models.demojibake`, `gtfs.py` |
 | **The join** | live → static | `yakinDurakKodu` → `stops.**stop_code**` (31/31 matched on 500T); `guzergahkodu` → `routes.route_code` (2/2) | — | It is `stop_code`, **not** `stop_id` — different number spaces in this export. Joining on `stop_id` matches nothing and the ETA tool would quietly answer "no buses" — `gtfs.py` |
 | Metro status | `GET .../V2/GetServiceStatuses` | `{Success, Error, Data:[{LineId, LineName, Description, IsActive, UpdateDate, …}]}` | live | Only lines **with a notice** are listed. An empty `Data` means "no disruption reported", not "no data" — and `Success: false` is a real failure, not an empty result — `sources/metro.py` |
 | Metro stations | `GET .../V2/GetStations` | 248 stations with `DetailInfo:{Escolator, Lift, BabyRoom, WC, Masjid, Latitude, Longitude}` | static | The escalator field is misspelled **`Escolator`**; `Name` is shouted and de-diacriticised (`YENIKAPI`) while `Description` holds the human form (`Yenikapı`) — display uses `Description` — `sources/metro.py` |
-| Traffic index | `GET /tkmservices/api/TrafficData/v1/TrafficIndexHistory/{days}/{5M\|H\|D\|M\|Y}` | `[{TrafficIndex: 1–99, TrafficIndexDate}]`; `/1/H` returns 25 points | 5 min | **Returns XML unless `Accept: application/json` is sent** — without the header JSON parsing fails with a confusing error. The 25-point shape gives "now vs. same hour yesterday" from a single call — `sources/traffic.py` |
+| Traffic index | `GET /tkmservices/api/TrafficData/v1/TrafficIndexHistory/{days}/{5M\|H\|D\|M\|Y}` | `[{TrafficIndex: 1–99, TrafficIndexDate}]`; `/1/H` returns 25 points | 5 min | **Returns XML unless `Accept: application/json` is sent** — without the header JSON parsing fails with a confusing error. The 25-point shape gives "now vs. same hour yesterday" from a single call. A missing index is kept as missing, never read as 0 ("akıcı") — `sources/traffic.py`, `models.TrafficIndexPoint` |
 | Air quality | `GetAQIStations` (28) · `GetAQIByStationId?StationId=<guid>&StartDate=dd.MM.yyyy HH:mm:ss&EndDate=…` | hourly `Concentration{PM10, SO2, O3, NO2, CO}` + `AQI{AQIIndex, ContaminantParameter, State, Color}`, back to at least 2023 | hourly | **`AQIIndex` is a rolling 24-hour mean for PM10**, so it lags the air you would breathe on a run — for short-horizon questions the hourly *concentration* is the honest signal. `EndDate` is inclusive (dedupe on `ReadTime`); a 30-day window returned all 744 rows; **PM2.5 is not in this API**; NO2/CO are frequently null — `sources/airquality.py` |
 
-Re-capture the fixtures with `python scripts/capture_fixtures.py`. It spaces gateway calls ≥ 7 s apart and
-makes at most three İETT SOAP calls. **Run it sparingly** — the budget it protects is shared with everyone
-else using these public endpoints.
+Re-capture the fixtures with `make fixtures` (**NETWORK**, owner only). It spaces gateway calls ≥ 7 s apart,
+makes at most three İETT SOAP calls and swaps every plate for a synthetic one before writing. **Run it
+sparingly** — the budget it protects is shared with everyone else using these public endpoints.
 
 ## Quickstart
 
@@ -178,50 +196,67 @@ else using these public endpoints.
 git clone https://github.com/muratcan-ates/istanbul-nabiz.git
 cd istanbul-nabiz
 
-# Python 3.12 (the system 3.14 is not supported by every dependency yet)
-uv venv -p 3.12 .venv && source .venv/bin/activate
-uv pip install -e ".[dev]"
+make venv          # uv venv -p 3.12 .venv (the system 3.14 is not supported by every dependency yet)
+make install       # editable install with the dev and web extras (EXTRAS=dev,web,collector for more)
 
-# Run the tests — no network is touched: the fixture-backed transport in
-# tests/conftest.py raises if any test tries to reach İBB.
-pytest -q          # Day 0: 188 passed, 6 xfailed in 0.2s
+make test          # the suite, offline: tests/conftest.py fails any test that tries the network
+make lint smoke guardrails   # the other gates CI runs
+make ci-local      # every CI gate on a clean copy of exactly what a push would publish
 ```
 
-**Reference data.** `data/reference/places.csv` (276 places: metro stations, air-quality stations,
-district centroids, landmarks) is committed; regenerate it with `python scripts/build_places.py`. The GTFS
-export is *not* committed (1.5 MB `stops.csv` + 812 KB `routes.csv`); download it into
-`data/reference/gtfs/` — `ibb_mcp.gtfs.download_gtfs` does this, and the resource URLs are recorded in
-`tests/fixtures/gtfs_resources.json`.
-
-**Check the environment** — `scripts/probe_day0.py` is the pre-flight gate: 21 numbered checks over the
-local toolchain, the Azure subscription's regional constraints, the six İBB endpoints and the live-bus →
-GTFS join, printed as a PASS/FAIL/SKIP table with a "next actions" block and written to
-`docs/day0_report.json`. Exit code 0 when nothing failed, so it also works as a CI gate.
-
-```bash
-./.venv/bin/python scripts/probe_day0.py               # toolchain + İBB + GTFS (6 gateway calls, 6 s apart)
-./.venv/bin/python scripts/probe_day0.py --no-network  # local checks only, safe to re-run
-./.venv/bin/python scripts/probe_day0.py --azure       # ... plus the az subscription checks
-./.venv/bin/python scripts/capture_fixtures.py         # re-record tests/fixtures/ (11 calls, ≥ 7 s apart)
-```
+**Reference data.** Committed: `data/reference/places.csv` (276 places: metro stations, air-quality
+stations, district centroids, landmarks; `make places` rebuilds it), the three derived tables
+(`occupancy_profile.json`, `line_reliability.json`, `eta_profile.json`, rebuilt from the local lake by
+`scripts/build_profiles.py`, `scripts/reliability_report.py` and `scripts/calibrate_eta.py`), and a 38 KB
+cut of the GTFS export in `tests/fixtures/gtfs_mini/` that the tests read. The full GTFS export is *not*
+committed; download it into `data/reference/gtfs/` with `ibb_mcp.gtfs.download_gtfs` (resource URLs in
+`tests/fixtures/gtfs_resources.json`) and build its stop-sequence cache with `make sequences`. Without it
+the two stop tools answer `reference_data_missing` and `plan_journey` withdraws its bus option.
 
 **Offline mode.** `NABIZ_OFFLINE=1` makes every source read from `tests/fixtures/` instead of the network,
-which is how the demo stays reproducible on a bad conference wifi. Other settings:
-`NABIZ_GTFS_DIR`, `NABIZ_PLACES_CSV`, `NABIZ_FIXTURES_DIR`, `NABIZ_RADIUS_KM`, `NABIZ_MAX_RESULTS`
-(`src/ibb_mcp/config.py`).
+which is how the demo stays reproducible on a bad conference wifi. Every other setting is listed in
+[docs/mcp-usage.md](docs/mcp-usage.md#configuration).
 
-**Run the MCP server.** `src/ibb_mcp/server.py` registers all 12 tools plus an
-`ibb://attribution` resource on the console entry point `ibb-mcp` declared in `pyproject.toml`.
-Verified over stdio against a real MCP client on Day 0; the *hosted* HTTP deployment on Container
-Apps is still Day 3:
+**Check the environment.** `scripts/probe_day0.py` is the pre-flight gate: 21 numbered checks over the
+local toolchain, the Azure subscription's regional constraints, the six İBB endpoints and the live-bus →
+GTFS join, printed as a PASS/FAIL/SKIP table and written to `docs/day0_report.json` (home paths shortened
+to `~`; no subscription or tenant id is recorded).
 
 ```bash
-ibb-mcp                                  # stdio transport, for a local client
-ibb-mcp --offline                        # stdio, served from tests/fixtures (reproducible demo)
-ibb-mcp --transport http --port 8080     # streamable HTTP, the shape deployed on Container Apps
+./.venv/bin/python scripts/probe_day0.py --no-network  # local checks only, safe to re-run
+./.venv/bin/python scripts/probe_day0.py               # NETWORK: + İBB and GTFS (6 gateway calls, spaced)
+./.venv/bin/python scripts/probe_day0.py --azure       # NETWORK: + the az subscription checks
 ```
 
-The same 12 tools are also callable directly from Python, which is how the contract tests drive them:
+**Run the MCP server.** `ibb-mcp` is the console script declared in `pyproject.toml`; it registers the 15
+tools below and an `ibb://attribution` resource.
+
+```bash
+make mcp                                  # stdio, the shape VS Code and Claude launch
+.venv/bin/ibb-mcp --offline               # stdio, served from tests/fixtures (reproducible demo)
+make mcp-http                             # streamable HTTP on 127.0.0.1:8000, the shape Container Apps runs
+NABIZ_OFFLINE=1 make web                  # the web page on http://127.0.0.1:8080, from fixtures
+```
+
+| Tool | What it answers |
+|---|---|
+| `places_resolve(query, limit)` | a place name → coordinates, from the local gazetteer |
+| `ispark_find_parking(place \| lat+lon, radius_km, min_free, open_now)` | car parks near a place with live free spaces and the tariff as published |
+| `ispark_typical_occupancy(park_id, weekday, hour)` | measured occupancy history for one car park, or why there is not enough |
+| `iett_stops_search(query, limit)` | bus stops by name, from GTFS |
+| `iett_line_buses(line_code, direction)` | where a line's buses are now; with the GTFS export present, a code İETT does not list is refused before it costs an İETT request |
+| `iett_next_arrivals(line_code, stop, limit)` | estimated arrivals, each with its method and confidence; a stop the line never calls at is refused, and so is a code İETT does not list (with the GTFS export present) |
+| `metro_status(line)` | live disruption notices; no notice means none reported |
+| `metro_station_info(name)` | a station's lift, escalators, baby room, WC and prayer room |
+| `traffic_index(window)` | the city traffic index now, against the same weekday and hour's median, or its last 24 hours |
+| `air_quality_now(place)` | the nearest station's latest reading, AQI band and a health disclaimer |
+| `air_quality_forecast(place, horizon_hours)` | a baseline PM10 outlook and the cleanest upcoming window |
+| `city_freshness()` | how old each source's data is, and how much request budget is left |
+| `plan_journey(origin, destination \| lat+lon pairs)` | drive, metro, one bus line and walking compared, with every assumption; not navigation |
+| `line_reliability(line_code, hour)` | measured headway and bunching for a line and hour, over a stated window |
+| `check_alerts(subscription)` | a client-held alert subscription evaluated once, stored nowhere |
+
+The same tools are callable directly from Python, which is how the contract tests drive them:
 
 ```python
 import asyncio
@@ -243,43 +278,65 @@ any other MCP client at it and İBB's live data becomes available to *your* agen
 the same provenance.
 
 **→ [docs/mcp-usage.md](docs/mcp-usage.md)** — copy-pasteable stdio and HTTP configuration, the full tool
-reference with parameters and return shapes, and a note on sharing the rate budget.
+reference with parameters and return shapes, the failure kinds, and a note on sharing the rate budget.
+
+## How this repository is built
+
+One person, several coding agents working in parallel lanes, and rules that keep the result honest:
+
+- **[AGENTS.md](AGENTS.md)** — the binding rules for any agent: lanes and file ownership, no AI
+  attribution, nothing personal in a public tree, never call İBB from tests, sourced numbers only.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup, the checks, commit style and identity.
+- **[docs/ENGINEERING.md](docs/ENGINEERING.md)** — the engineering rules, each tied to an incident or a
+  reference, and a dated, unflattering self-assessment.
+- **[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)** and **[SECURITY.md](SECURITY.md)** — what is protected,
+  by which file, and how to report a vulnerability privately.
+- **[docs/privacy.md](docs/privacy.md)** — why no location is stored server-side, and the tests that hold it.
+- **[docs/SPRINT.md](docs/SPRINT.md)** · **[PLAN.md](PLAN.md)** · **[DECISIONS.md](DECISIONS.md)** — the
+  plan to delivery, the original plan with its dated status, and 17 architecture decisions.
 
 ## Limitations
 
 Stated plainly, because a public-data project that hides these is not trustworthy:
 
-- **Bus arrivals are estimates, not a timetable guarantee.** They come from live vehicle positions, GTFS
-  stop order and the published schedule; each estimate reports the method behind it. Plan journeys with
-  official İETT and Metro İstanbul sources.
+- **Bus arrivals are estimates, not a timetable guarantee**, and today they are not accurate enough (see
+  Results). They come from live vehicle positions, GTFS stop order and the published schedule; each
+  estimate reports the method behind it. Plan journeys with official İETT and Metro İstanbul sources.
+- **The mode comparison is an estimate, not navigation.** Rail runs over Metro İstanbul's station list with
+  a flat 6-minute headway and one published check (M7: 38.9 min modelled against 36 published); the drive
+  estimate has no ground truth. Every option says so ([docs/route-advisor.md](docs/route-advisor.md)).
+- **The history is thin.** The derived tables were built on 13 September from a collector that ran on a
+  laptop and kept stopping: no parking cell passes its own guards yet, and line regularity covers two days.
+  The tools say so instead of extrapolating.
 - **28 air-quality stations, not 38.** The open API exposes 28; İBB's own map shows more. Coverage is
   uneven, so the nearest station may be some distance from you.
 - **No PM2.5.** This API publishes PM10, SO2, O3, NO2 and CO only. NO2 and CO are frequently null.
 - **The published AQI is a rolling 24-hour mean** for PM10 (8 hours for O3 and CO). It is the official
   band, but it is not what the air is doing this hour — the hourly concentration is reported next to it.
+- **Air-quality forecasting is a seasonal-naive baseline**, and the result says so.
 - **İSBİKE is out.** The bike-share service is closed; there is nothing live to read.
-- **The traffic *density* dataset stops in January 2025.** Only the live 1–99 traffic *index* is current;
-  line-level average speeds derived from fleet snapshots partly compensate.
+- **The traffic *density* dataset stops in January 2025.** Only the live 1–99 traffic *index* is current.
 - **Parking occupancy is not instantaneous** — İSPARK refreshes roughly every 10 minutes, and every answer
   carries the age of the reading.
-- **"Usually at this hour" needs history that starts empty.** İBB keeps none, so the profile builds up from
-  this project's own snapshots; below three observations per cell the tool says so instead of guessing.
 - **Some upstreams need a key or are shut** — hal (market) prices require a key, road-works returns 404.
-- **The free Azure Data Explorer cluster has no SLA** and is not backed by a paid subscription; the same is
-  true of the Azure for Students credit behind the rest of the deployment.
-- **Air-quality forecasting is a seasonal-naive baseline** until a trained model beats it; both results are
-  reported side by side rather than the better one alone.
+- **The offline eval still needs the GTFS export for its bus-stop scenarios.** The tests run on a committed
+  GTFS cut, but `eval/run_eval.py --offline` reads `data/reference/gtfs/`; on a clean clone without it four
+  J2 scenarios fail (26/30, measured on a clean copy on 23 Sep).
+- **The free Azure Data Explorer cluster has no SLA**, and the Azure for Students credit behind the rest of
+  the deployment is finite; nothing is deployed yet.
 
 ## Roadmap
 
 | | |
 |---|---|
-| **Publish `ibb-mcp` to PyPI** | one `uvx ibb-mcp` away from any MCP client |
-| **Specialised agents** | a transit agent, a parking agent and an environment agent behind a router, instead of one prompt holding twelve tools |
-| **Proactive notifications** | "your usual car park fills up in 20 minutes", "M4 disruption on your route" — built on the history the collector accumulates |
+| **Deploy** | the MCP server and the collector jobs on Azure Container Apps ([docs/deploy.md](docs/deploy.md), [docs/SPRINT.md](docs/SPRINT.md) D3) |
+| **A better ETA model** | one that accounts for stop spacing, measured held out before it is served |
+| **Publish `ibb-mcp` to PyPI** | one `uvx ibb-mcp` away from any MCP client, once the release name is decided |
+| **Specialised agents** | a transit agent, a parking agent and an environment agent behind a router, instead of one prompt holding fourteen tools |
+| **Push notifications** | for the stateless alert check, which today runs only while the page is open |
 | **Copilot Studio connector** | the same server as a first-class Microsoft 365 agent tool |
-| **Microsoft Fabric** | Eventhouse mirror of the ADX tables and a OneLake shortcut over the Delta gold layer |
-| **Event Hubs ingestion** | replace the timer-driven collector for the second-resolution fleet feed |
+| **Microsoft Fabric** | Eventhouse mirror of the ADX tables and a OneLake shortcut over the lake |
+| **Event Hubs ingestion** | in place of the scheduled collector for the second-resolution fleet feed |
 | **Azure Maps Search** | as a fallback for place names the local gazetteer misses |
 | **LightGBM occupancy model** | once two or more weeks of parking history exist, measured against the median profile |
 
@@ -288,8 +345,8 @@ Stated plainly, because a public-data project that hides these is not trustworth
 ## Türkçe
 
 **İstanbul Nabız**, İBB'nin kayıt istemeyen canlı açık verisini (İSPARK doluluk, İETT otobüs konumları,
-Metro arıza durumu, trafik indeksi, hava kalitesi) **tek bir MCP sunucusuna** dönüştürür ve bu sunucunun
-ilk müşterisi olarak bir şehir ajanı sunar. Her sayının yanında kaynağı ve zaman damgası vardır.
+Metro arıza durumu, trafik indeksi, hava kalitesi) **15 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
+sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının yanında kaynağı ve zaman damgası vardır.
 
 > **Bu resmî bir İBB hizmeti değildir.** Bağımsız bir öğrenci projesidir; İBB, İETT, İSPARK veya Metro
 > İstanbul ile bağlantılı, onlar tarafından desteklenen ya da onaylanan bir çalışma değildir. Ayrıntı:
@@ -297,7 +354,7 @@ ilk müşterisi olarak bir şehir ajanı sunar. Her sayının yanında kaynağı
 >
 > Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0).
 
-**Dört kullanıcı yolculuğu**
+**Beş kullanıcı yolculuğu**
 
 | # | Kullanıcı | Soru | Araç zinciri |
 |---|---|---|---|
@@ -305,33 +362,42 @@ ilk müşterisi olarak bir şehir ajanı sunar. Her sayının yanında kaynağı
 | J2 | Yolcu | *"500T 4. Levent'e ne zaman gelir?"* | `iett_stops_search` → `iett_next_arrivals` |
 | J3 | Metro yolcusu | *"M4'te arıza var mı? Kartal'da asansör var mı?"* | `metro_status` → `metro_station_info` |
 | J4 | Koşucu, ebeveyn | *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"* | `air_quality_now` → `air_quality_forecast` |
+| J5 | İşe giden | *"Taksim'den Kadıköy'e şu an arabayla mı metroyla mı? 500T öğlen kümeleniyor mu?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` |
 
 **Neden bir API sarmalayıcısından fazlası**
 
 - **Servisleri korur.** İETT servisi saatte 100 istekle sınırlı; İBB ağ geçidi yaklaşık 15 hızlı çağrıdan
-  sonra bütün servislere 503 döndürüyor. Tek toplayıcı + tek uçuşlu (single-flight) TTL önbellek sayesinde
-  eşzamanlı N kullanıcı en fazla bir yukarı akış isteği üretir.
-- **İBB'nin tutmadığı tarihçeyi tutar.** İBB yalnızca anlık durumu yayımlıyor; otopark doluluğu ve filo
-  anlık görüntüleri Delta Lake + Azure Data Explorer'da birikiyor. "Bu saatte genelde ne kadar dolu?"
-  sorusu ve **ölçülmüş** ETA hatası ancak böyle mümkün.
+  sonra bütün servislere 503 döndürüyor. Tek istemci + tek uçuşlu (single-flight) TTL önbellek sayesinde
+  eşzamanlı N kullanıcı en fazla bir yukarı akış isteği üretir; HTTP üzerinden her çağırana ayrıca araç
+  fiyatına göre bir bütçe düşer.
+- **İBB'nin tutmadığı tarihçeyi tutar.** İBB yalnızca anlık durumu yayımlıyor; bir toplayıcı otopark
+  doluluğunu, araç konumlarını ve kendi varış tahminlerini arşivliyor. "Bu saatte genelde ne kadar dolu?",
+  hat düzenliliği ve **ölçülmüş** ETA hatası ancak böyle mümkün.
 - **Sayı uydurmaz.** Her araç sonucu kaynak URL'si, gözlem zamanı ve verinin bayat olup olmadığını taşır.
-  Yukarı akış hata verdiğinde cevap tahmin yürütmez, verinin yaşını söyler; eval katmanı araç çıktısında
-  bulunmayan hiçbir sayıyı kabul etmez.
+  Okunamayan bir kaynak "sorun yok" diye değil "bilinmiyor" diye söylenir; ajanın sadakat kontrolü araç
+  çıktısında bulunmayan hiçbir sayıyı kabul etmez.
 
-**Durum:** yedi günlük sprintin 0. günü. Bugün çalışan: İBB istemcisi, önbellek, modeller, GTFS onarımı,
-ETA motoru, 12 aracın uygulaması, fixture tabanlı test paketi ve **MCP sunucusu** (`ibb-mcp`; stdio
-üzerinden gerçek bir MCP istemcisiyle doğrulandı). Planlanan: toplayıcı + ADX (1. gün), MCP'nin Container
-Apps üzerinde barındırılması (3. gün), ajan ve web arayüzü (4–5. gün), Bicep/`azd` ve CI (1. gün), eval
-(5. gün). Ayrıntılı tablo yukarıdaki *Project status* bölümünde; kararların gerekçesi
-[DECISIONS.md](DECISIONS.md) içinde; kurulum [docs/mcp-usage.md](docs/mcp-usage.md) içinde.
+**Durum (23 Eylül 2026):** hiçbir şey deploy edilmedi. Çalışan: İBB istemcisi, önbellek, modeller, GTFS
+onarımı, ETA motoru, 15 araç ve **MCP sunucusu** (stdio gerçek bir MCP istemcisiyle doğrulandı; HTTP yerelde
+durumsuz, çağıran başına bütçeli, `/healthz`'li), web sayfası, durumsuz uyarı motoru, modelsiz çalışan ajan.
+Toplayıcı bugün sahibinin dizüstünde çalışıyor; hedef, çevrimdışı test edilmiş beş zamanlanmış Container Apps
+Job'u (DECISIONS #10). `main`'deki CI 8–22 Eylül arasında 13 koşunun 13'ünde kırmızıydı; düzeltmesi bu
+toplu değişiklikte, ilk yeşil koşu push'u bekliyor. Günlük plan [docs/SPRINT.md](docs/SPRINT.md), kurallar
+[AGENTS.md](AGENTS.md), mühendislik [docs/ENGINEERING.md](docs/ENGINEERING.md), tehdit modeli
+[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), kararlar [DECISIONS.md](DECISIONS.md), kurulum
+[docs/mcp-usage.md](docs/mcp-usage.md).
 
-**Sonuçlar bölümündeki tüm sayılar 5. gün eval koşusuna kadar yer tutucudur** ve `eval/results/`
-dosyalarından kopyalanır. Elle yazılmış, yuvarlanmış veya tahmin edilmiş tek bir sayı yoktur.
+**Sonuçlar** yukarıdaki *Results* tablosundadır ve her sayı `eval/results/` ya da `data/reference/`
+altındaki bir dosyadan kopyalanır. Otobüs varış tahmininin ölçülmüş hatası **12,94 dk** (1.351 tahmin,
+ayarlanmamış 120 sn/durak); 13 Eylül'de kalibre edilen ve aracın kullandığı saat dilimi oranlarının 11,16 dk'lık
+değeri örneklem içi uyumdur (tek 235 sn/durak oranınınki 12,37 dk), eğitimde görülmeyen 523 tahminde 35,82
+dk'ya çıkıyor — yani kalibrasyon tahmini kötüleştiriyor (`eval/results/eta.md`).
 
-**Sınırlar:** otobüs varış saatleri tahmindir · 38 değil 28 hava kalitesi istasyonu · PM2.5 yok · yayımlanan
-AQI 24 saatlik yürüyen ortalamadır · İSBİKE servisi kapalı · trafik yoğunluk veri seti Ocak 2025'te durdu ·
-İSPARK verisi ~10 dakikada bir güncellenir · "genelde" cevabı için tarihçe sıfırdan birikir · ücretsiz ADX
-kümesinin SLA'sı yoktur. Tam liste yukarıdaki *Limitations* bölümünde.
+**Sınırlar:** otobüs varış saatleri tahmindir ve henüz yeterince iyi değildir · mod karşılaştırması
+navigasyon değildir · tarihçe ince (otopark profilinde yeterli hücre yok, hat düzenliliği iki gün) · 38 değil
+28 hava kalitesi istasyonu · PM2.5 yok · yayımlanan AQI 24 saatlik yürüyen ortalamadır · İSBİKE servisi
+kapalı · trafik yoğunluk veri seti Ocak 2025'te durdu · İSPARK verisi ~10 dakikada bir güncellenir · ücretsiz
+ADX kümesinin SLA'sı yoktur. Tam liste yukarıdaki *Limitations* bölümünde.
 
 ---
 
@@ -351,5 +417,5 @@ kümesinin SLA'sı yoktur. Tam liste yukarıdaki *Limitations* bölümünde.
 and without registration — this project exists because of that. Thanks also to İETT, İSPARK, Metro İstanbul
 and the İBB Traffic Control Centre, whose services stand behind every answer here.
 
-Built for **Microsoft AI Innovators**. Plan: [PLAN.md](PLAN.md) · Decisions: [DECISIONS.md](DECISIONS.md) ·
-MCP setup: [docs/mcp-usage.md](docs/mcp-usage.md).
+Built for **Microsoft AI Innovators**. Plan: [PLAN.md](PLAN.md) · Sprint: [docs/SPRINT.md](docs/SPRINT.md) ·
+Decisions: [DECISIONS.md](DECISIONS.md) · MCP setup: [docs/mcp-usage.md](docs/mcp-usage.md).
