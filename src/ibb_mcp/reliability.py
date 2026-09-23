@@ -61,13 +61,14 @@ import dataclasses
 import datetime as dt
 import json
 import logging
+import os
 import pathlib
 import statistics
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from ibb_mcp.config import REPO_ROOT
+from ibb_mcp.config import reference_path
 from ibb_mcp.models import ISTANBUL_TZ, haversine_km, utcnow
 
 log = logging.getLogger(__name__)
@@ -135,8 +136,15 @@ LABEL_REGULAR = "düzenli"
 LABEL_SOMEWHAT = "biraz düzensiz"
 LABEL_BUNCHED = "kümelenme var"
 
-#: Where the built table is kept. Small, derived and reproducible from the lake.
-DEFAULT_TABLE_PATH = REPO_ROOT / "data" / "reference" / "line_reliability.json"
+#: Where the built table is kept. Small, derived and reproducible from the lake. Resolved
+#: through :func:`ibb_mcp.config.reference_path`, so an installed wheel (the container
+#: image) reads the copy it carries instead of a checkout path that does not exist there.
+DEFAULT_TABLE_PATH = reference_path("line_reliability.json")
+
+#: Overrides :data:`DEFAULT_TABLE_PATH`, like ``NABIZ_OCCUPANCY_PROFILE`` and
+#: ``NABIZ_ETA_PROFILE`` do for their tables: a deployment with a mounted reference volume,
+#: or a test that must not read the committed table, points here instead.
+ENV_TABLE_PATH = "NABIZ_RELIABILITY_TABLE"
 
 SCHEMA_VERSION = 1
 
@@ -306,21 +314,30 @@ class ReliabilityTable:
         )
 
 
-def save_table(table: ReliabilityTable, path: pathlib.Path | str = DEFAULT_TABLE_PATH) -> pathlib.Path:
+def table_path() -> pathlib.Path:
+    """Where the table is read from and written to: ``NABIZ_RELIABILITY_TABLE`` or the default.
+
+    Resolved at call time, not import time, so an override set after import still counts.
+    """
+    override = os.getenv(ENV_TABLE_PATH)
+    return pathlib.Path(override) if override else DEFAULT_TABLE_PATH
+
+
+def save_table(table: ReliabilityTable, path: pathlib.Path | str | None = None) -> pathlib.Path:
     """Write the table as JSON, creating the directory if needed."""
-    target = pathlib.Path(path)
+    target = pathlib.Path(path) if path is not None else table_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(table.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return target
 
 
-def load_table(path: pathlib.Path | str = DEFAULT_TABLE_PATH) -> ReliabilityTable | None:
+def load_table(path: pathlib.Path | str | None = None) -> ReliabilityTable | None:
     """Read a saved table, or ``None`` when it is missing or unreadable.
 
     Unreadable is not fatal on purpose: a missing reliability table costs one optional
     answer, and a tool that raises on a stale file would take the whole server down with it.
     """
-    target = pathlib.Path(path)
+    target = pathlib.Path(path) if path is not None else table_path()
     if not target.exists():
         return None
     try:

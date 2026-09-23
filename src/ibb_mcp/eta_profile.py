@@ -2,11 +2,17 @@
 
 ``eta.py`` turns "the bus is N stops away" into minutes by multiplying N by a
 seconds-per-stop rate. Until now that rate was one hand-picked constant (120 s/stop,
-PLAN.md section 7) applied to every line at every hour. Measured against 500 resolved
-predictions on 2026-09-13 it was wrong in a specific, correctable direction: **MAE 16.8
-minutes with a bias of -11.7 minutes** — we told riders the bus was coming far earlier
-than it did. A single re-fitted rate (235 s/stop) cuts that to 12.4. This module holds the
-re-fitted rates and the rule for choosing one.
+PLAN.md section 7) applied to every line at every hour. Measured against the 500 resolved
+stop-sequence predictions in the lake on 2026-09-13 it was wrong in a specific, correctable
+direction: **MAE 16.8 minutes with a bias of -16.6 minutes** — we told riders the bus was
+coming far earlier than it did. (The -11.7 quoted in the commit that added this module was
+over all resolved predictions, the distance method included, and is not re-derived here;
+this module can only move the stop-sequence ones, so that is the population it is measured
+against.) A single re-fitted rate,
+235 s/stop, cuts the MAE to 12.4, and the per-bucket rates here cut it to 11.2 — both
+**in-sample**: fitted and scored on the same 500 rows, so they describe the fit, not the
+accuracy a rider will see. The held-out figure is the next-but-one paragraph's. This module
+holds the fitted rates and the rule for choosing one.
 
 **Why a rate and not a rate plus a constant.** The best-fitting straight line through the
 data wants an 11.5-minute constant on top of 150 s/stop (MAE 10.2). Part of that constant
@@ -20,7 +26,7 @@ written by the calibration script; only the rate is calibrated.
 
 **Why four coarse buckets rather than per-hour.** Held out one clock hour at a time —
 train on every other hour, predict the hour never seen — the four-bucket profile scores
-MAE 11.72 against 12.91 for both a per-hour profile and a single per-line rate. A per-hour
+MAE 11.70 against 12.92 for both a per-hour profile and a single per-line rate. A per-hour
 cell cannot help an hour it has no rows for, and with one day of collection every hour has
 exactly one sample of itself, so a per-hour fit is indistinguishable from fitting that
 afternoon's traffic. (A plain random 5-fold split *flatters* per-hour cells — 10.9 against
@@ -28,6 +34,19 @@ afternoon's traffic. (A plain random 5-fold split *flatters* per-hour cells — 
 independent draws. That split is the wrong test.) Coarse buckets let neighbouring hours
 inform each other, which is what makes 06:00-10:00 answerable at all: no morning data has
 been collected yet.
+
+**What the numbers are measured on.** ``scripts/calibrate_eta.py`` pairs predictions to
+observed arrivals exactly as ``eta_report.score`` does, and additionally discards anything
+predicted in the final 90 minutes of collection: those rows are right-censored — only the
+journeys fast enough to have already finished are visible. Cut at the moment the committed
+profile was built, keeping them would have fitted the evening rate on 101 rows instead of 57
+and pulled it from 445 to 75 s/stop.
+
+Re-derived on 2026-09-23 from the lake, read-only and cut at the committed profile's
+``generated_at``: 500 resolved rows; MAE 16.83 and bias -16.58 at 120 s/stop; 12.37 at
+235 s/stop; 11.16 with the bucket rates; 11.70 against 12.92 held out one clock hour at a
+time; the constant-plus-rate fit at 11.5 min + 150 s/stop, MAE 10.19. The random 5-fold
+figures (10.9 / 11.3) were not re-run.
 
 The fallback chain is line+bucket -> line -> global -> the built-in 120 s/stop default, and
 :meth:`EtaProfile.seconds_per_stop_for` returns **which** of those produced the number, so
@@ -44,7 +63,7 @@ import pathlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from ibb_mcp.config import REPO_ROOT
+from ibb_mcp.config import reference_path
 from ibb_mcp.models import ISTANBUL_TZ
 
 #: PLAN.md section 7's day-one guess. Still the answer when nothing has been measured.
@@ -107,10 +126,12 @@ def cell_key(line_code: str, bucket: str) -> str:
 def profile_path(settings: Any | None = None) -> pathlib.Path:
     """Where the calibrated profile lives.
 
-    ``Settings`` has no field for this yet and this module does not own ``config.py``, so
-    the path is resolved defensively: a ``settings.eta_profile_path`` if the Integrator
-    adds one, else ``NABIZ_ETA_PROFILE``, else the repo's ``data/reference/``. Reading an
-    attribute that may not exist beats forcing a config change to land first.
+    ``Settings`` has no field for this, so the path is resolved defensively: a
+    ``settings.eta_profile_path`` if a caller's settings object carries one, else
+    ``NABIZ_ETA_PROFILE``, else ``data/reference/`` through
+    :func:`ibb_mcp.config.reference_path`. That last step matters in the container image:
+    an installed package has no checkout beside it, and without the packaged copy the tool
+    would silently fall back to the untuned rate.
     """
     configured = getattr(settings, "eta_profile_path", None)
     if configured:
@@ -118,7 +139,7 @@ def profile_path(settings: Any | None = None) -> pathlib.Path:
     from_env = os.getenv("NABIZ_ETA_PROFILE")
     if from_env:
         return pathlib.Path(from_env)
-    return REPO_ROOT / "data" / "reference" / PROFILE_FILENAME
+    return reference_path(PROFILE_FILENAME)
 
 
 @dataclass(frozen=True)
@@ -220,6 +241,31 @@ class EtaProfile:
     @property
     def calibrated_lines(self) -> tuple[str, ...]:
         return tuple(sorted(self.lines))
+
+    @property
+    def pooled_lines(self) -> tuple[str, ...]:
+        """Every line whose rows fed the pooled ("global") rate.
+
+        A line refused its own cell for having too few rows still contributed those rows to
+        the pool, so the refused line keys count too; bucket cells (``LINE|bucket``) and the
+        refused global are not lines.
+        """
+        refused_lines = {key for key in self.refused if "|" not in key and key != "global"}
+        return tuple(sorted(set(self.lines) | refused_lines))
+
+    def pooled_rate_qualifier(self) -> str:
+        """Turkish words that go before "oran" to say which lines a pooled rate was measured on.
+
+        The committed profile pools exactly one line, 500T, and the old wording, "tüm
+        hatlardan ölçülen genel oran", told users of every other line that all lines had been
+        measured. The agent repeats this text verbatim, so it names the lines instead.
+        """
+        lines = self.pooled_lines
+        if len(lines) == 1:
+            return f"yalnızca {lines[0]} hattında ölçülen"
+        if lines:
+            return f"ölçülen {len(lines)} hattan ({', '.join(lines)}) havuzlanan"
+        return "ölçülen hatlardan havuzlanan"
 
     def seconds_per_stop_for(self, line_code: str | None, at: dt.datetime | None = None) -> tuple[float, str]:
         """The rate to use, and where it came from.

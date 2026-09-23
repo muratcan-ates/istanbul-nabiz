@@ -26,13 +26,14 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+import os
 import pathlib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
 
-from ibb_mcp.config import ATTRIBUTION, ATTRIBUTION_EN
+from ibb_mcp.config import ATTRIBUTION, ATTRIBUTION_EN, REPO_ROOT
 from ibb_mcp.models import ISTANBUL_TZ, LAT_RANGE, LON_RANGE, Provenance, utcnow
 from ibb_mcp.sources.base import SourceContext
 from nabiz.alerts.rules import (
@@ -75,6 +76,16 @@ MAX_PLACES = 5
 MAX_PARK_IDS = 10
 
 KNOWN_KINDS = frozenset(DEFAULT_COOLDOWNS)
+
+#: Rule thresholds: the default when the client sends none, and the accepted range. Named
+#: rather than inlined because the typed MCP schema (:mod:`nabiz.alerts.schema`) describes
+#: the same numbers to the model, and two copies of a literal drift apart.
+DEFAULT_PARKING_THRESHOLD_PCT = 85
+PARKING_THRESHOLD_RANGE = (1, 100)
+DEFAULT_AQI_THRESHOLD = 100
+AQI_THRESHOLD_RANGE = (1, 500)
+DEFAULT_TRAFFIC_THRESHOLD = 60
+TRAFFIC_THRESHOLD_RANGE = (1, 99)
 
 
 @dataclass(frozen=True)
@@ -167,24 +178,27 @@ def _parse_rule(raw: Mapping[str, Any], places: Mapping[str, Place]) -> Rule | N
         if len(ids) > MAX_PARK_IDS:
             raise ValueError(f"Bir kuralda en fazla {MAX_PARK_IDS} otopark izlenebilir.")
         park_ids = tuple(int(_as_float(pid, field_name="park_ids")) for pid in ids)
-        threshold = _as_float(raw.get("threshold_pct", 85), field_name="threshold_pct")
-        if not 1 <= threshold <= 100:
-            raise ValueError("threshold_pct 1 ile 100 arasında olmalı.")
+        threshold = _as_float(raw.get("threshold_pct", DEFAULT_PARKING_THRESHOLD_PCT), field_name="threshold_pct")
+        low, high = PARKING_THRESHOLD_RANGE
+        if not low <= threshold <= high:
+            raise ValueError(f"threshold_pct {low} ile {high} arasında olmalı.")
         return ParkingFillingRule(park_ids=park_ids, threshold_pct=threshold, cooldown_seconds=cooldown)
 
     if kind == "air_quality":
         place = str(raw.get("place") or "").strip()
         if place not in places:
             raise ValueError(f"air_quality kuralının 'place' alanı tanımlı konumlardan biri olmalı: {sorted(places)}")
-        threshold = _as_float(raw.get("aqi_threshold", 100), field_name="aqi_threshold")
-        if not 1 <= threshold <= 500:
-            raise ValueError("aqi_threshold 1 ile 500 arasında olmalı.")
+        threshold = _as_float(raw.get("aqi_threshold", DEFAULT_AQI_THRESHOLD), field_name="aqi_threshold")
+        low, high = AQI_THRESHOLD_RANGE
+        if not low <= threshold <= high:
+            raise ValueError(f"aqi_threshold {low} ile {high} arasında olmalı.")
         return AirQualityRule(place=place, aqi_threshold=threshold, cooldown_seconds=cooldown)
 
     if kind == "traffic":
-        threshold = int(_as_float(raw.get("threshold_index", 60), field_name="threshold_index"))
-        if not 1 <= threshold <= 99:
-            raise ValueError("threshold_index 1 ile 99 arasında olmalı (İBB indeksi bu aralıkta).")
+        threshold = int(_as_float(raw.get("threshold_index", DEFAULT_TRAFFIC_THRESHOLD), field_name="threshold_index"))
+        low, high = TRAFFIC_THRESHOLD_RANGE
+        if not low <= threshold <= high:
+            raise ValueError(f"threshold_index {low} ile {high} arasında olmalı (İBB indeksi bu aralıkta).")
         return TrafficRule(threshold_index=threshold, cooldown_seconds=cooldown)
 
     line = str(raw.get("line") or "").strip()  # bus_bunching
@@ -394,18 +408,30 @@ def _repo_relative(path: Any) -> str:
     """Render a local path for citation without leaking an absolute filesystem location.
 
     The provenance of a bunching alert goes to every client, and an absolute path would put
-    this machine's user name in it. Keeping the last three components identifies the file
-    ("data/reference/line_reliability.json") and nothing else.
+    this machine's user name in it. A file inside the repository is cited repo-relative
+    ("data/reference/line_reliability.json"); anything else — a ``NABIZ_RELIABILITY_TABLE``
+    override, which may well live under a home directory — by its file name alone. Keeping
+    "the last three components" instead would, for a file directly under a home directory,
+    publish the user name as one of them.
     """
-    parts = pathlib.Path(str(path)).parts[-3:]
-    return "/".join(parts)
+    absolute = pathlib.Path(os.path.abspath(str(path)))
+    try:
+        return absolute.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return absolute.name
+
+
+def _table_path(module: Any) -> pathlib.Path:
+    """The table the reliability module would read, honouring its ``NABIZ_RELIABILITY_TABLE`` override."""
+    resolve = getattr(module, "table_path", None)
+    return pathlib.Path(resolve()) if callable(resolve) else pathlib.Path(getattr(module, "DEFAULT_TABLE_PATH", ""))
 
 
 def _reliability_table() -> tuple[Any, str | None]:
     module = reliability_module()
     if module is None:
         return None, "Hat düzenlilik modülü bu sürümde yok."
-    path = pathlib.Path(getattr(module, "DEFAULT_TABLE_PATH", ""))
+    path = _table_path(module)
     if not path.exists():
         return None, "Hat düzenlilik tablosu henüz üretilmedi (scripts/reliability_report.py)."
     table = _cached_table(str(path), path.stat().st_mtime_ns)
@@ -436,7 +462,7 @@ async def _bunching_observations(
         source="nabiz_reliability",
         # Relative on purpose: an absolute path would put this machine's user name into a
         # payload that goes to every client.
-        source_url=f"local:{_repo_relative(getattr(module, 'DEFAULT_TABLE_PATH', 'line_reliability.json'))}",
+        source_url=f"local:{_repo_relative(_table_path(module))}",
         reported_at=generated if isinstance(generated, dt.datetime) else None,
     )
     observations: dict[str, BunchingObservation] = {}

@@ -487,7 +487,10 @@ class TrafficRule:
         if ctx.traffic is None or ctx.traffic.point is None:
             return None
         index = ctx.traffic.point.index
-        if index < self.threshold_index:
+        # A null TrafficIndex arrives as None, and 0 is not a reading either (İBB's scale is
+        # 1–99). Neither can reach a threshold of 1+, but saying so keeps the rule honest if
+        # thresholds move.
+        if index is None or index < 1 or index < self.threshold_index:
             return None
         label_tr = describe_traffic(index)
         severity: Severity = "critical" if index >= self.critical_index else "warning"

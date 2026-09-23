@@ -5,9 +5,16 @@ directions and knows no one-way street, junction or real road geometry; it must 
 presented as a replacement for a routing engine (OpenTripPlanner, Azure Maps, Google
 Maps). What it does is answer the question a person asks before leaving the house —
 *which mode is the better bet right now* — from data we already hold live: the city
-traffic index, İSPARK free spaces, the Metro İstanbul station list and its disruption
-notices, and the İETT/GTFS stop sequences. The disclaimer travels inside the payload
-(:data:`DISCLAIMER_TR`), so an agent quoting a number cannot drop the caveat by accident.
+traffic index and its own four-week history, İSPARK free spaces, the Metro İstanbul station
+list and its disruption notices, and the İETT/GTFS stop sequences. The disclaimer travels
+inside the payload (:data:`DISCLAIMER_TR`), so an agent quoting a number cannot drop the
+caveat by accident.
+
+The metro option rides a real network graph (:mod:`ibb_mcp.metro_graph`): Dijkstra over the
+station list, transfers only where distance justifies one, and the Marmaray tube added from
+four stations the feed already has, so Taksim → Kadıköy crosses the water on rails the way a
+rider would. The bus option asks :mod:`ibb_mcp.lines` which single İETT line runs the right
+way between the two ends, and names the other lines that also do.
 
 Why not a routing engine: OTP2 needs a graph server and an OSM extract, Azure Maps'
 *transit* routing was retired, and a paid driving API would put a per-user network call on
@@ -23,7 +30,9 @@ reading** (an İBB number, in :attr:`RouteAdvice.readings` with its source and a
 :class:`Leg` names the one behind its minutes in ``basis``, so no total is unattributable.
 When an option cannot be computed — no metro near either end, no single bus line joining
 the two, an unreadable traffic index — it comes back with ``available=False`` and a Turkish
-``reason``, never with a guessed number that keeps the list looking complete.
+``reason``, never with a guessed number that keeps the list looking complete. And a source
+that could not be read is never read as good news: unread metro notices are not "no
+disruption", an unread İSPARK list is not "no free space", and both say so in the notes.
 
 Comfort is defined, not vibed; :func:`comfort_score` carries the formula and its weights.
 """
@@ -40,8 +49,20 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
 from ibb_mcp.eta import DEFAULT_PARAMS as _ETA_PARAMS
-from ibb_mcp.models import ISTANBUL_TZ, Provenance, Stop, day_type_for, haversine_km, utcnow
+from ibb_mcp.lines import DirectLine, StopRouteIndex, index_for
+from ibb_mcp.metro_graph import (
+    DEFAULT_METRO_PARAMS,
+    MARMARAY_LINE,
+    MARMARAY_TUBE,
+    MetroGraph,
+    MetroGraphParams,
+    MetroLeg,
+    MetroPath,
+    marmaray_tube,
+)
+from ibb_mcp.models import ISTANBUL_TZ, MetroLineStatus, MetroStation, Provenance, Stop, day_type_for, haversine_km, utcnow
 from ibb_mcp.sources.base import SourceContext
+from ibb_mcp.traffic_profile import BAND_UNKNOWN, TrafficBaseline, TrafficComparison, compare_to_typical
 
 log = logging.getLogger("ibb_mcp.routing")
 
@@ -97,14 +118,6 @@ ROAD_CROSSINGS: tuple[Waypoint, ...] = (
     Waypoint("Yavuz Sultan Selim Köprüsü", 41.2005, 29.1153),
 )
 
-#: Station names anchoring the rail crossing, resolved against the *live* Metro station list
-#: so the coordinates are İBB's and not ours. Tried in order; the metro option is withdrawn
-#: with a reason if neither pair resolves.
-RAIL_CROSSING_ANCHORS: tuple[tuple[str, str], ...] = (
-    ("Yenikapı", "Ayrılık Çeşmesi"),  # M2/M1 ↔ Marmaray ↔ M4
-    ("Sirkeci", "Üsküdar"),  # the Marmaray tube itself
-)
-
 
 @dataclass(frozen=True)
 class RoutingParams:
@@ -116,6 +129,12 @@ class RoutingParams:
     no journey times, so there is nothing to fit a speed curve against. ``road_winding`` and
     ``bus_seconds_per_stop`` default to :mod:`ibb_mcp.eta`'s values on purpose — they are
     the same quantities, and the two drifting apart would be a bug.
+
+    The rail constants (speeds per mode, dwell, transfer penalty, interchange distances)
+    live in ``rail``, the graph's own :class:`~ibb_mcp.metro_graph.MetroGraphParams`. Walking
+    speed, the access radius and the headway stay here and are handed to the graph by
+    :func:`rail_params`, so a walk to a platform costs the same as a walk to a bus stop and
+    "the first train" waits the same half-headway it always did.
     """
 
     # driving
@@ -135,10 +154,11 @@ class RoutingParams:
     walk_winding: float = 1.25
     max_walk_km: float = 2.5
     # metro
-    metro_kmh: float = 32.0
-    rail_winding: float = 1.15
+    rail: MetroGraphParams = DEFAULT_METRO_PARAMS
+    #: Add the Marmaray tube to the graph (:func:`ibb_mcp.metro_graph.marmaray_tube`).
+    #: Without it no rail journey crosses the Bosphorus, because Metro İstanbul's feed has none.
+    include_marmaray: bool = True
     metro_headway_minutes: float = 6.0
-    metro_transfer_minutes: float = 5.0
     metro_access_walk_km: float = 1.2
     disruption_penalty_minutes: float = 10.0
     # bus
@@ -151,6 +171,8 @@ class RoutingParams:
     bus_stop_candidates: int = 24
     bus_seconds_per_stop: float = _ETA_PARAMS.seconds_per_stop
     bus_default_headway_minutes: float = 20.0
+    #: How many other direct lines the bus option names beside the one it costs.
+    bus_other_lines: int = 4
     # comfort weights
     comfort_per_transfer: float = 8.0
     comfort_per_100m_walk: float = 2.5
@@ -172,14 +194,37 @@ ASSUMPTION_TEXT: dict[str, tuple[str, str]] = {
     "no_parking_penalty_minutes": ("dk", "Yarıçap içinde boş yer bildiren otopark yoksa eklenen arama cezası."),
     "walk_kmh": ("km/sa", "Ortalama yürüme hızı."),
     "walk_winding": ("çarpan", "Kuş uçuşu mesafeyi sokak ağına çeviren katsayı."),
-    "metro_kmh": ("km/sa", "Duraklamalar dahil ortalama raylı sistem hızı."),
-    "rail_winding": ("çarpan", "Kuş uçuşu mesafeyi hat güzergâhına çeviren katsayı."),
+    "rail_ride": (
+        "km/sa, sn",
+        "İstasyonlar arası kuş uçuşu mesafe hat türünün ortalama hızına bölündü; her duruşa sabit bir süre eklendi.",
+    ),
     "metro_headway_minutes": ("dk", "Varsayılan sefer aralığı; bekleme bunun yarısı alındı."),
-    "metro_transfer_minutes": ("dk", "Aktarma başına yürüme ve bekleme payı."),
+    "rail_transfer": (
+        "sn",
+        "Aktarma başına yürüme ve bekleme payı; aktarma yalnızca iki peron gerçekten yürünecek kadar yakınsa kurulur.",
+    ),
+    "marmaray_tube": (
+        "istasyon",
+        "Marmaray bu veride yok; tüp geçişi Yenikapı, Sirkeci, Üsküdar ve Ayrılık Çeşmesi istasyonlarının "
+        "canlı listedeki koordinatlarıyla, metro hızında modellendi.",
+    ),
     "disruption_penalty_minutes": ("dk", "Metro İstanbul bir hatta bildirim yayımladığında eklenen gecikme."),
     "bus_seconds_per_stop": ("sn/durak", "Duraklar arası seyir süresi; ETA modeliyle aynı sabit."),
     "bus_headway": ("dk", "Sefer aralığı; bekleme bunun yarısı alındı."),
 }
+
+
+#: Said out loud whenever a *measured* per-stop rate is used. ``eta_profile`` fits its rate
+#: against "how long until the bus reaches your stop", which absorbs dwell time, the
+#: collector's 3-minute observation tick and the fact that ``yakinDurakKodu`` is the nearest
+#: stop rather than a stop event. Reused here as a ride duration it is therefore an upper
+#: bound. How loose: the constant-plus-rate fit in ``eta_profile``'s docstring puts the
+#: marginal cost of a stop at 150 s, so over 23 stops the overall 235 s/stop rate says ~33
+#: minutes more than that marginal cost would, and the evening 445 s/stop ~113 more — too big
+#: to leave unsaid.
+MEASURED_RATE_CAVEAT = (
+    "Bu oran varış tahmini için kalibre edildi (bekleme ve algılama payı dahil); uzun yolculuklarda süre üst sınırdır."
+)
 
 
 class StopIndex(Protocol):
@@ -187,12 +232,11 @@ class StopIndex(Protocol):
 
     A Protocol for the same reason :mod:`ibb_mcp.eta` declares one: the advisor can then be
     exercised against a five-stop corridor in a test instead of a 150 MB ``stop_times.txt``,
-    and it cannot quietly grow a dependency on the rest of the index.
+    and it cannot quietly grow a dependency on the rest of the index. Line names come from
+    the route code (:func:`ibb_mcp.lines.parse_route_code`), not from ``routes.csv``.
     """
 
     def nearest_stops(self, lat: float, lon: float, limit: int = ..., max_km: float = ...) -> list[Stop]: ...
-
-    def route_by_code(self, route_code: str) -> Any: ...
 
 
 @dataclass(frozen=True)
@@ -300,6 +344,17 @@ class RouteAdvice:
             return None
         return max(options, key=lambda o: (o.comfort.score if o.comfort else 0.0, -(o.total_minutes or 0.0)))
 
+    def model_dump(self, **_: Any) -> dict[str, Any]:
+        """Alias for :meth:`to_dict`, so ``tools._dump`` yields the same payload the tool does.
+
+        ``tools._dump`` prefers ``model_dump`` over its generic dataclass walk. The walk
+        would drop every ``None`` — deleting the very fields that say a number is unknown —
+        and miss the derived ``fastest_mode``/``most_comfortable_mode`` keys. Pydantic's
+        keyword arguments (``mode``, ``exclude_none``) are accepted and ignored because
+        :meth:`to_dict` is already JSON-safe.
+        """
+        return self.to_dict()
+
     def to_dict(self) -> dict[str, Any]:
         """JSON-friendly payload for the MCP tool layer."""
         payload = dataclasses.asdict(self)
@@ -313,43 +368,21 @@ class RouteAdvice:
 
 
 @dataclass(frozen=True)
-class _NearStation:
-    """A station plus the walk to it.
-
-    A wrapper rather than ``MetroStation.model_copy(update={"distance_km": ...})``: the
-    shared model declares no such field, and bolting one on at runtime would put a value
-    into ``model_dump()`` that nothing else in the project expects.
-    """
-
-    station: Any
-    distance_km: float
-
-    @property
-    def name(self) -> str:
-        return self.station.name or "İstasyon"
-
-    @property
-    def line_name(self) -> str | None:
-        return self.station.line_name
-
-    @property
-    def lat(self) -> float:
-        return self.station.lat
-
-    @property
-    def lon(self) -> float:
-        return self.station.lon
-
-
-@dataclass(frozen=True)
 class _BusPick:
-    """The single-line bus itinerary the scan chose, before it is costed."""
+    """The single-line bus itinerary the scan chose, before it is costed.
+
+    ``others`` are the next-best lines that also run the right way between the two ends,
+    already shaped for the payload. They are named, never costed: a duration needs each
+    line's own calibrated rate and timetable, and every extra timetable is one more request
+    against İETT's shared budget of 100 an hour.
+    """
 
     route_code: str
     line_code: str
     from_stop: Any
     to_stop: Any
     stops_between: int
+    others: tuple[dict[str, Any], ...] = ()
 
 
 # --------------------------------------------------------------------------------------
@@ -496,11 +529,6 @@ def _ensure_bases(assumptions: list[Assumption], legs: Sequence[Leg], params: Ro
     return assumptions
 
 
-def _between(first: Any, second: Any) -> float:
-    """Great-circle kilometres between two things carrying ``lat``/``lon``."""
-    return haversine_km(first.lat, first.lon, second.lat, second.lon)
-
-
 def _lot_detail(lot: Any) -> dict[str, Any] | None:
     """The car park a drive estimate leaned on, as plain JSON types."""
     if lot is None:
@@ -523,11 +551,23 @@ def _drive_option(
     *,
     traffic_index: int | None,
     traffic_reason: str | None,
-    lots: Sequence[Any],
+    lots: Sequence[Any] | None,
     crossing: Waypoint | None,
+    typical: TrafficComparison | None = None,
     params: RoutingParams = DEFAULT_PARAMS,
 ) -> TravelOption:
-    """Distance over a traffic-derived speed, plus parking search, plus the walk from the car."""
+    """Distance over a traffic-derived speed, plus parking search, plus the walk from the car.
+
+    ``lots`` is ``None`` when İSPARK could not be read and an empty list when it was read
+    and nothing near the destination has a free space. Both cost the same search penalty,
+    but only the second is evidence, so they are worded differently: "no free space
+    reported" and "could not look" are not the same sentence.
+
+    ``typical`` is the :class:`~ibb_mcp.traffic_profile.TrafficComparison` of the live index
+    against this weekday and hour's measured median. It never changes the minutes — the
+    live index already set the speed — but when the hour is measurably heavier or lighter
+    than usual that is a checkable fact about driving right now, so it goes into the notes.
+    """
     label = "Araba"
     if traffic_index is None:
         return _unavailable("drive", label, traffic_reason or "Trafik indeksi okunamadı; sürüş süresi hesaplanamıyor.")
@@ -557,6 +597,8 @@ def _drive_option(
         downgrades += 1  # picking one of three fixed bridges is the coarsest part of this model
 
     notes: list[str] = []
+    if typical is not None and typical.band not in (BAND_UNKNOWN, "typical"):
+        notes.append(typical.description_tr)
     lot = lots[0] if lots else None
     within_radius = lot is not None and (lot.distance_km or 0.0) <= params.park_search_radius_km
     usable = within_radius and lot.capacity and lot.empty is not None
@@ -569,15 +611,22 @@ def _drive_option(
         legs.append(_walk_leg(f"{lot.name} otoparkından yürüyüş", lot.distance_km, params))
         assumptions.append(_assume("park_search_minutes", f"{params.park_search_min_minutes}–{params.park_search_max_minutes}"))
     else:
-        no_parking = "Otopark arama (yakında boş yer bildirilmedi)"
+        unread = lots is None
+        no_parking = "Otopark arama (İSPARK okunamadı)" if unread else "Otopark arama (yakında boş yer bildirilmedi)"
         legs.append(Leg("park", no_parking, params.no_parking_penalty_minutes, "no_parking_penalty_minutes"))
         assumptions.append(_assume("no_parking_penalty_minutes", params.no_parking_penalty_minutes))
         parking_uncertainty = 1.0
         downgrades += 1
-        notes.append(
-            f"Varışın {params.park_search_radius_km:.1f} km yakınında boş yer bildiren açık İSPARK otoparkı yok; "
-            f"{params.no_parking_penalty_minutes:.0f} dk arama eklendi, park yerinden yürüyüş hesaplanamadı."
-        )
+        if unread:
+            notes.append(
+                f"İSPARK verisi okunamadı; varıştaki otopark durumu bilinmiyor. {params.no_parking_penalty_minutes:.0f} dk "
+                "arama varsayıldı, park yerinden yürüyüş hesaplanamadı."
+            )
+        else:
+            notes.append(
+                f"Varışın {params.park_search_radius_km:.1f} km yakınında boş yer bildiren açık İSPARK otoparkı yok; "
+                f"{params.no_parking_penalty_minutes:.0f} dk arama eklendi, park yerinden yürüyüş hesaplanamadı."
+            )
     notes.append("Köprü/tünel ücretleri ve vapur seçeneği bu karşılaştırmaya dahil değildir.")
 
     return TravelOption(
@@ -595,132 +644,250 @@ def _drive_option(
         detail={
             "traffic_index": traffic_index,
             "effective_speed_kmh": speed,
+            "traffic_vs_typical": typical.band if typical is not None else None,
             "crossing": crossing.name if crossing else None,
             "parking_lot": _lot_detail(lot),
+            "parking_read": lots is not None,
         },
     )
 
 
-def _near_stations(stations: Sequence[Any], point: Waypoint, reach_km: float) -> list[_NearStation]:
-    """Stations within ``reach_km``, nearest first."""
-    hits = [
-        _NearStation(station, round(distance, 3))
-        for station in stations
-        if (distance := haversine_km(point.lat, point.lon, station.lat, station.lon)) <= reach_km
-    ]
-    hits.sort(key=lambda hit: hit.distance_km)
-    return hits
+def rail_params(params: RoutingParams = DEFAULT_PARAMS) -> MetroGraphParams:
+    """The graph's constants, with walking and the first wait taken from the advisor.
 
-
-def _pick_station_pair(
-    origin_near: Sequence[_NearStation], destination_near: Sequence[_NearStation]
-) -> tuple[_NearStation, _NearStation, bool]:
-    """Nearest usable pair, preferring one that shares a line so no transfer is needed.
-
-    Someone standing at Mecidiyeköy can walk to both the M2 and the M7 platform; which one
-    they should use depends on where they are going, not on which pin is three metres nearer.
+    The graph walks in straight lines, so it is handed the *effective* straight-line pace
+    ``walk_kmh / walk_winding``: a 300 m walk to a platform then costs exactly what
+    :func:`_walk_leg` charges for 300 m to a bus stop. The same pace applies to a walking
+    interchange between two stations, which is slower than the graph's own 4.5 km/h default
+    and deliberately so — one walking model for the whole comparison.
     """
-    for origin_station in origin_near:
-        for destination_station in destination_near:
-            if origin_station.line_name and origin_station.line_name == destination_station.line_name:
-                return origin_station, destination_station, True
-    return origin_near[0], destination_near[0], False
+    return dataclasses.replace(
+        params.rail,
+        walk_speed_kmh=params.walk_kmh / params.walk_winding,
+        access_walk_km=params.metro_access_walk_km,
+        mean_wait_seconds=params.metro_headway_minutes * 60.0 / 2.0,
+    )
 
 
-def _resolve_rail_anchors(stations: Sequence[Any]) -> tuple[Any, Any] | None:
-    """Find a Marmaray transfer pair in the live station list, European side first."""
-    from ibb_mcp.sources.metro import normalize_tr
+#: One-slot memo: the last station list's signature and the graph built from it.
+_GRAPH_MEMO: tuple[tuple[Any, ...], MetroGraph] | None = None
 
-    by_name: dict[str, Any] = {}
-    for station in stations:
-        by_name.setdefault(normalize_tr(station.name), station)
-    for european_name, asian_name in RAIL_CROSSING_ANCHORS:
-        european, asian = by_name.get(normalize_tr(european_name)), by_name.get(normalize_tr(asian_name))
-        if european is not None and asian is not None:
-            return european, asian
-    return None
+
+def rail_graph(stations: Sequence[MetroStation], params: RoutingParams = DEFAULT_PARAMS) -> MetroGraph:
+    """The rail network for this station list, with the Marmaray tube added.
+
+    Building takes about 4 ms on the recorded 248-station list (3.8 ms, mean of 20 builds,
+    measured 2026-09-23), so it would be affordable per request; the one-slot memo exists
+    because the list changes once a day at most. It is keyed on the stations' content, not
+    on the list object — :meth:`~ibb_mcp.sources.metro.MetroSource.stations` parses a fresh
+    list from the cached payload on every call. Two concurrent builds race harmlessly: the
+    graphs are equal and the later assignment wins.
+    """
+    global _GRAPH_MEMO
+    graph_params = rail_params(params)
+    key = (graph_params, params.include_marmaray, tuple((s.name, s.line_name, s.order, s.lat, s.lon) for s in stations))
+    memo = _GRAPH_MEMO
+    if memo is not None and memo[0] == key:
+        return memo[1]
+    added = marmaray_tube(stations) if params.include_marmaray else []
+    graph = MetroGraph.from_stations(stations, params=graph_params, added=added)
+    _GRAPH_MEMO = (key, graph)
+    return graph
+
+
+def line_code(name: str | None) -> str | None:
+    """First token of a line name, folded to a comparable code: ``"M7 Yıldız-Mahmutbey"`` -> ``"M7"``.
+
+    The station list and the notice feed name lines their own way, and matching them loosely
+    is how a disruption on one line gets pinned to a different one. Taking only the leading
+    token and keeping just its letters and digits fails *closed*: a notice named after its
+    termini matches nothing, which loses a notice. Losing one is recoverable — unmatched
+    names are reported in the notes — whereas inventing one is not.
+    """
+    if not name:
+        return None
+    head = name.strip().split()
+    if not head:
+        return None
+    token = "".join(ch for ch in head[0] if ch.isalnum()).upper()
+    return token or None
+
+
+def _looks_like_line_code(code: str) -> bool:
+    """``M4``, ``M1A``, ``T5``, ``TF2``, ``F1`` — a letter, a digit, and nothing long."""
+    return 2 <= len(code) <= 4 and code[0].isalpha() and any(ch.isdigit() for ch in code)
+
+
+def _disruptions_on(
+    lines: Sequence[str], statuses: Sequence[MetroLineStatus]
+) -> tuple[list[tuple[str, MetroLineStatus]], list[str]]:
+    """Live notices on the lines this path rides, and the notices that could not be placed.
+
+    Metro İstanbul's feed carries a row only for a line that *has* a notice, and
+    ``IsActive`` says whether that notice is still live — so ``is_active is not False`` is a
+    disruption, the reading :func:`ibb_mcp.sources.metro.summarise_disruptions` uses too. A
+    retired notice therefore costs nothing. A row whose name does not fold to something
+    shaped like a line code is handed back as unmatched rather than dropped: we cannot tell
+    whether it concerns this journey, and saying so beats implying the route is clear.
+    """
+    wanted = {code for line in lines if (code := line_code(line))}
+    hits: list[tuple[str, MetroLineStatus]] = []
+    unmatched: list[str] = []
+    for status in statuses:
+        if status.is_active is False:
+            continue
+        code = line_code(status.line_name)
+        if code is None or not _looks_like_line_code(code):
+            unmatched.append(status.line_name or "?")
+            continue
+        if code in wanted:
+            hits.append((code, status))
+    return hits, unmatched
+
+
+def _rail_refusal(reason: str | None, graph: MetroGraph, params: RoutingParams) -> str:
+    """The Turkish reason a door-to-door rail path does not exist."""
+    reach = params.metro_access_walk_km
+    if reason == "no_station_near_origin":
+        return f"Başlangıç noktasının {reach:.1f} km yakınında raylı sistem istasyonu yok."
+    if reason == "no_station_near_destination":
+        return f"Varış noktasının {reach:.1f} km yakınında raylı sistem istasyonu yok."
+    network = "Metro İstanbul hatları ve Marmaray tüpü" if graph.added_lines else "Metro İstanbul hatları"
+    return (
+        f"Raylı sistem ağı ({network}) iki ucun yakınındaki istasyonları birbirine bağlamıyor; "
+        "Metrobüs ve vapur bu veride yok."
+    )
+
+
+def _network_tr(graph: MetroGraph) -> str:
+    """What the rail graph contains, said the way the agent will repeat it."""
+    added = " ve Marmaray tüpü (" + "–".join(MARMARAY_TUBE) + ")" if MARMARAY_LINE in graph.added_lines else ""
+    return f"Metro İstanbul hatları{added}; Metrobüs ve vapur bu veride yok."
+
+
+def _rail_legs(path: MetroPath, params: RoutingParams) -> tuple[list[Leg], float]:
+    """Turn the graph's per-hop legs into the advisor's legs, and count interchange walking.
+
+    One ``rail`` leg per line ridden (``"M2: Taksim → Yenikapı, 4 durak"``) and one
+    ``transfer`` leg per change, so the agent can read the itinerary off the legs without
+    inventing anything. The graph emits one leg per hop so no station name is lost; the
+    advisor merges them because nobody says "Taksim to Şişhane, then Şişhane to Haliç".
+    The second value is the metres walked *between* stations, which the comfort score must
+    see even though those legs are transfers rather than walks.
+    """
+    access, *middle, egress = path.legs
+    legs: list[Leg] = [
+        _walk_leg(f"{access.to_station} istasyonuna yürüyüş", access.km or 0.0, params),
+        Leg("wait", "Sefer beklemesi", round(path.wait_seconds / 60.0, 1), "metro_headway_minutes"),
+    ]
+    run: list[MetroLeg] = []
+    interchange_m = 0.0
+
+    def close_run() -> None:
+        if not run:
+            return
+        first, last = run[0], run[-1]
+        stops = sum(leg.stops for leg in run)
+        minutes = round(sum(leg.seconds for leg in run) / 60.0, 1)
+        description = f"{first.line}: {first.from_station} → {last.to_station}, {stops} durak"
+        legs.append(Leg("rail", description, minutes, "rail_ride", round(sum(leg.km or 0.0 for leg in run), 2)))
+        run.clear()
+
+    previous_line: str | None = None
+    for leg in middle:
+        if leg.kind == "ride":
+            if run and run[-1].line != leg.line:
+                close_run()
+            run.append(leg)
+            previous_line = leg.line
+            continue
+        close_run()
+        km = leg.km or 0.0
+        where = leg.from_station if leg.from_station == leg.to_station else f"{leg.from_station} → {leg.to_station}"
+        change = f"{previous_line} → {leg.line}" if previous_line else f"{leg.line} hattına"
+        walked = f", {round(km * 1000)} m yürüme" if km >= 0.05 else ""
+        minutes = round(leg.seconds / 60.0, 1)
+        legs.append(Leg("transfer", f"{where}: {change} aktarması{walked}", minutes, "rail_transfer", km or None))
+        interchange_m += km * 1000.0
+    close_run()
+    legs.append(_walk_leg(f"{egress.from_station} istasyonundan yürüyüş", egress.km or 0.0, params))
+    return legs, interchange_m
 
 
 def _metro_option(
     origin: Waypoint,
     destination: Waypoint,
     *,
-    stations: Sequence[Any],
-    disrupted_lines: Mapping[str, str],
-    crosses: bool,
+    graph: MetroGraph,
+    statuses: Sequence[MetroLineStatus] | None,
     params: RoutingParams = DEFAULT_PARAMS,
 ) -> TravelOption:
-    """Nearest station at each end, straight rail distance over an average metro speed.
+    """Walk to a platform, ride the network graph, walk off.
 
-    The network is modelled as distance, not as a graph: we hold no line-to-line
-    connectivity, so a shared-line pair is costed as a direct ride and anything else as one
-    transfer. Crossing the Bosphorus is the exception, because there the route is forced
-    through the Marmaray tube — distance is measured via the anchors in
-    :data:`RAIL_CROSSING_ANCHORS` and a second transfer is charged.
+    The path is the cheapest one :class:`~ibb_mcp.metro_graph.MetroGraph` finds over every
+    station inside the access radius at both ends, so a longer walk to a faster line can win
+    over the nearest platform. Transfers exist only where two platforms are close enough to
+    walk between — the rule that stops the graph "changing" from T3 Bahariye to M9 Bahariye,
+    20.7 km apart. The Bosphorus is crossed only through the Marmaray tube, and saying so
+    costs the option one confidence notch, because Marmaray's rows are ours, not İBB's.
+
+    A notice on *any* line the path rides costs the penalty, not only a notice at either end;
+    an unreadable notice feed is reported as unknown, never as "no disruption".
     """
     label = "Metro / raylı sistem"
-    reach = params.metro_access_walk_km
-    with_coords = [s for s in stations if s.lat is not None and s.lon is not None]
-    origin_near = _near_stations(with_coords, origin, reach)
-    destination_near = _near_stations(with_coords, destination, reach)
-    if not origin_near or not destination_near:
-        end = "Başlangıç" if not origin_near else "Varış"
-        return _unavailable("metro", label, f"{end} noktasının {reach:.1f} km yakınında raylı sistem istasyonu yok.")
+    result = graph.path_between_points((origin.lat, origin.lon), (destination.lat, destination.lon))
+    if result.path is None:
+        return _unavailable("metro", label, _rail_refusal(result.reason, graph, params))
+    path = result.path
+    if not any(leg.kind == "ride" for leg in path.legs):
+        same_station = "Başlangıç ve varış aynı istasyonun yürüme mesafesinde; raylı sistemle gidilecek bir yol yok."
+        return _unavailable("metro", label, same_station)
 
-    origin_station, destination_station, same_line = _pick_station_pair(origin_near, destination_near)
-    legs = [
-        _walk_leg(f"{origin_station.name} istasyonuna yürüyüş", origin_station.distance_km, params),
-        Leg("wait", "Sefer beklemesi", round(params.metro_headway_minutes / 2.0, 1), "metro_headway_minutes"),
-    ]
-    lines_used = {origin_station.line_name, destination_station.line_name} - {None}
-    downgrades = 0
-
-    if crosses:
-        anchors = _resolve_rail_anchors(with_coords)
-        if anchors is None:
-            missing = "Boğaz geçişi için Marmaray aktarma istasyonları canlı listede bulunamadı."
-            return _unavailable("metro", label, missing)
-        european, asian = anchors
-        first, second = (european, asian) if side_of_bosphorus(origin.lat, origin.lon) == "european" else (asian, european)
-        hops = [
-            (f"{origin_station.name} → {first.name}", _between(origin_station, first)),
-            (f"{first.name} → {second.name} (Marmaray)", _between(first, second)),
-            (f"{second.name} → {destination_station.name}", _between(second, destination_station)),
-        ]
-        transfers = 2
-        lines_used.add("Marmaray")
-        downgrades += 1  # only the tube is modelled; the lines feeding it are approximated
-    else:
-        straight = haversine_km(origin_station.lat, origin_station.lon, destination_station.lat, destination_station.lon)
-        hops = [(f"{origin_station.name} → {destination_station.name}", straight)]
-        transfers = 0 if same_line else 1
-
-    for description, straight_km in hops:
-        rail_km = straight_km * params.rail_winding
-        legs.append(Leg("rail", description, round(rail_km / params.metro_kmh * 60.0, 1), "metro_kmh", round(rail_km, 2)))
-    if transfers:
-        change = round(transfers * params.metro_transfer_minutes, 1)
-        legs.append(Leg("transfer", f"{transfers} aktarma", change, "metro_transfer_minutes"))
-    legs.append(_walk_leg(f"{destination_station.name} istasyonundan yürüyüş", destination_station.distance_km, params))
-
+    legs, interchange_m = _rail_legs(path, params)
+    via_marmaray = MARMARAY_LINE in path.lines
+    downgrades = 1 if via_marmaray else 0
     notes: list[str] = []
-    hit = next(((line, disrupted_lines[line]) for line in sorted(lines_used) if line in disrupted_lines), None)
-    if hit is not None:
-        notice = f"{hit[0]} hattında bildirilen aksaklık"
-        legs.append(Leg("delay", notice, params.disruption_penalty_minutes, "disruption_penalty_minutes"))
-        notes.append(f"{hit[0]}: {hit[1]}")
+    disrupted: list[str] = []
+    if statuses is None:
+        notes.append("Metro İstanbul bildirimleri okunamadı; bu güzergâhın hatlarında aksaklık olup olmadığı bilinmiyor.")
         downgrades += 1
+    else:
+        hits, unmatched = _disruptions_on([line for line in path.lines if line != MARMARAY_LINE], statuses)
+        disrupted = [code for code, _ in hits]
+        if hits:
+            notice = f"{', '.join(disrupted)} hattında bildirilen aksaklık"
+            legs.append(Leg("delay", notice, params.disruption_penalty_minutes, "disruption_penalty_minutes"))
+            notes.extend(f"{code}: {(status.description or 'ayrıntı verilmedi').strip()}" for code, status in hits)
+            downgrades += 1
+        if unmatched:
+            notes.append(
+                "Hat adı eşlenemeyen bildirimler var; bu güzergâhı etkileyip etkilemedikleri bilinmiyor: "
+                + ", ".join(unmatched)
+                + "."
+            )
+    if via_marmaray:
+        notes.append("Marmaray Metro İstanbul'un bildirim akışında yer almaz; tüpteki aksaklıklar bu veride görünmez.")
 
-    assumptions = [
-        _assume("metro_kmh", params.metro_kmh),
-        _assume("rail_winding", params.rail_winding),
-        _assume("metro_headway_minutes", params.metro_headway_minutes),
-    ]
-    if transfers:
-        assumptions.append(_assume("metro_transfer_minutes", params.metro_transfer_minutes))
-    if hit is not None:
+    rail = graph.params
+    speeds = (
+        f"metro {rail.metro_speed_kmh:g}, tramvay {rail.tram_speed_kmh:g}, füniküler {rail.funicular_speed_kmh:g} km/sa; "
+        f"duruş {rail.dwell_seconds:g} sn"
+    )
+    assumptions = [_assume("rail_ride", speeds), _assume("metro_headway_minutes", params.metro_headway_minutes)]
+    if path.transfer_count:
+        rule = (
+            f"Aktarma başına {rail.transfer_seconds:g} sn yürüme ve bekleme. Aktarma yalnızca peronlar "
+            f"{rail.in_station_transfer_km * 1000:.0f} m içindeyse, ya da aynı adlı istasyonlar "
+            f"{rail.max_named_walk_km * 1000:.0f} m, farklı adlılar {rail.max_unnamed_walk_km * 1000:.0f} m içindeyse kurulur."
+        )
+        assumptions.append(_assume("rail_transfer", rail.transfer_seconds, rule))
+    if via_marmaray:
+        assumptions.append(_assume("marmaray_tube", " – ".join(MARMARAY_TUBE)))
+    if disrupted:
         assumptions.append(_assume("disruption_penalty_minutes", params.disruption_penalty_minutes))
 
+    first_ride = next(leg for leg in path.legs if leg.kind == "ride")
+    last_ride = next(leg for leg in reversed(path.legs) if leg.kind == "ride")
     return TravelOption(
         mode="metro",
         label=label,
@@ -728,17 +895,24 @@ def _metro_option(
         total_minutes=_total(legs),
         legs=legs,
         comfort=comfort_score(
-            transfers=transfers, walking_m=_walking_m(legs), disruption=hit is not None, parking_uncertainty=0.0, params=params
+            transfers=path.transfer_count,
+            walking_m=_walking_m(legs) + interchange_m,
+            disruption=bool(disrupted),
+            parking_uncertainty=0.0,
+            params=params,
         ),
         confidence=_confidence(downgrades),
         assumptions=_ensure_bases(assumptions, legs, params),
         notes=notes,
         detail={
-            "origin_station": origin_station.name,
-            "destination_station": destination_station.name,
-            "lines": sorted(lines_used),
-            "transfers": transfers,
-            "via_marmaray": crosses,
+            "origin_station": first_ride.from_station,
+            "destination_station": last_ride.to_station,
+            "lines": list(path.lines),
+            "transfers": path.transfer_count,
+            "stops": path.stop_count,
+            "via_marmaray": via_marmaray,
+            "disrupted_lines": disrupted,
+            "network": _network_tr(graph),
         },
     )
 
@@ -750,6 +924,7 @@ def find_bus_pick(
     index: StopIndex | None,
     sequences: Mapping[str, Any] | None,
     params: RoutingParams = DEFAULT_PARAMS,
+    line_index: StopRouteIndex | None = None,
 ) -> tuple[_BusPick | None, str | None]:
     """The single İETT line whose stop order passes a stop near the origin *then* one near the end.
 
@@ -757,53 +932,80 @@ def find_bus_pick(
     hold stop sequences, not a transfer graph, and a fabricated two-bus itinerary is exactly
     the kind of number this project refuses to print.
 
-    Candidates are ranked by provisional minutes — walk in, ride, walk out — using the
-    untuned per-stop rate rather than by stop count alone, because counting stops boards the
-    traveller at a stop 700 m away to save one of them. The per-line calibrated rate is
-    applied afterwards, when the line is known; it scales every candidate of a line equally,
-    so it cannot reorder them, and scanning twice to get it would cost more than it buys.
+    The direction-aware scan is :meth:`ibb_mcp.lines.StopRouteIndex.direct_lines`, the one
+    implementation of "origin before destination on the same variant" in the project. This
+    function only prices the candidates: by provisional minutes — walk in, ride, walk out —
+    at the untuned per-stop rate rather than by stop count alone, because counting stops
+    boards the traveller at a stop 700 m away to save one of them. The per-line calibrated
+    rate is applied afterwards, when the line is known; it scales every candidate of a line
+    equally, so it cannot reorder them, and scanning twice to get it would cost more than it
+    buys. ``line_index`` is the prebuilt inverted index (``tools.Nabiz`` builds it once);
+    without one, :func:`ibb_mcp.lines.index_for` builds and memoises it for these sequences.
     """
     if index is None or not sequences:
         return None, "GTFS durak sıraları yüklü olmadığı için otobüs seçeneği hesaplanamadı."
     reach, limit = params.bus_access_walk_km, params.bus_stop_candidates
     near_origin = index.nearest_stops(origin.lat, origin.lon, limit=limit, max_km=reach)
     near_destination = index.nearest_stops(destination.lat, destination.lon, limit=limit, max_km=reach)
-    origin_stops = {s.stop_code: s for s in near_origin if s.stop_code}
-    destination_stops = {s.stop_code: s for s in near_destination if s.stop_code}
+    origin_stops = {s.stop_code.strip(): s for s in near_origin if s.stop_code and s.stop_code.strip()}
+    destination_stops = {s.stop_code.strip(): s for s in near_destination if s.stop_code and s.stop_code.strip()}
     if not origin_stops or not destination_stops:
         end = "Başlangıç" if not origin_stops else "Varış"
         return None, f"{end} noktasının {reach:.1f} km yakınında otobüs durağı yok."
 
     per_minute_km = params.walk_kmh / (60.0 * params.walk_winding)
-    best: tuple[float, _BusPick] | None = None
-    for route_code, sequence in sequences.items():
-        codes = set(sequence.stop_codes)
-        # Reject in two set operations before touching the ordering: 2 876 route variants
-        # times two dozen candidate stops at each end is a lot of tuple scanning otherwise.
-        boarding = origin_stops.keys() & codes
-        if not boarding or not (alighting := destination_stops.keys() & codes):
-            continue
-        positions: dict[str, int] = {}
-        for position, code in enumerate(sequence.stop_codes):
-            positions.setdefault(code, position)  # first occurrence, as stops_between reads it
-        for origin_code in boarding:
-            for destination_code in alighting:
-                gap = positions[destination_code] - positions[origin_code]
-                if gap <= 0:  # the target is behind the bus on this variant
-                    continue
-                origin_stop, destination_stop = origin_stops[origin_code], destination_stops[destination_code]
-                walk_km = (origin_stop.distance_km or 0.0) + (destination_stop.distance_km or 0.0)
-                minutes = walk_km / per_minute_km + gap * params.bus_seconds_per_stop / 60.0
-                if best is not None and minutes >= best[0]:
-                    continue
-                line_code = getattr(index.route_by_code(route_code), "short_name", None) or route_code
-                best = (minutes, _BusPick(route_code, line_code, origin_stop, destination_stop, gap))
-    if best is None:
+
+    def provisional_minutes(origin_code: str, destination_code: str, stops_between: int) -> float:
+        walk_km = (origin_stops[origin_code].distance_km or 0.0) + (destination_stops[destination_code].distance_km or 0.0)
+        return walk_km / per_minute_km + stops_between * params.bus_seconds_per_stop / 60.0
+
+    scanner = line_index if line_index is not None else index_for(sequences)
+    rides = scanner.direct_lines(
+        origin_stops, destination_stops, max_results=1 + max(0, params.bus_other_lines), cost=provisional_minutes
+    )
+    if not rides:
         return None, (
             "İki ucun yakınındaki durakları aynı sırada geçen tek bir İETT hattı yok; "
             "aktarmalı güzergâh bu veriyle hesaplanamıyor."
         )
-    return best[1], None
+    best, others = rides[0], rides[1:]
+    return (
+        _BusPick(
+            route_code=best.route_code,
+            line_code=best.line,
+            from_stop=origin_stops[best.origin_stop_code],
+            to_stop=destination_stops[best.destination_stop_code],
+            stops_between=best.stops_between,
+            others=tuple(_other_line(ride, origin_stops, destination_stops) for ride in others),
+        ),
+        None,
+    )
+
+
+def _other_line(ride: DirectLine, origin_stops: Mapping[str, Any], destination_stops: Mapping[str, Any]) -> dict[str, Any]:
+    """A runner-up direct line, as plain JSON: where to board, where to get off, how many stops."""
+    board, alight = origin_stops[ride.origin_stop_code], destination_stops[ride.destination_stop_code]
+    return {
+        "line_code": ride.line,
+        "route_code": ride.route_code,
+        "direction": ride.direction,
+        "from_stop": {"stop_code": board.stop_code, "name": board.name, "distance_km": board.distance_km},
+        "to_stop": {"stop_code": alight.stop_code, "name": alight.name, "distance_km": alight.distance_km},
+        "stops_between": ride.stops_between,
+    }
+
+
+def _implied_speed_kmh(pick: _BusPick, ride_minutes: float) -> float | None:
+    """Average speed the ride estimate implies, over the straight line between the stops.
+
+    Returned so a reader can sanity-check the per-stop rate against the corridor: an
+    express line that comes out at 9 km/h is telling you the rate needs re-fitting, not
+    that the bus is that slow.
+    """
+    first, second = pick.from_stop, pick.to_stop
+    if None in (first.lat, first.lon, second.lat, second.lon) or ride_minutes <= 0:
+        return None
+    return round(haversine_km(first.lat, first.lon, second.lat, second.lon) / (ride_minutes / 60.0), 1)
 
 
 def _bus_option(
@@ -829,6 +1031,12 @@ def _bus_option(
         if headway_minutes
         else "Sefer saatleri okunamadığı için varsayılan sefer aralığı kullanıldı."
     )
+    notes = ["Tek hatlı güzergâh; aktarmalı seçenekler bu veriyle hesaplanmıyor."]
+    if pick.others:
+        # Named so "is there another bus?" has an answer, and left without minutes because
+        # pricing them honestly needs their own rate and timetable (see _BusPick).
+        names = ", ".join(f"{other['line_code']} ({other['stops_between']} durak)" for other in pick.others)
+        notes.append(f"Aynı yönde aktarmasız giden başka hatlar da var: {names}; süreleri hesaplanmadı.")
     return TravelOption(
         mode="bus",
         label=f"Otobüs {pick.line_code}",
@@ -845,13 +1053,15 @@ def _bus_option(
             legs,
             params,
         ),
-        notes=["Tek hatlı güzergâh; aktarmalı seçenekler bu veriyle hesaplanmıyor."],
+        notes=notes,
         detail={
             "line_code": pick.line_code,
             "route_code": pick.route_code,
+            "implied_speed_kmh": _implied_speed_kmh(pick, ride_minutes),
             "from_stop": {"stop_code": pick.from_stop.stop_code, "name": pick.from_stop.name},
             "to_stop": {"stop_code": pick.to_stop.stop_code, "name": pick.to_stop.name},
             "stops_between": pick.stops_between,
+            "other_direct_lines": list(pick.others),
         },
     )
 
@@ -875,10 +1085,12 @@ def seconds_per_stop_for(
     if provenance == "default":
         return seconds, "Bu hat için ölçüm yok; kalibre edilmemiş varsayılan oran."
     if provenance.startswith("global"):
-        # Saying "500T için ölçülen" when the number came from every line pooled together
-        # would overstate what was measured; the agent repeats this sentence verbatim.
-        return seconds, f"{line_code} için ayrı ölçüm yok; tüm hatlardan ölçülen genel oran ({provenance})."
-    return seconds, f"{line_code} için ölçülen oran ({provenance})."
+        # The pool is the lines the calibration measured (500T alone in the committed
+        # profile); "measured for this line" or "measured across all lines" would both
+        # overstate it, and the agent repeats this sentence verbatim.
+        pooled = f"{line_code} için ayrı ölçüm yok; {profile.pooled_rate_qualifier()} oran ({provenance})."
+        return seconds, f"{pooled} {MEASURED_RATE_CAVEAT}"
+    return seconds, f"{line_code} için ölçülen oran ({provenance}). {MEASURED_RATE_CAVEAT}"
 
 
 def _walk_option(
@@ -920,16 +1132,27 @@ async def compare_options(
     params: RoutingParams = DEFAULT_PARAMS,
     now: dt.datetime | None = None,
     with_timetable: bool = True,
+    line_index: StopRouteIndex | None = None,
+    traffic_baseline: TrafficBaseline | None = None,
+    traffic_baseline_provenance: Provenance | None = None,
 ) -> RouteAdvice:
     """Compare driving, metro, a single bus line and walking between two points.
 
     ``origin``/``destination`` may be a :class:`Waypoint`, a ``(lat, lon)`` pair or any
     object carrying ``lat``/``lon`` (``sources.places.Place`` does). ``index`` and
     ``sequences`` are the GTFS index and its route stop orders; without them the bus option
-    is withdrawn with a reason rather than guessed. Nothing here reaches İBB directly — the
-    readings come from the existing sources through the shared cache and ``PoliteClient``,
-    so N callers still cost at most one upstream call per cache window. A source that fails
-    removes the options that depended on it and leaves the rest standing.
+    is withdrawn with a reason rather than guessed. ``line_index`` is the prebuilt
+    :class:`~ibb_mcp.lines.StopRouteIndex` over those sequences, a shortcut that never
+    changes the answer. ``traffic_baseline`` is the weekday × hour history of the index
+    (:mod:`ibb_mcp.traffic_profile`); when given, the live index is compared with it and the
+    comparison travels as the ``traffic_typical`` reading, "unknown" included.
+    ``traffic_baseline_provenance`` is the stamp of the history read behind it; when given it
+    is cited in ``provenance`` and gives that reading its age.
+
+    Nothing here reaches İBB directly — the readings come from the existing sources through
+    the shared cache and ``PoliteClient``, so N callers still cost at most one upstream call
+    per cache window. A source that fails removes the options that depended on it and
+    leaves the rest standing.
     """
     from ibb_mcp.sources.ispark import IsparkSource
     from ibb_mcp.sources.metro import MetroSource
@@ -949,15 +1172,24 @@ async def compare_options(
 
     readings: list[Reading] = []
     provenance: list[Provenance] = []
-    traffic_index, traffic_reason = _read_traffic(traffic, readings, provenance)
+    traffic_index, traffic_reason, traffic_at = _read_traffic(traffic, readings, provenance)
     stations = _read_payload(station_list, "metro istasyon listesi", provenance)
     statuses = _read_payload(status, "metro bildirimleri", provenance)
     lots = _read_payload(parking, "İSPARK", provenance)
 
-    disrupted = {line.line_name: (line.description or "").strip() for line in (statuses or []) if line.line_name}
+    typical = None
+    if traffic_index is not None and traffic_baseline is not None:
+        typical = compare_to_typical(traffic_index, traffic_at or moment, traffic_baseline)
+        measured = typical.typical if typical.typical is not None else "bilinmiyor"
+        age = None
+        if traffic_baseline_provenance is not None:
+            provenance.append(traffic_baseline_provenance)
+            age = round(traffic_baseline_provenance.age_seconds, 1)
+        readings.append(Reading("traffic_typical", measured, "1-99", "traffic_history", age, typical.description_tr))
     if statuses is not None:
+        active = [line for line in statuses if line.is_active is not False]
         empty_means = "Bildirimi olan hatlar; boş liste bildirilmiş aksaklık yok demektir."
-        readings.append(Reading("metro_disruptions", len(disrupted), "hat", "metro_status", detail=empty_means))
+        readings.append(Reading("metro_disruptions", len(active), "hat", "metro_status", detail=empty_means))
     if stations:
         readings.append(Reading("metro_stations", len(stations), "istasyon", "metro_stations"))
     if lots:
@@ -970,14 +1202,15 @@ async def compare_options(
             end,
             traffic_index=traffic_index,
             traffic_reason=traffic_reason,
-            lots=lots or [],
+            lots=lots,
             crossing=_best_crossing(start, end) if crosses else None,
+            typical=typical,
             params=params,
         ),
-        _metro_option(start, end, stations=stations, disrupted_lines=disrupted, crosses=crosses, params=params)
+        _metro_option(start, end, graph=rail_graph(stations, params), statuses=statuses, params=params)
         if stations
         else _unavailable("metro", "Metro / raylı sistem", "Metro istasyon listesi okunamadı."),
-        await _resolve_bus(start, end, ctx, index, sequences, params, moment, with_timetable, readings),
+        await _resolve_bus(start, end, ctx, index, sequences, params, moment, with_timetable, readings, line_index),
         _walk_option(start, end, crosses=crosses, params=params),
     ]
     return RouteAdvice(
@@ -1002,12 +1235,14 @@ async def _resolve_bus(
     moment: dt.datetime,
     with_timetable: bool,
     readings: list[Reading],
+    line_index: StopRouteIndex | None = None,
 ) -> TravelOption:
     """Choose the line, then price it with that line's measured rate and real headway."""
-    pick, reason = find_bus_pick(start, end, index=index, sequences=sequences, params=params)
+    pick, reason = find_bus_pick(start, end, index=index, sequences=sequences, params=params, line_index=line_index)
     if pick is None:
         return _unavailable("bus", "Otobüs (tek hat)", reason or "Otobüs seçeneği hesaplanamadı.")
-    seconds_per_stop, rate_detail = seconds_per_stop_for(pick.line_code, moment, ctx.settings, params)
+    # Off the event loop: the profile is a JSON file read, and this runs inside a request.
+    seconds_per_stop, rate_detail = await asyncio.to_thread(seconds_per_stop_for, pick.line_code, moment, ctx.settings, params)
     headway = await _headway_for(ctx, pick.line_code, moment) if with_timetable else None
     if headway is not None:
         timetable = f"{pick.line_code} planlanan sefer saatleri."
@@ -1025,18 +1260,34 @@ def _read_payload(result: Any, what: str, provenance: list[Provenance]) -> Any:
     return data
 
 
-def _read_traffic(result: Any, readings: list[Reading], provenance: list[Provenance]) -> tuple[int | None, str | None]:
-    """The live traffic index, or a Turkish reason why the drive option cannot be costed."""
+def _read_traffic(
+    result: Any, readings: list[Reading], provenance: list[Provenance]
+) -> tuple[int | None, str | None, dt.datetime | None]:
+    """The live traffic index and when İBB stamped it, or a Turkish reason it is unusable.
+
+    The stamp travels with the index because the weekday × hour comparison must file the
+    reading under the hour it was *taken*, not the hour the question was asked.
+    """
     if isinstance(result, BaseException):
         log.info("routing: trafik indeksi okunamadı: %r", result)
-        return None, f"Trafik indeksi okunamadı ({type(result).__name__})."
+        return None, f"Trafik indeksi okunamadı ({type(result).__name__}).", None
     point, prov = result
     provenance.append(prov)
     if point is None:
-        return None, "Trafik indeksi serisi boş döndü."
+        return None, "Trafik indeksi serisi boş döndü.", None
+    if not _valid_traffic_index(point.index):
+        # ``TrafficIndexPoint.from_raw`` leaves a null or unparseable index as None, and İBB's
+        # scale is 1–99, so a 0 is no reading either. Costing a drive at free-flow speed from
+        # a missing reading would be the invented number we refuse.
+        return None, "Trafik indeksi geçerli bir değer döndürmedi (İBB ölçeği 1–99); sürüş süresi hesaplanmadı.", None
     what = "İBB şehir geneli trafik yoğunluk indeksi."
     readings.append(Reading("traffic_index", point.index, "1-99", "traffic", round(prov.age_seconds, 1), what))
-    return point.index, None
+    return point.index, None, point.at
+
+
+def _valid_traffic_index(index: Any) -> bool:
+    """Whether a traffic reading is on İBB's documented 1–99 scale."""
+    return isinstance(index, int | float) and 1 <= index <= 99
 
 
 def _best_crossing(origin: Waypoint, destination: Waypoint) -> Waypoint:
