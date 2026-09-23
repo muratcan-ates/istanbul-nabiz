@@ -26,15 +26,14 @@ import json
 import logging
 import math
 import pathlib
-import re
 import threading
-import unicodedata
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from ibb_mcp.config import Settings, display_path
 from ibb_mcp.models import Route, Stop, demojibake, haversine_km, repair_coordinate, utcnow
+from ibb_mcp.text import normalize_tr
 
 log = logging.getLogger(__name__)
 
@@ -53,26 +52,10 @@ DEFAULT_GTFS_RESOURCES: tuple[str, ...] = ("stops", "routes")
 # --------------------------------------------------------------------------------------
 # text
 # --------------------------------------------------------------------------------------
-# str.lower() is wrong for Turkish: "I".lower() is "i", but "I" lowercases to "ı". Map the
-# six special pairs first, then fold diacritics so "kadikoy" typed on an English keyboard
-# still finds "KADIKÖY".
-_TR_LOWER = str.maketrans({"I": "ı", "İ": "i", "Ş": "ş", "Ğ": "ğ", "Ü": "ü", "Ö": "ö", "Ç": "ç"})
-_TR_FOLD = str.maketrans({"ı": "i", "ş": "s", "ğ": "g", "ü": "u", "ö": "o", "ç": "c"})
-_TOKEN_RE = re.compile(r"[0-9a-z]+")
+# Name matching folds through ibb_mcp.text.normalize_tr, the one Turkish fold the gazetteer
+# and the agent use too; it is imported here (and stays importable as
+# ``ibb_mcp.gtfs.normalize_tr``) because the stop and route indexes are keyed by it.
 _MOJIBAKE_MARKERS = ("Ã", "Å", "Ä", "Ð", "Þ")
-
-
-def normalize_tr(text: str | None) -> str:
-    """Fold Turkish text to a lowercase ASCII matching key.
-
-    ``"KADIKÖY İSKELE"``, ``"kadikoy iskele"`` and ``"Kadıköy, iskele"`` all collapse to
-    ``"kadikoy iskele"``.
-    """
-    if not text:
-        return ""
-    lowered = text.translate(_TR_LOWER).lower().translate(_TR_FOLD)
-    decomposed = unicodedata.normalize("NFKD", lowered)
-    return " ".join(_TOKEN_RE.findall("".join(c for c in decomposed if not unicodedata.combining(c))))
 
 
 def _fix_mojibake(text: str) -> str:
@@ -168,7 +151,7 @@ def _stop_times_path(gtfs_dir: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
-def build_stop_sequences(settings: Settings, *, index: GtfsIndex | None = None) -> dict[str, RouteStopSequence]:
+def build_stop_sequences(settings: Settings, *, index: GtfsIndex | None = None) -> dict[str, RouteStopSequence]:  # noqa: C901 - debt, ratcheted in scripts/architecture_baseline.json
     """Join ``stop_times.csv`` to ``trips.csv`` and produce one stop order per route variant.
 
     Verified schema (2026-09-08, both files ``;`` separated with a UTF-8 BOM):

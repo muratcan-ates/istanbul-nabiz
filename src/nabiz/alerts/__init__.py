@@ -1,39 +1,20 @@
-"""Proactive alerts (epic E2), built so that privacy is a property of the code, not a promise.
+"""Proactive alerts: moved to :mod:`ibb_mcp.alerts`, re-exported here.
 
-The server is stateless: it holds no subscription, no coordinate and no history. The browser
-keeps the subscription in ``localStorage`` and sends it with each check; the server evaluates
-pure rules against data it already fetched for everybody and answers. See ``docs/privacy.md``
-for the data-flow diagram, what is stored where, retention (none) and how a user deletes
-everything (clear the site's browser storage).
-
-Typical use from the tool layer::
-
-    from nabiz.alerts import check_alerts
-    payload = await check_alerts(nabiz.ctx, subscription)
-
-or, when the caller already has a snapshot (tests, the collector, a batch job)::
-
-    ctx = await build_context(source_ctx, subscription)
-    alerts = evaluate_subscription(subscription, ctx)
+The engine, its rules and the MCP subscription schema moved into the server package on
+2026-09-23: ``check_alerts`` is an MCP tool every client gets (DECISIONS #2), and the server
+package imports nothing from ``nabiz`` (DECISIONS #8). ``from nabiz.alerts import
+check_alerts`` and ``nabiz.alerts.engine`` keep working for code written before the move;
+new code imports :mod:`ibb_mcp.alerts`.
 """
 
 from __future__ import annotations
 
-from nabiz.alerts.engine import (
+from ibb_mcp.alerts import (
     COOLDOWN_POLICY,
     DEFAULT_COOLDOWNS,
     MAX_PLACES,
     MAX_RULES,
     PRIVACY_SUMMARY,
-    ParsedSubscription,
-    Place,
-    build_context,
-    check_alerts,
-    describe_subscription,
-    evaluate_subscription,
-    parse_subscription,
-)
-from nabiz.alerts.rules import (
     AirQualityObservation,
     AirQualityRule,
     Alert,
@@ -45,12 +26,23 @@ from nabiz.alerts.rules import (
     MetroObservation,
     ParkingFillingRule,
     ParkingObservation,
+    ParsedSubscription,
     Rule,
     Severity,
     TrafficObservation,
     TrafficRule,
+    WatchedPlace,
+    build_context,
+    check_alerts,
+    describe_subscription,
     evaluate_rules,
+    evaluate_subscription,
+    parse_subscription,
 )
+
+#: The engine's name for a user's place before 2026-09-23. It is now ``WatchedPlace``, so
+#: that it cannot be confused with the gazetteer's ``ibb_mcp.sources.places.Place``.
+Place = WatchedPlace
 
 __all__ = [
     "COOLDOWN_POLICY",
@@ -75,6 +67,7 @@ __all__ = [
     "Severity",
     "TrafficObservation",
     "TrafficRule",
+    "WatchedPlace",
     "build_context",
     "check_alerts",
     "describe_subscription",

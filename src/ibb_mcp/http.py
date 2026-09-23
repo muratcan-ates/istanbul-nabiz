@@ -29,9 +29,8 @@ import httpx
 
 # The tracing shim, not OpenTelemetry itself: it has no third-party dependency of its own
 # (it uses OpenTelemetry when importable and degrades to no-ops when not), and it filters
-# every span attribute through one allow-list. nabiz.agent exports lazily, so this import
-# does not load the agent, which itself imports this module.
-from nabiz.agent.telemetry import span, traced
+# every span attribute through one allow-list.
+from ibb_mcp.telemetry import span, traced
 
 log = logging.getLogger("ibb_mcp.http")
 

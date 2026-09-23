@@ -48,7 +48,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ibb_mcp.config import Settings
-from ibb_mcp.models import ISTANBUL_TZ, utcnow
+from ibb_mcp.models import ISTANBUL_TZ, to_istanbul, utcnow
+from ibb_mcp.reference import parse_once
 
 log = logging.getLogger("ibb_mcp.occupancy")
 
@@ -116,19 +117,6 @@ def weekday_class_of(weekday: int) -> str:
 def weekday_class(moment: dt.datetime) -> str:
     """Which demand curve a moment belongs to — see the module docstring for why three."""
     return weekday_class_of(moment.weekday())
-
-
-def to_istanbul(moment: dt.datetime) -> dt.datetime:
-    """Interpret a moment in İstanbul local time.
-
-    A naive datetime is taken to be local wall-clock time, because every caller of
-    :meth:`OccupancyProfile.lookup` is answering a question a person asked about a clock on
-    a wall ("saat 18:00'de"). An aware datetime is converted. Türkiye is a fixed UTC+3 with
-    no DST since 2016, so this conversion never straddles a fold.
-    """
-    if moment.tzinfo is None:
-        return moment.replace(tzinfo=ISTANBUL_TZ)
-    return moment.astimezone(ISTANBUL_TZ)
 
 
 def _parse_ts(value: Any) -> dt.datetime | None:
@@ -318,7 +306,7 @@ class OccupancyProfile:
                 "closed_samples": cell.closed_samples,
                 "note": (
                     f"{window} için {CLASS_TR[klass]} profili: doluluk genelde %{cell.median:.0f} "
-                    f"(çeyrekler %{cell.p25:.0f}–%{cell.p75:.0f}). "
+                    f"(çeyrekler %{cell.p25:.0f}-%{cell.p75:.0f}). "
                     f"{cell.samples} gözlem, {cell.observed_days} ayrı gün. "
                     "Geçmiş, bu projenin kendi topladığı anlık görüntülerden; İBB otopark geçmişi yayınlamıyor."
                 ),
@@ -348,7 +336,7 @@ class OccupancyProfile:
             span = cell.span_hours if cell else 0.0
             return (
                 f"{window} ({CLASS_TR[klass]}) için {seen} gözlem var ama hepsi {span:.1f} saatlik tek bir "
-                "gözlem penceresinden geliyor — bu bir alışkanlık değil, tek bir gün. "
+                "gözlem penceresinden geliyor; bu bir alışkanlık değil, tek bir gün. "
                 "En az iki ayrı gün ölçülmeden 'genelde' demek yanıltıcı olur."
             )
         return f"{window} ({CLASS_TR[klass]}) için hiç gözlem yok. {collected}"
@@ -558,40 +546,26 @@ def save_profile(
     return target
 
 
-#: Parsed profiles keyed by path, invalidated by (mtime, size). The file is read on the
-#: request path, so re-parsing a few thousand cells per question would be a silly cost.
-_CACHE: dict[str, tuple[tuple[float, int], OccupancyProfile]] = {}
-
-
 def load_profile(settings: Settings | None = None, path: pathlib.Path | None = None) -> OccupancyProfile | None:
     """Load the profile, or ``None`` when it has not been built yet.
 
     Returning ``None`` rather than raising is deliberate: "we have not collected this yet"
     is a normal state of this project, not an error, and the caller turns it into an
     ``available: False`` answer. A file that exists but is corrupt *is* an error worth
-    seeing, so it is logged and also returns ``None`` rather than taking a tool down.
+    seeing, so it is logged and also returns ``None`` rather than taking a tool down. The
+    file is read on the request path, so it is parsed once per file version
+    (:func:`ibb_mcp.reference.parse_once`), not once per question.
     """
     target = path or profile_path(settings)
     try:
-        stat = target.stat()
+        return parse_once(target, OccupancyProfile.from_dict, kind="occupancy_profile")
     except OSError:
         return None
-
-    fingerprint = (stat.st_mtime, stat.st_size)
-    cached = _CACHE.get(str(target))
-    if cached is not None and cached[0] == fingerprint:
-        return cached[1]
-
-    try:
-        profile = OccupancyProfile.from_dict(json.loads(target.read_text(encoding="utf-8")))
     except (ValueError, KeyError, TypeError, AttributeError) as exc:
         # A profile from another build of this project is a plausible thing to find on
         # disk, and it must degrade to "no history yet" rather than take a tool down.
         log.warning("occupancy profile at %s is unreadable: %r", target, exc)
         return None
-
-    _CACHE[str(target)] = (fingerprint, profile)
-    return profile
 
 
 def lookup(

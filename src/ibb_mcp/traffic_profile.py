@@ -40,7 +40,7 @@ import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from ibb_mcp.models import ISTANBUL_TZ, TrafficIndexPoint
+from ibb_mcp.models import TrafficIndexPoint, to_istanbul
 
 #: Minimum observations in a (weekday, hour) cell before its median may be called "typical".
 #: Three matches the floor used by :mod:`ibb_mcp.occupancy`; it is
@@ -101,19 +101,6 @@ _BAND_EN = {
     "heavier": "heavier than usual",
     "much_heavier": "much heavier than usual",
 }
-
-
-def to_istanbul(moment: dt.datetime) -> dt.datetime:
-    """Interpret a moment in İstanbul local time.
-
-    An aware moment is converted; a naive one is *taken to be* local wall-clock time, the
-    convention :mod:`ibb_mcp.occupancy` uses, because a naive datetime in this codebase always
-    comes from a person naming a clock ("saat 18:00'de"). Türkiye has had no DST since 2016, so
-    this conversion never lands in a fold.
-    """
-    if moment.tzinfo is None:
-        return moment.replace(tzinfo=ISTANBUL_TZ)
-    return moment.astimezone(ISTANBUL_TZ)
 
 
 def cell_for(moment: dt.datetime) -> tuple[int, int]:
@@ -356,7 +343,7 @@ def compare_to_typical(
     )
 
 
-def _describe_known(
+def _describe_known(  # noqa: PLR0913 - debt, ratcheted in scripts/architecture_baseline.json
     index: int,
     weekday: int,
     hour: int,
@@ -374,12 +361,12 @@ def _describe_known(
     """
     tr = (
         f"{_window_tr(weekday, hour)} için trafik indeksi {index}; bu saatte ölçülen olağan seviye "
-        f"{_tr_number(typical)} ({samples} gözlem). Fark {_tr_signed(delta)} puan, oran {_tr_number(ratio, 2)} — "
+        f"{_tr_number(typical)} ({samples} gözlem). Fark {_tr_signed(delta)} puan, oran {_tr_number(ratio, 2)}: "
         f"{_BAND_TR[band]}."
     )
     en = (
         f"Traffic index {index} on {_window_en(weekday, hour)}; the measured norm for this hour is "
-        f"{typical:.1f} from {samples} samples. Difference {delta:+.1f} points, ratio {ratio:.2f} — "
+        f"{typical:.1f} from {samples} samples. Difference {delta:+.1f} points, ratio {ratio:.2f}: "
         f"{_BAND_EN[band]}."
     )
     return tr, en

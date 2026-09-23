@@ -15,96 +15,21 @@ upstream failure and must not be read as an empty result, hence :func:`_unwrap`.
 Field quirks handled here and in :mod:`ibb_mcp.models`: the escalator count is spelled
 ``Escolator``; ``Name`` is shouted and de-diacriticised (``YENIKAPI``) while
 ``Description`` holds the human form (``Yenikapı``). Users type neither reliably, so all
-lookups go through :func:`normalize_tr`.
+lookups go through :func:`ibb_mcp.text.fold_tr`.
 """
 
 from __future__ import annotations
 
-import unicodedata
 from typing import Any
 
 from ibb_mcp.config import METRO_SERVICE_STATUS, METRO_STATIONS
 from ibb_mcp.http import UpstreamUnavailable
 from ibb_mcp.models import MetroLineStatus, MetroStation, Provenance
 from ibb_mcp.sources.base import SourceContext, make_provenance
+from ibb_mcp.text import fold_tr, rank_match_loose, squash_punctuation
 
 #: One day. Station facilities change on the scale of construction projects, not minutes.
 STATIONS_TTL = 86400.0
-
-# --------------------------------------------------------------------------------------
-# Turkish-insensitive matching
-# --------------------------------------------------------------------------------------
-#: Mapped *before* casefolding, because ``"İ".casefold()`` yields ``i`` plus a combining
-#: dot (U+0307) and ``"I".casefold()`` yields ``i`` — so a naive fold makes "ısparta" and
-#: "isparta" collide inconsistently across sources. Folding every Turkish letter onto its
-#: ASCII skeleton lets a user type "sisli" and hit "Şişli-Mecidiyeköy".
-_TR_FOLD = str.maketrans(
-    {
-        "İ": "i", "I": "i", "ı": "i", "i": "i",
-        "Ş": "s", "ş": "s",
-        "Ğ": "g", "ğ": "g",
-        "Ü": "u", "ü": "u",
-        "Ö": "o", "ö": "o",
-        "Ç": "c", "ç": "c",
-        "Â": "a", "â": "a", "Î": "i", "î": "i", "Û": "u", "û": "u",
-    }
-)
-
-
-def normalize_tr(text: str | None) -> str:
-    """Fold Turkish text to a searchable ASCII skeleton.
-
-    ``'Şişli-Mecidiyeköy'`` and ``'SISLI-MECIDIYEKOY'`` both become
-    ``'sisli-mecidiyekoy'``, so a query typed on any keyboard matches either spelling.
-    """
-    if not text:
-        return ""
-    folded = text.translate(_TR_FOLD).casefold()
-    # Anything that arrived pre-decomposed (I + U+0307) still carries combining marks.
-    decomposed = unicodedata.normalize("NFKD", folded)
-    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-    return " ".join(stripped.split())
-
-
-def rank_match(query: str, candidate: str) -> int | None:
-    """Match quality: 0 exact, 1 prefix, 2 substring, ``None`` for no match."""
-    if not candidate or not query:
-        return None
-    if candidate == query:
-        return 0
-    if candidate.startswith(query):
-        return 1
-    if query in candidate:
-        return 2
-    return None
-
-
-#: Added to a rank that only survived punctuation squashing, so a hit on the real
-#: spelling always outranks a loose one ("Levent" keeps beating "4.Levent").
-LOOSE_RANK_PENALTY = 3
-
-
-def squash_punctuation(folded: str) -> str:
-    """Keep only letters and digits of an already :func:`normalize_tr`-folded string."""
-    return "".join(ch for ch in folded if ch.isalnum())
-
-
-def rank_match_loose(query: str, loose_query: str, candidate: str | None) -> int | None:
-    """:func:`rank_match` with a punctuation-insensitive second chance.
-
-    İBB spells one station several ways — the payload's ``Name`` says ``AYSE KADIN``,
-    ``50. YIL BASTABYA`` and ``HASTANE - ADLIYE`` where ``Description`` says
-    ``Ayşekadın``, ``50.Yıl-Baştabya`` and ``Hastane-Adliye`` — and a user types a fourth
-    variant. Comparing the squashed forms absorbs spacing, dots and hyphens without
-    loosening the match into per-word soup. ``query``/``loose_query`` are the folded and
-    squashed forms of the user's text, hoisted out of the candidate loop.
-    """
-    folded = normalize_tr(candidate)
-    rank = rank_match(query, folded)
-    if rank is not None:
-        return rank
-    loose = rank_match(loose_query, squash_punctuation(folded))
-    return None if loose is None else loose + LOOSE_RANK_PENALTY
 
 
 def _hex_color(value: Any) -> str | None:
@@ -188,12 +113,12 @@ class MetroSource:
         provenance age from :meth:`service_status`, because an old snapshot cannot prove
         the line is fine right now.
         """
-        wanted = normalize_tr(line_name)
+        wanted = fold_tr(line_name)
         if not wanted:
             return None
         statuses, _ = await self.service_status()
         for status in statuses:
-            if normalize_tr(status.line_name) == wanted:
+            if fold_tr(status.line_name) == wanted:
                 return status
         return None
 
@@ -222,7 +147,7 @@ class MetroSource:
         two spellings of a station disagree about spaces and hyphens: someone asking for
         "Hastane Adliye" or "4. Levent" means ``Hastane-Adliye`` and ``4.Levent``.
         """
-        query = normalize_tr(name)
+        query = fold_tr(name)
         if not query:
             return []
         loose_query = squash_punctuation(query)

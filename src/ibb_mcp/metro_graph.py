@@ -56,7 +56,7 @@ from dataclasses import dataclass, fields
 from itertools import combinations
 
 from ibb_mcp.models import MetroStation, haversine_km
-from ibb_mcp.sources.metro import normalize_tr, rank_match_loose, squash_punctuation
+from ibb_mcp.text import fold_tr, rank_match_loose, squash_punctuation
 
 
 @dataclass(frozen=True)
@@ -336,7 +336,7 @@ class MetroGraph:
         stations, and logging all of those would bury the eight that matter.
         """
         rejected: list[RejectedTransfer] = []
-        keys = [squash_punctuation(normalize_tr(s.name)) for s in stations]
+        keys = [squash_punctuation(fold_tr(s.name)) for s in stations]
         for left, right in cls._transfer_candidates(stations, keys, params):
             a, b = stations[left], stations[right]
             if a.line_name == b.line_name:
@@ -429,7 +429,7 @@ class MetroGraph:
                 "no Metrobüs or ferry"
             )
         else:
-            values["network"] = "Metro İstanbul rail only — no Marmaray, Metrobüs or ferry, so no Bosphorus crossing"
+            values["network"] = "Metro İstanbul rail only: no Marmaray, Metrobüs or ferry, so no Bosphorus crossing"
         return values
 
     # -- paths -------------------------------------------------------------------------
@@ -526,7 +526,7 @@ class MetroGraph:
 
     def _ranked(self, name: str) -> list[tuple[int, int]]:
         """``(rank, station index)`` for every station whose name matches, best first."""
-        query = normalize_tr(name)
+        query = fold_tr(name)
         if not query:
             return []
         loose = squash_punctuation(query)
@@ -651,10 +651,10 @@ def marmaray_tube(stations: Sequence[MetroStation]) -> list[MetroStation]:
     for station in stations:
         if station.lat is None or station.lon is None:
             continue
-        by_key.setdefault(squash_punctuation(normalize_tr(station.name)), station)
+        by_key.setdefault(squash_punctuation(fold_tr(station.name)), station)
     rows: list[MetroStation] = []
     for name in MARMARAY_TUBE:
-        found = by_key.get(squash_punctuation(normalize_tr(name)))
+        found = by_key.get(squash_punctuation(fold_tr(name)))
         if found is None:
             continue
         rows.append(MetroStation(name=found.name, line_name=MARMARAY_LINE, order=len(rows) + 1, lat=found.lat, lon=found.lon))

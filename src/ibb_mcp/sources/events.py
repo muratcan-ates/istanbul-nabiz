@@ -36,7 +36,7 @@ from pydantic import BaseModel
 from ibb_mcp.cache import CacheEntry
 from ibb_mcp.models import ISTANBUL_TZ, Provenance, haversine_km
 from ibb_mcp.sources.base import SourceContext
-from ibb_mcp.sources.places import normalize_tr
+from ibb_mcp.text import normalize_tr
 
 log = logging.getLogger("ibb_mcp.sources.events")
 

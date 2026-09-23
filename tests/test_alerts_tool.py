@@ -25,9 +25,9 @@ import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 from test_tools_extra import sealed, sealed_nabiz  # noqa: F401 - ``sealed`` is a fixture used by name
 
+from ibb_mcp.alerts.schema import AlertSubscription
 from ibb_mcp.server import build_server
 from ibb_mcp.tools import Nabiz
-from nabiz.alerts.schema import AlertSubscription
 
 #: A coordinate distinctive enough to find in any log line or file it might leak into.
 HOME_LAT, HOME_LON = 41.0431287, 29.0094213

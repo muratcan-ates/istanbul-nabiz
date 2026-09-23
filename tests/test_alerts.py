@@ -21,17 +21,7 @@ import re
 
 import pytest
 
-from ibb_mcp.models import (
-    AirQualityReading,
-    AirQualityStation,
-    MetroLineStatus,
-    ParkingLot,
-    Provenance,
-    TrafficIndexPoint,
-    utcnow,
-)
-from ibb_mcp.sources.base import SourceContext
-from nabiz.alerts.engine import (
+from ibb_mcp.alerts.engine import (
     MAX_COOLDOWN_S,
     MIN_COOLDOWN_S,
     build_context,
@@ -40,7 +30,7 @@ from nabiz.alerts.engine import (
     evaluate_subscription,
     parse_subscription,
 )
-from nabiz.alerts.rules import (
+from ibb_mcp.alerts.rules import (
     AirQualityObservation,
     AirQualityRule,
     AlertContext,
@@ -53,8 +43,18 @@ from nabiz.alerts.rules import (
     TrafficObservation,
     TrafficRule,
 )
+from ibb_mcp.models import (
+    AirQualityReading,
+    AirQualityStation,
+    MetroLineStatus,
+    ParkingLot,
+    Provenance,
+    TrafficIndexPoint,
+    utcnow,
+)
+from ibb_mcp.sources.base import SourceContext
 
-ALERTS_DIR = pathlib.Path(__file__).resolve().parent.parent / "src" / "nabiz" / "alerts"
+ALERTS_DIR = pathlib.Path(__file__).resolve().parent.parent / "src" / "ibb_mcp" / "alerts"
 
 # Coordinates used only by the privacy tests. Distinctive on purpose: if any of these digit
 # strings shows up in a log record or a file, something leaked.
@@ -365,7 +365,7 @@ async def test_bunching_context_is_built_from_the_real_reliability_table(
         observed_to=utcnow() - dt.timedelta(minutes=30),
         days_covered=["2026-09-11", "2026-09-12"],
     )
-    monkeypatch.setattr("nabiz.alerts.engine._reliability_table", lambda: (table, None))
+    monkeypatch.setattr("ibb_mcp.alerts.engine._reliability_table", lambda: (table, None))
     payload = subscription(rules=[{"kind": "bus_bunching", "line": "500T"}])
     result = await check_alerts(ctx, payload)
     assert result["alert_count"] == 1
@@ -389,13 +389,13 @@ async def test_bunching_reports_why_it_is_unavailable_instead_of_firing(
     """Silence must come with a reason, whether the module, the table or the cell is missing."""
     payload = subscription(rules=[{"kind": "bus_bunching", "line": "500T"}])
 
-    monkeypatch.setattr("nabiz.alerts.engine.reliability_module", lambda: None)
+    monkeypatch.setattr("ibb_mcp.alerts.engine.reliability_module", lambda: None)
     no_module = await check_alerts(ctx, payload)
     assert no_module["alerts"] == []
     assert "modül" in no_module["unavailable"]["reliability"]
     monkeypatch.undo()
 
-    monkeypatch.setattr("nabiz.alerts.engine._reliability_table", lambda: (None, "Tablo henüz üretilmedi."))
+    monkeypatch.setattr("ibb_mcp.alerts.engine._reliability_table", lambda: (None, "Tablo henüz üretilmedi."))
     no_table = await check_alerts(ctx, payload)
     assert no_table["alerts"] == []
     assert no_table["unavailable"]["reliability"] == "Tablo henüz üretilmedi."
@@ -418,7 +418,7 @@ async def test_a_cell_the_reliability_module_refuses_to_score_produces_no_alert(
             )
         ]
     )
-    monkeypatch.setattr("nabiz.alerts.engine._reliability_table", lambda: (table, None))
+    monkeypatch.setattr("ibb_mcp.alerts.engine._reliability_table", lambda: (table, None))
     result = await check_alerts(ctx, subscription(rules=[{"kind": "bus_bunching", "line": "500T"}]))
     assert result["alerts"] == []
     assert "düzenlilik verisi yok" in result["unavailable"]["reliability"]
@@ -590,6 +590,27 @@ def test_evaluation_writes_nothing_to_disk(tmp_path: pathlib.Path, monkeypatch: 
     alerts = evaluate_subscription(subscription(), full_ctx())
     assert alerts
     assert set(tmp_path.rglob("*")) == before
+
+
+def test_the_engine_moved_but_its_old_import_paths_are_the_same_objects() -> None:
+    """DECISIONS #8: the engine lives in ``ibb_mcp.alerts``; ``nabiz.alerts`` is kept for old imports.
+
+    The same module objects, not copies: a monkeypatch or a cached table through either name
+    is seen through the other.
+    """
+    import ibb_mcp.alerts.engine
+    import ibb_mcp.alerts.rules
+    import ibb_mcp.alerts.schema
+    import nabiz.alerts
+    import nabiz.alerts.engine
+    import nabiz.alerts.rules
+    import nabiz.alerts.schema
+
+    assert nabiz.alerts.engine is ibb_mcp.alerts.engine
+    assert nabiz.alerts.rules is ibb_mcp.alerts.rules
+    assert nabiz.alerts.schema is ibb_mcp.alerts.schema
+    assert nabiz.alerts.check_alerts is ibb_mcp.alerts.engine.check_alerts
+    assert nabiz.alerts.Place is ibb_mcp.alerts.engine.WatchedPlace
 
 
 def test_alert_sources_contain_no_logging_call_that_could_carry_a_location() -> None:

@@ -70,6 +70,7 @@ from typing import Any
 
 from ibb_mcp.config import reference_path
 from ibb_mcp.models import ISTANBUL_TZ, haversine_km, utcnow
+from ibb_mcp.reference import parse_once
 
 log = logging.getLogger(__name__)
 
@@ -336,14 +337,15 @@ def load_table(path: pathlib.Path | str | None = None) -> ReliabilityTable | Non
 
     Unreadable is not fatal on purpose: a missing reliability table costs one optional
     answer, and a tool that raises on a stale file would take the whole server down with it.
+    Parsed once per file version (:func:`ibb_mcp.reference.parse_once`): the table is read
+    on the request path of ``line_reliability`` and of every bus-bunching alert.
     """
     target = pathlib.Path(path) if path is not None else table_path()
-    if not target.exists():
-        return None
     try:
-        return ReliabilityTable.from_dict(json.loads(target.read_text(encoding="utf-8")))
+        return parse_once(target, ReliabilityTable.from_dict, kind="line_reliability")
     except (OSError, ValueError, TypeError) as exc:
-        log.warning("reliability table at %s unreadable (%r)", target, exc)
+        if not isinstance(exc, FileNotFoundError):  # absent is a normal state, not worth a warning
+            log.warning("reliability table at %s unreadable (%r)", target, exc)
         return None
 
 
@@ -464,7 +466,7 @@ class _Progress:
         return round(self.steps_with_advance / self.stops_advanced, 3)
 
 
-def _progress_rates(
+def _progress_rates(  # noqa: C901 - debt, ratcheted in scripts/architecture_baseline.json
     snapshots: Iterable[Mapping[str, Any]],
     sequences: Mapping[str, Any],
 ) -> dict[tuple[str, int], _Progress]:

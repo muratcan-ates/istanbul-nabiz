@@ -39,9 +39,7 @@ from ibb_mcp.models import (
     utcnow,
 )
 from ibb_mcp.sources.base import SourceContext, make_provenance
-
-# Turkish-insensitive folding and match ranking are defined once, in the metro source.
-from ibb_mcp.sources.metro import normalize_tr, rank_match_loose, squash_punctuation
+from ibb_mcp.text import fold_tr, rank_match_loose, squash_punctuation
 
 #: Station coordinates and names are static; one day is plenty.
 STATIONS_TTL = 86400.0
@@ -73,7 +71,7 @@ def _floor_hour(moment: dt.datetime) -> dt.datetime:
 def _tr_number(value: float | None, digits: int = 1) -> str:
     """Turkish decimal comma, so the agent quotes '12,4' and the faithfulness check passes."""
     if value is None:
-        return "—"
+        return "bilinmiyor"
     return f"{value:.{digits}f}".replace(".", ",")
 
 
@@ -122,7 +120,7 @@ class AirQualitySource:
         names often appears only in ``Adress`` ("İstanbul / Sarıyer - Turkey"), so both
         are searched — name first, because an exact name beats an address substring.
         """
-        query = normalize_tr(name_or_district)
+        query = fold_tr(name_or_district)
         if not query:
             return None
         loose_query = squash_punctuation(query)
@@ -278,7 +276,7 @@ def best_window(
 
     metric_label, unit = ("PM10", " µg/m³") if metric == "pm10" else ("AQI", "")
     label = (
-        f"En temiz aralık {start_local:%d.%m %H:%M}–{end_local:%H:%M} "
+        f"En temiz aralık {start_local:%d.%m %H:%M}-{end_local:%H:%M} "
         f"({metric_label} ort. {_tr_number(mean_score)}{unit}"
     )
     if band is not None:

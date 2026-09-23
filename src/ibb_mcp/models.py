@@ -144,6 +144,20 @@ def utcnow() -> dt.datetime:
     return dt.datetime.now(dt.UTC)
 
 
+def to_istanbul(moment: dt.datetime) -> dt.datetime:
+    """Interpret a moment in İstanbul local time.
+
+    An aware moment is converted; a naive one is *taken to be* local wall-clock time,
+    because a naive datetime in this codebase always comes from a person naming a clock
+    ("saat 18:00'de"). Türkiye is a fixed UTC+3 with no DST since 2016, so this conversion
+    never lands in a fold. The occupancy and traffic profiles both read cells through it;
+    until 2026-09-23 each had its own copy.
+    """
+    if moment.tzinfo is None:
+        return moment.replace(tzinfo=ISTANBUL_TZ)
+    return moment.astimezone(ISTANBUL_TZ)
+
+
 # --------------------------------------------------------------------------------------
 # provenance
 # --------------------------------------------------------------------------------------

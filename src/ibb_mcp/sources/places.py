@@ -17,35 +17,14 @@ from __future__ import annotations
 
 import csv
 import logging
-import unicodedata
 from dataclasses import dataclass
 from functools import lru_cache
 
 from ibb_mcp.config import Settings, display_path
 from ibb_mcp.models import haversine_km
+from ibb_mcp.text import normalize_tr
 
 log = logging.getLogger("ibb_mcp.places")
-
-#: Turkish characters that must fold onto their ASCII neighbours so that "sisli" finds
-#: "Şişli" and "kadikoy" finds "Kadıköy". str.casefold() alone does not do this, and the
-#: dotted/dotless i pair breaks naive lowercasing.
-_TR_FOLD = str.maketrans(
-    {
-        "İ": "i", "I": "i", "ı": "i", "Ş": "s", "ş": "s", "Ğ": "g", "ğ": "g",
-        "Ü": "u", "ü": "u", "Ö": "o", "ö": "o", "Ç": "c", "ç": "c", "Â": "a", "â": "a",
-    }
-)
-
-
-def normalize_tr(text: str | None) -> str:
-    """Fold Turkish text for comparison: case, diacritics and punctuation removed."""
-    if not text:
-        return ""
-    folded = text.translate(_TR_FOLD).casefold()
-    decomposed = unicodedata.normalize("NFKD", folded)
-    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-    return " ".join("".join(ch if ch.isalnum() else " " for ch in stripped).split())
-
 
 @dataclass(frozen=True)
 class Place:
