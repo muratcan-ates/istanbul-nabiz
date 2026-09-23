@@ -31,7 +31,7 @@ import types
 from typing import Any
 
 import pytest
-from conftest import offline_settings
+from conftest import REPO_ROOT, offline_settings
 
 from ibb_mcp.cache import TTLCache
 from ibb_mcp.config import Settings
@@ -41,10 +41,13 @@ from ibb_mcp.sources.base import SourceContext
 from nabiz.collector import function_app, kusto, lake
 from nabiz.collector.snapshots import (
     SNAPSHOTS,
+    build_collector_context,
+    count_failed_reads,
     iso_utc,
     snapshot_air_quality,
     snapshot_fleet,
     snapshot_ispark,
+    snapshot_lines,
     snapshot_metro,
     snapshot_traffic,
 )
@@ -593,6 +596,75 @@ def test_kusto_auth_order_is_managed_identity_then_cli_then_device(monkeypatch: 
 
 def test_kusto_refuses_an_unknown_source() -> None:
     assert kusto.KustoSink(uri="https://x").ingest("not_a_table", [{"a": 1}]) == 0
+
+
+async def test_kusto_has_a_table_for_the_watched_line_snapshots(ctx: SourceContext) -> None:
+    """Observed arrivals were dropped with "no table defined" until this table existed."""
+    rows = await snapshot_lines(ctx, ["500T"])
+
+    assert rows, "the 500T fixture should yield positions"
+    assert {name for name, _ in kusto.TABLES["iett_line_snapshot"].columns} == set(rows[0])
+
+
+def test_kusto_accepts_all_seven_collected_sources() -> None:
+    assert set(kusto.TABLES) == set(SNAPSHOTS) | {"iett_line_snapshot", "eta_predictions"}
+
+
+def test_checked_in_schema_kql_is_generated_from_the_tables() -> None:
+    """kql/schema.kql is what a human pastes into the cluster; it must match what is ingested.
+
+    Regenerate with ``.venv/bin/python -m nabiz.collector.kusto > kql/schema.kql``.
+    """
+    checked_in = (REPO_ROOT / "kql" / "schema.kql").read_text(encoding="utf-8")
+
+    assert checked_in == kusto.render_schema_kql()
+    for command in kusto.ensure_tables():
+        assert command in checked_in
+
+
+# --------------------------------------------------------------------------------------
+# snapshots — telling "nothing to report" from "failed"
+# --------------------------------------------------------------------------------------
+async def test_count_failed_reads_records_failures_and_only_inside_the_block(
+    ctx: SourceContext, tmp_path: pathlib.Path, no_network_transport
+) -> None:
+    dead = offline_ctx(tmp_path, no_network_transport)
+
+    await snapshot_metro(dead)  # outside any block: nothing to record into, nothing breaks
+    with count_failed_reads() as failed:
+        assert await snapshot_metro(dead) == []
+        assert await snapshot_ispark(ctx) != []
+    await snapshot_ispark(dead)
+
+    assert failed == ["metro_status"]
+
+
+async def test_count_failed_reads_counts_a_stale_read(
+    tmp_path: pathlib.Path, fixtures_dir: pathlib.Path, no_network_transport
+) -> None:
+    """Stale-on-error is a failure for a collector, even though a value came back."""
+    ctx = SourceContext.create(
+        client=PoliteClient(transport=no_network_transport),
+        cache=TTLCache(ttl_by_source={"ispark": 0.05}),
+        settings=Settings(offline=True, fixtures_dir=fixtures_dir),
+    )
+    assert await snapshot_ispark(ctx)
+    await asyncio.sleep(0.06)
+    ctx.settings = Settings(offline=True, fixtures_dir=tmp_path)
+
+    with count_failed_reads() as failed:
+        assert await snapshot_ispark(ctx) == []
+
+    assert failed == ["ispark"]
+
+
+async def test_collector_context_accepts_a_client_with_its_own_retry_policy() -> None:
+    client = PoliteClient(max_attempts=1)
+    ctx = build_collector_context(offline_settings(), client=client)
+
+    assert ctx.client is client
+    assert ctx.cache.ttl_for("ispark") == 5.0
+    await ctx.aclose()
 
 
 # --------------------------------------------------------------------------------------
