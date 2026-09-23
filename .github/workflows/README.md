@@ -14,6 +14,8 @@ public and has none.
 | | `pytest -q --junitxml=reports/junit.xml` | yes; the XML is uploaded as the `pytest-junit` artifact (14 days) |
 | | MCP smoke test: `ibb-mcp --help`, then `.github/scripts/mcp_smoke.py` | yes |
 | | `scripts/guardrails.py` | yes, on any FAIL; a WARN is printed but does not fail the build |
+| | `scripts/check_architecture.py`: import layers, cycles, dependency sets, size and complexity ratchets | yes, on any FAIL; a WARN only says a baseline entry can be lowered |
+| | `scripts/check_web_budget.py`: page bytes, render-blocking requests, fonts, motion, colour tokens, module sizes | yes, on any FAIL (a listed redesign target prints TARGET and passes until its step lands) |
 | `authorship` | `scripts/check_authorship.py` over the pushed or proposed commits | **yes** |
 | `bicep` | `az bicep build --file infra/main.bicep` (skipped if the file is absent) | yes |
 
@@ -58,6 +60,25 @@ project has already had:
 They need no network and no git history. Every exception is listed in the script with its
 reason. The smoke test and the guardrails also run when lint or tests have failed, so one
 push reports every broken gate at once.
+
+**The architecture fences** (`scripts/check_architecture.py`, docs/ENGINEERING.md §13) fence the
+*shape* of the code: `ibb_mcp` imports nothing from `nabiz` (DECISIONS #8, #19), every import points down
+the layer stack, no cycle, no third-party import outside the package's declared set, one definition per
+public name, no private imports, and ratchets on module size, class size and ruff's complexity rules
+against `scripts/architecture_baseline.json`. Measured debt may shrink, never grow past its entry;
+`make architecture-tighten` records a shrink, and raising an entry is a reviewed change the gate cannot
+see. The complexity check re-runs ruff `--isolated` with its own thresholds, `--ignore-noqa` and without
+the debt ignores in `pyproject.toml`, so neither a `# noqa` nor a loosened `pyproject.toml` can hide a
+function getting worse. The performance budgets
+(`tests/test_performance_budgets.py`, §14) need no step of their own: they run inside the pytest step.
+
+**The web budget** (`scripts/check_web_budget.py`, FE-MOD and FE-OPT in docs/design/DESIGN.md) reads
+`src/nabiz/web/static` and needs no network. The page did not meet every rule on the day the gate landed,
+so the findings it had are listed in the script's `TARGETS_BY_CHECK`, each with the redesign step that
+removes it and, for a count, the count it may not exceed. The step fails on any finding not in that table,
+on a count above its target, and on a target that was met but is still listed, so each redesign step
+deletes what it fixed; raising or adding an entry is a reviewed change the step cannot see. When the
+table is empty, the step switches to `--strict` (docs/design/README.md).
 
 `NABIZ_OFFLINE=1` is set for the whole workflow. **CI never calls `api.ibb.gov.tr`.** That
 gateway is shared public infrastructure. It returns 503 after roughly fifteen rapid calls,
@@ -108,6 +129,9 @@ make lint       # ruff check src/ scripts/ tests/ .github/scripts/ — the gate
 make test       # pytest -q                                     — must be green
 make smoke      # the MCP smoke test CI runs
 make guardrails # scripts/guardrails.py
+make architecture   # scripts/check_architecture.py — import layers and size ratchets
+make web-budget     # scripts/check_web_budget.py — the page's byte, font, motion and token budget
+make perf-budgets   # tests/test_performance_budgets.py — already part of make test
 make authorship # scripts/check_authorship.py on @{upstream}..HEAD — run before pushing
 make ci-local   # all of the above on a clean copy (CI_LOCAL_DIR= to choose where)
 make fmt        # ruff format (advisory; CI only reports it)
@@ -219,8 +243,8 @@ readability, and the formatter joins them back into one 130-character line. That
 preference, not a defect. Enforcing it mid-sprint would produce a large mechanical diff that
 buries real changes in review.
 
-So the split is deliberate: **`ruff check` (E, F, I, UP, B, SIM) is the gate, and formatting
-is advisory.** The diff is printed in the job log with `continue-on-error: true`, so the drift
+So the split is deliberate: **`ruff check` (E, F, I, UP, B, SIM, and the size rules C90, PLR0912,
+PLR0913, PLR0915) is the gate, and formatting is advisory.** The diff is printed in the job log with `continue-on-error: true`, so the drift
 stays visible without blocking the build. After the feature freeze, the plan is one
 formatting-only commit, then turning `continue-on-error` off. That is a one-line change in
 `ci.yml` and a one-line change here.

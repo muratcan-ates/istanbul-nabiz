@@ -79,6 +79,8 @@ gate "pytest" .venv/bin/python -m pytest -q --junitxml=reports/junit.xml
 gate "ibb-mcp --help" sh -c '.venv/bin/ibb-mcp --help > /dev/null'
 gate "MCP smoke test" .venv/bin/python .github/scripts/mcp_smoke.py
 gate "guardrails" .venv/bin/python scripts/guardrails.py --files-from "$published"
+gate "architecture fences" .venv/bin/python scripts/check_architecture.py
+gate "web budget" .venv/bin/python scripts/check_web_budget.py
 # The copy has no history, so the authorship gate reads the real repository.
 gate "authorship (@{upstream}..HEAD)" .venv/bin/python scripts/check_authorship.py --repo "$repo"
 

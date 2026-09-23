@@ -2,9 +2,10 @@
 #
 # Every target runs through ./.venv, never through whatever python happens to be active,
 # so a forgotten `source .venv/bin/activate` cannot silently test the wrong interpreter.
-# `make lint`, `make test`, `make smoke`, `make guardrails` and `make authorship` are the
-# gates CI runs; `make ci-local` runs all of them on a clean copy of what a push would
-# publish, which is the only way to see what CI sees. See .github/workflows/README.md.
+# `make lint`, `make test`, `make smoke`, `make guardrails`, `make architecture`,
+# `make web-budget` and `make authorship` are the gates CI runs; `make ci-local` runs them
+# on a clean copy of what a push would publish, which is the only way to see what CI sees.
+# See .github/workflows/README.md.
 #
 # Anything that talks to api.ibb.gov.tr is marked NETWORK below. That gateway is shared
 # public infrastructure with a documented İETT budget of 100 requests/hour — run those
@@ -24,7 +25,8 @@ EVAL_ARGS ?=
 AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help venv install test lint fmt smoke guardrails authorship hooks ci-local mcp mcp-http web eval eval-live fixtures places sequences \
+.PHONY: help venv install test lint fmt smoke guardrails authorship hooks ci-local architecture architecture-tighten \
+        perf-budgets perf-report web-budget mcp mcp-http web eval eval-live fixtures places sequences \
         collect collect-bg collect-supervise collect-status collect-stop collect-plan eta eta-diagnose eta-holdout warmup clean
 
 help:  ## show this list
@@ -53,6 +55,21 @@ guardrails:  ## regression fences for incidents already had (plates, schemas, se
 
 authorship:  ## check the commits a push would send: noreply identity, no AI trailer, no bot (AUTHORSHIP_RANGE=)
 	$(PY) scripts/check_authorship.py $(AUTHORSHIP_RANGE)
+
+architecture:  ## import layers, cycles, dependency sets; module, class and complexity ratchets (no network)
+	$(PY) scripts/check_architecture.py
+
+architecture-tighten:  ## lower the ratchet entries that shrank (never raises one); commit the JSON
+	$(PY) scripts/check_architecture.py --tighten
+
+perf-budgets:  ## upstream calls per tool, single flight, stale-on-error, work-once, cold start (no network)
+	NABIZ_OFFLINE=1 $(PY) -m pytest -q tests/test_performance_budgets.py
+
+perf-report:  ## the numbers behind the budgets, per tool: paste before and after with an optimisation (no network)
+	NABIZ_OFFLINE=1 $(PY) scripts/perf_report.py
+
+web-budget:  ## page bytes, render-blocking requests, fonts, motion, tokens, module sizes (no network)
+	$(PY) scripts/check_web_budget.py
 
 hooks:  ## once per clone: use .githooks/, so git push runs the authorship gate before anything is public
 	git config core.hooksPath .githooks

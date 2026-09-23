@@ -147,6 +147,23 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: .venv/bin/python scripts/guardrails.py
 
+      - name: Architecture fences
+        # Import layers (DECISIONS #8: ibb_mcp imports nothing from nabiz), no cycles, declared
+        # dependency sets, one meaning per public name, no private imports, and ratchets: a
+        # module, class or function over its budget may shrink, never grow. Baseline:
+        # scripts/architecture_baseline.json. Uses the ruff installed above; no network.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: .venv/bin/python scripts/check_architecture.py
+
+      - name: Web budget
+        # First-party bytes, no third-party render-blocking resource, fonts, layout-free motion,
+        # colour tokens, module sizes: static reads of src/nabiz/web/static, no network. The
+        # default mode fails on any finding that is not a listed redesign target, on a target
+        # count that grew, and on a target that was met but is still listed, so the table only
+        # shrinks. It switches to --strict once TARGETS_BY_CHECK is empty.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: .venv/bin/python scripts/check_web_budget.py
+
   authorship:
     name: Authorship gate
     runs-on: ubuntu-latest

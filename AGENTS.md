@@ -80,12 +80,26 @@ Short on purpose, and binding. Last verified: 2026-09-23.
 - MCP SDK 2.x: `from mcp.server.mcpserver import MCPServer`, not `FastMCP`. The `@tool` wrapper in
   `src/ibb_mcp/server.py` keeps `functools.wraps`, or every schema collapses to `(*args, **kwargs)`.
 - Tools are parametric and return a `ToolResult` with provenance. No free-form SQL, KQL or URL from a model.
+- Put code in the lowest layer that can own it and import only downward ([`docs/ENGINEERING.md`](docs/ENGINEERING.md)
+  §13, MOD-1). `ibb_mcp` never imports `nabiz`; the agent and the web app reach İBB data through `ibb_mcp.tools`;
+  Turkish text keys come from `ibb_mcp.text`, never a local copy.
+- A module over 400 code lines, a class over 250 code lines or 15 public methods, or a function over the ruff limits
+  (complexity 10, branches 12, arguments 7, statements 50) is not extended: split it first, or leave it smaller
+  than you found it. Today's debt is `scripts/architecture_baseline.json`. It is meant only to go down, but
+  no check compares it with the committed file: raising an entry needs its reason in the commit (review).
+- One public name, one definition. Never import another module's `_private` name.
+- Do not optimise without numbers: `make perf-report` before and after (§14). Count upstream calls, parses and
+  imports; do not tune milliseconds that are already small.
 
 ## 7. Definition of Done
 
 - [ ] `make lint` clean on the files you touched
 - [ ] `make test` green; new behaviour has new tests; `make smoke` still lists the expected tool count
 - [ ] `make guardrails` reports no FAIL, and `make authorship` passes
+- [ ] `make architecture` reports no FAIL (a WARN means: run `make architecture-tighten` and commit the lower
+      baseline); `make web-budget` too when the page changed
+- [ ] a new MCP tool has an upstream budget line and a sample call (`tests/test_performance_budgets.py`,
+      `scripts/perf_report.py`); an optimisation claim carries before and after `make perf-report` output
 - [ ] a user-visible behaviour has a scenario in `eval/journeys.jsonl` (or a proposed `eval/journeys.<lane>.jsonl`)
       and `make eval` passes offline
 - [ ] docs that describe the change are updated in the same change; README numbers only from the
@@ -111,6 +125,13 @@ A rule with no machine check says so. "Review" means the owner reading the diff 
 | No İBB call from tests or CI | `_no_outbound_network` in `tests/conftest.py` (every test: a non-loopback connection or DNS lookup fails it), `refuse_network` behind the `ctx` fixture; `NABIZ_OFFLINE=1` in `make test` and `.github/workflows/ci.yml` | `make test`, CI |
 | Tool schemas keep real parameters | guardrail `mcp-schemas`; `make smoke`; `tests/test_mcp_integration.py` | local, CI |
 | Every MCP tool has an eval scenario | `tests/test_eval_harness.py` (the harness selftest) | `make test`, CI |
+| `ibb_mcp` imports nothing from `nabiz`; import layers, no cycles, facade only, declared dependency sets | `scripts/check_architecture.py` (`layers`, `no-cycles`, `dependency-sets`), each shown red in `tests/test_check_architecture.py`; the server's import footprint in `tests/test_performance_budgets.py` | `make architecture`, `make test`, CI |
+| Modules, classes and functions over budget never grow; one name, one meaning; no private imports | ruff C901, PLR0912, PLR0913, PLR0915; `scripts/check_architecture.py` (`module-size`, `class-size`, `complexity`, `one-meaning`, `private-imports`) against `scripts/architecture_baseline.json` | `make lint`, `make architecture`, CI |
+| Upstream calls per tool (counted at the cache and at the boundary), single flight, stale-on-error, TTLs, parse once, cold-start imports, latency backstop | `tests/test_performance_budgets.py` (harness: `scripts/perf_report.py`) | `make perf-budgets`, `make test`, CI |
+| Page bytes, blocking requests, fonts, motion (layout-free, reduced motion by structure, scripted motion only in `js/motion.js`), colour tokens, module sizes, icons, contract ids, no dash in the page's own text | `scripts/check_web_budget.py`; each check shown red in `tests/test_check_web_budget.py`; today's redesign targets in its `TARGETS_BY_CHECK`, where a met target must be deleted | `make web-budget`, CI |
+| No dash in the text the server hands the page | `tests/test_answer_text.py` (every offline `/api/*` answer) | `make test`, CI |
+| Web targets and architecture baseline entries are never raised or added quietly | **none**: nothing diffs `TARGETS_BY_CHECK` or `scripts/architecture_baseline.json` against the committed version; a raise carries its reason in the commit | review |
+| Arrival estimates use the untuned rate unless `NABIZ_ETA_PROFILE_MODE=calibrated` (DECISIONS #18) | `tests/test_eta_profile.py` | `make test`, CI |
 | Paths and `make` targets named in this file exist | guardrail `agent-rules-links` | `make guardrails`, CI |
 | No secrets in tracked files | guardrail `no-secrets`; GitHub secret scanning + push protection | CI; on push |
 | Every README §Results number is in the file its row names | guardrail `no-fabricated-metrics` (value by value) | `make guardrails`, CI |
@@ -120,3 +141,5 @@ A rule with no machine check says so. "Review" means the owner reading the diff 
 | Edit only owned files; no agent git writes | **none** | review of the diff |
 | Stop the line on red `main` | **none** until `main` is protected by a ruleset | owner |
 | Sourced numbers outside README §Results | **none** | review |
+| Optimisation claims carry before and after numbers | **none** | review |
+| Web Vitals (LCP, INP, CLS) | **none in CI**: a Lighthouse run by hand, mobile preset, median of 3 | local |

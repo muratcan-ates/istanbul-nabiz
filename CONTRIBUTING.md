@@ -31,6 +31,8 @@ Every `make` target runs through `./.venv`, so a forgotten `activate` cannot tes
 | `make smoke` | builds the MCP server offline: at least 12 tools, each with a real input schema | yes |
 | `make guardrails` | `scripts/guardrails.py`: regression checks for incidents this repo already had | yes |
 | `make authorship` | `scripts/check_authorship.py`: commit identity and message trailers | yes |
+| `make architecture` | `scripts/check_architecture.py`: import layers, cycles, dependency sets, size and complexity ratchets | yes |
+| `make web-budget` | `scripts/check_web_budget.py`: the page's bytes, fonts, motion, colour tokens and module sizes | yes |
 | `make eval` | the 30 journey scenarios against recorded fixtures; rewrites `eval/results/latest.md` (its `--selftest` runs inside `make test`) | not yet |
 | `make ci-local` | the whole CI gate list in one command | — |
 | `make fmt` | `ruff format` — advisory; CI only reports it | no |
@@ -47,7 +49,8 @@ in a loop, and never from a test.
   parametric, returns a `ToolResult` with provenance, and in the same change gets its name in
   `EXPECTED_TOOLS` (`tests/test_mcp_integration.py`), a price in `TOOL_COSTS` (`src/ibb_mcp/server.py`), a
   scenario in `eval/journeys.jsonl` (the harness selftest fails without one), and either an entry in the
-  agent's tool table or a line in `NOT_OFFERED` (`src/nabiz/agent/agent.py`). `make smoke` and the
+  agent's tool table or a line in `NOT_OFFERED` (`src/nabiz/agent/schemas.py`), and an upstream budget line and
+  a sample call (`tests/test_performance_budgets.py`, `scripts/perf_report.py`). `make smoke` and the
   `mcp-schemas` guardrail only require at least 12 tools.
 - **No personal data**, anywhere — including fixtures recorded from İBB, which are published with the code.
 - **Numbers come from somewhere.** A figure in a doc or the README cites the file or command that produced it;
