@@ -10,7 +10,9 @@ rather than against hand-written samples.
 from __future__ import annotations
 
 import datetime as dt
+import importlib.util
 import json
+import pathlib
 
 import pytest
 
@@ -40,6 +42,7 @@ from ibb_mcp.models import (
 )
 
 UTC = dt.UTC
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def assert_in_istanbul(lat: float | None, lon: float | None) -> None:
@@ -522,11 +525,12 @@ def test_fleet_parsing_never_exposes_the_number_plate(load_fixture) -> None:
     The İETT fleet feed ships ``Plaka`` for every vehicle. It must not reach the model,
     the lake or an API response — the door number is the only vehicle identifier we use.
 
-    Every real fleet record is re-parsed with a synthetic plate stamped onto it, so the
-    proof does not depend on ``tests/fixtures/iett_fleet.json`` still holding real plates.
-    It should not: the repository is public, and NOTICE.md promises the project stores no
-    personal data. Recorded plates are still checked whenever the fixture has them, so
-    scrubbing the fixture weakens nothing.
+    The fixture's plates are synthetic (``00 XX 001`` …): the repository is public and
+    NOTICE.md promises the project stores no personal data, so ``capture_fixtures.py``
+    swaps every recorded plate before writing. Province code ``00`` does not exist, so a
+    fixture plate can never be a real vehicle. The drop is plate-agnostic, which is why
+    both the fixture's own plate and an extra canary are stamped onto every record: the
+    proof never depends on what the fixture happens to hold.
     """
     raw = load_fixture("iett_fleet")
     assert raw, "fixture must contain fleet records, otherwise this test proves nothing"
@@ -535,7 +539,10 @@ def test_fleet_parsing_never_exposes_the_number_plate(load_fixture) -> None:
     assert "plate" not in BusPosition.model_fields
     assert not [name for name in BusPosition.model_fields if "plaka" in name.lower() or "plate" in name.lower()]
 
-    canary = "34 ZZZ 9999"
+    # Every record must still carry a plate, or the loop below silently checks only the
+    # canary; and every plate must be synthetic, or the public fixture leaks a real one.
+    assert all(str(row.get("Plaka", "")).startswith("00 ") for row in raw), "fixture plates must be synthetic"
+    canary = "00 ZZ 999"
     for row in raw:
         for plate in {canary, row.get("Plaka") or canary}:
             bus = BusPosition.from_fleet_raw({**row, "Plaka": plate})
@@ -545,6 +552,56 @@ def test_fleet_parsing_never_exposes_the_number_plate(load_fixture) -> None:
             assert plate not in serialised
             assert plate.replace(" ", "") not in serialised.replace(" ", "")
             assert plate not in bus.model_dump_json()
+
+
+@pytest.fixture
+def capture_script():
+    """A fresh import of ``scripts/capture_fixtures.py``, so its plate table starts empty.
+
+    Importing it makes no network call; only ``main()`` does.
+    """
+    spec = importlib.util.spec_from_file_location("capture_fixtures", REPO_ROOT / "scripts" / "capture_fixtures.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_capture_script_swaps_every_plate_before_writing(capture_script) -> None:
+    """A future re-capture must not put a real plate back into the public fixtures.
+
+    The İETT body arrives as raw JSON inside SOAP, sometimes HTML-escaped, and a renamed
+    field must not slip through. The same bus keeps the same stand-in across the
+    ``.soap.xml`` and the ``.json`` cut from it, which ``test_http_cache`` relies on.
+
+    The inputs use province codes 95-99, which do not exist (Türkiye has 81), so not even
+    this test holds a plate that could belong to a real vehicle.
+    """
+    body = (
+        '[{"KapiNo":"A-1","Plaka":"99 AB 1234"},{"KapiNo":"A-2","Plaka":"98 CDE 45"},'
+        '{"KapiNo":"A-3","Plaka":"99 AB 1234"}]'
+        "&quot;AracPlaka&quot;:&quot;97 F 9876&quot; <Plaka>96 GH 567</Plaka> <template>95 ZZ 99</template>"
+    )
+    scrubbed = capture_script.scrub_plates_in_text(body)
+
+    for real in ("99 AB 1234", "98 CDE 45", "97 F 9876", "96 GH 567"):
+        assert real not in scrubbed
+    assert scrubbed.count('"Plaka":"00 XX 001"') == 2, "the same bus must keep the same stand-in"
+    assert '"Plaka":"00 XX 002"' in scrubbed
+    assert "&quot;AracPlaka&quot;:&quot;00 XX 003&quot;" in scrubbed
+    assert "<Plaka>00 XX 004</Plaka>" in scrubbed
+    # Only plate fields are touched: 'template' merely contains the letters.
+    assert "<template>95 ZZ 99</template>" in scrubbed
+
+    parsed = capture_script.scrub_plates([{"plate_no": "99 AB 1234", "name": "x"}, {"Plaka": ""}])
+    assert parsed == [{"plate_no": "00 XX 001", "name": "x"}, {"Plaka": ""}]
+
+
+def test_recorded_fleet_fixtures_hold_only_synthetic_plates(capture_script, load_fixture_text) -> None:
+    """Both fleet captures are already scrubbed, so running the scrub again changes nothing."""
+    for name in ("iett_fleet.json", "iett_fleet.soap.xml"):
+        text = load_fixture_text(name)
+        assert capture_script.scrub_plates_in_text(text) == text, f"{name} still holds a real plate"
+        assert '"Plaka"' in text, f"{name} lost its plates; the drop tests would prove nothing"
 
 
 # ---------------------------------------------------------------------------------
@@ -701,23 +758,28 @@ def test_traffic_index_points_are_ordered_newest_first(load_fixture) -> None:
     assert times == sorted(times, reverse=True)
 
 
-@pytest.mark.xfail(
-    reason=(
-        "models.TrafficIndexPoint.from_raw does int(parse_number(...) or 0), so a null or "
-        "unparseable TrafficIndex silently becomes 0 — and describe_traffic(0) is 'akıcı'. "
-        "Missing data would be read out to the user as 'trafik akıcı', which is exactly the "
-        "invented number the project forbids. İBB documents the index as 1-99, so 0 is not a "
-        "real reading. Fix in models.py: make `index` optional and leave it None (or reject the "
-        "row) when the field is absent; this test passes under either. Flips to XPASS when fixed."
-    ),
-)
 @pytest.mark.parametrize("missing", [None, "", "n/a"])
 def test_a_missing_traffic_index_is_not_reported_as_free_flowing_traffic(missing: str | None) -> None:
+    """A null or unparseable TrafficIndex used to become 0, and describe_traffic(0) is
+    'akıcı': missing data read out as free-flowing traffic. İBB's scale is 1-99."""
     point = TrafficIndexPoint.from_raw({"TrafficIndex": missing, "TrafficIndexDate": "2026-09-08T09:00:00"})
-    assert point.index is None or point.index >= 1, (
-        f"TrafficIndex={missing!r} became {point.index!r}, which describe_traffic() renders as "
-        f"{describe_traffic(point.index or 0)!r}"
-    )
+    assert point.index is None
+    assert describe_traffic(point.index) == "bilinmiyor"
+
+
+def test_a_gap_in_the_series_is_never_compared_with_yesterday() -> None:
+    from ibb_mcp.sources.traffic import compare_with_yesterday
+
+    base = dt.datetime(2026, 9, 8, 6, 0, tzinfo=dt.UTC)
+    points = [
+        TrafficIndexPoint(index=40, at=base - dt.timedelta(hours=24)),
+        TrafficIndexPoint(index=55, at=base - dt.timedelta(hours=1)),
+        TrafficIndexPoint(index=None, at=base),
+    ]
+    comparison = compare_with_yesterday(points)
+    # The newest *reading* is an hour old; the gap after it is not a reading of 0.
+    assert comparison["now"]["index"] == 55
+    assert "akıcı" not in comparison["description"]
 
 
 # ---------------------------------------------------------------------------------

@@ -376,8 +376,11 @@ async def test_bunching_context_is_built_from_the_real_reliability_table(
     citation = alert["citations"][0]
     assert citation["provenance"]["source"] == "nabiz_reliability"
     # The citation goes to every client: it must name the file, not this machine's home dir.
-    assert citation["provenance"]["source_url"] == "local:data/reference/line_reliability.json"
-    assert "/Users/" not in citation["provenance"]["source_url"]
+    source_url = citation["provenance"]["source_url"]
+    assert source_url == "local:data/reference/line_reliability.json"
+    # Checked against whatever machine runs the suite, so no home path is written down here.
+    assert str(pathlib.Path.home()) not in source_url
+    assert not source_url.removeprefix("local:").startswith("/")
 
 
 async def test_bunching_reports_why_it_is_unavailable_instead_of_firing(
