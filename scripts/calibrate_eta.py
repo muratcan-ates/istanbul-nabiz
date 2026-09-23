@@ -82,9 +82,11 @@ def collect_samples() -> tuple[list[Sample], dict[str, int]]:
     yet and only the fast ones are visible. Measured on the live lake at 18:20 on
     2026-09-13 the difference is not subtle — the last 39 rows had a median of 1.27
     minutes per stop against 5.31 for the mature ones, and they were all in the evening
-    bucket, which had just collapsed the fitted evening rate from 385 to 80 s/stop.
-    Calibrating while the collector runs would otherwise fit whatever the last half hour
-    happened to look like.
+    bucket, which had just collapsed the fitted evening rate from 385 to 80 s/stop at that
+    moment, before the later rows arrived. (Cut at the committed profile's ``generated_at``
+    instead, the same comparison reads 445 to 75; ``src/ibb_mcp/eta_profile.py`` quotes that
+    one. Both are snapshots of a lake that was still growing.) Calibrating while the
+    collector runs would otherwise fit whatever the last half hour happened to look like.
     """
     predictions = read_source("eta_predictions")
     snapshots = read_source("iett_line_snapshot")

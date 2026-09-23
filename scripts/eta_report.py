@@ -327,6 +327,10 @@ def diagnose(predictions: list[dict], arrivals: dict[tuple[str, str, str], list[
     return "\n".join(out + ["", *verdicts])
 
 
+#: Where the generated part of eval/results/eta.md ends and the hand-written part begins.
+HAND_WRITTEN_MARKER = "\n---\n\n*Everything above this line is the output of*"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", type=pathlib.Path, help="also write the raw report here")
@@ -346,7 +350,13 @@ def main(argv: list[str] | None = None) -> int:
 
     out = ROOT / "eval" / "results" / "eta.md"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text + "\n", encoding="utf-8")
+    # eta.md ends with a hand-written section (the held-out replay, what the in-sample
+    # figures mean, the history) under a rule that starts with HAND_WRITTEN_MARKER. A re-run
+    # replaces the generated part above it and keeps that section, which would otherwise be
+    # lost every time someone refreshes the numbers.
+    previous = out.read_text(encoding="utf-8") if out.exists() else ""
+    tail = previous[previous.index(HAND_WRITTEN_MARKER) :] if HAND_WRITTEN_MARKER in previous else ""
+    out.write_text(text + "\n" + tail, encoding="utf-8")
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(report, indent=1), encoding="utf-8")
