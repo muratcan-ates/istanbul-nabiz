@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 560" width="1040" height="560" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 610" width="1040" height="610" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" role="img" aria-labelledby="title desc">
   <title id="title">İstanbul Nabız architecture</title>
-  <desc id="desc">İBB live open data endpoints feed an Azure Functions collector and a shared, rate-limited cache. The collector writes snapshots to a Delta lake and Azure Data Explorer. The ibb-mcp server on Container Apps serves twelve tools to the Nabız agent, VS Code Copilot and Claude.</desc>
+  <desc id="desc">Target architecture; nothing is deployed to Azure yet. İBB live open data endpoints are read through one shared, rate-limited client and cache. Today the collector runs on the owner's laptop; the target is five scheduled Azure Container Apps Jobs covering seven sources, including the watched bus lines and the ETA prediction log. Snapshots go to the lake's bronze layer as gzipped NDJSON (silver and gold exist but are empty) and to Azure Data Explorer. The ibb-mcp server on Container Apps serves its fifteen tools to the Nabız agent, VS Code Copilot and Claude.</desc>
 
   <style>
     .bg    { fill: #ffffff; }
@@ -15,6 +15,8 @@
     .s     { fill: #616e7c; font-size: 11px; }
     .edge  { stroke: #9aa5b1; fill: none; stroke-width: 1.6; }
     .edged { stroke: #9aa5b1; fill: none; stroke-width: 1.6; stroke-dasharray: 5 4; }
+    .retired { fill: none; stroke: #9aa5b1; stroke-dasharray: 5 4; rx: 8; }
+    .tr    { fill: #7b8794; font-size: 13px; font-weight: 600; text-decoration: line-through; }
     .elabel{ fill: #52606d; font-size: 10.5px; }
     .note  { fill: #7b8794; font-size: 11px; }
     @media (prefers-color-scheme: dark) {
@@ -30,10 +32,12 @@
       .s    { fill: #98a2b3; }
       .edge, .edged { stroke: #6b7683; }
       .elabel, .note { fill: #98a2b3; }
+      .retired { stroke: #6b7683; }
+      .tr   { fill: #8a94a3; }
     }
   </style>
 
-  <rect class="bg" width="1040" height="560"/>
+  <rect class="bg" width="1040" height="610"/>
 
   <!-- ============ İBB sources ============ -->
   <rect class="band" x="16" y="44" width="228" height="404" rx="10"/>
@@ -66,21 +70,23 @@
 
   <!-- ============ Azure ============ -->
   <rect class="band" x="286" y="44" width="452" height="404" rx="10"/>
-  <text class="bandt" x="300" y="66">AZURE · Bicep + azd</text>
+  <text class="bandt" x="300" y="66">AZURE · HEDEF, HENÜZ DAĞITILMADI · Bicep + azd</text>
 
   <rect class="box az" x="302" y="80" width="200" height="66"/>
   <text class="t" x="314" y="101">PoliteClient + TTLCache</text>
   <text class="s" x="314" y="118">≥6 sn/host · 80 istek/saat</text>
   <text class="s" x="314" y="133">tek uçuş · bayat veri yedeği</text>
 
+  <!-- The collector (DECISIONS #10): five scheduled Container Apps Jobs, seven sources,
+       including the watched lines and the ETA log the Functions timers never collected. -->
   <rect class="box az" x="302" y="164" width="200" height="66"/>
-  <text class="t" x="314" y="185">Functions (Flex)</text>
-  <text class="s" x="314" y="202">5 zamanlayıcı · toplayıcı</text>
-  <text class="s" x="314" y="217">İBB'nin tutmadığı tarihçe</text>
+  <text class="t" x="314" y="185">Container Apps Jobs</text>
+  <text class="s" x="314" y="202">5 cron işi · 7 kaynak</text>
+  <text class="s" x="314" y="217">İETT tepe saat: 66 / 80 istek</text>
 
   <rect class="box store" x="302" y="248" width="200" height="60"/>
-  <text class="t" x="314" y="269">ADLS Gen2 · Delta Lake</text>
-  <text class="s" x="314" y="286">bronze / silver / gold</text>
+  <text class="t" x="314" y="269">ADLS Gen2 · bronze</text>
+  <text class="s" x="314" y="286">gzip'li NDJSON · silver/gold boş</text>
 
   <rect class="box store" x="302" y="326" width="200" height="60"/>
   <text class="t" x="314" y="347">Azure Data Explorer</text>
@@ -89,7 +95,7 @@
   <rect class="box az" x="538" y="164" width="184" height="82"/>
   <text class="t" x="550" y="185">ibb-mcp</text>
   <text class="s" x="550" y="202">Container Apps · minReplicas 0</text>
-  <text class="s" x="550" y="217">12 parametrik araç</text>
+  <text class="s" x="550" y="217">15 parametrik araç</text>
   <text class="s" x="550" y="232">stdio + streamable HTTP</text>
 
   <rect class="box az" x="538" y="264" width="184" height="60"/>
@@ -116,7 +122,7 @@
   <rect class="box cli" x="796" y="272" width="212" height="74"/>
   <text class="t" x="808" y="293">LLM (env ile değişir)</text>
   <text class="s" x="808" y="310">Azure OpenAI / Foundry</text>
-  <text class="s" x="808" y="325">Foundry Local (M1, Metal)</text>
+  <text class="s" x="808" y="325">Foundry Local (cihazda)</text>
 
   <!-- ============ Edges ============ -->
   <defs>
@@ -153,9 +159,17 @@
   <path class="edged" marker-end="url(#a)" d="M796,300 H756 V150 H722 V190"/>
   <path class="edge" marker-end="url(#a)" d="M630,324 V344"/>
 
+  <!-- ============ Today ============ -->
+  <!-- The laptop collector is the one running today; the jobs above are to replace it once
+       deployed. It stops with the lid and the shell, and left watched-line history on 4 of
+       the 15 days from 8 to 22 September (DECISIONS #10). Dashed: outside Azure. -->
+  <rect class="retired" x="302" y="462" width="200" height="44"/>
+  <text class="t" x="314" y="481">Dizüstü toplayıcı</text>
+  <text class="s" x="314" y="497">bugün çalışan · işler devralacak (#10)</text>
+
   <!-- ============ Footer ============ -->
-  <text class="note" x="16" y="480">Her araç yanıtı kaynak adresi ve verinin yaşını taşır; hiçbir araç serbest sorgu kabul etmez.</text>
-  <text class="note" x="16" y="500">Otobüs plakası ayrıştırma sınırında düşürülür ve hiçbir yere yazılmaz. Varış saatleri tahmindir.</text>
-  <text class="note" x="16" y="520">Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0). Resmî bir İBB servisi değildir.</text>
-  <text class="note" x="16" y="540">Fabric ve Azure OpenAI kotasına bağımlı değildir; ikisi de opsiyonel yükseltmedir.</text>
+  <text class="note" x="16" y="530">Her araç yanıtı kaynak adresi ve verinin yaşını taşır; hiçbir araç serbest sorgu kabul etmez.</text>
+  <text class="note" x="16" y="550">Otobüs plakası ayrıştırma sınırında düşürülür ve hiçbir yere yazılmaz. Varış saatleri tahmindir.</text>
+  <text class="note" x="16" y="570">Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0). Resmî bir İBB servisi değildir.</text>
+  <text class="note" x="16" y="590">Fabric ve Azure OpenAI kotasına bağımlı değildir; ikisi de opsiyonel yükseltmedir.</text>
 </svg>
