@@ -8,13 +8,21 @@ the reasoning stays readable.
 |---|---|---|
 | [1](#1-azure-data-explorer-free-cluster-for-history-not-fabric-eventhouse-or-azure-sql) | Azure Data Explorer free cluster for history, not Fabric Eventhouse or Azure SQL | Accepted — **gated** on headless ingestion auth |
 | [2](#2-the-mcp-server-is-the-product-the-agent-is-its-first-client) | The MCP server is the product; the agent is its first client | Accepted |
-| [3](#3-one-shared-collector-and-a-ttl-cache-never-a-per-user-upstream-call) | One shared collector and a TTL cache, never a per-user upstream call | Accepted |
+| [3](#3-one-shared-collector-and-a-ttl-cache-never-a-per-user-upstream-call) | One shared collector and a TTL cache, never a per-user upstream call | Accepted — the collector's host is now #10 |
 | [4](#4-bus-eta-from-stop-sequence-and-distance-not-machine-learning) | Bus ETA from stop sequence and distance, not machine learning | Accepted |
 | [5](#5-the-llm-is-swappable-through-environment-variables) | The LLM is swappable through environment variables | Accepted |
 | [6](#6-delta-lake-for-silver-and-gold-rather-than-plain-parquet) | Delta Lake for silver and gold rather than plain Parquet | Accepted |
 | [7](#7-bus-number-plates-are-dropped-at-the-parsing-boundary) | Bus number plates are dropped at the parsing boundary | Accepted |
 | [8](#8-src-layout-with-two-packages-instead-of-the-packages-layout-in-planmd) | `src/` layout with two packages instead of the `packages/` layout in PLAN.md | Accepted — supersedes PLAN.md §12 |
 | [9](#9-pivot-from-nefes-air-quality-early-warning-to-nabız-city-agent) | Pivot from "Nefes" (air-quality early warning) to "Nabız" (city agent) | Accepted |
+| [10](#10-the-collector-runs-as-scheduled-container-apps-jobs-not-on-the-laptop-or-functions-timers) | The collector runs as scheduled Container Apps Jobs, not on the laptop or Functions timers | Accepted — not yet deployed |
+| [11](#11-one-container-image-for-the-mcp-server-and-the-collector-harvested-from-the-ops-branch) | One container image for the MCP server and the collector, harvested from the ops branch | Accepted — not yet built |
+| [12](#12-provisioning-takes-the-deployed-image-as-an-input-and-never-deploys-a-job-with-a-placeholder) | Provisioning takes the deployed image as an input, and never deploys a job with a placeholder | Accepted |
+| [13](#13-alerts-are-evaluated-statelessly-the-client-holds-the-subscription-and-the-cooldown) | Alerts are evaluated statelessly; the client holds the subscription and the cooldown | Accepted |
+| [14](#14-compare-travel-modes-over-a-distance-justified-rail-graph-do-not-plan-routes) | Compare travel modes over a distance-justified rail graph; do not plan routes | Accepted — narrows PLAN.md §17 for the comparison slice |
+| [15](#15-harden-the-public-mcp-endpoint-stateless-transport-per-tool-token-buckets-optional-key-closed-cors) | Harden the public MCP endpoint: stateless transport, per-tool token buckets, optional key, closed CORS | Accepted — not yet deployed |
+| [16](#16-every-span-goes-through-one-allow-list-no-auto-instrumentation) | Every span goes through one allow-list; no auto-instrumentation | Accepted — not yet deployed |
+| [17](#17-tests-and-ci-read-only-committed-scrubbed-data) | Tests and CI read only committed, scrubbed data | Accepted |
 
 ---
 
@@ -58,6 +66,9 @@ this entry is superseded rather than edited.
   live answer: `analytics.HistoryStore` reports itself unavailable and the affected tools
   (`ispark_typical_occupancy`, `air_quality_forecast`) return `available: false` with an explanation
   instead of failing or guessing. Live tools keep working with the store completely absent.
+  *(2026-09-23: `HistoryStore` was a stub that never read a store, and it is removed.
+  `ispark_typical_occupancy` reads the committed profile through `ibb_mcp.occupancy`, and
+  `air_quality_forecast` reads 48 hours of İBB's own history, so neither depends on ADX today.)*
 - The free cluster's terms do not allow personal data, which reinforces decision 7.
 - Portability is bought separately, by writing Delta first and ingesting into ADX second (decision 6).
 
@@ -196,7 +207,7 @@ into a measured error.
 The model is the one component this project cannot guarantee access to. Azure for Students subscriptions
 frequently have **zero Azure OpenAI quota** and a region refusal (documented in Microsoft Q&A, July 2026);
 a Foundry serverless "sold by Azure" deployment was reported working by a student in September 2026;
-Foundry Local runs on this M1 machine today. **GitHub Models was retired on 30 July 2026**, so the usual
+Foundry Local runs on the development machine today. **GitHub Models was retired on 30 July 2026**, so the usual
 free fallback does not exist. Discovering the answer costs a Day-0 gate, and it may change mid-sprint if
 a quota request is approved.
 
@@ -236,6 +247,15 @@ OneLake shortcut.
 
 Bronze stays raw `JSON.gz`, exactly the bytes İBB returned, append-only, so any parsing bug can be
 replayed from source. Silver and gold are **Delta Lake** tables written with `deltalake`.
+
+> **2026-09-23, as implemented — this entry describes the plan, not the code.** Bronze holds the
+> *parsed* rows as gzipped NDJSON, with the number plate already dropped by the parser (decision 7),
+> not the verbatim upstream body: `src/nabiz/collector/lake.py` writes those rows, and the Azure path
+> writes them to ADLS through `azure-storage-blob`. No silver or gold writer exists; the containers are
+> created by the template and stay empty (`docs/deploy.md` §8), and the `job` extra carries no
+> `deltalake`. Changing bronze to hold the upstream body would bring the plate back into the lake
+> (`docs/deploy.md` §1 says what must change first). A superseding entry is due when silver and gold
+> are either built or dropped.
 
 ### Consequences
 
@@ -278,6 +298,9 @@ ADX, not a tool result, not a log line. Door number is the vehicle identity thro
   use for either.
 - Bronze holds the raw upstream response, so the retention policy on the bronze container is the one
   remaining place where this needs attention; that is called out in the collector's ADR when it lands.
+  *(2026-09-23: superseded by what was built. Bronze stores the parsed, plate-free rows as gzipped NDJSON
+  (see the note under decision 6), so the plate never reaches the lake and the bronze retention rule is a
+  cost bound, not a privacy control — `docs/deploy.md` §1.)*
 
 ---
 
@@ -357,3 +380,446 @@ verbatim rather than deleted.
   metrics about whether a person got a usable answer, which is what the pivot was for.
 - The 100-requests-per-hour İETT limit, previously irrelevant, became the central engineering constraint
   (decision 3).
+
+---
+
+## 10. The collector runs as scheduled Container Apps Jobs, not on the laptop or Functions timers
+
+**Date:** 2026-09-23 · **Status:** Accepted by the owner; written and tested offline, **not yet deployed**
+
+### Context
+
+The history İBB does not publish only exists while something collects it, and nothing has collected it
+reliably:
+
+- **The laptop collector keeps stopping.** Commit 0951bcc records two deaths (machine sleep, parent shell
+  gone) and adds `scripts/supervise_collector.sh`. It kept stopping under the supervisor: the laptop's
+  own lake has `iett_line_snapshot` partitions for 8, 13, 14 and 22 September only — **4 of the 15 days
+  from 8 to 22 September** (`data/lake`, untracked, listed on 23 Sep). Those days are unrecoverable.
+- **The Azure Function would not have collected the headline series.** `function_app.py` has five timers —
+  İSPARK, fleet, metro, traffic, air quality. Watched lines and the ETA prediction log ran only in
+  `scripts/collect_forever.py`, and `kusto.TABLES` had no table for either, so `KustoSink` dropped them.
+  Those two series are exactly the observed arrivals and predictions the measured ETA error (README
+  §Results) is computed from. The Function was also never deployable as packaged (no `host.json`, no
+  `requirements.txt`, imports outside the zipped directory — docs/deploy.md §5).
+- **The İETT budget lives in process.** `PoliteClient` allows 80 İETT requests per sliding hour against
+  the 100 İETT documents (#3). A run-once process that makes three requests and exits never fills that
+  counter; every execution would start with a full budget.
+
+### Decision
+
+Five **scheduled Container Apps Jobs** (`Microsoft.App/jobs@2024-03-01`, `infra/modules/collectorjobs.bicep`)
+run `python -m nabiz.collector.job` from the MCP server's image (#11), in the MCP server's
+Consumption-only environment. Cron is five-field UTC; the laptop cadences are kept and grouped where they
+coincide:
+
+| Job | Cron (UTC) | Sources → tables | İETT requests / run | Peak runs / hour | `replicaTimeout` |
+|---|---|---|---|---|---|
+| `lines` | `*/3 * * * *` | `lines` → `iett_line_snapshot`, `eta_predictions` | 3 | 20 | 170 s |
+| `city` | `1-59/10 * * * *` | `ispark` → `ispark_snapshot`; `fleet` → `iett_fleet_snapshot` | 1 | 6 | 300 s |
+| `metro` | `5 * * * *` | `metro` → `metro_status` | 0 | 1 | 300 s |
+| `traffic` | `10 */6 * * *` | `traffic` → `traffic_index_hourly` | 0 | 1 | 300 s |
+| `airquality` | `16 */12 * * *` | `air_quality` → `aq_hourly` | 0 | 1 | 900 s |
+
+(`.venv/bin/python -m nabiz.collector.job --plan` prints this from the code.) What makes it safe:
+
+- **The İETT budget is enforced by the schedule.** Peak runs in any rolling hour × İETT requests per run,
+  summed: 20 × 3 + 6 × 1 = **66**, under the client's 80. `tests/test_collector_job.py` computes it from
+  `SCHEDULES`, pins it at 66, and checks that `infra/main.bicep` declares the identical schedule. At run
+  time each execution replaces the client's budget with one holding exactly its planned requests, so an
+  unplanned extra call is refused and logged instead of spent (tested with a counting mock transport).
+- **One attempt per İETT request, no replica retries** (`replicaRetryLimit: 0`). A retry is an unplanned
+  request; with the client's default three attempts a failing gateway would triple the spend. The next
+  scheduled execution is the retry. Sources that do not touch İETT keep the default backoff.
+- **Fleet drops from every 2 minutes to every 10.** At the Function's cadence (30 requests/hour) plus
+  lines (60) the total would be 90, over the 80 limit. Nothing in the repository reads
+  `iett_fleet_snapshot` today; it is kept, at the cadence the budget allows, for the line-speed profile.
+- **The ETA log is the laptop's, unchanged.** `nabiz.collector.eta_log` is a port of
+  `build_eta_predictions`: same watched lines, same targets, same engine inputs. A test loads the running
+  laptop script read-only and requires identical output on the same input, so the error measured after
+  the move is comparable with the one measured before it.
+- **Traffic is read without the laptop's gap.** The laptop keeps 3 hourly buckets every 6 hours, so three
+  of every six hours were never recorded (its 20:54 UTC tick on 13 Sep holds 18–20 h, the next one
+  00–02 h). The job keeps 7 per 6-hour run: one hour of overlap.
+- **Deadline, exit code, logs.** `--deadline-s` (`replicaTimeout` − 30 s) stops reading in time to write
+  what was read. A source is `ok` (rows written), `empty` (reads succeeded, İBB had nothing — 19 of the
+  laptop's line ticks between 01:50 and 04:06 on 14 Sep were exactly that) or `failed`; the process exits
+  1 only if every source failed, so the platform's execution history means something. Each execution
+  ends with one JSON line tagged `collector-job` for Log Analytics.
+- **One collector identity** (`id-collector-<token>`, now `modules/collectoridentity.bicep`) writes the
+  lake and pulls the image. It is the identity the Function used, so the hand-written ADX grant survives
+  a change of host.
+
+### Alternatives considered
+
+- **Keep the laptop, better supervised.** Free, and already written. Rejected on the evidence above: four
+  days in fifteen. A laptop that closes its lid is not infrastructure.
+- **Add `lines` and ETA timers to the Function.** Keeps one collector codebase, but inherits the
+  unresolved packaging problem and the unverified hierarchical-namespace risk on the Functions host
+  storage (docs/deploy.md §1), and a second deployment artifact (a zip) next to the image. The Function
+  stays in the template, off by default (`deployCollectorFunction`), as the fallback for a region that
+  refuses Container Apps. Its cost was not re-priced for this decision.
+- **An always-on Container App running `collect_forever.py` unchanged.** Keeps the in-process budget and
+  needs no new code. But one 0.25 vCPU / 0.5 GiB replica for 30 days is 648,000 vCPU-s and 1,296,000
+  GiB-s — 3.6 × the monthly vCPU grant — so $5.62/month if all of it bills at the idle rate and $19.66 at
+  the active rate (prices below), and it leaves no free grant for the MCP server. It also keeps the
+  failure mode that motivated this: one long-lived process that can stop quietly.
+- **One job every 3 minutes that picks sources by the clock.** Fewer executions: the 5,220 extra
+  executions a month of the other four jobs cost about 104,000 execution-seconds of assumed start-up,
+  roughly 16 % of the estimate below. Rejected because the cadence would be hidden in code instead of
+  in cron, and the 3-minute air-quality read would overrun the next tick.
+
+### Cost
+
+Inputs, each with its source:
+
+- **Price** (West Europe, Consumption, active): $0.000034 per vCPU-second, $0.000004 per GiB-second — Azure
+  Retail Prices API (`prices.azure.com`, `serviceName eq 'Azure Container Apps'`), queried 2026-09-23.
+- **Free grant**: the first 180,000 vCPU-seconds and 360,000 GiB-seconds per subscription per calendar
+  month; jobs are charged the active rate and never request charges
+  (learn.microsoft.com/azure/container-apps/billing). The MCP server shares the same grant.
+- **Size**: 0.25 vCPU / 0.5 GiB per execution, the smallest Consumption pair. The heaviest execution run
+  locally (`lines` with the GTFS index loaded, offline fixtures) peaked at 105,906,176 bytes resident
+  (`/usr/bin/time -l`), about a fifth of 0.5 GiB. Without the Azure SDKs, which are not installed here.
+- **Run time**: the laptop's median tick for the same work (lines 12.1 s, İSPARK 0.3 s, metro 0.1 s,
+  traffic 5.8 s, air quality 174.1 s; `logs/collector.log`, 13–23 Sep) **plus an assumed 20 s** of
+  container start per execution — not measured, because nothing has been deployed. `city` adds the 6 s
+  gate and an assumed 10 s fleet read: the laptop never collected fleet.
+
+| Job | Executions / 30 days | Seconds each | Execution-seconds |
+|---|---|---|---|
+| `lines` | 14,400 | 32.1 | 462,240 |
+| `city` | 4,320 | 36.3 | 156,816 |
+| `metro` | 720 | 20.1 | 14,472 |
+| `traffic` | 120 | 25.8 | 3,096 |
+| `airquality` | 60 | 194.1 | 11,646 |
+| **Total** | **19,620** | | **648,270** |
+
+That is 162,068 vCPU-s (90 % of the grant) and 324,135 GiB-s (90 %): **$0.00 a month** on this estimate,
+with little room left for the MCP server. The assumption that moves it most is the start-up time:
+
+| Scenario | vCPU-s / GiB-s (% of grant) | Beyond the grant |
+|---|---|---|
+| Laptop median + 20 s start (above) | 162,068 / 324,135 (90 %) | $0.00 / month |
+| Laptop p95 + 20 s start | 186,753 / 373,506 (104 %) | $0.28 / month |
+| Laptop median + 40 s start | 260,168 / 520,335 (145 %) | $3.37 / month |
+| Ceiling: every execution runs to `replicaTimeout` | 1,012,500 / 2,025,000 | $34.97 / month |
+
+The ceiling is what a hung gateway on every tick — or a job running a web-server image, see #12 — would
+cost, and it is the reason for the budget alert in docs/deploy.md. Each hour the 0.5 vCPU / 1 GiB MCP
+server is active beyond the grant adds $0.0756. Replace every estimate here with measured execution times
+after the first day (`az containerapp job execution list`, docs/deploy.md §4.4).
+
+### Consequences
+
+- The laptop can be switched off (`make collect-stop`) once the jobs have run — docs/deploy.md §4.3 gives
+  the order, because a laptop and the jobs together spend two İETT budgets against one limit.
+- The İETT budget is now a property of the schedule and is tested. Changing a cron, a source's request
+  count or the watched lines changes a pinned number, deliberately.
+- **Still open:** the MCP server keeps its own in-process 80/hour. If it is used heavily for İETT tools in
+  the same hour, server and jobs together can exceed İETT's 100. The laptop and a local server had the
+  same exposure. Closing it needs one shared budget (a counter in the lake, say); not in this change.
+- Two of the six `city` executions an hour start in the same minute as a `lines` execution: two request
+  streams, each 6 s apart, not the ~15-call burst that trips the gateway. No other jobs share a start
+  minute (tested).
+- Fleet positions have 10-minute resolution, not 2.
+- History now lands in Blob Storage (`bronze/`, same layout). `scripts/eta_report.py`,
+  `calibrate_eta.py` and `reliability_report.py` read `data/lake`, so they need a sync first
+  (docs/deploy.md §4.5) — and the 30-day bronze lifecycle rule deletes cloud history that is neither
+  synced nor in ADX.
+- `azure.yaml` no longer lists the Function as a service, and `NABIZ_COLLECTOR_CLIENT_ID` now comes from
+  the shared identity.
+- **Not verified:** no Bicep compile on this machine (CI compiles it), no deployment, no image build, no
+  measured run time in Azure.
+
+---
+
+## 11. One container image for the MCP server and the collector, harvested from the ops branch
+
+**Date:** 2026-09-23 · **Status:** Accepted; the image has **not yet been built**
+
+### Context
+
+`azure.yaml` pointed the `mcp` service at a `Dockerfile` that `main` did not have (docs/deploy.md §5.2 said
+so). The `feat/ops-hardening` work in the `nabiz-ops` worktree (13 Sep, uncommitted) had one, with a
+`.dockerignore`. Its handoff also listed three more gaps as "addressed on this branch" — no `kql/`, two
+sources without an ADX table, a deployed collector without lines or ETA — but that worktree's
+`git status` and `git diff` on 23 Sep show no `kql/` files and no change under `src/nabiz/collector/`.
+They are addressed here instead: #10, `kusto.TABLES`, `kql/schema.kql`.
+
+### Decision
+
+Harvest the branch's `Dockerfile` and `.dockerignore`, and make the image serve both uses:
+
+- **One image, two commands.** The CMD starts `ibb-mcp`; each collector job overrides `command`/`args`
+  with `python -m nabiz.collector.job`. azd builds one image per service, and five jobs as five services
+  would be five remote builds of the same tree on every deploy.
+- The build installs `.[job]` — a new optional extra with the Azure identity, Blob Storage and ADX client
+  libraries the collector writes with — and **imports them during the build**, because pip only warns
+  about an unknown extra and the failure would otherwise surface as every collector write failing in
+  Azure. The extra is declared in `pyproject.toml`, and `tests/test_server_security.py` checks that the
+  extras the `Dockerfile` installs exist.
+- Two stages, non-root user, no pinned platform (azd's remote build runs on linux/amd64), GTFS baked in
+  when present with a build-time line saying whether it is.
+- `.dockerignore` is an allow-list. Without it a remote build uploads roughly 250 MB: `.venv` is 72,288
+  KiB, `data/reference/gtfs` 179,928 KiB and `data/lake` 4,200 KiB here (`du -sk`, 23 Sep), while the
+  image needs the source tree and about 2.4 MiB of GTFS.
+- Corrected while harvesting: the branch's comments cited `tests/test_packaging.py`, which exists in
+  neither tree; the checks the collector relies on are now in `tests/test_collector_job.py`. The
+  `HEALTHCHECK` targets `/healthz`, which the server hardening from the same branch serves (#15).
+
+### Alternatives considered
+
+- **A separate collector image**: smaller server image, but a second azd service or a hand-run build,
+  and two images to keep in step with one source tree.
+- **Pinning the SDKs in the Dockerfile** instead of an extra: no `pyproject.toml` change, but the
+  versions would live in two places.
+
+### Consequences
+
+- The MCP server's image carries client libraries it never imports; the size cost is unmeasured (no
+  Docker daemon on the development machine).
+- The first build anyone runs is the owner's `azd deploy mcp`. Were the `job` extra ever dropped from
+  `pyproject.toml`, that build would fail at the import check — by design.
+- An image built on a machine without `data/reference/gtfs` serves every tool except the two GTFS-backed
+  ones, and its `lines` executions log an ERROR on every tick because the ETA log cannot run.
+- The branch's `tests/test_infra.py` (offline structural checks of `infra/`) is now part of the suite:
+  20 passed against these templates.
+
+---
+
+## 12. Provisioning takes the deployed image as an input, and never deploys a job with a placeholder
+
+**Date:** 2026-09-23 · **Status:** Accepted
+
+### Context
+
+`containerapps.bicep` fell back to the public quickstart image whenever `mcpContainerImage` was empty,
+which is always under azd. So every `azd provision` — which docs/deploy.md asks for after setting the ADX
+URI or changing a knob — put the live MCP server back on the placeholder until the next `azd deploy`.
+For a scheduled job a placeholder is worse than broken: a web server never exits, so every execution runs
+to `replicaTimeout` and bills for it — the $34.97/month ceiling in #10.
+
+### Decision
+
+- `infra/main.parameters.json` passes `SERVICE_MCP_IMAGE_NAME` — which azd sets when it deploys the `mcp`
+  service — into `mcpDeployedImage`. The MCP app runs the pinned image if there is one, else the deployed
+  one, else the placeholder (first provision only).
+- The collector jobs run the pinned or the deployed image and are **not deployed at all** when there is
+  neither (`deployJobs` in `main.bicep`). A new environment therefore takes `azd up`, then `azd provision`.
+- The collector identity is created unconditionally, apart from any host, so its client id — the one the
+  ADX grant names — is stable however many times either host is provisioned.
+
+### Alternatives considered
+
+- **The azd "upsert" pattern** (`SERVICE_<NAME>_RESOURCE_EXISTS` and the AVM `container-app-upsert`
+  module): solves the revert for the container app, but not the jobs, and replaces a hand-written module.
+- **A `postdeploy` hook running `az containerapp job update --image`**: updates the jobs immediately, but
+  mutates infrastructure outside Bicep and needs `az` inside an azd hook. The hook prints a reminder
+  instead.
+
+### Consequences
+
+- After a code change the jobs keep the previous image until `azd provision`; the `mcp` postdeploy hook
+  says so. A provision no longer breaks the running server.
+- **Not verified:** that azd persists `SERVICE_MCP_IMAGE_NAME` in `.azure/<env>/.env` after a deploy. The
+  azd documentation says the variable is set during deploy; docs/deploy.md §4.2 checks it and gives the
+  one-line manual fallback.
+
+---
+
+## 13. Alerts are evaluated statelessly; the client holds the subscription and the cooldown
+
+**Date:** 2026-09-13 (engine), 2026-09-23 (web route and MCP tool) · **Status:** Accepted
+
+### Context
+
+An alert about "my home" or "my car park" needs the user's places, and a place is a coordinate. A
+server that keeps coordinates per user holds personal data under KVKK (Law No. 6698): it needs a legal
+basis, a retention policy, a deletion path and a database, none of which a one-person student project
+can operate well. The ADX free cluster's terms also forbid personal data (#7). There are no accounts.
+
+### Decision
+
+- `nabiz.alerts.engine.check_alerts` evaluates a subscription that arrives **with each request** and is
+  forgotten when the request ends. No database, session, cookie or user identifier exists.
+- The **cooldown is the client's**. Each alert carries a `dedupe_key` and `cooldown_seconds`; the client
+  remembers what it has shown and sends the keys it is sitting on as `muted_keys`.
+- Two doors, one engine: `POST /api/alerts/check` takes the subscription in the request **body**, never a
+  query string, because a query string lands in access logs; the MCP tool `check_alerts` advertises a
+  typed schema (`src/nabiz/alerts/schema.py`) that describes the payload and bounds its lengths, while
+  the engine stays the single validator. Its refusals name a place key, never a coordinate.
+- The GET routes that take a place (`/api/parking`, `/api/route`) accept gazetteer names only.
+- The web agent does not offer `check_alerts` (`NOT_OFFERED` in `src/nabiz/agent/agent.py`): it holds
+  no subscription to send.
+
+### Alternatives considered
+
+- **Server-side subscriptions with push notifications**: the feature people expect, and a database of
+  where people live and work.
+- **Storing hashed coordinates**: a hash of a coordinate on a city grid is reversed by trying the grid;
+  still personal data.
+
+### Consequences
+
+- No push notifications: the page checks when it is open. Clearing browser storage forgets the
+  subscription, and the page's reset control does exactly that on purpose.
+- Through an MCP client the coordinates are part of that client's conversation with its own model
+  provider before they reach us; `docs/privacy.md` §4 says so.
+- The hosting platform can still log addresses and paths; disabling or minimising ingress access logs
+  is a deployment gate before real users (`docs/privacy.md` §4, item 2).
+- The page can evaluate and reset a subscription but has no editor to create one yet
+  (`docs/privacy.md` §8).
+
+---
+
+## 14. Compare travel modes over a distance-justified rail graph; do not plan routes
+
+**Date:** 2026-09-23 · **Status:** Accepted — narrows PLAN.md §17 for the comparison slice · Design note:
+[docs/route-advisor.md](docs/route-advisor.md)
+
+### Context
+
+Journey E1 asks "arabayla mı, metroyla mı?" while PLAN.md §17 rules out route planning. Two advisors
+existed: `routing.py` on `main` (`plan_journey`) and `advisor.py` in the uncommitted `feat/route-advisor`
+worktree. Main's rail estimate took the straight line between the nearest stations at each end with at
+most one guessed transfer; over the 16,370 same-side station pairs more than 2.5 km apart that have a rail
+path, it gave too few transfers for 9,145. Matching transfers by station name instead invents a 64-minute
+Kadıköy → Taksim trip through Bahariye, a name shared by a T3 stop and an M9 station 20.7 km apart
+(docs/route-advisor.md §4, measured 2026-09-23 on the recorded station list).
+
+### Decision
+
+- One advisor, `routing.compare_options`, behind the existing `plan_journey` tool. No new MCP tool.
+- Rail rides `metro_graph.MetroGraph`: a transfer exists only where distance justifies it (≤ 250 m within
+  a station, ≤ 800 m on foot for a shared name, ≤ 350 m otherwise), and the rejected same-name pairs are
+  published. The Bosphorus is crossed only through the Marmaray tube, added as rows the caller vouches for
+  on four stations the feed already has (Yenikapı, Sirkeci, Üsküdar, Ayrılık Çeşmesi).
+- Bus: `lines.StopRouteIndex` is the one direction-aware scan; one line is costed, other direct lines are
+  named with stop counts and no minutes.
+- A weekday × hour traffic norm from İBB's own 28-day history is reported beside the drive estimate,
+  never folded into it.
+- An unread source is reported as unknown, never as good news: unread metro notices are not "no
+  disruption", an unread İSPARK list is not "no free space".
+
+### Consequences
+
+- Rail minutes are estimates with one published check (M7: 38.9 min modelled against Metro İstanbul's 36)
+  and a flat 6-minute headway. The drive estimate has no ground truth, and `fastest_mode` ranks estimates,
+  each labelled `kind: estimate`.
+- One more upstream read: the `/28/H` traffic history, at most once per six hours per process.
+- The `feat/route-advisor` worktree holds nothing that is not on `main` (docs/route-advisor.md §9).
+- A real router would supersede this decision, not extend it.
+
+---
+
+## 15. Harden the public MCP endpoint: stateless transport, per-tool token buckets, optional key, closed CORS
+
+**Date:** 2026-09-23 · **Status:** Accepted — not yet deployed
+
+### Context
+
+Over HTTP nothing stood between a script with a loop and the İETT allowance every user of this project
+shares (THREAT_MODEL MCP-5). The ops-hardening worktree found the gap — no authentication, no per-client
+limit, no CORS policy — and left its fix unwired. Two more problems were measured while porting it on
+23 Sep: in the SDK's default stateful mode every `initialize` holds a session, and `initialize` is never
+charged, so a loop of them fills the SDK's session cap for everyone; and uvicorn's
+`--forwarded-allow-ips '*'` trusts the leftmost `X-Forwarded-For` entry, which a caller writes. A
+4,000,000-character place name also took 14.9 s of the event loop, against about 1 ms for 120 characters.
+
+### Decision
+
+- `ToolBudget`, an MCP middleware, charges each `tools/call` to its caller's token bucket at the tool's
+  price, set by how far upstream it can reach on a cold cache: 1 + gateway GETs + 4 per İETT SOAP call
+  (`TOOL_COSTS` in `src/ibb_mcp/server.py`). A refused call is a readable `rate_limited` result with
+  `retry_after_seconds`.
+- An API key is optional (`NABIZ_API_KEYS`), compared in constant time, and counts as a caller's identity
+  only once accepted. CORS is closed unless origins are configured.
+- The transport runs **stateless**; no tool needs a session.
+- The request body is capped at 64 KiB, and every free-text parameter has a length limit in its
+  advertised schema (120 characters for a name, 16 for a code).
+- The caller's address is the entry the configured number of trusted proxies appended
+  (`NABIZ_MCP_TRUSTED_PROXY_HOPS`, set to 1 behind the Container Apps ingress); IPv6 is grouped by /64;
+  the limiter and the log hold only a salted per-process pseudonym.
+- `/healthz` answers from process state and local files alone, never from İBB.
+
+### Consequences
+
+- Budgets live in process, which keeps the one-replica ceiling of #3; a cached answer still costs tokens,
+  because the price is the worst case.
+- A stateless server cannot send requests to the client (sampling, elicitation); nothing here uses them.
+- Whether the key is required before a public launch is the owner's decision; the default is open, with
+  per-caller budgets.
+- The trusted-hop count must be confirmed against the real ingress on the first deploy.
+
+---
+
+## 16. Every span goes through one allow-list; no auto-instrumentation
+
+**Date:** 2026-09-23 · **Status:** Accepted — not yet deployed
+
+### Context
+
+Traces go to Application Insights, a server-side store, so a span attribute falls under the same privacy
+rule as the lake. The ops-hardening worktree wrote a telemetry shim and never called it. With a
+connection string set, the Azure Monitor distribution would also have instrumented FastAPI, whose spans
+record the full URL (`/api/route?from=…&to=…`), and forwarded log records.
+
+### Decision
+
+- `nabiz.agent.telemetry` is the only way to make a span. It drops every attribute not on
+  `ALLOWED_ATTRIBUTES`, records an exception's type but never its message (tool errors quote the user's
+  input back), and degrades to no-ops when OpenTelemetry is absent.
+- Upstream spans keep host and path, never the query string; tool spans carry the tool name and outcome,
+  never arguments; agent spans carry the mode, the tools and the faithfulness verdict, never the question
+  or the answer.
+- The distribution's auto-instrumentation and its log and metric export are switched off; the managed
+  identity is used when Entra authentication is asked for.
+- A separate `telemetry` extra, so the MCP image can trace without a model SDK.
+
+### Consequences
+
+- Traces cannot answer "what did people ask", by design.
+- The distribution's options were verified against a fake in the tests, not against the real package,
+  which is not installed on the development machine; the first deploy must confirm that only `nabiz.*`
+  and MCP spans arrive.
+- The container image does not install the `telemetry` extra yet, so nothing is exported until it does.
+
+---
+
+## 17. Tests and CI read only committed, scrubbed data
+
+**Date:** 2026-09-23 · **Status:** Accepted
+
+### Context
+
+CI failed on all of its first 13 runs on `main`. Ten failed on the same three `tests/test_web.py` tests,
+which read the GTFS export in `data/reference/gtfs/`: gitignored, and present only on the laptop that
+downloaded it. The other three failed at the lint gate, hidden behind a main that was already red. Separately,
+the recorded fleet fixtures, which are published with the code, held 60 real bus number plates
+(`tests/fixtures/iett_fleet.json`) and 21 in the SOAP capture, although #7 promises plates never leave the
+parser.
+
+### Decision
+
+- Tests read GTFS from `tests/fixtures/gtfs_mini`, a 38 KB cut of İBB's export copied byte for byte, so the
+  defects the loaders repair (BOM, `;`, CRLF, thousands-separated coordinates, mojibake) are still there.
+  `extract.py` rebuilds it and checks the rebuilt sequences against the full feed. The shared test
+  settings read a per-session copy, because the sequence cache is written beside the tables.
+- Every plate in the recorded fixtures is synthetic (`00 XX 001` … `00 XX 060`; province 00 does not exist),
+  and `scripts/capture_fixtures.py` swaps plates before it writes anything.
+- `scripts/guardrails.py` encodes the incidents already had (plates, collapsed schemas, raw İBB calls,
+  secrets, personal data, AI credit, unsourced README numbers) and runs in CI; `scripts/check_authorship.py`
+  checks the identity and message of every pushed or proposed commit. Neither needs the network.
+- `make ci-local` reproduces CI on a copy of exactly what a push would publish, which is the check that
+  would have caught the gitignored dependency.
+
+### Consequences
+
+- A test that needs a stop or a trip outside the cut needs the cut extended with `extract.py`, not a read
+  of the local export.
+- The real plates remain in the public history from the bootstrap commit; only a history rewrite removes
+  them (docs/THREAT_MODEL.md §5.3).
+- The offline eval harness still reads `data/reference/gtfs` (`eval/run_eval.py` builds its settings
+  directly). Run on the clean copy `make ci-local` builds (23 Sep), it scored 26/30: the four J2 scenarios
+  that search stops or estimate arrivals failed on the missing export. On a machine with the export: 30/30.
