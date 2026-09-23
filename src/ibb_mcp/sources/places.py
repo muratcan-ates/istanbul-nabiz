@@ -21,7 +21,7 @@ import unicodedata
 from dataclasses import dataclass
 from functools import lru_cache
 
-from ibb_mcp.config import Settings
+from ibb_mcp.config import Settings, display_path
 from ibb_mcp.models import haversine_km
 
 log = logging.getLogger("ibb_mcp.places")
@@ -92,7 +92,7 @@ class PlaceIndex:
         settings = settings or Settings.from_env()
         path = settings.places_csv
         if not path.exists():
-            log.warning("places.csv not found at %s; place lookup will return nothing", path)
+            log.warning("places.csv not found at %s; place lookup will return nothing", display_path(path))
             return cls([])
         places: list[Place] = []
         with path.open(encoding="utf-8", newline="") as fh:
@@ -109,7 +109,7 @@ class PlaceIndex:
                     )
                 except (KeyError, ValueError):
                     continue
-        log.info("loaded %d places from %s", len(places), path)
+        log.info("loaded %d places from %s", len(places), display_path(path))
         return cls(places)
 
     # -- queries -----------------------------------------------------------------

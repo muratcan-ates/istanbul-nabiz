@@ -33,7 +33,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from ibb_mcp.config import Settings
+from ibb_mcp.config import Settings, display_path
 from ibb_mcp.models import Route, Stop, demojibake, haversine_km, repair_coordinate, utcnow
 
 log = logging.getLogger(__name__)
@@ -329,7 +329,7 @@ class GtfsIndex:
         index = cls(directory, stops, routes, dropped_stops=dropped_stops, dropped_routes=dropped_routes)
         index._build()
         log.info("GTFS loaded from %s: %d stops (%d dropped), %d routes (%d dropped)",
-                 directory, len(stops), dropped_stops, len(routes), dropped_routes)
+                 display_path(directory), len(stops), dropped_stops, len(routes), dropped_routes)
         return index
 
     def _build(self) -> None:

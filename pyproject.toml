@@ -1,5 +1,8 @@
 [build-system]
-requires = ["hatchling"]
+# hatchling >= 1.27 is the floor that understands PEP 639 (`license` as an SPDX
+# expression, explicit `license-files`). An older backend silently falls back to the
+# deprecated `License:` field, so pin it rather than debug the metadata later.
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -8,18 +11,55 @@ version = "0.1.0"
 description = "Unofficial MCP server and city agent over İstanbul (İBB) open data, running on Azure"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE", "NOTICE.md"]
 authors = [{ name = "Muratcan Ateş" }]
 keywords = ["mcp", "istanbul", "open-data", "azure", "ibb", "transit"]
+
+# `Private :: Do Not Upload` is a deliberate guard, not an oversight: PyPI rejects any
+# distribution carrying it. Nothing has been released yet and the name is undecided: the
+# console script is `ibb-mcp` while the distribution is `istanbul-nabiz`, so `uvx ibb-mcp`
+# would resolve to somebody else's project on PyPI. The repository is public and a stray
+# upload would be irreversible. Delete this one line when the release decision is made;
+# the rest of the metadata is what a published package needs.
+classifiers = [
+  "Private :: Do Not Upload",
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Natural Language :: Turkish",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: GIS",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 dependencies = [
   "httpx>=0.27",
   "pydantic>=2.7",
-  "mcp>=1.2",
+  # The server is written against the MCP 2.x API (`mcp.server.mcpserver.MCPServer`,
+  # server middleware, `custom_route`). The 1.x line exposes `FastMCP` and has no such
+  # module, so a resolver that picked 1.x would install cleanly and then fail at import.
+  # 2.2.0 is the version the suite runs against.
+  "mcp>=2.2,<3",
 ]
 
 [project.optional-dependencies]
-collector = ["azure-functions>=1.21", "azure-kusto-data>=4.5", "azure-kusto-ingest>=4.5", "azure-identity>=1.17", "deltalake>=0.19", "pyarrow>=16"]
+# azure-storage-blob because nabiz.collector.lake writes bronze to Blob Storage whenever
+# AZURE_STORAGE_ACCOUNT is set, and imports it only at that moment.
+collector = ["azure-functions>=1.21", "azure-kusto-data>=4.5", "azure-kusto-ingest>=4.5", "azure-identity>=1.17", "azure-storage-blob>=12.19", "deltalake>=0.19", "pyarrow>=16"]
+# What the container image installs (`pip install ".[job]"` in the root Dockerfile) for the
+# collector jobs that run it: managed-identity auth, the ADLS lake and ADX ingestion. The
+# Dockerfile imports all four at build time, so a missing one fails the build rather than
+# every write of a running job. deltalake and pyarrow are not here: with
+# AZURE_STORAGE_ACCOUNT set, nabiz.collector.lake writes gzipped NDJSON to Blob Storage,
+# never a local Delta table.
+job = ["azure-identity>=1.17", "azure-storage-blob>=12.19", "azure-kusto-data>=4.5", "azure-kusto-ingest>=4.5"]
+# Application Insights export for `nabiz.agent.telemetry`. Separate from `agent` so the MCP
+# image can trace without installing a model SDK; tracing stays off (one log line) without it.
+telemetry = ["azure-monitor-opentelemetry>=1.6"]
 web = ["fastapi>=0.115", "uvicorn>=0.30", "jinja2>=3.1"]
 agent = ["agent-framework>=1.0", "openai>=1.40", "azure-monitor-opentelemetry>=1.6"]
 dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6"]
@@ -33,6 +73,17 @@ Issues = "https://github.com/muratcan-ates/istanbul-nabiz/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ibb_mcp", "src/nabiz"]
+
+# The committed reference files, carried inside the package so an installed wheel (such as
+# `uvx --from git+… ibb-mcp`) is not a server that starts happily and resolves nothing.
+# `ibb_mcp.config.reference_path` finds places.csv, eta_profile.json and
+# line_reliability.json here when there is no checkout, and the occupancy profile is read
+# beside places.csv.
+[tool.hatch.build.targets.wheel.force-include]
+"data/reference/places.csv" = "ibb_mcp/data/places.csv"
+"data/reference/occupancy_profile.json" = "ibb_mcp/data/occupancy_profile.json"
+"data/reference/eta_profile.json" = "ibb_mcp/data/eta_profile.json"
+"data/reference/line_reliability.json" = "ibb_mcp/data/line_reliability.json"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
