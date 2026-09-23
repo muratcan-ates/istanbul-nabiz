@@ -45,6 +45,10 @@ class CacheEntry[T]:
     stored_at: float
     stored_at_utc: dt.datetime
     ttl: float
+    #: When the source says the data was measured, if it says so. ``stored_at_utc`` is when
+    #: Nabız read it: a 14-day-old reading fetched a minute ago is a minute old by that clock
+    #: and 14 days old by this one. Set by ``make_provenance``, which is where it is known.
+    reported_at: dt.datetime | None = None
 
     @property
     def age(self) -> float:
@@ -63,6 +67,8 @@ class CacheStats:
     errors: int = 0
     last_success_utc: dt.datetime | None = None
     last_error: str | None = None
+    #: The entry stored by the last successful fetch, so ``freshness`` can report its data age.
+    last_entry: CacheEntry[Any] | None = None
 
 
 class TTLCache:
@@ -133,6 +139,7 @@ class TTLCache:
             )
             self._entries[key] = new_entry
             stats.last_success_utc = new_entry.stored_at_utc
+            stats.last_entry = new_entry
             stats.last_error = None
             return value, new_entry
 
@@ -143,15 +150,26 @@ class TTLCache:
             self._entries.pop(key, None)
 
     def freshness(self) -> dict[str, dict[str, Any]]:
-        """Summary used by the ``city_freshness`` tool."""
+        """Summary used by the ``city_freshness`` tool.
+
+        Two ages per source, because they answer different questions. ``age_seconds`` is how
+        long ago Nabız last read the source (the fetch). ``data_age_seconds`` is how old the
+        data of that read is: from the source's own timestamp (``reported_at_utc``) when it
+        states one, otherwise from the fetch, the same rule every answer's provenance uses.
+        Offline, a recorded traffic reading is minutes old by the first and days old by the
+        second, and only the second may be called fresh. ``healthy`` means the last fetch
+        did not fail; it says nothing about the data's age.
+        """
+        now = dt.datetime.now(dt.UTC)
         out: dict[str, dict[str, Any]] = {}
         for source, stats in self.stats.items():
-            age = None
-            if stats.last_success_utc is not None:
-                age = (dt.datetime.now(dt.UTC) - stats.last_success_utc).total_seconds()
+            entry = stats.last_entry
+            reported = entry.reported_at if entry is not None else None
             out[source] = {
                 "last_success_utc": stats.last_success_utc.isoformat() if stats.last_success_utc else None,
-                "age_seconds": None if age is None else round(age, 1),
+                "age_seconds": _seconds_since(stats.last_success_utc, now),
+                "reported_at_utc": reported.isoformat() if reported else None,
+                "data_age_seconds": _seconds_since(reported or (entry.stored_at_utc if entry else None), now),
                 "healthy": stats.last_error is None and stats.last_success_utc is not None,
                 "hits": stats.hits,
                 "misses": stats.misses,
@@ -160,3 +178,10 @@ class TTLCache:
                 "last_error": stats.last_error,
             }
         return out
+
+
+def _seconds_since(moment: dt.datetime | None, now: dt.datetime) -> float | None:
+    """Seconds from ``moment`` to ``now`` to a tenth; never negative, ``None`` when unknown."""
+    if moment is None:
+        return None
+    return round(max(0.0, (now - moment).total_seconds()), 1)

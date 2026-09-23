@@ -28,6 +28,7 @@ from ibb_mcp.http import (
     UpstreamUnavailable,
     extract_soap_json,
 )
+from ibb_mcp.sources.base import make_provenance
 
 LINE_ACTION = "GetHatOtoKonum_json"
 FLEET_ACTION = "GetFiloAracKonum_json"
@@ -596,7 +597,8 @@ async def test_freshness_reports_one_row_per_source() -> None:
 
     ispark = freshness["ispark"]
     assert set(ispark) == {
-        "last_success_utc", "age_seconds", "healthy", "hits", "misses", "stale_served", "errors", "last_error",
+        "last_success_utc", "age_seconds", "reported_at_utc", "data_age_seconds", "healthy", "hits", "misses",
+        "stale_served", "errors", "last_error",
     }
     assert ispark["healthy"] is True
     assert ispark["last_error"] is None
@@ -612,6 +614,34 @@ async def test_freshness_reports_one_row_per_source() -> None:
 
 def test_freshness_is_empty_before_anything_is_fetched() -> None:
     assert TTLCache().freshness() == {}
+
+
+async def test_freshness_reports_the_data_age_beside_the_fetch_age() -> None:
+    """A reading fetched a moment ago can be days old; "fresh" must never mean only "just read".
+
+    The page's status pill and the design's age ruler read ``/api/freshness``; before
+    2026-09-23 it had only the fetch age, so a 14-day-old offline reading showed as 4 minutes
+    old beside an answer stamped "14 gün önce".
+    """
+    cache = TTLCache()
+
+    async def good() -> str:
+        return "v"
+
+    _, entry = await cache.get_or_fetch("traffic:1:H", good, source="traffic", ttl=60.0)
+    await cache.get_or_fetch("ispark:list", good, source="ispark", ttl=60.0)
+    measured = dt.datetime.now(dt.UTC) - dt.timedelta(days=14)
+    provenance = make_provenance("traffic", entry=entry, reported_at=measured)
+
+    traffic, ispark = cache.freshness()["traffic"], cache.freshness()["ispark"]
+    assert traffic["age_seconds"] < 60
+    assert traffic["reported_at_utc"] == measured.isoformat()
+    # Same rule as the answer's own provenance, so the two can never disagree.
+    assert abs(traffic["data_age_seconds"] - provenance.age_seconds) < 5
+    assert traffic["data_age_seconds"] > 13 * 86400
+    # A source that states no timestamp is as old as the read, and says it has none.
+    assert ispark["reported_at_utc"] is None
+    assert ispark["data_age_seconds"] == pytest.approx(ispark["age_seconds"], abs=1)
 
 
 # =================================================================================

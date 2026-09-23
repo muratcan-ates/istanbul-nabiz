@@ -67,8 +67,14 @@ def make_provenance(
     reported_at: dt.datetime | None = None,
     url: str | None = None,
 ) -> Provenance:
-    """Build the provenance stamp attached to every tool result."""
+    """Build the provenance stamp attached to every tool result.
+
+    The entry keeps ``reported_at`` too, so ``city_freshness`` reports the data's own age
+    and not only when Nabız last read the source (see ``TTLCache.freshness``).
+    """
     observed = entry.stored_at_utc if entry is not None else dt.datetime.now(dt.UTC)
+    if entry is not None and reported_at is not None:
+        entry.reported_at = reported_at
     return Provenance(
         source=source,
         source_url=url or SOURCE_URLS.get(source, ""),
