@@ -52,6 +52,18 @@ The fallback chain is line+bucket -> line -> global -> the built-in 120 s/stop d
 :meth:`EtaProfile.seconds_per_stop_for` returns **which** of those produced the number, so
 a tool result can say where its rate came from instead of presenting a fitted number and a
 hard-coded one as if they were the same thing.
+
+**What the tools serve (DECISIONS #18).** Held out, the fit does not transfer. Replayed on
+the 523 stop-sequence predictions made after the profile was frozen, at stops it was never
+fitted on, the calibrated rates scored a mean absolute error of 35.82 minutes against 10.18
+for the untuned 120 s/stop (``eval/results/eta.md``, "Held-out replay"; the replay is
+``scripts/eta_holdout.py``). Seconds per stop is a property of a stretch of road, and a rate
+fitted at two stops says nothing about a third. So ``iett_next_arrivals`` and the bus leg of
+``plan_journey`` serve the estimator with the better held-out score, the untuned default,
+through :func:`served_rate`; the calibrated profile is used only when an operator sets
+``NABIZ_ETA_PROFILE_MODE=calibrated``, for research, and the diagnostics say which rate was
+used and why. This module and the committed profile stay, because the calibration is how
+the next, better-evidenced fit will be made and judged.
 """
 
 from __future__ import annotations
@@ -65,6 +77,7 @@ from typing import Any
 
 from ibb_mcp.config import reference_path
 from ibb_mcp.models import ISTANBUL_TZ
+from ibb_mcp.reference import parse_once
 
 #: PLAN.md section 7's day-one guess. Still the answer when nothing has been measured.
 DEFAULT_SECONDS_PER_STOP = 120.0
@@ -85,6 +98,30 @@ MAX_SECONDS_PER_STOP = 600.0
 
 PROFILE_FILENAME = "eta_profile.json"
 SCHEMA_VERSION = 1
+
+#: The two values of ``Settings.eta_profile_mode`` (``NABIZ_ETA_PROFILE_MODE``).
+MODE_DEFAULT = "default"
+MODE_CALIBRATED = "calibrated"
+PROFILE_MODES: tuple[str, ...] = (MODE_DEFAULT, MODE_CALIBRATED)
+
+#: Why the default mode serves the untuned rate. It reaches every client in the arrival
+#: diagnostics, so it carries its numbers and the file they come from, and no path of this
+#: machine's.
+DEFAULT_MODE_REASON = (
+    "untuned 120 s/stop, served by default: on 523 held-out predictions at stops the calibration "
+    "never saw, the calibrated profile scored 35.82 min MAE against 10.18 min for 120 s/stop "
+    "(eval/results/eta.md, DECISIONS #18)"
+)
+CALIBRATED_MODE_REASON = (
+    "calibrated profile, requested with NABIZ_ETA_PROFILE_MODE=calibrated for research; held out it "
+    "scored worse than the untuned default (eval/results/eta.md, DECISIONS #18)"
+)
+#: The Turkish rate sentence when the untuned default is served on purpose. Not "no
+#: measurement yet": 500T has been measured, and the measurement did worse held out.
+DEFAULT_RATE_SENTENCE_TR = (
+    "Durak başına süre kalibre edilmemiş varsayılan orandır (120 sn); ölçülen oranlar, "
+    "ölçülmedikleri duraklarda daha büyük hata verdiği için kullanılmıyor."
+)
 
 #: Half-open local-time bands, in order; anything they do not cover is 'night'.
 _BUCKET_BANDS: tuple[tuple[int, int, str], ...] = (
@@ -370,6 +407,12 @@ def default_profile(note: str | None = None, *, source: str = "built-in default"
     return EtaProfile(source=source, note=note)
 
 
+def _profile_from_json(raw: Any, source: str) -> EtaProfile:
+    if not isinstance(raw, dict):
+        raise TypeError(f"expected a JSON object, got {type(raw).__name__}")
+    return EtaProfile.from_dict(raw, source=source)
+
+
 def load_profile(settings: Any | None = None, *, path: pathlib.Path | None = None) -> EtaProfile:
     """Read the calibrated profile, or fall back to the untuned default **loudly**.
 
@@ -378,23 +421,101 @@ def load_profile(settings: Any | None = None, *, path: pathlib.Path | None = Non
     ``data/reference/eta_profile.json`` (it is git-ignored along with the rest of the
     lake). But it must not fail *quietly* either: the returned profile carries a note
     naming the path it wanted, so the absence shows up in diagnostics instead of being
-    mistaken for a measured 120 s/stop.
+    mistaken for a measured 120 s/stop. Parsed once per file version
+    (:func:`ibb_mcp.reference.parse_once`); a fallback is re-checked on the next call.
     """
     target = path or profile_path(settings)
-    if not target.exists():
+    try:
+        return parse_once(target, lambda raw: _profile_from_json(raw, str(target)), kind="eta_profile")
+    except FileNotFoundError:
         return default_profile(
             f"eta_profile_not_found_at_{target}_using_untuned_{DEFAULT_SECONDS_PER_STOP:.0f}s_per_stop"
         )
-    try:
-        raw = json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         return default_profile(f"eta_profile_unreadable_at_{target}_{type(exc).__name__}_using_untuned_default")
-    if not isinstance(raw, dict):
-        return default_profile(f"eta_profile_malformed_at_{target}_using_untuned_default")
-    try:
-        return EtaProfile.from_dict(raw, source=str(target))
-    except (KeyError, TypeError, ValueError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        # AttributeError too: a list where a mapping belongs fails in from_dict as one, and a
+        # malformed file must cost the calibration, never the arrival estimate.
         return default_profile(f"eta_profile_malformed_at_{target}_{type(exc).__name__}_using_untuned_default")
+
+
+# --------------------------------------------------------------------------------------
+# which rate the tools serve
+# --------------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RateChoice:
+    """The seconds-per-stop rate one arrival estimate uses, with where it came from and why.
+
+    ``source`` is the rung of the fallback chain (``"default"``, ``"line+bucket, n=57"``,
+    ...); ``mode`` and ``reason`` say whether the calibrated profile was consulted at all.
+    ``iett_next_arrivals`` puts all three in its diagnostics, because "120 s/stop because
+    nothing was measured" and "120 s/stop because the measurement did not transfer" are
+    different statements.
+    """
+
+    seconds_per_stop: float
+    source: str
+    mode: str
+    reason: str
+    #: Turkish words naming the lines a pooled rate was measured on; only meaningful when
+    #: ``source`` starts with ``global``. See :meth:`EtaProfile.pooled_rate_qualifier`.
+    pooled_qualifier: str = "ölçülen hatlardan havuzlanan"
+
+    def as_speed_profile(self) -> LineSpeedProfile | None:
+        """For ``estimate_arrivals(speed_profile=...)``; ``None`` leaves the engine on its own default."""
+        return LineSpeedProfile(self.seconds_per_stop, self.source) if self.mode == MODE_CALIBRATED else None
+
+    def sentence_tr(self) -> str:
+        """Where the rate came from, in the Turkish the agent repeats verbatim, never overstated.
+
+        "global" pools the lines the calibration measured, which today is 500T alone
+        (:meth:`EtaProfile.pooled_rate_qualifier` names them): "measured for this line" or
+        "measured across all lines" would claim a measurement nobody made. In the default mode
+        the profile is not consulted at all, which is a choice, not an absence, and is worded
+        as one.
+        """
+        if self.mode == MODE_DEFAULT:
+            return DEFAULT_RATE_SENTENCE_TR
+        if self.source == "default":
+            return "Bu hat için henüz ölçüm yok; kalibre edilmemiş varsayılan kullanılıyor."
+        if self.source.startswith("global"):
+            return f"Bu hat için ayrı ölçüm yok; durak başına süre {self.pooled_qualifier} orandan geliyor ({self.source})."
+        return f"Durak başına süre bu hat için ölçülmüş veriden geliyor ({self.source})."
+
+
+def serving_mode(settings: Any | None = None) -> tuple[str, str | None]:
+    """The configured mode, and a problem to report when the value was not one of :data:`PROFILE_MODES`.
+
+    Anything unrecognised serves the default. A typo in a container setting must not switch
+    every rider onto the rate that scored worse, and it must not stop the server either.
+    """
+    raw = getattr(settings, "eta_profile_mode", None)
+    if raw is None:
+        raw = os.getenv("NABIZ_ETA_PROFILE_MODE", MODE_DEFAULT)
+    mode = str(raw).strip().lower() or MODE_DEFAULT
+    if mode in PROFILE_MODES:
+        return mode, None
+    return MODE_DEFAULT, f"NABIZ_ETA_PROFILE_MODE={str(raw)[:32]!r} is not one of {', '.join(PROFILE_MODES)}"
+
+
+def served_rate(line_code: str | None, at: dt.datetime | None = None, settings: Any | None = None) -> RateChoice:
+    """The rate the tools serve for ``line_code`` at ``at``: the untuned default unless opted in.
+
+    In the default mode the profile file is not even read, so an arrival estimate costs no
+    file access and cannot pick up a fitted rate by accident. In the calibrated mode the
+    profile's fallback chain applies as before; a missing or unreadable profile falls back
+    to the default and says so, without the path (it would name this machine's user).
+    """
+    mode, problem = serving_mode(settings)
+    if mode == MODE_DEFAULT:
+        reason = DEFAULT_MODE_REASON if problem is None else f"{problem}; {DEFAULT_MODE_REASON}"
+        return RateChoice(DEFAULT_SECONDS_PER_STOP, "default", MODE_DEFAULT, reason)
+    profile = load_profile(settings)
+    seconds, source = profile.seconds_per_stop_for(line_code, at)
+    reason = CALIBRATED_MODE_REASON
+    if not profile.is_calibrated:
+        reason = f"{reason}; the profile is missing or unreadable, so the untuned default is used"
+    return RateChoice(seconds, source, MODE_CALIBRATED, reason, profile.pooled_rate_qualifier())
 
 
 def save_profile(profile: EtaProfile, *, settings: Any | None = None, path: pathlib.Path | None = None) -> pathlib.Path:

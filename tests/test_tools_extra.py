@@ -238,9 +238,9 @@ async def test_journey_takes_coordinates_and_rides_the_corridor_when_gtfs_exists
 
     assert bus["detail"]["line_code"] == "500T"
     assert nabiz._stop_routes is not None and "225761" in nabiz._stop_routes
-    # No eta_profile.json in this sealed run: the rate must say it is the untuned default.
+    # The default mode serves the untuned rate on purpose (DECISIONS #18), and says so.
     rate = next(a for a in bus["assumptions"] if a["key"] == "bus_seconds_per_stop")
-    assert rate["value"] == 120.0 and "ölçüm yok" in rate["detail"]
+    assert rate["value"] == 120.0 and rate["detail"].startswith("Kalibre edilmemiş varsayılan")
     assert result.data["origin"]["name"] == f"{KARTAL.lat:.4f}, {KARTAL.lon:.4f}"
 
 
@@ -273,7 +273,7 @@ async def test_a_missing_traffic_index_withdraws_the_drive_instead_of_assuming_f
 
     journey = await nabiz.plan_journey(origin="Taksim", destination="Kadıköy")
     withdrawn = {option["mode"]: option["reason"] for option in journey.data["unavailable_options"]}
-    assert "drive" in withdrawn and "1–99" in withdrawn["drive"]
+    assert "drive" in withdrawn and "1-99" in withdrawn["drive"]  # a range takes a hyphen, never a dash
     assert not any(reading["key"] == "traffic_index" for reading in journey.data["readings"])
 
     now = await nabiz.traffic_index("now")
@@ -458,19 +458,28 @@ def test_reliability_endpoint_answers_for_a_line(client: Any, tmp_path: pathlib.
     assert client.get("/api/reliability", params={"line": "500T", "hour": 24}).status_code == 422
 
 
-APP_JS = pathlib.Path(__file__).resolve().parents[1] / "src" / "nabiz" / "web" / "static" / "app.js"
+STATIC = pathlib.Path(__file__).resolve().parents[1] / "src" / "nabiz" / "web" / "static"
+APP_JS = STATIC / "app.js"
+ROUTER_JS = STATIC / "js" / "router.js"
+
+
+def page_scripts() -> list[pathlib.Path]:
+    """Every first-party script the page loads: the ES modules under ``js/`` once the page is
+    split into them (design spec, MOD-8), the single ``app.js`` before that."""
+    modules = sorted((STATIC / "js").rglob("*.js")) if (STATIC / "js").is_dir() else []
+    return modules or [APP_JS]
 
 
 def test_every_endpoint_the_page_calls_exists_with_that_method(client: Any) -> None:
     """The page used to probe three endpoints nobody had shipped and hide their panels on 404."""
-    source = APP_JS.read_text(encoding="utf-8")
+    source = "\n".join(path.read_text(encoding="utf-8") for path in page_scripts())
     calls = {("GET", path) for path in re.findall(r"(?:api|probe)\('(/api/[a-z/]+)'", source)}
     calls |= {("POST", path) for path in re.findall(r"apiPost\('(/api/[a-z/]+)'", source)}
     routes = {(method, route.path) for route in client.app.routes for method in getattr(route, "methods", None) or ()}
 
     assert ("POST", "/api/alerts/check") in calls and ("GET", "/api/route") in calls
     missing = sorted(call for call in calls if call not in routes)
-    assert not missing, f"app.js calls endpoints the server does not have: {missing}"
+    assert not missing, f"the page calls endpoints the server does not have: {missing}"
 
 
 def test_the_page_reads_origin_and_destination_from_a_turkish_question(tmp_path: pathlib.Path) -> None:
@@ -483,17 +492,22 @@ def test_the_page_reads_origin_and_destination_from_a_turkish_question(tmp_path:
         "Beşiktaş Meydanı'ndan Levent'e nasıl gidilir",
         "Taksim'e nasıl giderim",
     ]
-    harness = tmp_path / "journey.js"
-    harness.write_text(
-        "const fs = require('fs');\n"
-        "const stub = { setAttribute() {}, addEventListener() {}, innerHTML: '', textContent: '', hidden: false };\n"
-        "global.document = { querySelector: () => stub, querySelectorAll: () => [], addEventListener: () => {} };\n"
-        "global.window = { location: { origin: 'http://localhost' } };\n"
-        f"const src = fs.readFileSync({json.dumps(str(APP_JS))}, 'utf8');\n"
-        "const { route } = eval(src + '\\n;({ route });');\n"
-        f"console.log(JSON.stringify({json.dumps(questions, ensure_ascii=False)}.map((q) => route(q))));\n",
-        encoding="utf-8",
-    )
+    report = f"console.log(JSON.stringify({json.dumps(questions, ensure_ascii=False)}.map((q) => route(q))));\n"
+    if ROUTER_JS.exists():
+        # The split page: the router is a pure ES module, imported on its own (no DOM stub).
+        harness = tmp_path / "journey.mjs"
+        harness.write_text(f"import {{ route }} from {json.dumps(ROUTER_JS.as_uri())};\n" + report, encoding="utf-8")
+    else:
+        harness = tmp_path / "journey.js"
+        harness.write_text(
+            "const fs = require('fs');\n"
+            "const stub = { setAttribute() {}, addEventListener() {}, innerHTML: '', textContent: '', hidden: false };\n"
+            "global.document = { querySelector: () => stub, querySelectorAll: () => [], addEventListener: () => {} };\n"
+            "global.window = { location: { origin: 'http://localhost' } };\n"
+            f"const src = fs.readFileSync({json.dumps(str(APP_JS))}, 'utf8');\n"
+            "const { route } = eval(src + '\\n;({ route });');\n" + report,
+            encoding="utf-8",
+        )
     proc = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=60)
     assert proc.returncode == 0, proc.stderr
     decisions = json.loads(proc.stdout)

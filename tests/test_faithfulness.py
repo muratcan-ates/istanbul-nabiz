@@ -22,8 +22,8 @@ from ibb_mcp.models import Provenance, ToolResult
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import LlmConfig, NabizAgent, build_tool_schemas, check_faithfulness, detect_language
 from nabiz.agent import agent as agent_module
-from nabiz.agent.agent import TOOL_DESCRIPTIONS
 from nabiz.agent.llm import LlmUnavailable, available, detect_provider, require
+from nabiz.agent.schemas import NOT_OFFERED, TOOL_DESCRIPTIONS
 
 # ======================================================================================
 # 1. number extraction and Turkish formatting
@@ -263,7 +263,20 @@ async def test_the_agent_offers_every_mcp_tool_except_the_ones_it_says_it_cannot
 
     mcp_tools = {tool.name for tool in await build_server(settings).list_tools()}
     assert set(TOOL_DESCRIPTIONS) <= mcp_tools, f"agent tools the server does not have: {set(TOOL_DESCRIPTIONS) - mcp_tools}"
-    assert mcp_tools - set(TOOL_DESCRIPTIONS) == set(agent_module.NOT_OFFERED)
+    assert mcp_tools - set(TOOL_DESCRIPTIONS) == set(NOT_OFFERED)
+
+
+async def test_each_agent_description_is_the_servers_verbatim(settings):
+    """``nabiz.agent.schemas`` copies the MCP descriptions; the copy drifted once, silently.
+
+    The agent's model was told a shorter ``ispark_typical_occupancy`` text than every MCP
+    client, without the single-day refusal condition. Whitespace is the only difference allowed.
+    """
+    from ibb_mcp.server import build_server
+
+    server = {tool.name: " ".join((tool.description or "").split()) for tool in await build_server(settings).list_tools()}
+    drift = sorted(name for name, text in TOOL_DESCRIPTIONS.items() if " ".join(text.split()) != server[name])
+    assert drift == [], f"agent descriptions that differ from ibb_mcp/server.py: {drift}"
 
 
 def test_new_tools_get_their_schemas_from_the_facade_signatures():

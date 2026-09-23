@@ -124,9 +124,11 @@ class RoutingParams:
     """Every constant the advisor uses, in one place, so the output can name them.
 
     Only ``bus_seconds_per_stop`` has ever been measured (:mod:`ibb_mcp.eta_profile`, and
-    only for the lines it has data for). The rest are engineering assumptions and are
-    returned as such: the lake holds traffic index, parking occupancy and bus positions but
-    no journey times, so there is nothing to fit a speed curve against. ``road_winding`` and
+    only for the lines it has data for), and that measurement is served only on request
+    because it did not hold up on other stops (DECISIONS #18). The rest are engineering
+    assumptions and are returned as such: the lake holds traffic index, parking occupancy
+    and bus positions but no journey times, so there is nothing to fit a speed curve
+    against. ``road_winding`` and
     ``bus_seconds_per_stop`` default to :mod:`ibb_mcp.eta`'s values on purpose — they are
     the same quantities, and the two drifting apart would be a bug.
 
@@ -224,6 +226,14 @@ ASSUMPTION_TEXT: dict[str, tuple[str, str]] = {
 #: to leave unsaid.
 MEASURED_RATE_CAVEAT = (
     "Bu oran varış tahmini için kalibre edildi (bekleme ve algılama payı dahil); uzun yolculuklarda süre üst sınırdır."
+)
+
+#: The rate detail when the untuned default is served on purpose (DECISIONS #18): 500T has
+#: a measured rate, but held out it did worse than this constant, so "no measurement" would
+#: be untrue and "measured" would be worse.
+DEFAULT_RATE_DETAIL = (
+    "Kalibre edilmemiş varsayılan oran; ölçülen oranlar, ölçülmedikleri duraklarda daha büyük hata verdiği için "
+    "kullanılmıyor."
 )
 
 
@@ -545,7 +555,7 @@ def _lot_detail(lot: Any) -> dict[str, Any] | None:
 # --------------------------------------------------------------------------------------
 # the four options
 # --------------------------------------------------------------------------------------
-def _drive_option(
+def _drive_option(  # noqa: PLR0913 - debt, ratcheted in scripts/architecture_baseline.json
     origin: Waypoint,
     destination: Waypoint,
     *,
@@ -609,7 +619,7 @@ def _drive_option(
         search = round(params.park_search_min_minutes + spread * (1 - free_ratio), 1)
         legs.append(Leg("park", f"Otopark arama ({lot.name}, {lot.empty} boş yer)", search, "ispark_free_spaces"))
         legs.append(_walk_leg(f"{lot.name} otoparkından yürüyüş", lot.distance_km, params))
-        assumptions.append(_assume("park_search_minutes", f"{params.park_search_min_minutes}–{params.park_search_max_minutes}"))
+        assumptions.append(_assume("park_search_minutes", f"{params.park_search_min_minutes}-{params.park_search_max_minutes}"))
     else:
         unread = lots is None
         no_parking = "Otopark arama (İSPARK okunamadı)" if unread else "Otopark arama (yakında boş yer bildirilmedi)"
@@ -761,7 +771,7 @@ def _rail_refusal(reason: str | None, graph: MetroGraph, params: RoutingParams) 
 
 def _network_tr(graph: MetroGraph) -> str:
     """What the rail graph contains, said the way the agent will repeat it."""
-    added = " ve Marmaray tüpü (" + "–".join(MARMARAY_TUBE) + ")" if MARMARAY_LINE in graph.added_lines else ""
+    added = " ve Marmaray tüpü (" + ", ".join(MARMARAY_TUBE) + ")" if MARMARAY_LINE in graph.added_lines else ""
     return f"Metro İstanbul hatları{added}; Metrobüs ve vapur bu veride yok."
 
 
@@ -882,7 +892,7 @@ def _metro_option(
         )
         assumptions.append(_assume("rail_transfer", rail.transfer_seconds, rule))
     if via_marmaray:
-        assumptions.append(_assume("marmaray_tube", " – ".join(MARMARAY_TUBE)))
+        assumptions.append(_assume("marmaray_tube", ", ".join(MARMARAY_TUBE)))
     if disrupted:
         assumptions.append(_assume("disruption_penalty_minutes", params.disruption_penalty_minutes))
 
@@ -1071,26 +1081,26 @@ def seconds_per_stop_for(
 ) -> tuple[float, str]:
     """The per-stop rate and a Turkish sentence saying where it came from.
 
-    :mod:`ibb_mcp.eta_profile` holds the rate measured from collected arrivals (epic E5) and
-    reports which cell produced it; the import is optional so this module keeps working on a
-    checkout where that work has not landed. Quoting the provenance matters: "500T, ölçülen
-    60 varıştan" and "hiç ölçüm yok, varsayılan" deserve different wording from the agent.
+    The same choice ``iett_next_arrivals`` makes, through :func:`ibb_mcp.eta_profile.served_rate`
+    (DECISIONS #18): the untuned ``params.bus_seconds_per_stop`` unless the operator set
+    ``NABIZ_ETA_PROFILE_MODE=calibrated``, because the calibrated profile scored worse on
+    stops it was not fitted on. Quoting the provenance matters: "500T, ölçülen 60 varıştan",
+    "hiç ölçüm yok" and "ölçüm var ama kullanılmıyor" deserve different wording from the agent.
     """
-    try:  # optional: the calibration module and its JSON are both allowed to be absent
-        from ibb_mcp.eta_profile import load_profile
-    except ImportError:
-        return params.bus_seconds_per_stop, "Kalibrasyon modülü yok; ETA modelinin varsayılan oranı."
-    profile = load_profile(settings)
-    seconds, provenance = profile.seconds_per_stop_for(line_code, moment)
-    if provenance == "default":
-        return seconds, "Bu hat için ölçüm yok; kalibre edilmemiş varsayılan oran."
-    if provenance.startswith("global"):
+    from ibb_mcp.eta_profile import MODE_DEFAULT, served_rate
+
+    choice = served_rate(line_code, moment, settings)
+    if choice.mode == MODE_DEFAULT:
+        return params.bus_seconds_per_stop, DEFAULT_RATE_DETAIL
+    if choice.source == "default":
+        return choice.seconds_per_stop, "Bu hat için ölçüm yok; kalibre edilmemiş varsayılan oran."
+    if choice.source.startswith("global"):
         # The pool is the lines the calibration measured (500T alone in the committed
         # profile); "measured for this line" or "measured across all lines" would both
         # overstate it, and the agent repeats this sentence verbatim.
-        pooled = f"{line_code} için ayrı ölçüm yok; {profile.pooled_rate_qualifier()} oran ({provenance})."
-        return seconds, f"{pooled} {MEASURED_RATE_CAVEAT}"
-    return seconds, f"{line_code} için ölçülen oran ({provenance}). {MEASURED_RATE_CAVEAT}"
+        pooled = f"{line_code} için ayrı ölçüm yok; {choice.pooled_qualifier} oran ({choice.source})."
+        return choice.seconds_per_stop, f"{pooled} {MEASURED_RATE_CAVEAT}"
+    return choice.seconds_per_stop, f"{line_code} için ölçülen oran ({choice.source}). {MEASURED_RATE_CAVEAT}"
 
 
 def _walk_option(
@@ -1122,7 +1132,7 @@ def _walk_option(
 # --------------------------------------------------------------------------------------
 # orchestration
 # --------------------------------------------------------------------------------------
-async def compare_options(
+async def compare_options(  # noqa: PLR0913 - debt, ratcheted in scripts/architecture_baseline.json
     origin: Any,
     destination: Any,
     ctx: SourceContext,
@@ -1225,7 +1235,7 @@ async def compare_options(
     )
 
 
-async def _resolve_bus(
+async def _resolve_bus(  # noqa: PLR0913 - debt, ratcheted in scripts/architecture_baseline.json
     start: Waypoint,
     end: Waypoint,
     ctx: SourceContext,
@@ -1237,11 +1247,12 @@ async def _resolve_bus(
     readings: list[Reading],
     line_index: StopRouteIndex | None = None,
 ) -> TravelOption:
-    """Choose the line, then price it with that line's measured rate and real headway."""
+    """Choose the line, then price it with the served per-stop rate and the real headway."""
     pick, reason = find_bus_pick(start, end, index=index, sequences=sequences, params=params, line_index=line_index)
     if pick is None:
         return _unavailable("bus", "Otobüs (tek hat)", reason or "Otobüs seçeneği hesaplanamadı.")
-    # Off the event loop: the profile is a JSON file read, and this runs inside a request.
+    # Off the event loop: in the calibrated mode the profile is a JSON file read, and this
+    # runs inside a request.
     seconds_per_stop, rate_detail = await asyncio.to_thread(seconds_per_stop_for, pick.line_code, moment, ctx.settings, params)
     headway = await _headway_for(ctx, pick.line_code, moment) if with_timetable else None
     if headway is not None:
@@ -1279,7 +1290,7 @@ def _read_traffic(
         # ``TrafficIndexPoint.from_raw`` leaves a null or unparseable index as None, and İBB's
         # scale is 1–99, so a 0 is no reading either. Costing a drive at free-flow speed from
         # a missing reading would be the invented number we refuse.
-        return None, "Trafik indeksi geçerli bir değer döndürmedi (İBB ölçeği 1–99); sürüş süresi hesaplanmadı.", None
+        return None, "Trafik indeksi geçerli bir değer döndürmedi (İBB ölçeği 1-99); sürüş süresi hesaplanmadı.", None
     what = "İBB şehir geneli trafik yoğunluk indeksi."
     readings.append(Reading("traffic_index", point.index, "1-99", "traffic", round(prov.age_seconds, 1), what))
     return point.index, None, point.at

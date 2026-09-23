@@ -13,7 +13,7 @@ the reasoning stays readable.
 | [5](#5-the-llm-is-swappable-through-environment-variables) | The LLM is swappable through environment variables | Accepted |
 | [6](#6-delta-lake-for-silver-and-gold-rather-than-plain-parquet) | Delta Lake for silver and gold rather than plain Parquet | Accepted |
 | [7](#7-bus-number-plates-are-dropped-at-the-parsing-boundary) | Bus number plates are dropped at the parsing boundary | Accepted |
-| [8](#8-src-layout-with-two-packages-instead-of-the-packages-layout-in-planmd) | `src/` layout with two packages instead of the `packages/` layout in PLAN.md | Accepted — supersedes PLAN.md §12 |
+| [8](#8-src-layout-with-two-packages-instead-of-the-packages-layout-in-planmd) | `src/` layout with two packages instead of the `packages/` layout in PLAN.md | Accepted — supersedes PLAN.md §12; its import rule is enforced since #19 |
 | [9](#9-pivot-from-nefes-air-quality-early-warning-to-nabız-city-agent) | Pivot from "Nefes" (air-quality early warning) to "Nabız" (city agent) | Accepted |
 | [10](#10-the-collector-runs-as-scheduled-container-apps-jobs-not-on-the-laptop-or-functions-timers) | The collector runs as scheduled Container Apps Jobs, not on the laptop or Functions timers | Accepted — not yet deployed |
 | [11](#11-one-container-image-for-the-mcp-server-and-the-collector-harvested-from-the-ops-branch) | One container image for the MCP server and the collector, harvested from the ops branch | Accepted — not yet built |
@@ -21,8 +21,10 @@ the reasoning stays readable.
 | [13](#13-alerts-are-evaluated-statelessly-the-client-holds-the-subscription-and-the-cooldown) | Alerts are evaluated statelessly; the client holds the subscription and the cooldown | Accepted |
 | [14](#14-compare-travel-modes-over-a-distance-justified-rail-graph-do-not-plan-routes) | Compare travel modes over a distance-justified rail graph; do not plan routes | Accepted — narrows PLAN.md §17 for the comparison slice |
 | [15](#15-harden-the-public-mcp-endpoint-stateless-transport-per-tool-token-buckets-optional-key-closed-cors) | Harden the public MCP endpoint: stateless transport, per-tool token buckets, optional key, closed CORS | Accepted — not yet deployed |
-| [16](#16-every-span-goes-through-one-allow-list-no-auto-instrumentation) | Every span goes through one allow-list; no auto-instrumentation | Accepted — not yet deployed |
+| [16](#16-every-span-goes-through-one-allow-list-no-auto-instrumentation) | Every span goes through one allow-list; no auto-instrumentation | Accepted — not yet deployed; the module is `ibb_mcp.telemetry` since #19 |
 | [17](#17-tests-and-ci-read-only-committed-scrubbed-data) | Tests and CI read only committed, scrubbed data | Accepted |
+| [18](#18-serve-the-arrival-estimator-with-the-better-held-out-score-the-untuned-rate) | Serve the arrival estimator with the better held-out score: the untuned rate | Accepted — supersedes the tool's use of the calibrated profile |
+| [19](#19-the-server-package-imports-nothing-from-the-apps-and-code-size-is-ratcheted) | The server package imports nothing from the apps, and code size is ratcheted | Accepted |
 
 ---
 
@@ -650,7 +652,7 @@ can operate well. The ADX free cluster's terms also forbid personal data (#7). T
   typed schema (`src/nabiz/alerts/schema.py`) that describes the payload and bounds its lengths, while
   the engine stays the single validator. Its refusals name a place key, never a coordinate.
 - The GET routes that take a place (`/api/parking`, `/api/route`) accept gazetteer names only.
-- The web agent does not offer `check_alerts` (`NOT_OFFERED` in `src/nabiz/agent/agent.py`): it holds
+- The web agent does not offer `check_alerts` (`NOT_OFFERED`, now in `src/nabiz/agent/schemas.py`): it holds
   no subscription to send.
 
 ### Alternatives considered
@@ -767,7 +769,8 @@ record the full URL (`/api/route?from=…&to=…`), and forwarded log records.
 
 ### Decision
 
-- `nabiz.agent.telemetry` is the only way to make a span. It drops every attribute not on
+- `nabiz.agent.telemetry` (since #19 `ibb_mcp.telemetry`, the old name an alias) is the only way to make a
+  span. It drops every attribute not on
   `ALLOWED_ATTRIBUTES`, records an exception's type but never its message (tool errors quote the user's
   input back), and degrades to no-ops when OpenTelemetry is absent.
 - Upstream spans keep host and path, never the query string; tool spans carry the tool name and outcome,
@@ -823,3 +826,97 @@ parser.
 - The offline eval harness still reads `data/reference/gtfs` (`eval/run_eval.py` builds its settings
   directly). Run on the clean copy `make ci-local` builds (23 Sep), it scored 26/30: the four J2 scenarios
   that search stops or estimate arrivals failed on the missing export. On a machine with the export: 30/30.
+
+---
+
+## 18. Serve the arrival estimator with the better held-out score: the untuned rate
+
+**Date:** 2026-09-23 · **Status:** Accepted — supersedes the tools' use of the calibrated profile (commit
+`c306157`); owner-approved principle: serve the estimator with the best held-out score
+
+### Context
+
+`c306157` fitted seconds-per-stop rates per line and time of day (`data/reference/eta_profile.json`,
+`scripts/calibrate_eta.py`) and `iett_next_arrivals` and the bus option of `plan_journey` started using
+them. Its figures (16.83 -> 11.16 min MAE) are **in-sample**: the error of the fitted rates on the 500
+predictions they were fitted on, all at two 500T stops (`eval/results/eta.md`, "What 12.37 and 11.2 are").
+
+The first test on data the fit never saw is the held-out replay in `eval/results/eta.md`
+(`scripts/eta_holdout.py`, `make eta-holdout`): every stop-sequence prediction made after the profile was
+frozen, whose 90-minute match window the collector fully covered, re-timed with the rate the tool would
+have chosen. On those **523 predictions, at stops the calibration never saw, the calibrated profile scored
+35.82 min MAE (bias +35.6) against 10.18 min (bias +9.1) for the untuned 120 s/stop** the predictions were
+actually logged with. It was worse in every cell: 500T evening 64.62 vs 7.85 (n = 175), 500T night 21.70 vs
+12.14 (n = 310), 15F on the pooled rate 20.54 vs 5.61 (n = 32), 34 on the pooled rate 6.54 vs 1.73 (n = 6).
+Seconds per stop is a property of a stretch of road, not of a line: at the old targets a bus took a median
+283–379 s per remaining stop, at the new 500T targets 63–93 s.
+
+Limits, stated in the same file: a replay, not a live measurement; 485 of the 523 rows are 500T from one
+evening and one night (13–14 Sep); the lake behind it is gitignored, so the figures cannot be re-derived
+from a clone.
+
+### Decision
+
+- `iett_next_arrivals` and the bus leg of `plan_journey` serve the **untuned default** (120 s/stop,
+  `ibb_mcp.eta.DEFAULT_PARAMS`), chosen in one place: `ibb_mcp.eta_profile.served_rate`. In that mode
+  the profile file is not read at all.
+- The calibrated profile is used only when the operator sets **`NABIZ_ETA_PROFILE_MODE=calibrated`**
+  (`Settings.eta_profile_mode`), for research. Any other value serves the default and says why.
+- Every arrival answer says which rate it used and why: `diagnostics.rate_mode` (`default` /
+  `calibrated`), `rate_source` (the rung of the fallback chain), `rate_reason` (the numbers above and this
+  file) and `seconds_per_stop`. The disclaimer says the measured rates are withheld because they did worse
+  on unmeasured stops, not that nothing was measured; the journey's `bus_seconds_per_stop` assumption says
+  the same (`ibb_mcp.routing.DEFAULT_RATE_DETAIL`).
+- The profile, `scripts/calibrate_eta.py` and `scripts/eta_holdout.py` stay: calibration is how the next
+  fit will be made, and the held-out replay is how it will be judged before it is served again.
+
+### Consequences
+
+- 500T riders get 120 s/stop instead of the fitted cells (evening 445, midday 250, night 160 s/stop, and the
+  line's 235 in the morning, which has no cell), and every other line gets it instead of the pooled
+  235 s/stop that was fitted on 500T alone (`data/reference/eta_profile.json`).
+- The measured 12.94 min MAE in `eval/results/eta.md` (1,351 resolved predictions, all logged at 120 s/stop
+  by the collector) now describes the estimator the tools serve, not a predecessor of it.
+- A future calibration is served again only when its held-out score beats the default's on the same kind
+  of replay; the switch is the one setting above, and this entry is then superseded, not edited.
+
+---
+
+## 19. The server package imports nothing from the apps, and code size is ratcheted
+
+**Date:** 2026-09-23 · **Status:** Accepted
+
+### Context
+
+#8 promised that `ibb_mcp` imports nothing from `nabiz`, and noted that the rule held "only because nothing
+is reviewing it". By 2026-09-23 it no longer held: `ibb_mcp.server` and `ibb_mcp.tools` imported the alert
+engine from `nabiz.alerts`, and `ibb_mcp.http` and `ibb_mcp.server` the tracing shim from
+`nabiz.agent.telemetry`, so `import ibb_mcp.server` loaded seven `nabiz` modules (measured with
+`sys.modules` at `d59b5a8`). Two source modules imported other sources for a text helper, and three public
+functions named `normalize_tr` folded Turkish text three ways. Module and function sizes had grown by the
+hour during the sprint.
+
+### Decision
+
+- The alert engine, its rules and the MCP subscription schema live in `ibb_mcp.alerts`; the tracing shim
+  in `ibb_mcp.telemetry`. `nabiz.alerts` and `nabiz.agent.telemetry` remain as the same module objects
+  (aliases), so old imports and monkeypatches keep working. Turkish text folding has one home,
+  `ibb_mcp.text` (`normalize_tr`, and `fold_tr` where punctuation must survive).
+- `scripts/check_architecture.py` enforces the import layers (foundation, sources, domain, services,
+  facade, transport, apps), no cycles, the declared third-party set of each package, one definition per
+  public name and no private imports, and ratchets module size (400 code lines), class size (250 code
+  lines, 15 public methods) and ruff's C901/PLR0912/PLR0913/PLR0915 against
+  `scripts/architecture_baseline.json`: what is over the cap may shrink, never grow. It runs in CI and
+  `make architecture`; the rules and their reasons are docs/ENGINEERING.md §13 and §14.
+- Performance is budgeted by counting, not timing: upstream calls per tool cold and warm, single flight
+  and stale-on-error through the real tool path, parses per process, what `import ibb_mcp.server` loads;
+  latency only as a wide backstop (`tests/test_performance_budgets.py`, `scripts/perf_report.py`).
+
+### Consequences
+
+- The import test #8 said was owed exists, and fails the build.
+- A change that must grow a module over the cap extracts something in the same change or raises the
+  baseline entry with its reason in the commit, in front of the owner.
+- No layer exception remains. The one the move left, the web app importing `setup_telemetry` through the
+  old `nabiz.agent.telemetry` path, was switched to `ibb_mcp.telemetry` in the same batch and its dated
+  entry deleted; a new exception needs an entry in `LAYER_EXCEPTIONS`, and a stale one fails the build.

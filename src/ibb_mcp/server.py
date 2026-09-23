@@ -52,18 +52,17 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+# Module level, not inside a registration function: the SDK evaluates each tool's string annotations
+# (``from __future__ import annotations``) against this module's globals, so a type named
+# in a tool signature has to be importable from here or the schema cannot be built. The
+# same holds for the constrained aliases below.
+from ibb_mcp.alerts.schema import AlertSubscription
 from ibb_mcp.config import ATTRIBUTION, ATTRIBUTION_EN, HardeningConfig, Settings
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from ibb_mcp.models import ToolResult
 from ibb_mcp.sources.base import SourceContext
+from ibb_mcp.telemetry import setup_telemetry, span
 from ibb_mcp.tools import Nabiz
-from nabiz.agent.telemetry import setup_telemetry, span
-
-# Module level, not inside build_server: the SDK evaluates each tool's string annotations
-# (``from __future__ import annotations``) against this module's globals, so a type named
-# in a tool signature has to be importable from here or the schema cannot be built. The
-# same holds for the constrained aliases below.
-from nabiz.alerts.schema import AlertSubscription
 
 log = logging.getLogger("ibb_mcp.server")
 
@@ -641,50 +640,42 @@ async def health_snapshot(server: MCPServer, app: Nabiz) -> dict[str, Any]:
     }
 
 
-def build_server(
-    settings: Settings | None = None, *, app: Nabiz | None = None, hardening: HardeningConfig | None = None
-) -> MCPServer:
-    """Build the server. ``app`` injects a pre-built façade — how tests hand in a client
-    whose transport refuses the network, so a stray live call fails instead of spending
-    İBB's shared budget. ``hardening`` defaults to the environment's; it only acts on
-    calls that arrive over HTTP."""
-    hardening = hardening or HardeningConfig.from_env()
-    mcp = MCPServer("istanbul-nabiz", instructions=INSTRUCTIONS, version=VERSION, middleware=[ToolBudget(hardening)])
-    if app is None:
-        app = get_app() if settings is None else Nabiz(SourceContext.create(settings=settings))
+def tool(fn):
+    """Wrap a coroutine so every tool renders results and errors the same way.
 
-    def tool(fn):
-        """Wrap a coroutine so every tool renders results and errors the same way.
+    ``functools.wraps`` matters more than it looks: the MCP SDK derives each tool's
+    JSON schema from the wrapped function's signature via ``inspect.signature``, which
+    follows ``__wrapped__``. Without it every tool would advertise ``(*args, **kwargs)``
+    and reject real calls.
 
-        ``functools.wraps`` matters more than it looks: the MCP SDK derives each tool's
-        JSON schema from the wrapped function's signature via ``inspect.signature``, which
-        follows ``__wrapped__``. Without it every tool would advertise ``(*args, **kwargs)``
-        and reject real calls.
+    The span adds what the SDK's own ``tools/call`` span cannot know: an error this
+    wrapper turned into an ordinary answer, and the age of the data behind a success.
+    It carries the tool's name and never its arguments.
+    """
 
-        The span adds what the SDK's own ``tools/call`` span cannot know: an error this
-        wrapper turned into an ordinary answer, and the age of the data behind a success.
-        It carries the tool's name and never its arguments.
-        """
+    @functools.wraps(fn)
+    async def wrapper(*args, **kwargs):
+        with span("nabiz.tool", **{"nabiz.tool.name": fn.__name__}) as traced_call:
+            try:
+                result = await fn(*args, **kwargs)
+                rendered = _render(result)
+            except Exception as exc:  # noqa: BLE001 - a tool must never crash the server
+                traced_call.set(**{"nabiz.tool.ok": False, "nabiz.tool.error_kind": type(exc).__name__})
+                return _error(exc)
+            traced_call.set(
+                **{
+                    "nabiz.tool.ok": True,
+                    "nabiz.tool.cached": result.provenance.cached,
+                    "nabiz.tool.data_age_s": round(result.provenance.age_seconds, 1),
+                }
+            )
+            return rendered
 
-        @functools.wraps(fn)
-        async def wrapper(*args, **kwargs):
-            with span("nabiz.tool", **{"nabiz.tool.name": fn.__name__}) as traced_call:
-                try:
-                    result = await fn(*args, **kwargs)
-                    rendered = _render(result)
-                except Exception as exc:  # noqa: BLE001 - a tool must never crash the server
-                    traced_call.set(**{"nabiz.tool.ok": False, "nabiz.tool.error_kind": type(exc).__name__})
-                    return _error(exc)
-                traced_call.set(
-                    **{
-                        "nabiz.tool.ok": True,
-                        "nabiz.tool.cached": result.provenance.cached,
-                        "nabiz.tool.data_age_s": round(result.provenance.age_seconds, 1),
-                    }
-                )
-                return rendered
+    return wrapper
 
-        return wrapper
+
+def _register_places_and_parking(mcp: MCPServer, app: Nabiz) -> None:
+    """Places and parking: the gazetteer, live İSPARK and measured occupancy."""
 
     @mcp.tool()
     @tool
@@ -728,6 +719,10 @@ def build_server(
         """
         return await app.ispark_typical_occupancy(park_id=park_id, weekday=weekday, hour=hour)
 
+
+def _register_transit(mcp: MCPServer, app: Nabiz) -> None:
+    """Buses and metro: stops, live positions, arrival estimates, notices and stations."""
+
     @mcp.tool()
     @tool
     async def iett_stops_search(query: Name, limit: Annotated[int, Field(ge=1, le=MAX_RESULTS)] = 8) -> str:
@@ -753,7 +748,9 @@ def build_server(
         """Bir hattın bir durağa tahmini varış sürelerini döner.
 
         `stop` durak kodu veya durak adı olabilir. Her tahmin hangi yöntemle üretildiğini
-        (`stop_sequence`, `distance`, `schedule`) ve güven düzeyini bildirir.
+        (`stop_sequence`, `distance`, `schedule`) ve güven düzeyini bildirir. Durak başına süre
+        varsayılan olarak kalibre edilmemiş 120 sn'dir; `diagnostics` içindeki `rate_mode`,
+        `rate_source` ve `rate_reason` hangi oranın neden kullanıldığını söyler.
         BU BİR TAHMİNDİR, resmi İETT bilgisi değildir; kullanıcıya böyle söyle.
         """
         return await app.iett_next_arrivals(line_code=line_code, stop=stop, limit=limit)
@@ -776,6 +773,10 @@ def build_server(
         Asansör, yürüyen merdiven, WC, bebek bakım odası ve mescit bilgisi içerir.
         """
         return await app.metro_station_info(name=name)
+
+
+def _register_environment(mcp: MCPServer, app: Nabiz) -> None:
+    """City-wide readings: the traffic index and air quality."""
 
     @mcp.tool()
     @tool
@@ -809,6 +810,10 @@ def build_server(
         """
         return await app.air_quality_forecast(place=place, horizon_hours=horizon_hours)
 
+
+def _register_derived(mcp: MCPServer, app: Nabiz) -> None:
+    """What İBB does not publish: the mode comparison, measured regularity and alerts."""
+
     @mcp.tool()
     @tool
     async def plan_journey(
@@ -831,8 +836,9 @@ def build_server(
         yürüyerek geçmek, GTFS yoksa otobüs) `unavailable_options` içinde gerekçesiyle gelir.
         Metro seçeneği istasyon ağı üzerinde hat hat gider (binilen her hat ve her aktarma ayrı
         bacak); Boğaz'ı yalnızca Marmaray tüpüyle geçer, Metrobüs ve vapur veride yoktur. Otobüs
-        süresi ölçülmüş durak-başı orandan gelir ve uzun yolculukta üst sınırdır; aynı yönde
-        aktarmasız giden diğer hatlar `other_direct_lines` içinde durak sayısıyla, süresiz gelir.
+        süresi varsayılan olarak durak başına kalibre edilmemiş 120 sn'den hesaplanır; kullanılan
+        oran ve gerekçesi `assumptions` içinde döner. Aynı yönde aktarmasız giden diğer hatlar
+        `other_direct_lines` içinde durak sayısıyla, süresiz gelir.
         `readings` içindeki `traffic_typical`, anlık trafiği bu saatin ölçülmüş olağan seviyesiyle kıyaslar.
         """
         return await app.plan_journey(
@@ -877,12 +883,19 @@ def build_server(
         """
         return await app.check_alerts(subscription=subscription)
 
+
+def _register_runtime(mcp: MCPServer, app: Nabiz) -> None:
+    """Freshness, the attribution resource and the HTTP liveness probe."""
+
     @mcp.tool()
     @tool
     async def city_freshness() -> str:
         """Her veri kaynağının ne kadar güncel olduğunu ve kalan istek bütçesini döner.
 
         Bir cevabın ne kadar taze veriye dayandığını söylemen gerektiğinde bunu çağır.
+        `data_age_seconds` verinin kendi yaşıdır (kaynak bir ölçüm zamanı bildiriyorsa
+        `reported_at_utc`'den); `age_seconds` yalnızca kaynağın en son ne zaman okunduğudur.
+        Tazelik sorulduğunda `data_age_seconds` değerini söyle.
         """
         return await app.city_freshness()
 
@@ -901,6 +914,36 @@ def build_server(
         """
         return JSONResponse(await health_snapshot(mcp, app))
 
+
+#: One function per group of tools, so no function carries fifteen nested closures (the
+#: McCabe score counts each one: ``build_server`` scored 22 as a single body). The tools
+#: are nested inside their group rather than defined at module level on purpose: each
+#: closes over the ``Nabiz`` façade it was built with, and their docstrings are their MCP
+#: descriptions, byte for byte, indentation included.
+_REGISTRATIONS = (
+    _register_places_and_parking,
+    _register_transit,
+    _register_environment,
+    _register_derived,
+    _register_runtime,
+)
+
+
+def build_server(
+    settings: Settings | None = None, *, app: Nabiz | None = None, hardening: HardeningConfig | None = None
+) -> MCPServer:
+    """Build the server. ``app`` injects a pre-built façade — how tests hand in a client
+    whose transport refuses the network, so a stray live call fails instead of spending
+    İBB's shared budget. ``hardening`` defaults to the environment's; it only acts on
+    calls that arrive over HTTP."""
+    hardening = hardening or HardeningConfig.from_env()
+    mcp = MCPServer("istanbul-nabiz", instructions=INSTRUCTIONS, version=VERSION, middleware=[ToolBudget(hardening)])
+    if app is None:
+        app = get_app() if settings is None else Nabiz(SourceContext.create(settings=settings))
+    # Registration order is the order clients list the tools in, so the groups run in the
+    # order the tools were always advertised.
+    for register in _REGISTRATIONS:
+        register(mcp, app)
     return mcp
 
 

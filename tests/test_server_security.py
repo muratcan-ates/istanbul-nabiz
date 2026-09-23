@@ -29,6 +29,7 @@ import pytest
 
 from ibb_mcp import config as config_module
 from ibb_mcp import server as server_module
+from ibb_mcp.alerts.schema import AlertSubscription
 from ibb_mcp.config import HardeningConfig, Settings, reference_path
 from ibb_mcp.server import (
     DEFAULT_TOOL_COST,
@@ -49,7 +50,6 @@ from ibb_mcp.server import (
 )
 from ibb_mcp.sources.base import SourceContext
 from ibb_mcp.tools import Nabiz
-from nabiz.alerts.schema import AlertSubscription
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 PROTOCOL_VERSION = "2025-06-18"
@@ -635,7 +635,7 @@ async def test_an_oversized_body_is_refused_before_it_is_parsed(make_app) -> Non
 
 def test_the_largest_legitimate_request_fits_well_inside_the_body_cap() -> None:
     """``check_alerts`` at its schema limits: 5 places, 20 rules, 10 park ids, muted keys for all."""
-    from nabiz.alerts.engine import MAX_PARK_IDS, MAX_PLACES, MAX_RULES
+    from ibb_mcp.alerts.engine import MAX_PARK_IDS, MAX_PLACES, MAX_RULES
 
     label = "Kadıköy, Moda Caddesi ve çevresi, ev " + "x" * 40
     places = [{"key": f"yer-{n:02d}", "label": label, "lat": 40.99, "lon": 29.03} for n in range(MAX_PLACES)]
@@ -668,8 +668,8 @@ def test_the_schema_bounds_every_string_so_even_its_worst_case_fits_the_body_cap
     """
     import pydantic
 
-    from nabiz.alerts import schema
-    from nabiz.alerts.engine import MAX_PARK_IDS, MAX_PLACES, MAX_RULES
+    from ibb_mcp.alerts import schema
+    from ibb_mcp.alerts.engine import MAX_PARK_IDS, MAX_PLACES, MAX_RULES
 
     places = [
         {"key": "ş" * schema.MAX_KEY_CHARS, "label": "İ" * schema.MAX_LABEL_CHARS, "lat": 40.99, "lon": 29.03}
@@ -750,7 +750,7 @@ async def test_a_tool_call_is_traced_by_name_and_outcome_never_by_argument(ctx: 
     """The span the wrapper adds: what the SDK's own ``tools/call`` span cannot know."""
     from telemetry_recording import RecordingProvider
 
-    from nabiz.agent import telemetry
+    from ibb_mcp import telemetry
 
     provider = RecordingProvider()
     telemetry.install_tracer_provider(provider)

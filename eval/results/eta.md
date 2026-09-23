@@ -50,12 +50,21 @@ the whole file when re-run, so carry these sections over.*
 
 ## Read this before quoting a number
 
+### What the tools serve (since 2026-09-23)
+
+`iett_next_arrivals` and the bus leg of `plan_journey` serve the **untuned 120 s/stop** by default,
+because it is the estimator with the better held-out score: 10.18 against 35.82 minutes on the 523
+predictions of the replay below (DECISIONS #18). The calibrated profile is read only when the operator
+sets `NABIZ_ETA_PROFILE_MODE=calibrated`, for research. Every answer says which rate it used and why in
+`diagnostics.rate_mode`, `rate_source` and `rate_reason` (`served_rate` in `src/ibb_mcp/eta_profile.py`).
+The 12.94 minutes above therefore measures the estimator the tools serve.
+
 ### Every logged prediction used the untuned 120 s/stop
 
-The calibrated profile from commit `c306157` (`data/reference/eta_profile.json`) is read by the
-`iett_next_arrivals` tool, but not by the collector: `build_eta_predictions` in
-`scripts/collect_forever.py` calls `estimate_arrivals` with `EtaParams(max_results=6)` and no
-`speed_profile`. All 1,590 stop-sequence predictions logged since `c306157` imply exactly 120 s/stop
+The calibrated profile from commit `c306157` (`data/reference/eta_profile.json`) was read by the
+`iett_next_arrivals` tool until 2026-09-23 (since then only in the calibrated mode), but never by the
+collector: `build_eta_predictions` in `scripts/collect_forever.py` calls `estimate_arrivals` with
+`EtaParams(max_results=6)` and no `speed_profile`. All 1,590 stop-sequence predictions logged since `c306157` imply exactly 120 s/stop
 (`eta_minutes * 60 / stops_away`). **No estimate made with the calibrated rates has ever been
 measured**; the 12.94 minutes above is the untuned estimator.
 

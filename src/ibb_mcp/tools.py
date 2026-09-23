@@ -115,21 +115,6 @@ def _in_istanbul(lat: float, lon: float) -> bool:
     return LAT_RANGE[0] <= lat <= LAT_RANGE[1] and LON_RANGE[0] <= lon <= LON_RANGE[1]
 
 
-def _rate_sentence(provenance: str, pooled_qualifier: str = "ölçülen hatlardan havuzlanan") -> str:
-    """Say where the per-stop rate came from without overstating it.
-
-    "global" pools the lines the calibration measured, which today is 500T alone
-    (``EtaProfile.pooled_rate_qualifier`` names them). Calling that "measured for this line",
-    or "measured across all lines", would claim a measurement nobody made, and the agent
-    repeats this sentence verbatim.
-    """
-    if provenance == "default":
-        return "Bu hat için henüz ölçüm yok; kalibre edilmemiş varsayılan kullanılıyor."
-    if provenance.startswith("global"):
-        return f"Bu hat için ayrı ölçüm yok; durak başına süre {pooled_qualifier} orandan geliyor ({provenance})."
-    return f"Durak başına süre bu hat için ölçülmüş veriden geliyor ({provenance})."
-
-
 class Nabiz:
     """Holds one context and one instance of each source for the process lifetime."""
 
@@ -558,11 +543,11 @@ class Nabiz:
         Stateless by design and by law: the subscription (places with coordinates, rules,
         the keys the client is already sitting on) lives with the caller and arrives with
         the request. Nothing is stored, nothing is logged, and there is no user identifier
-        — see ``docs/privacy.md``. The engine's :func:`~nabiz.alerts.engine.check_alerts`
+        — see ``docs/privacy.md``. The engine's :func:`~ibb_mcp.alerts.engine.check_alerts`
         is the single implementation the web route and this tool share, so the cooldown
         policy, privacy summary and disclaimer travel with every answer.
         """
-        from nabiz.alerts.engine import check_alerts as evaluate
+        from ibb_mcp.alerts.engine import check_alerts as evaluate
 
         raw = subscription.model_dump(mode="json", exclude_none=True) if hasattr(subscription, "model_dump") else subscription
         payload = await evaluate(self.ctx, raw)
@@ -579,7 +564,7 @@ class Nabiz:
             notes.append("Bu sunucunun tanımadığı kural türleri atlandı: " + ", ".join(payload["skipped_rule_kinds"]) + ".")
         return ToolResult(
             data=payload,
-            provenance=make_provenance("nabiz_alerts", url="local:src/nabiz/alerts"),
+            provenance=make_provenance("nabiz_alerts", url="local:src/ibb_mcp/alerts"),
             note=" ".join(notes) or None,
         )
 
@@ -645,6 +630,7 @@ class Nabiz:
         in Sarıyer and refused it, although the 500T's own terminus is ŞİFA SONDURAK.
         """
         from ibb_mcp.eta import EtaParams, estimate_arrivals, speed_profile_from_fleet
+        from ibb_mcp.eta_profile import served_rate
 
         index = await self.gtfs()
         candidates: list[Any] = []
@@ -673,25 +659,13 @@ class Nabiz:
         except Exception as exc:  # noqa: BLE001 - the fleet call is optional
             log.info("fleet speed profile unavailable, using default: %r", exc)
 
-        # The per-stop rate fitted by scripts/calibrate_eta.py on our own observed arrivals
-        # (data/reference/eta_profile.json, 500 paired predictions, 2026-09-13): 235 s/stop
-        # overall against the untuned 120, and per time of day evening 445 (n=57), midday
-        # 250 (n=342), night 160 (n=101) — ordered the way traffic is, which is the reason to
-        # read them as signal. The MAE figures stored beside them are in-sample fit errors,
-        # not measured accuracy, so nothing here quotes them to a user.
-        speed_profile = None
-        rate_provenance = "default"
-        pooled_qualifier = "ölçülen hatlardan havuzlanan"
-        moment = utcnow()
-        try:
-            from ibb_mcp.eta_profile import load_profile
-
-            profile = await asyncio.to_thread(load_profile, self.settings)
-            speed_profile = profile.as_speed_profile(line_code, moment)
-            rate_provenance = speed_profile.provenance
-            pooled_qualifier = profile.pooled_rate_qualifier()
-        except Exception as exc:  # noqa: BLE001 - an uncalibrated checkout must still work
-            log.info("eta profile unavailable, using the untuned default: %r", exc)
+        # The per-stop rate: the untuned 120 s/stop unless NABIZ_ETA_PROFILE_MODE=calibrated.
+        # The profile fitted by scripts/calibrate_eta.py (data/reference/eta_profile.json)
+        # scored 35.82 min MAE against 10.18 for 120 s/stop on 523 held-out predictions at
+        # stops it never saw (eval/results/eta.md), so the estimator with the better
+        # held-out score is the one served (DECISIONS #18). served_rate reads no file then, and
+        # off the event loop because the calibrated mode does.
+        rate = await asyncio.to_thread(served_rate, line_code, utcnow(), self.settings)
 
         sequences = await self.stop_sequences()
 
@@ -725,10 +699,15 @@ class Nabiz:
             index=index,
             sequences=sequences,
             scheduled=scheduled,
-            speed_profile=speed_profile,
+            speed_profile=rate.as_speed_profile(),
             params=params,
         )
-        diagnostics["rate_source"] = rate_provenance
+        # Which rate, from where, and why: "120 s/stop because nothing was measured" and
+        # "120 s/stop because the measurement did not transfer" are different answers.
+        diagnostics["rate_source"] = rate.source
+        diagnostics["rate_mode"] = rate.mode
+        diagnostics["rate_reason"] = rate.reason
+        diagnostics["seconds_per_stop"] = rate.seconds_per_stop
         # How the target stop was chosen, so an answer about "Şifa" can say which Şifa.
         diagnostics["stop_resolution"] = resolution
         return ToolResult(
@@ -738,7 +717,7 @@ class Nabiz:
                 "arrivals": _dump(arrivals),
                 "diagnostics": diagnostics,
                 "disclaimer": "Varış saatleri tahminidir; resmi İETT bilgisi değildir. "
-                + _rate_sentence(rate_provenance, pooled_qualifier),
+                + rate.sentence_tr(),
             },
             provenance=prov,
             note=None if arrivals else "Yaklaşan araç bulunamadı.",

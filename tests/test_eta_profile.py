@@ -127,11 +127,11 @@ def test_a_pooled_rate_names_the_lines_it_was_measured_on() -> None:
 
 
 def test_the_tool_sentence_for_a_pooled_rate_never_claims_every_line() -> None:
-    from ibb_mcp.tools import _rate_sentence
+    from ibb_mcp.eta_profile import RateChoice
 
     profile = sample_profile()
-    _, provenance = profile.seconds_per_stop_for("22", at(13))
-    sentence = _rate_sentence(provenance, profile.pooled_rate_qualifier())
+    seconds, provenance = profile.seconds_per_stop_for("22", at(13))
+    sentence = RateChoice(seconds, provenance, "calibrated", "test", profile.pooled_rate_qualifier()).sentence_tr()
     assert "500T" in sentence and "tüm hatlar" not in sentence
     assert sentence.endswith("(global, n=503).")
 
@@ -315,3 +315,147 @@ def test_engine_uses_the_calibrated_rate() -> None:
         buses=[bus], target=target, sequences={"500T_G_D0": FakeSequence()}, now=now
     )
     assert plain[0].eta_minutes == pytest.approx(3 * DEFAULT_SECONDS_PER_STOP / 60.0, abs=0.05)
+
+
+# -- what the tools serve (DECISIONS #18) ---------------------------------------------
+#
+# Held out, the calibrated profile scored 35.82 min MAE against 10.18 for the untuned
+# 120 s/stop (eval/results/eta.md). The tools therefore serve the untuned default, and the
+# profile only when an operator asks for it.
+
+
+@pytest.fixture
+def written_profile(tmp_path, monkeypatch):
+    """The sample profile on disk, where ``profile_path`` looks (``NABIZ_ETA_PROFILE``)."""
+    path = tmp_path / "eta_profile.json"
+    save_profile(sample_profile(), path=path)
+    monkeypatch.setenv("NABIZ_ETA_PROFILE", str(path))
+    return path
+
+
+def mode_settings(mode: str):
+    """Offline test settings with ``eta_profile_mode`` set."""
+    import dataclasses
+
+    from conftest import offline_settings
+
+    return dataclasses.replace(offline_settings(), eta_profile_mode=mode)
+
+
+def test_the_default_mode_serves_the_untuned_rate_without_reading_the_profile(written_profile, monkeypatch) -> None:
+    from ibb_mcp import eta_profile
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("the default mode must not read the profile")
+
+    monkeypatch.setattr(eta_profile, "load_profile", refuse)
+    choice = eta_profile.served_rate("500T", at(13), mode_settings("default"))
+    assert (choice.seconds_per_stop, choice.source, choice.mode) == (DEFAULT_SECONDS_PER_STOP, "default", "default")
+    assert "35.82" in choice.reason and "10.18" in choice.reason and "eval/results/eta.md" in choice.reason
+    assert choice.as_speed_profile() is None, "the engine keeps its own default"
+
+
+def test_settings_default_to_the_untuned_rate(monkeypatch) -> None:
+    from ibb_mcp.config import Settings
+
+    monkeypatch.delenv("NABIZ_ETA_PROFILE_MODE", raising=False)
+    assert Settings().eta_profile_mode == "default"
+    assert Settings.from_env().eta_profile_mode == "default"
+    monkeypatch.setenv("NABIZ_ETA_PROFILE_MODE", "calibrated")
+    assert Settings.from_env().eta_profile_mode == "calibrated"
+
+
+def test_the_calibrated_mode_is_an_explicit_opt_in(written_profile) -> None:
+    from ibb_mcp.eta_profile import served_rate
+
+    choice = served_rate("500T", at(13), mode_settings("calibrated"))
+    assert (choice.seconds_per_stop, choice.source, choice.mode) == (250.0, "line+bucket, n=342", "calibrated")
+    assert "NABIZ_ETA_PROFILE_MODE=calibrated" in choice.reason
+    speed = choice.as_speed_profile()
+    assert speed is not None and speed.get("500T_G_D0") == 250.0
+
+
+def test_a_calibrated_mode_without_a_profile_says_so_without_a_path(tmp_path, monkeypatch) -> None:
+    from ibb_mcp.eta_profile import served_rate
+
+    monkeypatch.setenv("NABIZ_ETA_PROFILE", str(tmp_path / "missing.json"))
+    choice = served_rate("500T", at(13), mode_settings("calibrated"))
+    assert (choice.seconds_per_stop, choice.source, choice.mode) == (DEFAULT_SECONDS_PER_STOP, "default", "calibrated")
+    assert "missing or unreadable" in choice.reason
+    assert str(tmp_path) not in choice.reason, "a local path would name this machine's user"
+
+
+@pytest.mark.parametrize("raw", ["Calibrated", "calibrated ", "CALIBRATED"])
+def test_the_mode_is_read_case_and_space_insensitively(written_profile, raw: str) -> None:
+    from ibb_mcp.eta_profile import served_rate
+
+    assert served_rate("500T", at(13), mode_settings(raw)).mode == "calibrated"
+
+
+def test_an_unknown_mode_serves_the_default_and_names_the_typo(written_profile) -> None:
+    from ibb_mcp.eta_profile import served_rate
+
+    choice = served_rate("500T", at(13), mode_settings("calibrate"))
+    assert (choice.seconds_per_stop, choice.mode) == (DEFAULT_SECONDS_PER_STOP, "default")
+    assert "'calibrate'" in choice.reason and "35.82" in choice.reason
+
+
+def test_the_default_disclaimer_says_the_measurement_is_withheld_not_missing() -> None:
+    from ibb_mcp.eta_profile import DEFAULT_RATE_SENTENCE_TR, RateChoice
+
+    withheld = RateChoice(DEFAULT_SECONDS_PER_STOP, "default", "default", "test").sentence_tr()
+    assert withheld == DEFAULT_RATE_SENTENCE_TR
+    assert "ölçüm yok" not in withheld, "500T was measured; the rate is withheld, not absent"
+    assert "kalibre edilmemiş" in withheld
+    missing = RateChoice(DEFAULT_SECONDS_PER_STOP, "default", "calibrated", "test").sentence_tr()
+    assert "henüz ölçüm yok" in missing, "in the calibrated mode, a line with no cell really has no measurement"
+
+
+def test_a_profile_of_the_wrong_shape_falls_back_instead_of_failing_the_estimate(tmp_path) -> None:
+    wrong = tmp_path / "eta_profile.json"
+    wrong.write_text(json.dumps({"cells": [1, 2], "lines": {}}), encoding="utf-8")
+    profile = load_profile(path=wrong)
+    assert profile.is_calibrated is False and "malformed" in (profile.note or "")
+
+
+def test_the_journey_bus_leg_makes_the_same_choice(written_profile) -> None:
+    from ibb_mcp.routing import DEFAULT_PARAMS, DEFAULT_RATE_DETAIL, MEASURED_RATE_CAVEAT, seconds_per_stop_for
+
+    assert seconds_per_stop_for("500T", at(13), mode_settings("default")) == (
+        DEFAULT_PARAMS.bus_seconds_per_stop,
+        DEFAULT_RATE_DETAIL,
+    )
+    seconds, detail = seconds_per_stop_for("500T", at(13), mode_settings("calibrated"))
+    assert seconds == 250.0 and "line+bucket, n=342" in detail and MEASURED_RATE_CAVEAT in detail
+
+
+async def test_the_arrival_tool_reports_which_rate_it_used_and_why(ctx, written_profile) -> None:
+    """Through the tool: the diagnostics carry the mode, the rung, the rate and the reason."""
+    import dataclasses
+
+    from ibb_mcp.eta_profile import DEFAULT_RATE_SENTENCE_TR
+    from ibb_mcp.tools import Nabiz
+
+    served = await Nabiz(ctx).iett_next_arrivals(line_code="500T", stop="220641", limit=3)
+    diagnostics = served.data["diagnostics"]
+    assert (diagnostics["rate_mode"], diagnostics["rate_source"], diagnostics["seconds_per_stop"]) == (
+        "default",
+        "default",
+        DEFAULT_SECONDS_PER_STOP,
+    )
+    assert "35.82" in diagnostics["rate_reason"]
+    assert served.data["disclaimer"].endswith(DEFAULT_RATE_SENTENCE_TR)
+
+    research = dataclasses.replace(ctx, settings=mode_settings("calibrated"))
+    opted_in = await Nabiz(research).iett_next_arrivals(line_code="500T", stop="220641", limit=3)
+    assert opted_in.data["diagnostics"]["rate_mode"] == "calibrated"
+    assert opted_in.data["diagnostics"]["rate_source"].startswith(("line+bucket", "line,"))
+    assert "ölçülmüş veriden" in opted_in.data["disclaimer"]
+
+
+def test_the_default_the_diagnostics_report_is_the_engines_own() -> None:
+    """In the default mode the engine runs on ``EtaParams.seconds_per_stop``; the diagnostics
+    report ``DEFAULT_SECONDS_PER_STOP``. Two constants, so they are pinned equal here."""
+    from ibb_mcp.eta import EtaParams
+
+    assert EtaParams().seconds_per_stop == DEFAULT_SECONDS_PER_STOP

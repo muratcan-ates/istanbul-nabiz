@@ -103,6 +103,11 @@ class Settings:
     offline: bool = False
     default_radius_km: float = 1.5
     max_results: int = 5
+    #: Which seconds-per-stop rate arrival estimates use (``NABIZ_ETA_PROFILE_MODE``):
+    #: ``default``, the untuned 120 s/stop, or ``calibrated``, the fitted profile, for
+    #: research only. The default is the one with the better held-out score; the numbers
+    #: and the rule for reading this value are in :mod:`ibb_mcp.eta_profile` (DECISIONS #18).
+    eta_profile_mode: str = "default"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -113,6 +118,7 @@ class Settings:
             offline=os.getenv("NABIZ_OFFLINE", "").lower() in {"1", "true", "yes"},
             default_radius_km=float(os.getenv("NABIZ_RADIUS_KM", "1.5")),
             max_results=int(os.getenv("NABIZ_MAX_RESULTS", "5")),
+            eta_profile_mode=os.getenv("NABIZ_ETA_PROFILE_MODE", cls.eta_profile_mode),
         )
 
 

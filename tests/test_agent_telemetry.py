@@ -38,10 +38,11 @@ import httpx
 import pytest
 from telemetry_recording import RecordingProvider, RecordingTracer
 
+from ibb_mcp import telemetry
 from ibb_mcp.http import PoliteClient, UpstreamUnavailable
 from ibb_mcp.sources.base import SourceContext
 from ibb_mcp.tools import Nabiz
-from nabiz.agent import llm, telemetry
+from nabiz.agent import llm
 from nabiz.agent.agent import NabizAgent
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -99,7 +100,7 @@ class Blocker(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, Blocker())
 
 import httpx
-from nabiz.agent import telemetry
+from ibb_mcp import telemetry
 from ibb_mcp.http import PoliteClient
 
 assert telemetry._otel is None
@@ -133,12 +134,21 @@ def test_everything_still_works_with_opentelemetry_absent() -> None:
     assert "served without opentelemetry" in result.stdout
 
 
-def test_the_http_layer_loads_the_shim_without_loading_the_agent() -> None:
-    """``nabiz.agent`` exports lazily; an eager package would be an import cycle with ibb_mcp.http."""
+def test_the_server_traces_without_loading_anything_from_nabiz() -> None:
+    """DECISIONS #8: ``ibb_mcp`` imports nothing from ``nabiz``, so the shim lives in ``ibb_mcp.telemetry``.
+
+    The old name, ``nabiz.agent.telemetry``, must be the *same* module: ``setup_telemetry``
+    writes module globals, and a second copy would be a second tracer nobody configured.
+    Importing it must not load the agent either (``nabiz.agent`` exports lazily).
+    """
     result = run_python(
         "import sys, ibb_mcp.http, ibb_mcp.server\n"
-        "assert 'nabiz.agent.telemetry' in sys.modules\n"
-        "assert 'nabiz.agent.agent' not in sys.modules, 'importing the server pulled the agent in'\n"
+        "assert 'ibb_mcp.telemetry' in sys.modules\n"
+        "loaded = sorted(m for m in sys.modules if m == 'nabiz' or m.startswith('nabiz.'))\n"
+        "assert not loaded, f'importing the server loaded {loaded}'\n"
+        "import ibb_mcp.telemetry, nabiz.agent.telemetry\n"
+        "assert nabiz.agent.telemetry is ibb_mcp.telemetry, 'two tracing modules'\n"
+        "assert 'nabiz.agent.agent' not in sys.modules, 'the old tracing path pulled the agent in'\n"
         "from nabiz.agent import NabizAgent, LlmConfig\n"
         "print(NabizAgent.__name__, LlmConfig.__name__)\n"
     )

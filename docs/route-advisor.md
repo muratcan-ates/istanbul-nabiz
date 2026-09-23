@@ -83,9 +83,11 @@ walk off. §4 has the graph.
 
 **Bus.** The single İETT line whose stop order passes a stop within 0.8 km of the origin *before*
 one within 0.8 km of the destination (24 candidate stops per end). Candidates are ranked by walk
-+ ride minutes, not stop count alone. The chosen line is priced with its calibrated seconds per
-stop from `eta_profile.json` — fitted on the project's own arrivals, labelled in-sample, and an
-upper bound for a ride (see `eta_profile.py`) — and a headway read from its planned departures
++ ride minutes, not stop count alone. The chosen line is priced with the untuned 120 s/stop the
+arrival tool serves (`eta_profile.served_rate`, DECISIONS #18); only with
+`NABIZ_ETA_PROFILE_MODE=calibrated` does it take the fitted seconds per stop from `eta_profile.json`,
+fitted on the project's own arrivals, labelled in-sample, and an upper bound for a ride (see
+`eta_profile.py`). The ride also uses a headway read from its planned departures
 ±60 minutes around now. Up to four other lines that also run the right way are listed in
 `detail.other_direct_lines` with where to board, where to get off and how many stops, and
 **without minutes**: a duration needs each line's own rate and timetable, and every extra
