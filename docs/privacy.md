@@ -39,7 +39,7 @@ subscription and asks; the server is a stateless evaluator.**
       muted_keys[] (in cooldown)                                    shared TTL cache    Traffic
                                                                     that every user     Air quality
     nabiz.alerts.cooldowns.v1                                       already shares      (one shared
-      {dedupe_key: last_shown_ts}   ◄──200 {alerts:[…]}──────   evaluate_subscription()  PoliteClient,
+      {dedupe_key: {at, cooldown}}  ◄──200 {alerts:[…]}──────   evaluate_subscription()  PoliteClient,
                                         each alert carries          pure: no I/O,        never per user)
     client suppresses a key until       dedupe_key +               no writes, no logs
     cooldown_seconds have passed        cooldown_seconds           of user input
@@ -51,6 +51,25 @@ The only user-derived values the server ever touches are the coordinates in `pla
 answer one question: *which air-quality station is nearest?* They live in local variables inside
 `_air_quality_observations()` for the length of the call. They are not part of a cache key, not part
 of the returned observation (which carries the **station**, not the place), and never logged.
+
+There are two doors to the same engine, and both are thin wrappers around
+`nabiz.alerts.engine.check_alerts()`:
+
+* **Web:** `POST /api/alerts/check` in `src/nabiz/web/main.py`, the subscription in the request body.
+  The page (`src/nabiz/web/static/app.js`) sends it only when this browser holds a subscription;
+  with none stored it makes no request at all.
+* **MCP:** the `check_alerts` tool in `src/ibb_mcp/server.py`, the subscription as the tool's
+  `subscription` argument. Its JSON schema is typed (`src/nabiz/alerts/schema.py`) so a model is not
+  left guessing field names, and its description tells the model the subscription is evaluated in
+  memory and never stored. Here the coordinates come *from* the MCP client — the agent already holds
+  them — and this server keeps them no longer than the web route does.
+
+What the MCP SDK itself logs was checked against the installed SDK (2.x,
+`mcp/server/mcpserver/server.py`): an argument that fails schema validation is logged by **field
+name only** ("the rejected values are the caller's data"), and a tool error by its message — which,
+for this engine, names a place key and never a coordinate. The SDK's legacy SSE transport does log
+raw request bodies at `DEBUG`; `ibb-mcp` does not offer that transport (stdio and streamable HTTP
+only) and logs at `INFO` unless `--log-level` is lowered by hand.
 
 ## 3. What is stored where
 
@@ -78,11 +97,13 @@ alerts evaluated: rules=[air_qualityx1, metro_disruptionx1, trafficx1] places=2 
 Rule kinds and counts. No coordinates, no place labels, no thresholds, no alert text, no identifier.
 The summary is produced by `describe_subscription()`, which by construction can only emit counts.
 
-Enforced by three tests in `tests/test_alerts.py`:
+Enforced by four tests in `tests/test_alerts.py`:
 
 * `test_evaluation_never_writes_a_coordinate_to_a_log_record` — captures **every** record reaching
   the root logger during an evaluation that does produce alerts, and asserts the subscription's
   coordinates and label appear in none of them;
+* `test_the_whole_request_path_logs_no_coordinate` — the same capture around the *whole* call,
+  including the fetch that actually receives the coordinates (the nearest-station search);
 * `test_log_summary_of_a_subscription_carries_only_counts` — pins the exact summary string;
 * `test_alert_sources_contain_no_logging_call_that_could_carry_a_location` — greps our own source for
   any `log.*(...)` call mentioning `lat`, `lon`, `coord`, `place` or `label`.
@@ -95,6 +116,18 @@ Validation errors are written the same way: `parse_subscription()` names the off
 any write mode, then evaluates a full subscription — proving the engine persists nothing even by
 accident.
 
+The two doors are held to the same standard in `tests/test_alerts_tool.py`:
+
+* `test_check_alerts_renders_through_the_server_and_logs_no_coordinate` — calls the MCP tool through
+  the real server object's `call_tool` with every logger at `DEBUG`, and asserts no coordinate or
+  label reaches a record. The SDK's request-level logging sits outside `call_tool`, so this capture
+  does not reach it; what it logs is stated above from reading the SDK source, and no test pins it;
+* `test_check_alerts_through_the_server_writes_nothing_to_disk` — the no-write guard, around the MCP call;
+* `test_the_web_route_takes_the_subscription_in_a_post_body` — the same log capture around the web
+  route, and proof that no `GET` form of it exists;
+* `test_a_coordinate_outside_istanbul_is_refused_without_being_echoed` and
+  `test_the_web_route_refuses_a_foreign_coordinate_with_a_400` — refusals name the key, not the place.
+
 ### The honest caveat: platform logs
 
 The alert engine writes no location anywhere. The **hosting platform** is a different matter: an
@@ -103,11 +136,50 @@ path, and an IP address is personal data under KVKK and the GDPR. Two mitigation
 deployment, not of this module:
 
 1. the subscription travels in a **POST body**, never in a query string, so it cannot end up in an
-   access-log URL (this is why the route is `POST`, not `GET`);
+   access-log URL (this is why the route is `POST`, not `GET`). The other routes that take a place —
+   `/api/parking?place=`, `/api/route?from=&to=` — accept only gazetteer **names** (a district, a
+   square, a station), never coordinates, precisely because they are `GET`s; a journey's two ends at
+   district level can still appear in an ingress log, which is what item 2 is for;
 2. ingress access logging should be disabled or its retention set to the minimum before this feature
    is announced to real users; App Insights sampling must not be configured to capture request bodies.
 
 Item 2 is a deployment gate, and is listed as such in the handoff rather than quietly assumed.
+
+The web app's own request log (`log_requests` in `src/nabiz/web/main.py`) writes method, path, status
+and duration only. uvicorn's access log, which would add the client address and the query string, is
+switched off in `python -m nabiz.web.main` and in `make web` (`--no-access-log`); anyone serving the app
+another way must do the same.
+
+### The MCP HTTP server
+
+The public MCP endpoint (`ibb-mcp --transport http`, `src/ibb_mcp/server.py`) adds three things that
+could hold personal data, and each is limited on purpose:
+
+* **No access log.** uvicorn runs with `access_log=False`, so no request line, address or path is
+  written by the server itself (the platform caveat above still applies to the ingress).
+* **The rate limiter keeps a pseudonym, not an address.** Each caller's budget is keyed by a salted,
+  per-process SHA-256 of its address (IPv6 grouped by /64) or of its accepted API key, held in memory
+  only, at most `NABIZ_MCP_MAX_CLIENTS` of them, and written to the log only when a call is refused.
+  The salt is regenerated on every start, so a pseudonym cannot be joined across restarts.
+* **Traces carry names, never values.** Every span goes through one allow-list,
+  `nabiz.agent.telemetry.ALLOWED_ATTRIBUTES`: tool names, outcomes, hosts and paths, never argument
+  values, query strings, exception messages or the user's question. The Azure Monitor distribution's
+  auto-instrumentation (whose FastAPI spans would record `/api/route?from=…&to=…`) and its log export
+  are switched off.
+
+Held by `tests/test_agent_telemetry.py` (`test_attributes_outside_the_allow_list_are_dropped`,
+`test_an_agent_turn_traces_itself_without_quoting_the_user`,
+`test_upstream_span_records_the_request_without_its_query`) and `tests/test_server_security.py`
+(`test_the_limiter_remembers_callers_by_pseudonym_not_by_address`,
+`test_a_tool_call_is_traced_by_name_and_outcome_never_by_argument`).
+
+### The caller's own model provider
+
+When `check_alerts` is used through an MCP client, the subscription's coordinates are part of that
+client's conversation with its own model provider before they ever reach this server. This server still
+stores and logs nothing of them; what the client and its provider keep is governed by their terms, not by
+this design. A user who wants their places to stay on their device should use the web page, whose
+subscription never leaves the browser except in the POST body of one check.
 
 ## 5. Why the cooldown is enforced by the client
 
@@ -115,7 +187,8 @@ Not sending the same alert every five minutes requires remembering "this user al
 time T". That is a per-user history — precisely the record this design refuses to keep. So the server
 returns, with every alert, a stable `dedupe_key` and a suggested `cooldown_seconds`, and forgets both
 the moment the response is written. The client stores `{dedupe_key: last_shown_at}` in
-`localStorage` and suppresses a key until its cooldown has passed. It may also send the keys it is
+`localStorage` (as `{dedupe_key: {at, cooldown_seconds}}`, so each key carries its own cooldown) and
+suppresses a key until its cooldown has passed. It also sends the keys it is
 currently sitting on as `muted_keys`, which the server uses to filter that one response and then
 discards — request-scoped input, never state.
 
@@ -134,7 +207,8 @@ Three things fall out of this, all good:
 
 There is no deletion request to send us, because we hold nothing. In the browser that runs the app:
 
-1. use the app's **"Uyarıları sıfırla"** control (clears both `localStorage` keys), or
+1. use the **"Uyarıları sıfırla"** control at the foot of the alerts panel (clears both `localStorage`
+   keys; the panel appears only while a subscription is stored), or
 2. clear site data for the origin — Chrome/Edge: *Settings → Privacy → Site settings → View
    permissions and data stored across sites → select the site → Delete data*; Safari: *Settings →
    Privacy → Manage Website Data*; Firefox: *Settings → Privacy & Security → Cookies and Site Data →
@@ -172,6 +246,11 @@ controls (a Teams/e-mail digest they opt into). Until that decision is made, the
 
 **Server-side alert history.** "Bana bu ay kaç uyarı geldi?" would need a per-user log. It is not
 built, and would require the same kind of decision.
+
+**A subscription editor in the page.** The page evaluates a subscription it finds under
+`nabiz.alerts.subscription.v1` and offers a reset, but has no form to create one yet; today a
+subscription is written there by hand (browser console) or held by an MCP client for its own user.
+Building the form changes nothing in this document: it would write the same key in the same browser.
 
 ## 9. Licence and attribution
 

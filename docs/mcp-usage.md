@@ -2,7 +2,9 @@
 
 `ibb-mcp` is a plain [Model Context Protocol](https://modelcontextprotocol.io) server over İstanbul's live
 open data: parking occupancy, bus positions and arrivals, metro disruptions and station accessibility, the
-city traffic index, and air quality. Point any MCP client at it and those become tools your agent can call.
+city traffic index, and air quality. On top of those it answers three things İBB does not publish, derived by
+this project: a travel-mode comparison, measured bus-line regularity, and stateless alert checks. Point any
+MCP client at it and those become tools your agent can call.
 
 Every result carries a **provenance stamp** — source URL, observation time, and whether the read came from
 a stale cache — so an agent using this server can cite what it says and state how old the data is.
@@ -17,9 +19,9 @@ a stale cache — so an agent using this server can cite what it says and state 
 
 | | |
 |---|---|
-| Tool implementations (all 12) | **working** — `src/ibb_mcp/tools.py` |
-| MCP server entry point (`src/ibb_mcp/server.py`) over **stdio** | **working** — `initialize`, `tools/list` (12) and `tools/call` verified against a real MCP client |
-| The same entry point over **streamable HTTP** (`--transport http`) | **implemented, not yet exercised** — no client has driven it end to end |
+| Tool implementations (all 15) | **working** — `src/ibb_mcp/tools.py` |
+| MCP server entry point (`src/ibb_mcp/server.py`) over **stdio** | **working** — `initialize`, `tools/list` (15) and `tools/call` verified against a real MCP client (`tests/test_mcp_integration.py`) |
+| The same entry point over **streamable HTTP** (`--transport http`) | **working locally** — stateless transport, per-caller rate budget, optional API key, closed CORS and `GET /healthz`, exercised over ASGI by `tests/test_server_security.py`; not deployed |
 | Hosted HTTP endpoint on Azure Container Apps | **planned**, Day 3 |
 | PyPI release (`uvx ibb-mcp`) | **planned** — roadmap, after delivery |
 | MCP resources | **partial** — `ibb://attribution` is served today; `ibb://parks`, `ibb://lines`, `ibb://stations`, `ibb://aq-stations` and the `nabiz-system` prompt are **planned** |
@@ -114,8 +116,9 @@ Copilot Chat, switch to **Agent** mode, and the tools appear in the tool picker.
 }
 ```
 
-The data is public and the key is optional; it exists so the deployment can rate-limit abusive callers and
-protect the shared upstream budget, not to gate access.
+The data is public and the key is optional. Every caller is rate-limited by tool price either way; with keys
+configured, the key rather than the address identifies a caller's budget. It exists to protect the shared
+upstream budget, not to gate access.
 
 Try it with: *"Which İSPARK car parks near Taksim have space right now, and what do they charge?"*
 
@@ -169,24 +172,36 @@ and a tenant is available to test in.
 
 ## Tools
 
-All twelve tools are implemented in `src/ibb_mcp/tools.py` and exposed under these names (PLAN.md §5).
-Parameters marked with a default are optional. Every tool returns a `ToolResult`:
-`{ data, provenance: { source, source_url, observed_at, reported_at, cached, license }, note }`.
+All fifteen tools are implemented in `src/ibb_mcp/tools.py` and registered in `src/ibb_mcp/server.py`: the
+twelve of PLAN.md §5, plus `plan_journey`, `line_reliability` and `check_alerts`. Parameters marked with a
+default are optional. Every tool answers with the same JSON envelope:
+`{ data, provenance: { source, source_url, reported_at, observed_at, age, age_seconds, stale, license }, note }`.
+A failure is an envelope too — `{ error, message, advice }` with `error` one of `bad_request`,
+`rate_limited` (with `retry_after_seconds` when the server's own per-caller budget refused the call),
+`upstream_unavailable`, `reference_data_missing` (a local reference file such as the GTFS export is absent;
+the message names no path) or `internal_error` — never a stack trace. Free-text parameters carry a
+`maxLength` in the advertised schema (120 characters for a name, 16 for a code) and `limit` and
+`horizon_hours` a maximum, so an oversized argument is refused before the tool runs. Arguments that do not
+match the advertised JSON schema (a `check_alerts` rule of an unknown `kind`, say) are rejected by the SDK
+before the tool runs, as an MCP tool error.
 
 | Tool | Parameters | Returns | Upstream · cache TTL |
 |---|---|---|---|
 | `places_resolve` | `query` *(str)*, `limit=5` | matching places with `lat`, `lon`, `kind`, `district` | local gazetteer (276 entries) · static |
 | `ispark_find_parking` | `place` *(str)* **or** `lat`+`lon`, `radius_km=1.5`, `min_free=1`, `open_now=true` (plus `with_tariff=true` on the Python façade only) | up to 5 car parks: name, free spaces / capacity, type (covered / open / on-street), tariff text as published, distance, `updateDate` | İSPARK `Park` + `ParkDetay` · 5 min |
-| `ispark_typical_occupancy` | `park_id` *(int)*, `weekday=today` *(0 = Monday)*, `hour=now` | median occupancy %, p25/p75, sample count — or `available: false` with an explanation while history is still thin | collected history (`ispark_profile`) |
+| `ispark_typical_occupancy` | `park_id` *(int)*, `weekday=today` *(0 = Monday … 6 = Sunday)*, `hour=now` *(0–23, İstanbul)*; other values are refused | median occupancy %, p25/p75, sample count, distinct days — or `available: false` with the reason (fewer than 3 samples, or all of them from one day) | `data/reference/occupancy_profile.json`, built by `scripts/build_profiles.py` from the collector's snapshots; `reported_at` is the newest snapshot in it |
 | `iett_stops_search` | `query` *(str)*, `limit=8` | stops: `stop_code`, `stop_id`, name, `lat`, `lon` | GTFS (15 390 rows in the export, 15 386 placeable) · static |
-| `iett_line_buses` | `line_code` *(str, e.g. `"500T"`)*, `direction=None` | vehicles on the line: door number, direction, nearest stop, last position time; plus the directions currently running | `GetHatOtoKonum_json` · 60 s |
-| `iett_next_arrivals` | `line_code` *(str)*, `stop` *(stop code or stop name)*, `limit=3` | estimated arrivals: minutes, stops away, `method` (`stop_sequence` / `distance` / `schedule`), confidence, plus `diagnostics` and an explicit estimate disclaimer | live positions + GTFS order + timetable |
+| `iett_line_buses` | `line_code` *(str, e.g. `"500T"`)*, `direction=None` | vehicles on the line: door number, direction, nearest stop, last position time; plus the directions currently running. A code İETT's GTFS route list does not know is refused before it spends an İETT request (when the GTFS export is present) | `GetHatOtoKonum_json` · 60 s |
+| `iett_next_arrivals` | `line_code` *(str)*, `stop` *(stop code or stop name)*, `limit=3` | estimated arrivals: minutes, stops away, `method` (`stop_sequence` / `distance` / `schedule`), confidence, plus `diagnostics` (including `rate_source` and how the stop was chosen, `stop_resolution`) and an explicit estimate disclaimer. A stop *name* resolves to the first matching stop the line actually calls at; a stop the line never calls at is refused with the lines that do. A line code İETT's GTFS route list does not know is refused before any İETT request (when the GTFS export is present) | live positions + GTFS order + timetable |
 | `metro_status` | `line=None` *(e.g. `"M4"`)* | live disruption notices per line; an empty result means "no disruption reported", stated as such | `GetServiceStatuses` · 5 min |
 | `metro_station_info` | `name` *(str)* | line, order on the line, coordinates, and accessibility: lift, escalator count, baby room, WC, prayer room | `GetStations` · 1 day |
-| `traffic_index` | `window="now"` \| `"24h"` | `now`: index 1–99 with a plain-language description. `24h`: hourly history plus a comparison with the same hour yesterday | traffic index · 5 min |
+| `traffic_index` | `window="now"` \| `"24h"` | `now`: index 1–99 with a plain-language description, and `typical`: the index against the median of the same İstanbul weekday and hour over İBB's last 28 days (`typical_index`, `delta`, `band`, `samples`, Turkish `description`, and its own `provenance` with the `/28/H` source URL and `age_seconds`, because it comes from a different read than the envelope's; `available: false` when the cell has fewer than 3 samples or the history cannot be read). `24h`: hourly history plus a comparison with the same hour yesterday. A missing reading is `null`, never 0 | traffic index · 5 min; history `/28/H`, rebuilt every 6 h |
 | `air_quality_now` | `place` *(str)* | nearest of the 28 stations, latest hourly PM10 / SO2 / O3 / NO2 / CO, published AQI with its band, health disclaimer | `GetAQIByStationId` · 30 min |
-| `air_quality_forecast` | `place` *(str)*, `horizon_hours=6` *(keep it ≤ 6; larger values are accepted but not meaningful — the baseline just repeats yesterday)* | hourly PM10 outlook, the cleanest upcoming window, and a flag saying the current method is a seasonal-naive baseline | 48 h of history + baseline model |
+| `air_quality_forecast` | `place` *(str)*, `horizon_hours=6` *(at most 24, larger values are refused; keep it ≤ 6 — beyond that the baseline just repeats yesterday)* | hourly PM10 outlook, the cleanest upcoming window, and a flag saying the current method is a seasonal-naive baseline | 48 h of history + baseline model |
 | `city_freshness` | — | per source: age of the last successful read, health, hit/miss/stale counters; remaining request budget; attribution text | in-process cache |
+| `plan_journey` | `origin` *(str)* **or** `origin_lat`+`origin_lon`; `destination` *(str)* **or** `destination_lat`+`destination_lon` *(degrees, WGS84, inside İstanbul)* | a **comparison, not navigation**: per mode (drive, metro, one bus line, walk) total minutes, legs, a 0–100 comfort score, confidence, and every assumption with its value and unit; the metro option follows the rail graph line by line (one leg per line ridden and per transfer; the Bosphorus only through the Marmaray tube); `detail.other_direct_lines` names other single-line buses with stop counts and no minutes; `readings` includes `traffic_typical`; `unavailable_options` names each mode that could not be costed and why (no single bus line, too far to walk, no pedestrian Bosphorus crossing, no GTFS); the disclaimer travels in `data` | traffic index, İSPARK, metro stations and notices, İETT timetable (all through the shared cache) + GTFS stop sequences for the bus option + traffic history `/28/H` (every 6 h); `observed_at` is the oldest live input |
+| `line_reliability` | `line_code` *(str, e.g. `"500T"`)*, `hour=now` *(0–23, İstanbul)* | measured **history**, not live: median headway (min), headway cv and its label, samples, vehicles, days, stop-capture rate and the cv a perfectly regular line would show at that rate, the observation window — both numbers are upper bounds. `available: false` with the reason when the cell is too thin or the line was never watched | `data/reference/line_reliability.json`, built by `scripts/reliability_report.py` from the collector's vehicle snapshots; `reported_at` is the last observation |
+| `check_alerts` | `subscription` *(object)*: `places[]` `{key, label, lat, lon}`, `rules[]` — one of `metro_disruption` `{lines}`, `parking_filling` `{park_ids, threshold_pct}`, `air_quality` `{place, aqi_threshold}`, `traffic` `{threshold_index}`, `bus_bunching` `{line}`, each with an optional `cooldown_seconds` — and `muted_keys[]` | alerts in Turkish and English with severity, a `dedupe_key`, `cooldown_seconds` and a citation (value + provenance) for every number; sources that could not be read; the cooldown policy and a privacy summary. **Evaluated in memory for this one request and never stored or logged** ([privacy.md](privacy.md)) | only the sources the rules need: metro notices, the İSPARK list, the nearest air-quality station, the traffic index, the line-reliability table |
 
 Two parameters read differently from the sketch in PLAN.md §5, and the wider form was kept because it is
 what people actually type:
@@ -196,6 +211,18 @@ what people actually type:
 - `air_quality_now(place=…)` and `air_quality_forecast(place=…)` take a **place name** (district,
   neighbourhood, landmark or station) and resolve it to the nearest of the 28 stations, rather than
   requiring a station GUID.
+
+Three things about the derived tools are easy to get wrong when relaying them:
+
+- `plan_journey` never produces directions and never invents a bus transfer; a rail transfer exists only where
+  two platforms are within walking distance ([route-advisor.md](route-advisor.md) §4). A bus option exists only when one
+  İETT line passes a stop near each end in the right order; its ride time uses the per-stop rate fitted by
+  `scripts/calibrate_eta.py`, which absorbs dwell and detection lag, so on a long ride it is an upper bound
+  and the assumption text says so.
+- `line_reliability` and `ispark_typical_occupancy` describe the window the collector watched, stated in
+  the result. They are not "always", and a thin cell refuses rather than extrapolating from a neighbour.
+- `check_alerts` holds no state. "Subscribing" means the client keeps the subscription and sends it with
+  each check; the client, not the server, suppresses repeats using `dedupe_key` and `cooldown_seconds`.
 
 ### Resources and prompt
 
@@ -217,6 +244,26 @@ arrival).
 | `NABIZ_FIXTURES_DIR` | `tests/fixtures` | fixture directory used by offline mode |
 | `NABIZ_RADIUS_KM` | `1.5` | default search radius for parking |
 | `NABIZ_MAX_RESULTS` | `5` | default result cap |
+| `NABIZ_OCCUPANCY_PROFILE` | `occupancy_profile.json` beside `NABIZ_PLACES_CSV` | the table behind `ispark_typical_occupancy` |
+| `NABIZ_RELIABILITY_TABLE` | `data/reference/line_reliability.json` | the table behind `line_reliability` and the `bus_bunching` alert |
+| `NABIZ_ETA_PROFILE` | `data/reference/eta_profile.json` | the fitted seconds-per-stop rates used by `iett_next_arrivals` and the bus option of `plan_journey` |
+
+The three tables fall back to the copies packaged in the wheel when no checkout is present (an installed
+`ibb-mcp`, the container image).
+
+Over streamable HTTP the server is stateless (it issues no `Mcp-Session-Id`) and serves `GET /healthz`,
+which answers from process state and local files only. These settings apply to that transport:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `NABIZ_API_KEYS` | empty (open) | comma-separated keys accepted in `X-API-Key`; a wrong or missing key gets one 401 message |
+| `NABIZ_MCP_RATE_BURST` | `30` | token-bucket size per caller; each tool call costs its price in `TOOL_COSTS` (`src/ibb_mcp/server.py`) |
+| `NABIZ_MCP_RATE_PER_MINUTE` | `12` | tokens refilled per minute per caller |
+| `NABIZ_MCP_MAX_CLIENTS` | `1024` | callers remembered at once, as salted pseudonyms held in memory only |
+| `NABIZ_MCP_CORS_ORIGINS` | empty (closed) | comma-separated origins allowed to call from a browser |
+| `NABIZ_MCP_TRUSTED_PROXY_HOPS` | `0` | proxies whose `X-Forwarded-For` entry is trusted; set `1` behind the Container Apps ingress |
+| `NABIZ_TRACE_CONSOLE` | unset | `1` prints spans to stderr (needs `opentelemetry-sdk`) |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | unset | exports spans to Application Insights when the `telemetry` extra is installed; spans carry tool names and outcomes, never arguments |
 
 ### Calling the tools without an MCP client
 
@@ -264,15 +311,16 @@ that asks of you:
 4. **Call `city_freshness` instead of guessing** whether data is stale, and pass the age through to your
    own users.
 5. **Keep the attribution** — İBB Open Data Portal, CC BY 4.0 — wherever the data surfaces.
-6. If you deploy this publicly, put your own rate limit in front of it. The `X-API-Key` header exists for
-   that.
+6. A deployed HTTP server already limits each caller by tool price (`NABIZ_MCP_RATE_BURST`,
+   `NABIZ_MCP_RATE_PER_MINUTE`) and can require `X-API-Key` (`NABIZ_API_KEYS`). A `rate_limited` answer
+   carries `retry_after_seconds`.
 
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 |---|---|
 | Client shows the server as failed to start | Absolute interpreter path missing. Desktop clients do not inherit your shell `PATH`; use `<repo>/.venv/bin/python`. |
-| `iett_stops_search` returns nothing | GTFS not downloaded. `stops.csv` and `routes.csv` are not committed — fetch them into `NABIZ_GTFS_DIR` (`ibb_mcp.gtfs.download_gtfs`, resource URLs in `tests/fixtures/gtfs_resources.json`). |
+| `iett_stops_search` answers `reference_data_missing` | GTFS not downloaded. `stops.csv` and `routes.csv` are not committed — fetch them into `NABIZ_GTFS_DIR` (`ibb_mcp.gtfs.download_gtfs`, resource URLs in `tests/fixtures/gtfs_resources.json`). `plan_journey` still answers without them, with the bus option withdrawn. |
 | Answers say data is several minutes old | Working as designed. TTLs are per source and every result states its age; `city_freshness` shows all of them at once. |
 | `RateLimitExceeded` on İETT tools | Our own 80/hour budget was hit before İBB's 100. Cached values are still served — wait for the window to slide instead of restarting the process, which only resets the counter, not İBB's. |
 | `UpstreamUnavailable: … upstream Oracle hatası: ORA-…` | An İETT database error leaked through the SOAP response. It is upstream and usually transient; the cache keeps serving the last good read. |
