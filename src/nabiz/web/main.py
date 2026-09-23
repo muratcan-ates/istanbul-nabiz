@@ -52,8 +52,8 @@ STATIC_DIR = pathlib.Path(__file__).resolve().parent / "static"
 #: script and one stylesheet from cdnjs) and the raster tiles (OpenStreetMap, or Azure Maps
 #: when NABIZ_MAPS_KEY is set). MapLibre fetches tiles with ``fetch`` and decodes them from
 #: ``blob:`` URLs, and runs its workers from ``blob:`` too, which is what its own CSP notes
-#: ask for. ``style-src 'unsafe-inline'`` stays because app.js sets bar widths and gauge
-#: colours as inline ``style`` attributes; scripts get no such allowance.
+#: ask for. ``style-src 'unsafe-inline'`` stays because the page's card renderers write bar
+#: widths and gauge colours as inline ``style`` attributes; scripts get no such allowance.
 CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",
@@ -78,6 +78,21 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
 }
+
+#: The page is native ES modules whose names carry no content hash, served with an ETag and
+#: Last-Modified but no freshness. RFC 9111 §4.2.2 then lets a browser reuse each file on its
+#: own heuristic clock, so after a deploy one page load can pair a new journeys.js with a stale
+#: format.js, fail to link on a missing export, and boot nothing. ``no-cache`` makes every file
+#: revalidate (a 304 when unchanged), so a page load is always one version. The API answers
+#: carry no validator, and their age is in the body.
+STATIC_CACHE_HEADERS = {"Cache-Control": "no-cache"}
+
+
+def response_headers(path: str) -> dict[str, str]:
+    """Headers every response gets: the security set, plus revalidation for the page's own files."""
+    if path.startswith("/api/") or path == "/healthz":
+        return SECURITY_HEADERS
+    return SECURITY_HEADERS | STATIC_CACHE_HEADERS
 
 
 def _version() -> str:
@@ -193,7 +208,7 @@ def get_nabiz(request: Request) -> Nabiz:
 NabizDep = Depends(get_nabiz)
 
 
-def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> FastAPI:  # noqa: C901, PLR0915 - debt, ratcheted in scripts/architecture_baseline.json
     """Build the app. Pass ``nabiz`` to supply a pre-built (e.g. offline) instance.
 
     An injected instance is left open on shutdown: whoever built it owns its lifetime.
@@ -204,7 +219,7 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
         # Tracing is configured once per process and is a no-op without Application
         # Insights or NABIZ_TRACE_CONSOLE; here rather than at import, so importing the
         # module (as uvicorn and the tests do) configures nothing by itself.
-        from nabiz.agent.telemetry import setup_telemetry
+        from ibb_mcp.telemetry import setup_telemetry
 
         setup_telemetry("nabiz-web")
         owned = app.state.nabiz is None
@@ -243,7 +258,7 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         log.info("%s %s -> %s in %.1f ms", request.method, request.url.path, response.status_code, elapsed_ms)
         response.headers["X-Response-Time-ms"] = f"{elapsed_ms:.1f}"
-        for name, value in SECURITY_HEADERS.items():
+        for name, value in response_headers(request.url.path).items():
             response.headers.setdefault(name, value)
         return response
 

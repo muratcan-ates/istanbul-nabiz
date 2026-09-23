@@ -1,0 +1,50 @@
+{
+ "_comment": "Written by scripts/check_architecture.py. Entries may only go down (make architecture-tighten); raising one needs its reason in the commit that does it.",
+ "module_code_lines": {
+  "src/ibb_mcp/occupancy.py": 416,
+  "src/ibb_mcp/reliability.py": 445,
+  "src/ibb_mcp/routing.py": 862,
+  "src/ibb_mcp/server.py": 523,
+  "src/ibb_mcp/tools.py": 559,
+  "src/nabiz/agent/agent.py": 605
+ },
+ "class_code_lines": {
+  "src/ibb_mcp/metro_graph.py::MetroGraph": 280,
+  "src/ibb_mcp/tools.py::Nabiz": 502,
+  "src/nabiz/agent/agent.py::NabizAgent": 257
+ },
+ "class_public_methods": {
+  "src/ibb_mcp/tools.py::Nabiz": 21
+ },
+ "one_meaning": {
+  "load_profile": 2,
+  "profile_path": 2,
+  "save_profile": 2
+ },
+ "complexity": {
+  "scripts/guardrails.py::_python_plate_findings::C901": 18,
+  "scripts/guardrails.py::_python_plate_findings::PLR0912": 16,
+  "scripts/guardrails.py::check_fixture_plates_synthetic::C901": 15,
+  "scripts/guardrails.py::check_fixture_plates_synthetic::PLR0912": 14,
+  "scripts/guardrails.py::check_no_fabricated_metrics::C901": 11,
+  "scripts/guardrails.py::check_no_personal_data::C901": 12,
+  "src/ibb_mcp/alerts/engine.py::_parse_rule::C901": 14,
+  "src/ibb_mcp/alerts/engine.py::_parse_rule::PLR0912": 13,
+  "src/ibb_mcp/alerts/engine.py::build_context::C901": 12,
+  "src/ibb_mcp/eta.py::estimate_arrivals::PLR0913": 8,
+  "src/ibb_mcp/gtfs.py::build_stop_sequences::C901": 13,
+  "src/ibb_mcp/reliability.py::_progress_rates::C901": 13,
+  "src/ibb_mcp/routing.py::_drive_option::PLR0913": 8,
+  "src/ibb_mcp/routing.py::_resolve_bus::PLR0913": 10,
+  "src/ibb_mcp/routing.py::compare_options::PLR0913": 11,
+  "src/ibb_mcp/traffic_profile.py::_describe_known::PLR0913": 8,
+  "src/nabiz/agent/agent.py::NabizAgent.route::C901": 14,
+  "src/nabiz/agent/agent.py::NabizAgent.route::PLR0912": 13,
+  "src/nabiz/agent/faithfulness.py::collect_values::C901": 12,
+  "src/nabiz/web/main.py::create_app::C901": 26,
+  "src/nabiz/web/main.py::create_app::PLR0915": 61,
+  "tests/fixtures/gtfs_mini/extract.py::extract::C901": 16,
+  "tests/fixtures/gtfs_mini/extract.py::extract::PLR0912": 15,
+  "tests/fixtures/gtfs_mini/extract.py::extract::PLR0915": 59
+ }
+}

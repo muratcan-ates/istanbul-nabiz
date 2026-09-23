@@ -226,7 +226,7 @@ def _string_values(text: str) -> set[float]:
     return values
 
 
-def collect_values(obj: Any, *, _depth: int = 0) -> set[float]:
+def collect_values(obj: Any, *, _depth: int = 0) -> set[float]:  # noqa: C901 - debt, ratcheted in scripts/architecture_baseline.json
     """Walk a tool result — dicts, lists, pydantic models, JSON strings — for numbers."""
     if _depth > 24 or obj is None:
         return set()

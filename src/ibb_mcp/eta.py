@@ -197,7 +197,7 @@ class _Ctx:
         return self.params.seconds_per_stop
 
 
-def estimate_arrivals(
+def estimate_arrivals(  # noqa: PLR0913 - debt, ratcheted in scripts/architecture_baseline.json
     *,
     buses: list[BusPosition],
     target: Stop,

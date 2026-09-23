@@ -57,7 +57,7 @@ collector = ["azure-functions>=1.21", "azure-kusto-data>=4.5", "azure-kusto-inge
 # AZURE_STORAGE_ACCOUNT set, nabiz.collector.lake writes gzipped NDJSON to Blob Storage,
 # never a local Delta table.
 job = ["azure-identity>=1.17", "azure-storage-blob>=12.19", "azure-kusto-data>=4.5", "azure-kusto-ingest>=4.5"]
-# Application Insights export for `nabiz.agent.telemetry`. Separate from `agent` so the MCP
+# Application Insights export for `ibb_mcp.telemetry`. Separate from `agent` so the MCP
 # image can trace without installing a model SDK; tracing stays off (one log line) without it.
 telemetry = ["azure-monitor-opentelemetry>=1.6"]
 web = ["fastapi>=0.115", "uvicorn>=0.30", "jinja2>=3.1"]
@@ -95,5 +95,32 @@ line-length = 130
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+# C90 and the three PLR rules bound function size (docs/ENGINEERING.md §13, MOD-4). Functions
+# already over a threshold are debt, recorded value by value in
+# scripts/architecture_baseline.json: `make architecture` re-measures them with noqa and the
+# per-file ignores below switched off, so they may get simpler, never more complex.
+select = ["E", "F", "I", "UP", "B", "SIM", "C90", "PLR0912", "PLR0913", "PLR0915"]
 ignore = ["B008"]
+
+[tool.ruff.lint.mccabe]
+# McCabe's own threshold and ruff's default.
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+# 7, not the default 5: an MCP tool's parameters are its public schema (the SDK derives it
+# from the signature), and the widest facade tool takes 7. Over 7 is a parameter object
+# waiting to be written.
+max-args = 7
+max-branches = 12
+max-statements = 50
+
+[tool.ruff.lint.per-file-ignores]
+# Policy, not debt: test data builders take one keyword per model field on purpose. The one
+# entry scripts/check_architecture.py honours too (POLICY_IGNORES).
+"tests/**" = ["PLR0913"]
+# Debt in files another lane owns, so it cannot carry a `# noqa` at the def line yet. The
+# architecture check still measures each function through this; the values are in
+# scripts/architecture_baseline.json. Replace with def-line markers when the file is next
+# touched, and delete the line.
+"scripts/guardrails.py" = ["C901", "PLR0912"]
+"tests/fixtures/gtfs_mini/extract.py" = ["C901", "PLR0912", "PLR0915"]
