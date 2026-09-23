@@ -10,11 +10,12 @@
 
 İstanbul Nabız, bir belediyenin dağınık açık veri yüzeyini **tek bir tüketilebilir entegrasyon katmanına**
 (MCP sunucusu) dönüştüren, üzerine güvenilirliği ölçülen bir ajan koyan bir referans mimaridir. Azure'da
-tüketim tabanlı servislerle (Functions Flex, Container Apps `minReplicas: 0`, ADLS + Delta, Azure Data
-Explorer) çalışır; talep şekillendirme (paylaşımlı önbellek) sayesinde **N kullanıcı, kaynak sisteme en fazla
+tüketim tabanlı servislerle (Container Apps Jobs, Container Apps `minReplicas: 0`, ADLS (bronze, gzip'li
+NDJSON), Azure Data Explorer) çalışacak şekilde yazıldı; talep şekillendirme (paylaşımlı önbellek) sayesinde **N kullanıcı, kaynak sisteme en fazla
 1 istek** üretir. Her cevap kaynak ve veri yaşı taşır; ölçülemeyen metrik "n/a, sebebi şu" der. Haftalık
-ölçülen bulut maliyeti **4–12 USD** bandındadır ve her mimari karar maliyet gerekçesiyle `DECISIONS.md`'de
-kayıtlıdır.
+**tahmini** bulut maliyeti, LLM çıkarımı hariç, **≈ 1,20–2,30 USD**'dir (yayımlanan fiyatlardan tahmin, fatura
+değil: `docs/deploy.md` §7, DECISIONS #10; henüz hiçbir şey deploy edilmedi) ve her mimari karar maliyet
+gerekçesiyle `DECISIONS.md`'de kayıtlıdır.
 
 **Müşteri:** İBB Bilgi İşlem Dairesi — Açık Veri ekibi. **Son kullanıcı:** İstanbullu vatandaş ve
 entegrasyon yapan geliştirici.
@@ -25,11 +26,11 @@ entegrasyon yapan geliştirici.
 
 | Paydaş | Bugünkü durum | Hedeflenen sonuç | Nasıl ölçülür |
 |---|---|---|---|
-| İBB Açık Veri ekibi | 556 veri seti, 41 API; tüketim ölçülemiyor, her tüketici kendi entegrasyonunu yazıyor | Tek, sürümlenmiş, hız-sınırlı entegrasyon katmanı; tüketim gözlemlenebilir | Araç çağrısı telemetrisi, kaynak başına istek sayısı, ağ geçidi 503 oranı |
+| İBB Açık Veri ekibi | Çok sayıda veri seti, 41'i API (`docs/events_research.md`, 13 Eyl sayımı); tüketim ölçülemiyor, her tüketici kendi entegrasyonunu yazıyor | Tek, sürümlenmiş, hız-sınırlı entegrasyon katmanı; tüketim gözlemlenebilir | Araç çağrısı telemetrisi, kaynak başına istek sayısı, ağ geçidi 503 oranı |
 | İBB altyapısı (İETT/İSPARK ağ geçidi) | Her tüketici doğrudan çağırıyor; ~15 hızlı istekte tüm servisler 503 | Yukarı akış yükü tüketici sayısından **bağımsız** | Önbellek isabet oranı; pencere başına yukarı akış istek sayısı |
-| Vatandaş | Aynı karar için 3–4 ayrı uygulama; "genelde ne olur" cevabı hiç yok | Tek soruda karar; her sayıda kaynak ve yaş | Görev başarı oranı (24 senaryo), cevap süresi |
+| Vatandaş | Aynı karar için 3–4 ayrı uygulama; "genelde ne olur" cevabı hiç yok | Tek soruda karar; her sayıda kaynak ve yaş | Görev başarı oranı (30 senaryo, `eval/journeys.jsonl`), cevap süresi |
 | Erişilebilirlik ihtiyacı olan yolcu | Asansör bilgisi veride var ama hiçbir arayüzde sorulabilir değil | İstasyon erişilebilirliği birinci sınıf sorgu | Kapsama: 248 istasyonun tamamı |
-| Geliştirici ekosistemi | Her proje sıfırdan SOAP/CKAN ayrıştırıyor | `uvx ibb-mcp` ile 5 dakikada entegrasyon | Entegrasyon süresi; MCP istemci çeşitliliği |
+| Geliştirici ekosistemi | Her proje sıfırdan SOAP/CKAN ayrıştırıyor | PyPI yayınından sonra `uvx ibb-mcp`; bugün `uvx --from git+https://github.com/muratcan-ates/istanbul-nabiz ibb-mcp` ya da checkout ile entegrasyon | Entegrasyon süresi; MCP istemci çeşitliliği |
 
 ---
 
@@ -46,9 +47,9 @@ Green Software Foundation'ın ilkeleriyle hizalı (enerji verimliliği, donanım
 | İlke | Bu projede karşılığı | Kanıt |
 |---|---|---|
 | **Talep şekillendirme** | Tek-uçuş TTL önbellek: eşzamanlı N kullanıcı, pencere başına 1 yukarı akış çağrısı | `src/ibb_mcp/cache.py`; `city_freshness` aracı isabet/ıska sayaçlarını döner |
-| **Donanım verimliliği** | Container Apps `minReplicas: 0` — boşta hiç hesaplama yok | `infra/modules/containerapps.bicep:268` |
-| **Enerji verimliliği** | Her zaman açık servis yok: AI Search Basic (boşta bile ~2,4 USD/gün) ve Stream Analytics bilinçli olarak dışarıda | `DECISIONS.md` #1, #3 |
-| **Veri minimizasyonu** | Plaka ayrıştırma sınırında düşürülüyor; sunucuda kişisel veri yok; gold katman Delta (sütunlu, sıkıştırılmış) | `models.py` `BusPosition.from_fleet_raw`; `NOTICE.md` |
+| **Donanım verimliliği** | Container Apps `minReplicas: 0` — boşta hiç hesaplama yok | `infra/modules/containerapps.bicep` (`minReplicas: 0`) |
+| **Enerji verimliliği** | Her zaman açık servis yok: AI Search Basic (boşta bile ~2,4 USD/gün) ve Stream Analytics bilinçli olarak dışarıda | `infra/main.bicep` başlığı; `docs/deploy.md` §1 ("What is deliberately *not* in the template") |
+| **Veri minimizasyonu** | Plaka ayrıştırma sınırında düşürülüyor; sunucuda kişisel veri yok; bronze katman ayrıştırılmış, plakasız satırları gzip'li NDJSON olarak tutuyor. Sütunlu, sıkıştırılmış Delta silver/gold katmanı planlandı (DECISIONS #6), uygulanmadı | `models.py` `BusPosition.from_fleet_raw`; `NOTICE.md`; `src/nabiz/collector/lake.py` |
 | **Kenar/bulut esnekliği** | Aynı ajan yerelde (Foundry Local, Apple Silicon) veya Azure'da çalışır; kamu verisi için çıkarımı kenara taşıma seçeneği | `src/nabiz/agent/llm.py` |
 | **Ölçüm** | Maliyet ve tazelik telemetrisi ürünün içinde, sonradan eklenen bir pano değil | `city_freshness`, `eval/results/` |
 
@@ -71,11 +72,11 @@ tartışmalıdır; bu projede ölçülmemiştir, bu yüzden **oran verilmez**.
 
 ### 4.1 Birim ekonomi
 
-| Kalem | Ölçülen | Not |
+| Kalem | Tahmin (fatura değil; 0 deploy) | Not |
 |---|---|---|
-| Haftalık bulut maliyeti | **4–12 USD** | ADLS + Functions Flex + Container Apps + App Insights + ACR |
+| Haftalık bulut maliyeti | **≈ 1,20–2,30 USD**, LLM çıkarımı hariç | ADLS + Container Apps Jobs + Container Apps + App Insights + ACR; `docs/deploy.md` §7, DECISIONS #10 |
 | Boştaki maliyet | Container Apps ≈ 0 | `minReplicas: 0` |
-| Kaçınılan maliyet | AI Search Basic ≈ 2,4 USD/gün, Stream Analytics ≈ 3,2 USD/gün | Hiç provizyonlanmadı; gerekçesi ADR'de |
+| Kaçınılan maliyet | AI Search Basic ≈ 2,4 USD/gün; Stream Analytics da dışarıda (ücretsiz katmanı yok; günlük fiyatı burada doğrulanmadı) | Hiç provizyonlanmadı; gerekçesi `infra/main.bicep` başlığında ve `docs/deploy.md` §1'de |
 | En büyük sabit kalem | ACR Basic ≈ 1,2 USD/hafta | `azd` uzaktan derleme; kaçınma yolu belgelendi |
 | Yukarı akış maliyeti | Önbellek sayesinde kullanıcı sayısından bağımsız | Ölçekte birim maliyetin düşmesinin sebebi |
 
@@ -116,7 +117,7 @@ Bu, mimarinin genişleyebilirliğinin kanıtı olur — ama bugün yapılmamış
 | **Güvenilirlik** | Bayat-veri yedeği: ağ geçidi düşerse cevap bozulmaz, yaşını söyler. Üstel geri çekilme. Kaynak hatası tüm cevabı değil yalnız o seçeneği düşürür | `cache.py`, `routing.py` |
 | **Güvenlik** | Anahtarsız; yönetilen kimlik; public repoda sır yok; plaka ve konum hiç saklanmıyor; araçlar parametrik (serbest sorgu yüzeyi yok) | `guardrails.py`, `NOTICE.md` |
 | **Maliyet optimizasyonu** | §4 | `DECISIONS.md` |
-| **Operasyonel mükemmellik** | 508+ test, ruff, CI; senaryo tabanlı eval merge kapısı; OpenTelemetry → App Insights; toplayıcı süpervizörü | `.github/workflows/`, `eval/` |
+| **Operasyonel mükemmellik** | 943 test (pytest, çevrimdışı, 23 Eyl), ruff, guardrail'ler ve commit kimliği kapısı CI'da (`main`'de henüz yeşil koşu yok); senaryo tabanlı eval elle koşuluyor, merge kapısı değil; OpenTelemetry → App Insights (izin listesiyle); toplayıcı süpervizörü | `.github/workflows/`, `eval/`, `scripts/guardrails.py` |
 | **Performans verimliliği** | Önbellek sıcakken 0 sn; soğukta gecikme bilinçli nezaket aralığından kaynaklanır ve raporda böyle yazılır | `eval/results/latest.md` |
 | **Sürdürülebilirlik** | §3.1 | |
 
@@ -132,8 +133,8 @@ bağlı; slogan değil.
 | **Şeffaflık** | Her sayı kaynak adresi ve yaşıyla döner. Varış tahmini hangi yöntemle (`stop_sequence`/`distance`/`schedule`) ve hangi güvenle üretildiğini söyler; oranın ölçülmüş mü varsayılan mı olduğunu bildirir | `ToolResult.provenance`, `rate_source` |
 | **Güvenilirlik ve emniyet** | Bilmediğini bilir: hattın uğramadığı durağa tahmin **üretmez**, reddeder. Örneklemi ince olan profil `available: false` döner | `tools.py` on-route guard, `occupancy.py` min-samples |
 | **Gizlilik ve güvenlik** | Otobüs plakası ayrıştırma sınırında düşer. Uyarı sisteminde konum istemcide kalır, sunucu durumsuzdur, log'a koordinat yazılmaz — testle kanıtlanır | `NOTICE.md`, `docs/privacy.md`, `tests/test_alerts.py` |
-| **Kapsayıcılık** | Erişilebilirlik verisi birinci sınıf sorgu (§8). LLM kotası olmadan da çalışan deterministik mod: erişim, ödeme gücüne bağlı değil | `metro_station_info`, `agent/router.py` |
-| **Hesap verebilirlik** | Değerlendirme harness'ı hakem; kötü çıkan sayı da yayımlanır (ETA 16,8 → kalibrasyonla 11,2) | `eval/results/eta.md`, README |
+| **Kapsayıcılık** | Erişilebilirlik verisi birinci sınıf sorgu (§8). LLM kotası olmadan da çalışan deterministik mod: erişim, ödeme gücüne bağlı değil | `metro_station_info`, `src/nabiz/agent/agent.py` (deterministik mod, `route()`) |
+| **Hesap verebilirlik** | Değerlendirme harness'ı hakem; kötü çıkan sayı da yayımlanır: ETA ilk yayımlanan ölçümde 16,6 dk (n = 606, `401ab4b`); kalibrasyon kendi eğitim verisinde 11,2 dk gösterdi ama görmediği duraklarda 35,8 dk'ya çıktı (n = 523) ve bu da yazıldı | `eval/results/eta.md`, README |
 | **Adillik** | Açık veriye erişimi tek bir uygulamanın arkasından çıkarıp MIT lisanslı bir katmana taşır | repo |
 
 **Ek duruş — kamu altyapısına saygı.** İETT'nin belgelenmiş saatte 100 istek sınırının altında (80) kendi
@@ -153,7 +154,9 @@ bilgidir ve şu an kimse soramıyor. `metro_station_info` bunu birinci sınıf b
 Arayüz tarafında: klavye erişimi, görünür odak halkaları, `aria-live` sonuç bildirimi, koyu tema ve
 `prefers-reduced-motion` desteği.
 
-**Erişim (açıklık).** MIT lisanslı, public repo. `uvx ibb-mcp` ile herhangi bir MCP istemcisine takılır.
+**Erişim (açıklık).** MIT lisanslı, public repo. Bugün `uvx --from git+https://github.com/muratcan-ates/istanbul-nabiz ibb-mcp`
+ya da bir checkout ile herhangi bir MCP istemcisine takılır; PyPI yayınından sonra `uvx ibb-mcp` yetecek
+(`docs/mcp-usage.md`).
 LLM kotası olmadan da cevap verir. Türkçe ve İngilizce. Bir vatandaşın ya da bir öğrencinin bu veriye
 ulaşması için ne kurumsal lisans ne de ödeme gerekir.
 
@@ -171,8 +174,12 @@ Bir CSA'nın güvenini kazandıran bölüm budur.
 - **İBB ile bir ortaklığımız yok.** Resmî değildir; veriler CC BY 4.0 ile kullanılır.
 - **Henüz Azure'a dağıtılmadı.** Bicep ve `azd` hazır; Gün-0 kapıları (bölge politikası, ADX kimlik testi,
   LLM kotası) geçilmedi. Canlı URL yok.
-- **Varış tahmini henüz iyi değil.** 11,2 dakika ortalama hata; hedef 5 dakika altı. Yol belli: daha çok
-  gözlem, hat bazlı kalibrasyon genişletme.
+- **Varış tahmini henüz iyi değil.** Ölçülen ortalama mutlak hata 12,9 dakika (gözlenen varışla eşleşen 1.351
+  tahmin, 8–22 Eylül, ayarlanmamış 120 sn/durak oranıyla); hedef 5 dakika altı. Kalibre edilmiş oranların 11,2
+  dakikası yalnızca eğitildikleri iki durakta geçerli bir örneklem içi uyum: eğitimde görülmeyen duraklarda
+  yeniden oynatılınca hata 35,8 dakikaya çıkıyor (n = 523). Durak başına süre hatta değil, yolun kesimine
+  bağlı; sıradaki adım durak aralığını hesaba katan bir model ve kalibre edilmiş tahminlerin de kaydedilip
+  ölçülmesi. Kaynak ve sınırlar: `eval/results/eta.md`.
 
 ---
 
@@ -180,7 +187,7 @@ Bir CSA'nın güvenini kazandıran bölüm budur.
 
 | Aşama | Durum | Kapı |
 |---|---|---|
-| **Kanıt** (MVP) | ✅ 12+4 araç canlı veriyle çalışıyor, 508+ test, ölçülmüş eval | — |
+| **Kanıt** (MVP) | ✅ 15 araç canlı veriyle çalışıyor, 943 test (23 Eyl), ölçülmüş eval | — |
 | **Pilot** | ⏳ Azure'a dağıtım, canlı URL, App Insights telemetrisi | `az` kurulumu, bölge politikası, ADX kimlik testi |
 | **Ölçek** | Fabric Eventhouse aynası, Event Hubs, Copilot Studio yüzeyi, PyPI yayını | Kapasite kararı; kurumsal tenant |
 | **Kurumsal** | İBB iç sistemleriyle entegrasyon, saha ekipleri konsolu | Kurum ortaklığı — açık veriyle yapılamaz |
@@ -194,11 +201,12 @@ gizlilik ve cevabın dürüstlüğü bizimdir. Bu ayrım her araç yanıtında k
 
 **TR:** "İstanbul'da açık veri var ama tek bir soru sorabileceğiniz yer yok. Nabız, İBB'nin canlı verisini tek
 bir MCP katmanına çeviriyor ve her cevabın yanında kaynağını ve kaç dakikalık olduğunu yazıyor. Mimari kamu
-altyapısını koruyacak şekilde kurgulandı: yüz kullanıcı, kaynak sisteme bir istek. Bulut maliyeti haftada
-4–12 dolar, çünkü boşta çalışan hiçbir servis yok. Ve İBB'nin kendi verisinden şunu çıkardık: 248 metro
+altyapısını koruyacak şekilde kurgulandı: yüz kullanıcı, kaynak sisteme bir istek. Bulut maliyetinin haftada
+1,20–2,30 dolar olacağını tahmin ediyoruz (LLM hariç), çünkü boşta çalışan hiçbir servis yok. Ve İBB'nin kendi verisinden şunu çıkardık: 248 metro
 istasyonunun 85'inde asansör yok — bu bilgi veride duruyordu, kimse soramıyordu."
 
 **EN:** "İstanbul publishes open data but offers no single place to ask a question. Nabız turns it into one MCP
 layer where every number carries its source and its age. The architecture protects the public gateway —
-a hundred users cost it one request — and runs at four to twelve dollars a week because nothing is always on.
+a hundred users cost it one request — and should cost an estimated 1.20–2.30 USD a week, excluding the model, because nothing is always on (published
+prices, not a bill; nothing is deployed yet).
 From the city's own data: 85 of 248 metro stations have no lift. That was in the data and nobody could ask it."

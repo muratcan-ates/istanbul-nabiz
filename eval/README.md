@@ -7,7 +7,7 @@ a plausible-looking placeholder in a results table is worse than an admission.
 
 ```bash
 .venv/bin/python eval/run_eval.py --selftest                          # scenario file + metric helpers
-.venv/bin/python eval/run_eval.py --mode deterministic --offline      # 24 scenarios, no network
+.venv/bin/python eval/run_eval.py --mode deterministic --offline      # 30 scenarios, no network
 .venv/bin/python eval/run_eval.py --mode deterministic                # live İBB, budget-capped
 .venv/bin/python eval/run_eval.py --mode agent --offline              # adds the answer-level metrics
 .venv/bin/python eval/run_eval.py --mode agent --require-llm          # …and refuses to run without a model
@@ -16,10 +16,15 @@ a plausible-looking placeholder in a results table is worse than an admission.
 Each run writes `eval/results/<timestamp>-<mode>-<offline|live>.json` (every call, every
 field check, every latency) plus the same summary as `<timestamp>-<mode>-<offline|live>.md`,
 and copies that summary over `eval/results/latest.md`, which is also printed to stdout.
-`latest.md` is therefore whichever run went last; the committed one is deliberately the
-**offline deterministic** run, because it is the only configuration that covers all 24
-scenarios and reproduces on any machine with no network. A live run keeps its own dated
-markdown beside its JSON rather than being the summary the README quotes. `--results-dir`
+`latest.md` is therefore whichever run went last. It is meant to be the **offline deterministic**
+run, the only configuration that covers every scenario with no network, but the committed copy is
+the 8 September **live** run (identical to `results/20260908T084908Z-deterministic-live.md`); the
+offline run of the same morning is `results/20260908T084817Z-deterministic-offline.md`. Both predate
+the J5 scenarios, so refresh `latest.md` with `make eval` once the J5 batch is committed: the footer
+stamps the commit, and a run over uncommitted changes is stamped `<hash>-dirty`. The offline run
+still reads GTFS from `data/reference/gtfs/` (the harness builds `Settings(offline=True)` itself), so
+its J2 scenarios need that export on the machine that runs it: on a clean copy without it (23 Sep), four
+J2 scenarios fail and the run scores 26/30. `--results-dir`
 writes somewhere else entirely, which is how you try a selection without disturbing the
 committed files. The exit code is `0` when every scenario passed, `1` when one failed, `2`
 when the selection matched nothing and `3` when agent mode skipped.
@@ -65,21 +70,25 @@ conjunction of all four.
 
 ## The scenarios
 
-`journeys.jsonl` holds 24 scenarios — the four journeys of PLAN.md §1 (J1 parking, J2 bus
-arrivals, J3 metro status and accessibility, J4 air quality), six each, twelve Turkish and
-twelve English. Every place, line and stop is real: 500T is the Tuzla Şifa Mahallesi ↔ 4.
+`journeys.jsonl` holds 30 scenarios — the four journeys of PLAN.md §1 (J1 parking, J2 bus
+arrivals, J3 metro status and accessibility, J4 air quality) and, since 23 September 2026, J5, the
+cross-journey questions answered by the three derived tools and the traffic norm (travel-mode
+comparison, line regularity, alerts, traffic against its usual level). Six each, fifteen Turkish and
+fifteen English. `--selftest`, which also runs in the test suite (`tests/test_eval_harness.py`),
+requires every tool the MCP server registers to appear in at least one scenario. Every place, line and stop is real: 500T is the Tuzla Şifa Mahallesi ↔ 4.
 Levent Metro line, 3068 is the İSPARK lot at 15 Temmuz Şehitler Meydanı, 220641 is the
 Kavacık Köprüsü stop the 500T actually calls at.
 
 | Key | Meaning |
 |---|---|
-| `id`, `lang`, `journey` | `j2-en-1`, `tr`/`en`, `J1`–`J4` |
+| `id`, `lang`, `journey` | `j2-en-1`, `tr`/`en`, `J1`–`J5` |
 | `question` | what a person would type, in that language |
 | `expected_tools` | the tool chain the answer requires, in order |
 | `calls` | the same chain with concrete arguments, so the deterministic runner never has to guess them; a call may carry `"expect": "refusal"` and `error_contains` |
 | `expected_fields` | field assertions (grammar below) |
 | `forbidden_phrases` | overclaiming the answer must not contain |
 | `answer_must_contain_any` | agent mode only: the answer must contain at least one of these, so a refusal or a stated limit has to survive into the prose; ignored by the deterministic runner |
+| `modes` | optional; the modes the scenario can be scored in (default both). `j5-tr-2` is `["deterministic"]`: `check_alerts` evaluates a subscription only the caller holds, and the web agent holds none and does not offer the tool, so agent mode records it as skipped rather than failed |
 | `notes` | why the scenario exists and what the honest answer looks like |
 
 ### Field assertion grammar
@@ -129,7 +138,7 @@ checks are reported separately as "optional checks not applicable".
 | Data freshness | median and p95 of `provenance.reported_at` age, split per source in the report |
 | p50 / p95 latency | per scenario (sum of its calls) and per tool, nearest-rank percentiles |
 | Error taxonomy | `bad_request`, `upstream_unavailable`, `rate_limited`, `upstream_budget`, `timeout`, `internal:*`, plus `refused_as_expected` and the two inverted cases — `missing_refusal` (the tool answered where the scenario required a refusal) and `wrong_refusal` (it refused, but not for the stated reason) |
-| Number-plate leaks | occurrences of a `plaka`/`plate` key or of the İETT plate shape (`34 HO 1000`) in any serialised result; the contract is zero (NOTICE.md) |
+| Number-plate leaks | occurrences of a `plaka`/`plate` key or of the İETT plate shape (`00 XX 000`, synthetic) in any serialised result; the contract is zero (NOTICE.md) |
 | Numeric faithfulness | agent mode: share of the free-standing numbers in the answer that appear in a tool result or in the question |
 | Tool-call accuracy | agent mode: called chain vs. `expected_tools`, reported twice — the exact ordered chain, and the looser "every expected tool was called somewhere" |
 | Refusal / limit stated in the answer | agent mode: share of the scenarios carrying `answer_must_contain_any` whose prose actually says it |
@@ -141,7 +150,7 @@ checks are reported separately as "optional checks not applicable".
 Four details worth knowing before quoting a number:
 
 * **Percentiles are nearest-rank** and some samples are tiny. A "p95" over three calls is
-  the slowest of the three. With 24 scenarios, p95 is the second-slowest — so a single
+  the slowest of the three. With 24 scenarios (the 8 September runs), p95 is the second-slowest — so a single
   cold-start outlier (the first `iett_stops_search` pays ~0.3 s to load the GTFS stop
   index — 264 ms offline, 313 ms in the live run of 8 September 2026, against 0–3 ms for
   every warm call) shows up in the scenario table but not in the p95 cell.
@@ -177,7 +186,7 @@ counts every real request and stops:
   share one cache, so a live selection that reuses the same source costs one request no
   matter how many scenarios read it.
 
-A live run therefore covers a **subset** of the 24 scenarios by design. The report header
+A live run therefore covers a **subset** of the scenarios by design. The report header
 always states which mode, how many scenarios ran, how many were skipped and how many
 upstream requests were spent. For scale: the live run of 8 September 2026
 (`results/20260908T082353Z-deterministic-live.md`) covered 13 of the 24 scenarios — all of
@@ -227,7 +236,7 @@ what a trained model would eventually have to beat.
 
 ```
 eval/
-├── journeys.jsonl   24 scenarios, 12 TR / 12 EN, six per journey
+├── journeys.jsonl   30 scenarios, 15 TR / 15 EN, six per journey (J1–J5)
 ├── run_eval.py      the harness: runner, metrics, markdown report, --selftest
 └── results/         <timestamp>-<mode>-<offline|live>.{json,md} + latest.md
 ```
