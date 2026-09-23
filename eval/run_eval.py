@@ -52,6 +52,12 @@ from ibb_mcp.sources.base import SourceContext  # noqa: E402
 from ibb_mcp.tools import Nabiz  # noqa: E402
 
 JOURNEYS = REPO / "eval" / "journeys.jsonl"
+
+#: A scenario may name the modes it can be scored in (``"modes": ["deterministic"]``); the
+#: default is both. check_alerts is the case: it evaluates a subscription only the caller
+#: holds, the web agent holds none and does not offer the tool, so asking the agent would
+#: score a deliberate design choice as a failure.
+MODES = ("deterministic", "agent")
 RESULTS = REPO / "eval" / "results"
 OK_STATUS = {"ok", "refused_as_expected"}
 
@@ -59,7 +65,8 @@ OK_STATUS = {"ok", "refused_as_expected"}
 LLM_ENV_VARS = ("LLM_BASE_URL", "LLM_MODEL", "OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "FOUNDRY_LOCAL_ENDPOINT")
 
 #: A number plate must never cross the parsing boundary (NOTICE.md, DECISIONS #7). Both the
-#: key and the İETT value shape ("34 HO 1000") are searched in every serialised result.
+#: key and the İETT value shape ("00 XX 000"; synthetic, province 00 does not exist) are searched
+#: in every serialised result.
 PLATE_KEY_RE = re.compile(r'"(plaka|plate)"\s*:', re.IGNORECASE)
 PLATE_VALUE_RE = re.compile(r"\b\d{2} [A-Z]{1,3} \d{2,5}\b")
 
@@ -106,6 +113,8 @@ def load_scenarios(path: pathlib.Path) -> list[dict[str, Any]]:
             raise ValueError(f"{path.name}:{number} expected_tools {row['expected_tools']} != calls {called}")
         for spec in row["expected_fields"]:
             parse_spec(spec)  # raises on a malformed path
+        if unknown_modes := sorted(set(row.get("modes", MODES)) - set(MODES)):
+            raise ValueError(f"{path.name}:{number} names modes the runner does not have: {unknown_modes}")
         scenarios.append(row)
     return scenarios
 
@@ -433,6 +442,9 @@ async def run_deterministic(scenarios: list[dict[str, Any]], settings: Settings,
     records: list[dict[str, Any]] = []
     try:
         for scenario in scenarios:
+            if "deterministic" not in scenario.get("modes", MODES):
+                records.append(skipped_record(scenario, "skipped: agent-only scenario"))
+                continue
             if budget.exhausted:
                 records.append(skipped_record(scenario, f"skipped: upstream budget of {budget.ceiling} requests spent"))
                 continue
@@ -652,6 +664,10 @@ async def run_agent(
     records: list[dict[str, Any]] = []
     try:
         for scenario in scenarios:
+            if "agent" not in scenario.get("modes", MODES):
+                reason = "skipped: deterministic-only scenario (the agent does not offer this tool)"
+                records.append(skipped_record(scenario, reason))
+                continue
             if budget.exhausted:
                 records.append(skipped_record(scenario, f"skipped: upstream budget of {budget.ceiling} requests spent"))
                 continue
@@ -1031,6 +1047,17 @@ def render(summary: dict[str, Any], records: list[dict[str, Any]], context: dict
 
 
 # --------------------------------------------------------------------------------- main
+def mcp_tool_names() -> set[str]:
+    """The tools the MCP server registers: the product surface every scenario is held to.
+
+    Read from the server rather than from ``dir(Nabiz)``, whose public helpers
+    (``stop_sequences``, ``traffic_baseline`` and the like) are plumbing no client can call.
+    """
+    from ibb_mcp.server import build_server
+
+    return {tool.name for tool in asyncio.run(build_server(Settings(offline=True)).list_tools())}
+
+
 def selftest(scenarios: list[dict[str, Any]]) -> int:
     """Validate the scenario file and the metric helpers, touching neither data nor network."""
     problems: list[str] = []
@@ -1039,13 +1066,16 @@ def selftest(scenarios: list[dict[str, Any]]) -> int:
     for scenario in scenarios:
         languages[scenario["lang"]] = languages.get(scenario["lang"], 0) + 1
         journeys[scenario["journey"]] = journeys.get(scenario["journey"], 0) + 1
-    if len(scenarios) != 24:
-        problems.append(f"expected 24 scenarios, found {len(scenarios)}")
-    if languages.get("tr") != 12 or languages.get("en") != 12:
-        problems.append(f"expected 12 TR and 12 EN, found {languages}")
+    # Six scenarios per journey, half Turkish and half English: J1-J4 are the four user
+    # journeys, J5 the cross-journey questions (travel-mode comparison, line regularity,
+    # alerts, traffic against its norm) added with the tools that answer them.
+    if not scenarios or len(scenarios) != 6 * len(journeys):
+        problems.append(f"expected 6 scenarios per journey, found {len(scenarios)} over {len(journeys)} journeys")
+    if languages.get("tr") != languages.get("en") or set(languages) != {"tr", "en"}:
+        problems.append(f"expected as many TR as EN scenarios, found {languages}")
     problems += [f"{j} has {n} scenarios, expected 6" for j, n in sorted(journeys.items()) if n != 6]
     covered = {call["tool"] for s in scenarios for call in s["calls"]}
-    exposed = {n for n in dir(Nabiz) if not n.startswith("_")} - {"gtfs", "aclose"}
+    exposed = mcp_tool_names()
     if missing := sorted(exposed - covered):
         problems.append(f"tools never exercised: {missing}")
     refusals = [s["id"] for s in scenarios if any(c.get("expect") == "refusal" for c in s["calls"])]
@@ -1084,7 +1114,7 @@ def selftest(scenarios: list[dict[str, Any]]) -> int:
         ("either reading still catches an invention", faithfulness("77,7 enlem", "en", "", {41.0422})["rate"] == 0.0),
         ("forbidden phrase caught", forbidden_hits("Otobüs kesinlikle 5 dakikada gelir.", ["kesinlikle"]) == ["kesinlikle"]),
         ("disclaimer not a violation", forbidden_hits("Bu resmi İETT bilgisi değildir.", ["resmi"]) == []),
-        ("plate key caught", privacy_hits('{"Plaka": "34 HO 1000"}') != []),
+        ("plate key caught", privacy_hits('{"Plaka": "00 XX 000"}') != []),
         ("door number is clean", privacy_hits('{"door_no": "C-338", "lat": 41.05}') == []),
         ("probe all", _probe({"a": [{"b": 1}, {"b": 2}]}, ["a[]", "b"], _NO_VALUE) == "pass"),
         ("probe any", _probe({"a": [{"b": 1}, {}]}, ["a[?]", "b"], _NO_VALUE) == "pass"),
@@ -1133,10 +1163,18 @@ def _display(path: pathlib.Path) -> str:
 
 
 def git_commit() -> str:
+    """HEAD's short hash, suffixed ``-dirty`` when tracked files differ from it.
+
+    A result stamped with a commit it was not produced from is a result nobody can
+    reproduce, so a run over uncommitted changes says so in its footer.
+    """
     try:
         done = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                               capture_output=True, text=True, timeout=5, check=False)
-        return done.stdout.strip() or "unknown"
+        commit = done.stdout.strip() or "unknown"
+        clean = subprocess.run(["git", "-C", str(REPO), "diff", "--quiet", "HEAD", "--"],
+                               capture_output=True, timeout=10, check=False)
+        return f"{commit}-dirty" if commit != "unknown" and clean.returncode == 1 else commit
     except Exception:  # noqa: BLE001 - a missing git is not an eval failure
         return "unknown"
 
