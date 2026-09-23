@@ -2,7 +2,7 @@
 
 **Istanbul Air-Quality Early-Warning Data Platform on Azure** · Microsoft AI Innovators · 7 günlük solo sprint · Plan v2, 8 Eylül 2026 (3 bağımsız adversarial review sonrası)
 
-> **Teslim tarihi / kanal:** `______` ← **Barbaros'un brifini bugün yazılı al** (video süresi, dil, repo public mı, yükleme adresi). Araştırma kamuya açık bir rubrik bulamadı; brif tek otorite.
+> **Teslim tarihi / kanal:** `______` ← **Mentorun brifini bugün yazılı al** (video süresi, dil, repo public mı, yükleme adresi). Araştırma kamuya açık bir rubrik bulamadı; brif tek otorite.
 
 > **BLUF:** İBB'nin canlı + geçmişe dönük hava kalitesi API'si (28 istasyon, saatlik, 2023'ten bugüne, kayıt yok) üzerine Azure'da uçtan uca çalışan bir **erken uyarı veri platformu**: Azure Functions saatlik toplar → ADLS Gen2 **Delta Lake** medallion → **Azure Data Explorer** (KQL) servis eder → LightGBM saatlik PM10 konsantrasyonunu 1/3/6 saat önceden tahmin eder, **ulusal 24 saat > 50 µg/m³ aşımını** lead-time ve yanlış alarm oranıyla ölçer → **Microsoft Agent Framework** "Nefes Analisti" TR/EN kaynak atıflı uyarı taslağı yazar → üç katmanlı eval README'de tablo olarak durur. Bicep + azd + GitHub Actions. Haftalık maliyet ≈ 4–12 $. **Fabric'e ve Azure OpenAI kotasına bağımlı değil** (ikisi de opsiyonel yükseltme).
 
@@ -44,7 +44,7 @@ Nefes, "Gün 3'te eğitilmiş model + dürüst sayı" üreten tek aday. İETT Na
 ### Farklılaştırıcılar (README'de açıkça)
 - Notebook değil, **canlı toplayan üretim hattı**; MAE değil **aşım olayı lead-time + yanlış alarm/ay**.
 - Hedef **saatlik PM10 konsantrasyonu**; AQI indeksini **kendin yeniden hesaplıyorsun** ve İBB'nin değeriyle karşılaştırıyorsun (veri kalitesi kontrolü olarak).
-- **Aynı ajan kodu** Foundry Local'da (M1, Metal) ve Azure'da: kamu verisi için edge/cloud çıkarım kararı.
+- **Aynı ajan kodu** Foundry Local'da (yerel cihazda) ve Azure'da: kamu verisi için edge/cloud çıkarım kararı.
 - **Sayısal sadakat kontrolü**: cevaptaki her sayı araç çıktısında var mı (TR ondalık/binlik normalize edilerek).
 - **Delta Lake lakehouse + KQL servis**: Fabric OneLake shortcut'ı Delta'yı doğrudan okur → "Fabric-ready" cümlesi dürüst.
 - **Şeffaf sınırlar**: sitede 38 istasyon/PM2.5 var, API'de 28 istasyon/PM2.5 yok — README "Limitations" bölümünde sen söyle, jüri bulmasın.
@@ -86,7 +86,7 @@ flowchart LR
   M[score_batch · LightGBM<br/>lokal / GitHub Actions cron]
   subgraph LLM["LLM (env switch)"]
     AO[Azure OpenAI gpt-4.1-mini<br/>veya Foundry serverless Phi-4-mini]
-    FL[Foundry Local · phi-4-mini · M1]
+    FL[Foundry Local · phi-4-mini · yerel]
   end
   AQ -->|1 çağrı/saat/istasyon| F
   TI -->|saatlik| F
@@ -130,7 +130,7 @@ flowchart LR
 | Hava durumu | Open-Meteo ERA5 archive (geçmiş) + forecast API (canlı) — ücretsiz, anahtarsız | wind speed/dir, temp, RH, precip, boundary-layer height | saatlik | Microsoft değil; Azure Maps Weather = 1.000 ücretsiz/ay sonra 4,50 $/1K → yalnızca "current conditions" demosu |
 | Tatiller | `holidays` PyPI (`holidays.TR`) | Ramazan/Kurban + arife yarım gün | — | Elle CSV yazma |
 | İlçe nüfusu | TÜİK ADNKS 2025 (bülten 53899, 9 Şub 2026): İstanbul 15.754.053, 39 ilçe | `district, pop_total, pop_0_14, pop_65p` | yıllık | Elle CSV, kaynak README'de |
-| (Ek, stretch) Trafik yoğunluğu | CKAN `hourly-traffic-density-data-set` | geohash-6 saatlik, ~1,76M satır/ay, Ocak 2025'te durmuş | — | 100–143 MB/ay, Range yok; disk 31 GiB boş — Belbim 68 GB setine dokunma |
+| (Ek, stretch) Trafik yoğunluğu | CKAN `hourly-traffic-density-data-set` | geohash-6 saatlik, ~1,76M satır/ay, Ocak 2025'te durmuş | — | 100–143 MB/ay, Range yok — Belbim 68 GB setine dokunma |
 
 **AQI indeksi gerçeği (review bulgusu):** İBB, PM10 indeksini **24 saatlik ortalama** + US-EPA breakpoint'leriyle hesaplıyor (O3/CO 8 saat; yalnızca SO2/NO2 saatlik). Ocak 2023 Maslak: konsantrasyon 214 µg/m³ iken indeks 78, saatler içinde 102'ye tırmanıyor. Sonuç: `AQIIndex > 100` ≈ 24 saat PM10 ≥ ~155 → **nadir** (son 30 gün Maslak: max 78, sıfır olay). Bu yüzden hedef ve olay tanımı §5.1'deki gibi.
 
@@ -203,7 +203,7 @@ Bilinenler: Azure OpenAI genel kayıt formu kalktı; Microsoft personeli (Tem 20
 
 ## 7. Gün 0 — bugün, hemen başla (≈5 saat)
 
-Makine: M1/16 GB, **31 GiB boş disk**; `gh`, `node`, `brew`, **Python 3.12.13 zaten kurulu** (`/opt/homebrew/bin/python3.12`), sistem Python 3.14. `az`, `azd`, `func`, `docker`, `foundry` yok (Docker gerekmiyor; azd remote build).
+Makine: tek bir dizüstü; `gh`, `node`, `brew`, **Python 3.12.13 zaten kurulu**. `az`, `azd`, `func`, `docker`, `foundry` yok (Docker gerekmiyor; azd remote build).
 
 ```bash
 # 0. Araçlar (~30 dk; Foundry model indirmesi arka planda)

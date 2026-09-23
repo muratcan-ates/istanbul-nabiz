@@ -65,10 +65,10 @@ Four independent reasons this cannot back an event recommendation, in descending
    `EN` translations of the same items. Only 3 of 168 titles contain any event keyword at all
    (*konser / sergi / festival / tiyatro / söyleşi / atölye / gösteri*), and two of those are metaphors.
 
-Reproduce the probe (this is one gateway request — do not loop it):
+Reproduce the probe from the repository root (this is one gateway request — do not loop it):
 
 ```bash
-cd ~/code/istanbul-nabiz && .venv/bin/python - <<'PY'
+.venv/bin/python - <<'PY'
 import asyncio, sys; sys.path.insert(0, "src")
 from ibb_mcp.http import PoliteClient
 async def main():

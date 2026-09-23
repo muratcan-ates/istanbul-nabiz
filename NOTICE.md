@@ -64,6 +64,11 @@ ayrıştırma sırasında düşürülür; veri gölüne, veritabanına ve API ya
 zaman yazılmaz. Araç kimliği olarak yalnızca kapı numarası kullanılır. İlgili kod:
 `src/ibb_mcp/models.py` içindeki `BusPosition.from_fleet_raw`.
 
+`tests/fixtures/` altındaki kayıtlı İBB yanıtlarında da gerçek plaka yoktur: yakalama betiği
+(`scripts/capture_fixtures.py`) her plakayı dosyaya yazmadan önce `00 XX 001`, `00 XX 002`, …
+biçiminde sentetik bir değerle değiştirir. `00` il kodu yoktur, dolayısıyla bu değerler hiçbir
+gerçek araca ait olamaz.
+
 Azure Data Explorer ücretsiz küme koşulları da kişisel veri saklanmasına izin vermez;
 bu tasarım o şartla da uyumludur.
 

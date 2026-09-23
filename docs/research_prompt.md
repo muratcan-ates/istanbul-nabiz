@@ -18,8 +18,8 @@ personal data stored server-side, gateway rate limits, honest numbers, swappable
 
 ## What we are optimising for
 
-1. **Time-to-working-feature** in a single day, by one developer with AI pair-programmers, on a MacBook (M1,
-   16 GB), Python 3.12, Azure for Students. Anything that needs approval workflows, paid tiers, GPU, or more
+1. **Time-to-working-feature** in a single day, by one developer with AI pair-programmers, on a laptop,
+   Python 3.12, Azure for Students. Anything that needs approval workflows, paid tiers, GPU, or more
    than ~4 hours of integration is *not* day-1 buildable — say so.
 2. **Product depth** in four candidate epics (E1–E4 below), positioned against İBB's own citizen app
    *İstanbul Senin* and the separate İSPARK / Mobiett / CepHava / Metro İstanbul apps.

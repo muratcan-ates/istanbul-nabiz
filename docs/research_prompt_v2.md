@@ -35,7 +35,7 @@ Bunları yazmadan hiçbir öneri yapma. Önerilerin repoda **gerçekten var olan
 ## 1. Bağlam — oku, varsayma
 
 **Ben:** Bilgisayar mühendisliği öğrencisiyim. İstanbul Nabız'ı **Microsoft Türkiye AI Innovators**
-programı için geliştiriyorum (mentor: Barbaros Günay, CSA Manager). Hedefim AI Engineer → Cloud Solution
+programı için geliştiriyorum (programın bir Microsoft mentoru var). Hedefim AI Engineer → Cloud Solution
 Architect. Proje Customer Success / CSA dilinde anlatılabilmeli ve 1–2 yıl portföyde durmalı.
 
 **İstanbul Nabız nedir:** İBB'nin (İstanbul Büyükşehir Belediyesi) kayıt istemeyen canlı açık verisini
@@ -53,9 +53,9 @@ konumlandırması) · `DECISIONS.md` (mimari kararlar) · `README.md` · `PLAN.m
 | Alan | Durum |
 |---|---|
 | Kod | Python 3.12, ~12.900 satır `src/`, ~20 commit, ~500 test (pytest), ruff temiz, CI workflow var |
-| MCP | MCP Python SDK 2.x. `server.py`'de 12 araç kayıtlı; `tools.py`'de 4 araç daha yazılı ama henüz MCP'ye bağlanmadı (rota karşılaştırma, hat düzenliliği, otopark geçmiş profili, uyarılar) |
+| MCP | MCP Python SDK 2.x. `server.py`'de 12 araç kayıtlı; `tools.py`'de 4 araç daha yazılı ama henüz MCP'ye bağlanmadı (rota karşılaştırma, hat düzenliliği, otopark geçmiş profili, uyarılar). *23 Eyl notu:* rota karşılaştırma (`plan_journey`), hat düzenliliği (`line_reliability`) ve uyarılar (`check_alerts`) MCP'ye bağlandı; otopark profili zaten `ispark_typical_occupancy` aracıydı. Toplam 15 araç |
 | Veri | Toplayıcı lokal çalıştı: ~33.900 otopark, ~10.700 otobüs konumu, ~6.600 varış tahmini birikti. İBB bu geçmişi yayınlamıyor |
-| Ölçüm | Otobüs varış tahmini: ilk ölçüm 16,6 dk hata; kendi gözlenen varışlarımızdan kalibrasyonla ~11,2 dk. Hedef < 5 dk |
+| Ölçüm | Otobüs varış tahmini, ortalama mutlak hata: 13 Eyl ölçümü 16,5 dk (n = 607). Kalibrasyonun gösterdiği 11,2 dk örneklem içi uyumdur, ölçülmüş doğruluk değil: eğitimde görülmeyen duraklarda yeniden oynatılınca 35,8 dk (n = 523), ayarlanmamış oranla aynı tahminler 10,2 dk. Kaynak `eval/results/eta.md`. Hedef < 5 dk |
 | Azure | Bicep + `azure.yaml` yazılı, **hiçbir şey deploy edilmedi**, `az`/`azd` kurulu değil, canlı URL yok |
 | LLM | Değiştirilebilir (env); LLM yokken çalışan deterministik mod var |
 | Zayıf yan | Toplayıcı lokal ve iki kez sessizce öldü; ajan-modu eval LLM kotası yokluğundan koşulamadı |
@@ -114,8 +114,8 @@ Ben araya girmeden, günde en fazla 30 dakika PR incelemesiyle projenin gelişme
 - **KRİTİK PROJE KURALI:** Commit'lerde ve PR açıklamalarında **yapay zeka co-author'u / imzası
   olmamalı.** Copilot cloud agent commit'lere co-author ekliyor mu? Squash-merge ile temizlenebiliyor mu?
   Engellenemiyorsa hangi alternatif bu kuralı çiğnemeden çalışır?
-- **Claude Code GitHub Action** (`anthropics/claude-code-action`) ve headless kullanım: Claude Max
-  aboneliğimle Actions'ta çalışabiliyor mu, yoksa ayrı API faturası mı gerekiyor? Gerçek maliyet?
+- **Claude Code GitHub Action** (`anthropics/claude-code-action`) ve headless kullanım: tek geliştiricinin
+  mevcut yapay zeka aboneliğiyle Actions'ta çalışabiliyor mu, yoksa ayrı API faturası mı gerekiyor? Gerçek maliyet?
 - Karşılaştır: Copilot cloud agent · Claude Code Action · Gemini CLI Action · Google Jules. Bu repoda
   günde ≤30 dk insan zamanıyla hangisi en güvenilir çalışır?
 - Gereken dosyalar: `AGENTS.md`, `.github/copilot-instructions.md`, `copilot-setup-steps.yml`. Repoda
