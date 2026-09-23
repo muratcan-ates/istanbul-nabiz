@@ -44,6 +44,20 @@ Kullanılan kaynaklar:
 Bu uçların hiçbiri kayıt, API anahtarı veya kimlik doğrulaması gerektirmez; hiçbir erişim
 kısıtlaması aşılmamıştır.
 
+## Üçüncü taraf bileşenler
+
+Depoda üçüncü taraf kod, yazı tipi ya da simge dosyası yoktur. Web sayfası iki bileşeni çalışma anında,
+ziyaretçinin tarayıcısında yükler:
+
+| Bileşen | Kaynak | Lisans | Kullanım |
+|---|---|---|---|
+| MapLibre GL JS 4.7.1 | `https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/` (`maplibre-gl.min.js`, `maplibre-gl.min.css`) | BSD-3-Clause | harita; yüklenemezse konumlar liste olarak gösterilir |
+| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | harita altlığı; atıf haritada ve sayfanın altında |
+
+Web tasarımının sonraki adımları (`docs/design/DESIGN.md` §12) depoya bir yazı tipi alt kümesi ve bir
+simge dosyası ekleyecek. Her biri eklendiği değişiklikte kaynak adresi, sürümü ve lisans metniyle bu tabloya
+yazılır.
+
 ## Sorumluluk reddi
 
 - **Otobüs varış saatleri tahmindir.** Canlı araç konumu, durak sırası ve ilan edilen
