@@ -13,14 +13,25 @@
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
 <!-- The map library is the only third-party asset on the page. If the CDN is blocked or
-     404s, window.maplibregl is never defined, app.js sees that and the answer is rendered
+     404s, window.maplibregl is never defined, js/map.js sees that and the answer is rendered
      as a location list instead — the page never depends on a network it does not control.
      There is no inline onerror handler: the Content-Security-Policy (nabiz.web.main)
      allows no inline script. Append ?nomap=1 to the URL to exercise the fallback. -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<!-- Native ES modules, no build step. modulepreload fetches the entry and its direct imports
+     side by side instead of one after another. /config.js stays a classic deferred script
+     before the entry: deferred and module scripts run in document order, so its globals
+     exist when js/main.js boots. -->
+<link rel="modulepreload" href="/js/main.js">
+<link rel="modulepreload" href="/js/theme.js">
+<link rel="modulepreload" href="/js/map.js">
+<link rel="modulepreload" href="/js/alerts.js">
+<link rel="modulepreload" href="/js/freshness.js">
+<link rel="modulepreload" href="/js/router.js">
+<link rel="modulepreload" href="/js/journeys.js">
 <script defer src="/config.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script defer src="/app.js"></script>
+<script type="module" src="/js/main.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#results">İçeriğe atla</a>
@@ -169,7 +180,7 @@
         <span class="map-source" id="map-source"></span>
       </div>
       <div class="map-frame">
-        <div id="map" aria-label="Sonuçların harita üzerindeki konumu" role="region"></div>
+        <div id="map"></div>
         <div class="map-fallback" id="map-fallback" hidden>
           <p><strong>Harita kütüphanesi yüklenemedi.</strong> Sonuçlar liste olarak gösteriliyor.</p>
           <ul id="map-fallback-list"></ul>

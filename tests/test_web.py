@@ -103,13 +103,54 @@ def test_single_page_and_assets_are_served(client: TestClient) -> None:
     for chip in ("Taksim'de otopark var mı?", "500T ne zaman gelir?", "M4'te arıza var mı?", "Beşiktaş'ta hava nasıl?"):
         assert chip in page.text
     assert "CC BY 4.0" in page.text
-    assert client.get("/app.js").status_code == 200
+    assert client.get("/js/main.js").status_code == 200
     assert client.get("/style.css").status_code == 200
+    # The single script was split into ES modules; a stale copy served beside them would hide a
+    # module that failed to load.
+    assert client.get("/app.js").status_code == 404
+
+
+def test_every_asset_the_page_references_is_served(client: TestClient) -> None:
+    """Every same-origin src, href and modulepreload in index.html answers 200."""
+    import re
+
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    refs = set(re.findall(r"""\s(?:src|href)=["'](/[^"'#]*)["']""", page))
+    assert "/js/main.js" in refs and "/config.js" in refs
+    for ref in sorted(refs):
+        assert client.get(ref).status_code == 200, ref
+
+
+def test_every_module_the_page_imports_is_served_as_javascript(client: TestClient) -> None:
+    """Walk the import graph from /js/main.js over HTTP, the way a browser does.
+
+    A module whose file is missing, or served with a non-JavaScript type, stops the whole page:
+    the browser refuses to run the entry, so nothing on it boots. Tests that import one module in
+    node would not notice.
+    """
+    import posixpath
+    import re
+
+    pending, seen = ["/js/main.js"], set()
+    while pending:
+        path = pending.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert "javascript" in response.headers["content-type"], (path, response.headers["content-type"])
+        static_or_lazy = r"""^\s*(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)"""
+        for spec in (a or b for a, b in re.findall(static_or_lazy, response.text, flags=re.M)):
+            pending.append(posixpath.normpath(posixpath.join(posixpath.dirname(path), spec)))
+    assert {"/js/router.js", "/js/journeys.js", "/js/cards/shell.js"} <= seen
+    on_disk = {"/" + p.relative_to(STATIC_DIR).as_posix() for p in (STATIC_DIR / "js").rglob("*.js")}
+    assert seen == on_disk, "a module on disk that nothing imports is dead code; one imported but absent is a broken page"
 
 
 def test_every_response_carries_the_security_headers(client: TestClient) -> None:
     """The page, its script and an API answer all carry the same policy."""
-    for path in ("/", "/app.js", "/api/places?q=Taksim"):
+    for path in ("/", "/js/main.js", "/api/places?q=Taksim"):
         headers = client.get(path).headers
         assert headers["x-content-type-options"] == "nosniff"
         assert headers["referrer-policy"] == "no-referrer"
@@ -117,6 +158,21 @@ def test_every_response_carries_the_security_headers(client: TestClient) -> None
         assert "script-src 'self' https://cdnjs.cloudflare.com" in policy
         assert "'unsafe-inline'" not in policy.split("script-src", 1)[1].split(";", 1)[0]
         assert "frame-ancestors 'none'" in policy
+
+
+def test_the_pages_own_files_are_revalidated_on_every_load(client: TestClient) -> None:
+    """ES module names carry no hash, so a browser must never mix two versions in one page load.
+
+    Without an explicit freshness a response with Last-Modified may be reused heuristically
+    (RFC 9111 §4.2.2): a new journeys.js beside a stale format.js fails to link and nothing boots.
+    """
+    for path in ("/", "/js/main.js", "/js/cards/shell.js", "/style.css", "/config.js"):
+        response = client.get(path)
+        assert response.headers.get("cache-control") == "no-cache", path
+    etag = client.get("/js/main.js").headers["etag"]
+    assert client.get("/js/main.js", headers={"If-None-Match": etag}).status_code == 304
+    # An answer carries its age in the body; the header set stays the security one.
+    assert "cache-control" not in client.get("/api/places?q=Taksim").headers
 
 
 def test_the_page_has_no_inline_script_the_policy_would_block() -> None:
@@ -356,6 +412,19 @@ def test_freshness_lists_sources_and_the_remaining_request_budget(client: TestCl
     assert data["attribution"]["tr"].startswith("Kamu sektörü")
 
 
+def test_freshness_tells_the_data_age_apart_from_the_fetch_age(client: TestClient) -> None:
+    """The recorded traffic reading is days old however recently it was read (review of 2026-09-23).
+
+    The page's status pill and data-age strip read this endpoint; with the fetch age alone they
+    called 14-day-old data fresh beside an answer stamped "14 gün önce".
+    """
+    traffic = envelope_of(client.get("/api/traffic", params={"window": "now"}))
+    source = envelope_of(client.get("/api/freshness"))["data"]["sources"]["traffic"]
+    assert source["reported_at_utc"] is not None
+    assert source["age_seconds"] < 3600 < 86400 < source["data_age_seconds"]
+    assert abs(source["data_age_seconds"] - traffic["provenance"]["age_seconds"]) < 60
+
+
 def test_missing_required_parameter_is_rejected_not_crashed(client: TestClient) -> None:
     response = client.get("/api/places")
     assert response.status_code == 422
@@ -392,21 +461,14 @@ def test_gtfs_comes_from_the_committed_fixture_and_never_writes_to_it(client: Te
 # --------------------------------------------------------------------------------------
 # The question box is the one piece of logic that lives only in the browser, and it is
 # where the wrong-answer bugs are: a misroute sends a bus-stop question to the place
-# gazetteer and the user gets "bulamadım" for a stop that exists. Node runs the real
-# app.js against a DOM stub so these cases are checked rather than assumed.
+# gazetteer and the user gets "bulamadım" for a stop that exists. Node imports the real
+# js/router.js, the module the page runs, so these cases are checked rather than assumed. The
+# router is pure (scripts/check_web_budget.py keeps it so), which is why no DOM stub is needed.
+# static/js/package.json marks the folder as ES modules, so any node that has them loads the
+# file the same way, whether or not it can detect module syntax on its own.
 ROUTER_HARNESS = """
-const fs = require('fs');
-const stub = {{ setAttribute() {{}}, addEventListener() {{}}, innerHTML: '', textContent: '', hidden: false }};
-global.document = {{
-  querySelector: () => stub,
-  querySelectorAll: () => [],
-  addEventListener: () => {{}},
-  createElement: () => stub,
-}};
-global.window = {{ location: {{ origin: 'http://localhost' }} }};
-const src = fs.readFileSync({app_js!r}, 'utf8');
-const {{ route }} = eval(src + '\\n;({{ route }});');
-const questions = {questions!r};
+import {{ route }} from {router_url};
+const questions = {questions};
 console.log(JSON.stringify(questions.map((q) => {{
   const r = route(q);
   return [q, r && r.journey, (r && r.args) || {{}}];
@@ -441,10 +503,13 @@ def test_free_text_router_picks_the_right_journey(tmp_path) -> None:
     if node is None:  # pragma: no cover - CI without node still runs the rest of the suite
         pytest.skip("node is not installed; the router harness needs it")
 
-    app_js = str(STATIC_DIR / "app.js")
-    harness = tmp_path / "router_harness.js"
+    router_url = (STATIC_DIR / "js" / "router.js").as_uri()
+    harness = tmp_path / "router_harness.mjs"
     harness.write_text(
-        ROUTER_HARNESS.format(app_js=app_js, questions=[case[0] for case in ROUTER_CASES]),
+        ROUTER_HARNESS.format(
+            router_url=json.dumps(router_url),
+            questions=json.dumps([case[0] for case in ROUTER_CASES], ensure_ascii=False),
+        ),
         encoding="utf-8",
     )
     proc = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=60)
