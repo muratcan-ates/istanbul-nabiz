@@ -18,13 +18,13 @@ Bu bölüm her sprint gününün sonunda güncellenir. Günlük takvim, çıkı�
 
 | Alan | Durum | Kaynak |
 |---|---|---|
-| MCP sunucusu | `main`'de 12 araç; D1 çalışma ağacında 15 (`plan_journey`, `line_reliability`, `check_alerts` eklendi, henüz commit'lenmedi). stdio ve streamable HTTP gerçek bir istemciyle doğrulandı | `git show HEAD:src/ibb_mcp/server.py`; `make smoke`, 23 Eyl, çevrimdışı; `tests/test_mcp_integration.py` |
+| MCP sunucusu | `main`'de 15 araç (`plan_journey`, `line_reliability`, `check_alerts` 23 Eyl'de eklendi; sabah 12'ydi). stdio ve streamable HTTP gerçek bir istemciyle doğrulandı | `git show HEAD:src/ibb_mcp/server.py`; `make smoke`, 23 Eyl, çevrimdışı; `tests/test_mcp_integration.py` |
 | Geçmişe dayalı modüller | `occupancy.py`, `reliability.py`, `routing.py` (rota *karşılaştırması*, navigasyon değil) ve `city_freshness` aracı `main`'de | `git ls-files src/ibb_mcp`; `5437530` (13 Eyl) |
-| CI | `main`'de 13 koşu, **13'ü kırmızı** (8–22 Eyl); hiç yeşil olmadı. Sebep: git'e girmeyen GTFS dosyasını okuyan testler, 13 Eyl'de ayrıca 2 ruff hatası. D1 çalışma ağacında düzeltildi (`tests/fixtures/gtfs_mini`): `make ci-local` temiz kopyada yeşil, 943 test geçti (23 Eyl); ilk yeşil koşu push'u bekliyor | `gh run list --workflow ci.yml --branch main`; [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1 |
+| CI | `main`'de 15 koşu: ilk **13'ü kırmızı** (8–22 Eyl; git'e girmeyen GTFS dosyasını okuyan testler, 13 Eyl'de ayrıca 2 ruff hatası), sonra **yeşil**: `1599c40` ve `d59b5a8` (23 Eyl). Düzeltme `tests/fixtures/gtfs_mini`. İnceleme düzeltmeleriyle çalışma ağacında 1250 test geçiyor; `make ci-local` temiz kopyada da yeşil (23 Eyl). `main` henüz korumalı değil | `gh run list --workflow ci.yml --branch main`; [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1 |
 | Azure | **0 deploy.** `az`/`azd` kurulu değil. Bicep hazır; toplayıcı için Container Apps Jobs modülü D1'de yazıldı ve çevrimdışı test edildi (DECISIONS #10) | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1; `infra/modules/collectorjobs.bicep` |
 | Toplayıcı | Dizüstünde, supervisor altında. 8–22 Eyl arasındaki 15 günün yalnızca 4'ünde izlenen hat görüntüsü var; 14 Eyl 03:48 → 22 Eyl 19:12 UTC arası hiç veri yok | `src/nabiz/collector/job.py` (modül açıklaması); `eval/results/eta.md` |
 | Otobüs ETA hatası | MAE **12,94 dk**; 6.801 tahminin 1.351'i gerçek varışla eşleşti; hepsi ayarlanmamış 120 sn/durak ile; %27,3'ü 5 dk içinde | `eval/results/eta.md` (23 Eyl, çevrimdışı) |
-| ETA kalibrasyonu | `iett_next_arrivals` aracına **bağlı** (`c306157`, `data/reference/eta_profile.json`), ama toplayıcı kalibre tahmin kaydetmiyor. 11,2 dk örneklem içi uyumdur, ölçülmüş doğruluk değil; eğitimde görülmeyen duraklarda yeniden oynatılınca 35,82 dk, aynı 523 tahminde ayarlanmamış oran 10,18 dk — **daha kötü** | `eval/results/eta.md` "Held-out replay" |
+| ETA kalibrasyonu | 23 Eyl'den beri araçlar kalibre profili **kullanmıyor** (DECISIONS #18): `iett_next_arrivals` ve `plan_journey`'nin otobüs bacağı ayarlanmamış 120 sn/durak ile çalışıyor, profil (`c306157`, `data/reference/eta_profile.json`) yalnızca `NABIZ_ETA_PROFILE_MODE=calibrated` ile okunuyor. 11,2 dk örneklem içi uyumdur, ölçülmüş doğruluk değil; eğitimde görülmeyen duraklarda yeniden oynatılınca 35,82 dk, aynı 523 tahminde ayarlanmamış oran 10,18 dk — **daha kötü** | `eval/results/eta.md` "Held-out replay" |
 | Eval | 30 senaryo (23 Eyl'de J5 eklendi: yolculuk karşılaştırması, hat düzenliliği, uyarılar, trafik normu); son canlı koşu 8 Eyl: 13 senaryo koştu, 13'ü geçti, İBB'ye 8 istek | `eval/journeys.jsonl`; `eval/results/latest.md` |
 | Hat düzenliliği | 39 hücreden 15'i yayımlandı, 24'ü yetersiz gözlem yüzünden reddedildi; 2 takvim günü | `eval/results/reliability.md` |
 | Kimlik | 21 commit'in 19'u kişisel e-postayla, 2'si noreply adresiyle; yerel git kimliği artık noreply | `git log --format=%ae \| sort \| uniq -c`; `git config --local user.email` |
@@ -221,7 +221,7 @@ Kaynak başına tazelik (son başarılı snapshot yaşı), boş/eksik oran, 503 
 | `city_freshness` | — | kaynak başına veri yaşı | ADX `DqDaily` |
 | `plan_journey` *(D1, 23 Eyl)* | `origin`, `destination` (ya da koordinatlar) | araba / metro / tek hatlı otobüs / yürüyüş karşılaştırması, her dakikanın dayanağı; navigasyon değil | `routing.py` · canlı trafik, İSPARK, metro, GTFS |
 | `line_reliability` *(D1)* | `line_code`, `hour?` | ortanca sefer aralığı, cv, kümelenme etiketi, gözlem sayısı; yeterli gözlem yoksa `available: false` | `reliability.py` · projenin kendi araç görüntüleri (geçmiş, canlı değil) |
-| `check_alerts` *(D1)* | istemcinin tuttuğu abonelik | kural başına uyarı, kaynaklı sayılar, `dedupe_key`; abonelik sunucuda saklanmaz, loglanmaz | `nabiz.alerts` · `docs/privacy.md` |
+| `check_alerts` *(D1)* | istemcinin tuttuğu abonelik | kural başına uyarı, kaynaklı sayılar, `dedupe_key`; abonelik sunucuda saklanmaz, loglanmaz | `ibb_mcp.alerts` · `docs/privacy.md` |
 
 - Resources: `ibb://parks`, `ibb://lines`, `ibb://stations`, `ibb://aq-stations`. Prompt: `nabiz-system` (TR/EN kurallar).
 - Her araç: Pydantic şema, deterministik, atıf alanı (`source_url`, `as_of`). Free-form sorgu yok.
@@ -414,7 +414,7 @@ istanbul-nabiz/
 | Spending limit | Düşük | Yüksek | Pahalı servis yok; budget; ADX + Foundry Local abonelikten bağımsız |
 | *23 Eyl:* `main` CI hiç yeşil olmadı (13/13 kırmızı) — kırmızı, yeni bir kusuru eskisinin arkasına saklıyor | gerçekleşti | Yüksek | GTFS'siz, hermetik testler (D1); ilk yeşil koşudan sonra `main`'e CI şartlı ruleset (sahip) |
 | *23 Eyl:* dizüstü toplayıcı uykuyla duruyor — 15 günün 4'ünde veri | gerçekleşti | Yüksek | Container Apps Jobs (DECISIONS #10); dizüstü ile Jobs **asla aynı anda** değil: Jobs tepe saatte 66, dizüstü 80, İETT sınırı 100 |
-| *23 Eyl:* kalibre ETA görülmeyen duraklarda daha kötü (35,82'ye karşı 10,18 dk) | gerçekleşti | Orta | Sunulan tahminci = ölçülen tahminci; karar DECISIONS'a (D4) |
+| *23 Eyl:* kalibre ETA görülmeyen duraklarda daha kötü (35,82'ye karşı 10,18 dk) | gerçekleşti | Orta | Sunulan tahminci = ölçülen tahminci: 23 Eyl'de ayarlanmamış 120 sn/durak'a dönüldü (DECISIONS #18) |
 | *23 Eyl:* 21 commit'in 19'u kişisel e-postayla, public geçmişte | gerçekleşti | Orta | Yeniden yazmak ya da bırakmak sahibin kararı (D2); yeni commit'ler noreply ile, `scripts/check_authorship.py` |
 | *23 Eyl:* birden fazla hat aynı çalışma ağacında birbirinin değişikliğini süpürür | Orta | Orta | Dosya bazlı sahiplik, açık yol ile staging, yeşil olmayan hat park edilir (`AGENTS.md` §1) |
 | *23 Eyl:* `probe_day0.py --azure` abonelik ve tenant kimliğini, oturum açan kullanıcıyı takip edilen `docs/day0_report.json`'a yazar | **kapandı (23 Eyl)** | — | `check_account` yalnızca aboneliğin adını ve durumunu yazıyor; araç sürümleri de kurulum yolu ve derleme üçlüsü olmadan. Commit'ten önce dosyanın diff'i yine gözden geçirilir |

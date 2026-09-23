@@ -7,7 +7,7 @@
 > Hesap yok, çerez yok, sunucuda silinecek bir kaydınız yok. Her şeyi silmek için tarayıcınızdaki
 > site verisini temizlemeniz yeterlidir (aşağıda §6).
 
-This document describes how the alert engine in `src/nabiz/alerts/` handles user data. It is not a
+This document describes how the alert engine in `src/ibb_mcp/alerts/` handles user data. It is not a
 promise bolted onto a finished feature; it is the shape of the feature. Where a claim here is
 enforced by a test, the test is named.
 
@@ -53,13 +53,13 @@ answer one question: *which air-quality station is nearest?* They live in local 
 of the returned observation (which carries the **station**, not the place), and never logged.
 
 There are two doors to the same engine, and both are thin wrappers around
-`nabiz.alerts.engine.check_alerts()`:
+`ibb_mcp.alerts.engine.check_alerts()`:
 
 * **Web:** `POST /api/alerts/check` in `src/nabiz/web/main.py`, the subscription in the request body.
-  The page (`src/nabiz/web/static/app.js`) sends it only when this browser holds a subscription;
+  The page (`src/nabiz/web/static/js/alerts.js`) sends it only when this browser holds a subscription;
   with none stored it makes no request at all.
 * **MCP:** the `check_alerts` tool in `src/ibb_mcp/server.py`, the subscription as the tool's
-  `subscription` argument. Its JSON schema is typed (`src/nabiz/alerts/schema.py`) so a model is not
+  `subscription` argument. Its JSON schema is typed (`src/ibb_mcp/alerts/schema.py`) so a model is not
   left guessing field names, and its description tells the model the subscription is evaluated in
   memory and never stored. Here the coordinates come *from* the MCP client — the agent already holds
   them — and this server keeps them no longer than the web route does.
@@ -162,7 +162,7 @@ could hold personal data, and each is limited on purpose:
   only, at most `NABIZ_MCP_MAX_CLIENTS` of them, and written to the log only when a call is refused.
   The salt is regenerated on every start, so a pseudonym cannot be joined across restarts.
 * **Traces carry names, never values.** Every span goes through one allow-list,
-  `nabiz.agent.telemetry.ALLOWED_ATTRIBUTES`: tool names, outcomes, hosts and paths, never argument
+  `ibb_mcp.telemetry.ALLOWED_ATTRIBUTES`: tool names, outcomes, hosts and paths, never argument
   values, query strings, exception messages or the user's question. The Azure Monitor distribution's
   auto-instrumentation (whose FastAPI spans would record `/api/route?from=…&to=…`) and its log export
   are switched off.

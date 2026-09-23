@@ -58,17 +58,17 @@ day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status
 
 | Layer | State | Where |
 |---|---|---|
-| İBB client, cache, models, GTFS repair, ETA engine | **working** | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py` |
+| İBB client, cache, models, GTFS repair, ETA engine | **working**; arrivals serve the untuned 120 s/stop since 23 Sep, the estimator with the better held-out score ([DECISIONS #18](DECISIONS.md)) | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py`, `src/ibb_mcp/eta_profile.py` |
 | 15 MCP tools behind one façade, plus the `ibb://attribution` resource | **working** — offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
 | MCP over streamable HTTP | **working locally** — stateless, per-caller budget, optional API key, closed CORS, `/healthz`; not deployed | `src/ibb_mcp/server.py`, `tests/test_server_security.py` |
 | Derived tables | **committed, thin** — built on 13 Sep from the laptop's lake; see Results for what each supports | `data/reference/` |
 | Collector | **today:** the owner's laptop, under a supervisor; its lake holds watched-line snapshots on 4 of the 15 days from 8 to 22 Sep (DECISIONS #10). **Target:** five scheduled Container Apps Jobs, written and tested offline, not deployed | `scripts/collect_forever.py`, `src/nabiz/collector/job.py`, `infra/modules/collectorjobs.bicep` |
-| Web UI | **working locally** — every card shows the data's age; Content-Security-Policy; the alert check travels in a POST body | `src/nabiz/web/` |
-| Alerts | **working** — stateless engine behind the MCP tool and the web route; the page can check and reset a subscription but has no editor to create one yet | `src/nabiz/alerts/`, [docs/privacy.md](docs/privacy.md) |
+| Web UI | **working locally** — every card shows the data's age; Content-Security-Policy; the alert check travels in a POST body; native ES modules since 23 Sep. A redesign is approved and specified, not built yet ([below](#the-web-page-and-its-design)) | `src/nabiz/web/`, [docs/design/](docs/design/DESIGN.md) |
+| Alerts | **working** — stateless engine behind the MCP tool and the web route; the page can check and reset a subscription but has no editor to create one yet | `src/ibb_mcp/alerts/`, [docs/privacy.md](docs/privacy.md) |
 | City agent | **working without a model** (keyword routing and templated answers); the model path has never been evaluated on a real model | `src/nabiz/agent/` |
 | Infrastructure | **written, never deployed** — Bicep + `azd`, one `Dockerfile` for server and jobs (never built) | `infra/`, `azure.yaml`, `Dockerfile`, [docs/deploy.md](docs/deploy.md) |
-| CI | **red on `main`**: 13 of 13 runs failed between 8 and 22 Sep, 10 of them because three tests read the gitignored GTFS export ([docs/ENGINEERING.md](docs/ENGINEERING.md) §1). Fixed in this batch with a committed GTFS cut; `make ci-local` passes on a clean copy; the first green run waits for the push | `.github/workflows/ci.yml` |
-| Tests | **943 passed**, 1 skipped, 3 xfailed (two documented defects), offline, on 23 Sep — in the working tree and on the clean copy `make ci-local` builds | `tests/` |
+| CI | **green on `main` since 23 Sep** (`1599c40`, then `d59b5a8`), after 13 red runs from 8 to 22 Sep, 10 of them because three tests read the gitignored GTFS export ([docs/ENGINEERING.md](docs/ENGINEERING.md) §1). Lint, tests, the MCP smoke test, guardrails, the architecture fences, the web budget and the authorship gate; `make ci-local` runs the same list on a clean copy. `main` is not protected yet | `.github/workflows/ci.yml` |
+| Tests | **1250 passed**, 1 skipped, 4 xfailed (two documented defects, and the İETT hourly budget that waits for an owner decision), offline, on 23 Sep, in the working tree and on the clean copy `make ci-local` builds | `tests/` |
 | Eval harness | **30 scenarios** (J1–J5). The committed results are the 24-scenario runs of 8 Sep; J5 has no committed run yet | `eval/` |
 
 ## Architecture
@@ -147,7 +147,7 @@ accuracy. Where a metric cannot be computed it says so and why.
 | — within 5 minutes | 27.3% | same |
 | — by method | `stop_sequence` 12.74 min (n = 1,240) · `distance` 15.16 min (n = 111) | same |
 | Calibrated ETA rates, held out | **35.82 min** against 10.18 min for the untuned rate, on the same 523 predictions made after the fit | `eval/results/eta.md`, "Held-out replay" (`make eta-holdout`): the calibration makes the estimate worse on stops it never saw |
-| Calibrated ETA rates, in-sample | 11.16 min for the per-bucket rates the tool serves, 12.37 min for the single 235 s/stop rate, both on the 500 predictions they were fitted on — fits, not accuracy | `eval/results/eta.md` ("What 12.37 and 11.2 are") · `data/reference/eta_profile.json` (`overall.mae_minutes`) |
+| Calibrated ETA rates, in-sample | 11.16 min for the per-bucket rates (served only in the calibrated mode, see below), 12.37 min for the single 235 s/stop rate, both on the 500 predictions they were fitted on — fits, not accuracy | `eval/results/eta.md` ("What 12.37 and 11.2 are") · `data/reference/eta_profile.json` (`overall.mae_minutes`) |
 | Line regularity | 15 of 39 line-hour cells published, 24 refused for too few observations; 2 calendar days (8 and 13 Sep) | `eval/results/reliability.md`, `data/reference/line_reliability.json` |
 | "Usually at this hour" parking | 0 of 3,216 cells pass the profile's own guards (16,325 snapshot rows, 8–13 Sep), so the tool answers "not enough history yet" | `data/reference/occupancy_profile.json` |
 | Agent without a model | 9/24 scenarios; tool-call accuracy 41.7% exact chain; numeric faithfulness 126/126 numbers in its templated answers | `eval/results/20260908T082619Z-agent-offline.md` — keyword routing and templates, not a model |
@@ -157,12 +157,14 @@ accuracy. Where a metric cannot be computed it says so and why.
 
 **About that ETA number.** 12.94 minutes is bad and it is published anyway, because the harness exists to
 catch exactly this. It measures the untuned 120 s/stop estimator: the collector logs every prediction at
-that rate. The per-bucket rates calibrated on 13 September, the ones the tool serves, scored 11.16 minutes
+that rate. The per-bucket rates calibrated on 13 September scored 11.16 minutes
 only on the 500 predictions they were fitted on (two 500T stops; the single 235 s/stop rate scored 12.37
 there); replayed on 523 later predictions at stops the fit never saw, they scored 35.82 minutes against
 10.18 for the untuned rate. Seconds per stop belongs to a stretch of road, not
-to a line, so the next model has to account for stop spacing. `iett_next_arrivals` applies the calibrated
-rates today; which estimator it should serve is an open decision ([docs/SPRINT.md](docs/SPRINT.md), D4).
+to a line, so the next model has to account for stop spacing. Since 2026-09-23 `iett_next_arrivals` and the
+bus leg of `plan_journey` serve the untuned 120 s/stop, the estimator with the better held-out score, and the
+calibrated rates only with `NABIZ_ETA_PROFILE_MODE=calibrated` (DECISIONS #18). Every arrival says which rate
+it used and why (`diagnostics.rate_mode`, `rate_reason`).
 Method, the before/after split, limits and history: `eval/results/eta.md`.
 
 ## Verified data facts
@@ -200,7 +202,8 @@ make venv          # uv venv -p 3.12 .venv (the system 3.14 is not supported by 
 make install       # editable install with the dev and web extras (EXTRAS=dev,web,collector for more)
 
 make test          # the suite, offline: tests/conftest.py fails any test that tries the network
-make lint smoke guardrails   # the other gates CI runs
+make lint smoke guardrails   # the other gates CI runs, with:
+make architecture web-budget # import layers and size ratchets; the page's byte, font and token budget
 make ci-local      # every CI gate on a clean copy of exactly what a push would publish
 ```
 
@@ -280,6 +283,29 @@ the same provenance.
 **→ [docs/mcp-usage.md](docs/mcp-usage.md)** — copy-pasteable stdio and HTTP configuration, the full tool
 reference with parameters and return shapes, the failure kinds, and a note on sharing the rate budget.
 
+## The web page and its design
+
+The page is the MCP server's first client: type a question or tap an example, and the answer comes from
+İBB's endpoints with the age of every number beside it. Its redesign, **"Nabız çizgisi"**, is approved and
+written down in **[docs/design/DESIGN.md](docs/design/DESIGN.md)**:
+
+- **One living element.** A pen line drawn from the last 24 hours of İBB's city traffic index, computed only
+  from real readings. It breathes only while the data is current; older data draws grey, with its date.
+- **Colour from measurement.** Base hue 260, the centre of İBB's and İETT's web blues in OKLCH; one
+  analogous cyan accent that means "now" and nothing else; warm hues only for warnings and polluted air.
+  178 palette pairs and 76 added pairs pass WCAG AA contrast in both themes.
+- **Type and icons.** Atkinson Hyperlegible Next, drawn to keep codes such as `M1A` and Turkish `İ ı` apart
+  (it has no `₺`, `µ` or subscript glyphs; Source Sans 3 has all of them, so the choice is open again:
+  DESIGN.md §4), and Tabler Icons: open licences, self-hosted, nothing hand-drawn.
+- **Honesty rules.** Never look like an official İBB product; "resmî değildir" at every width; every number
+  with its age; no invented point in any drawing.
+
+Steps 0 to 2 of its plan are in the tree: the before measurements, the budget gate, and the old `app.js`
+split into ES modules, plus the fixes a review asked for on the same day (the data-age strip and status
+now show how old the data is, not when it was last read; readable greys; keyboard focus kept on "Sor";
+Turkish names on the map). The page still has its old look, so it is not pictured here until the visual
+steps land; the gate already lists every finding each of them has to remove.
+
 ## How this repository is built
 
 One person, several coding agents working in parallel lanes, and rules that keep the result honest:
@@ -289,11 +315,16 @@ One person, several coding agents working in parallel lanes, and rules that keep
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup, the checks, commit style and identity.
 - **[docs/ENGINEERING.md](docs/ENGINEERING.md)** — the engineering rules, each tied to an incident or a
   reference, and a dated, unflattering self-assessment.
+- **Gates on the code's shape and cost** (ENGINEERING §13 and §14), all three in CI: `make architecture`
+  fences the import layers (`ibb_mcp` never imports `nabiz`) and ratchets module, class and function size
+  against `scripts/architecture_baseline.json`, so measured debt cannot grow past its entry (raising an entry
+  is a reviewed change); `tests/test_performance_budgets.py` counts upstream calls per tool at the cache and
+  at the boundary (zero when the cache is warm), single flight, stale-on-error and parses per process; `make web-budget` holds the page to its byte, font, motion and colour-token budgets.
 - **[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)** and **[SECURITY.md](SECURITY.md)** — what is protected,
   by which file, and how to report a vulnerability privately.
 - **[docs/privacy.md](docs/privacy.md)** — why no location is stored server-side, and the tests that hold it.
 - **[docs/SPRINT.md](docs/SPRINT.md)** · **[PLAN.md](PLAN.md)** · **[DECISIONS.md](DECISIONS.md)** — the
-  plan to delivery, the original plan with its dated status, and 17 architecture decisions.
+  plan to delivery, the original plan with its dated status, and 19 architecture decisions.
 
 ## Limitations
 
@@ -381,17 +412,20 @@ sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının y
 onarımı, ETA motoru, 15 araç ve **MCP sunucusu** (stdio gerçek bir MCP istemcisiyle doğrulandı; HTTP yerelde
 durumsuz, çağıran başına bütçeli, `/healthz`'li), web sayfası, durumsuz uyarı motoru, modelsiz çalışan ajan.
 Toplayıcı bugün sahibinin dizüstünde çalışıyor; hedef, çevrimdışı test edilmiş beş zamanlanmış Container Apps
-Job'u (DECISIONS #10). `main`'deki CI 8–22 Eylül arasında 13 koşunun 13'ünde kırmızıydı; düzeltmesi bu
-toplu değişiklikte, ilk yeşil koşu push'u bekliyor. Günlük plan [docs/SPRINT.md](docs/SPRINT.md), kurallar
+Job'u (DECISIONS #10). `main`'deki CI 8–22 Eylül arasında 13 koşunun 13'ünde kırmızıydı; 23 Eylül'den beri
+yeşil. Web sayfasının yeni tasarımı ("Nabız çizgisi") onaylandı ve [docs/design/DESIGN.md](docs/design/DESIGN.md)
+dosyasında yazılı; henüz uygulanmadı. Günlük plan [docs/SPRINT.md](docs/SPRINT.md), kurallar
 [AGENTS.md](AGENTS.md), mühendislik [docs/ENGINEERING.md](docs/ENGINEERING.md), tehdit modeli
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), kararlar [DECISIONS.md](DECISIONS.md), kurulum
 [docs/mcp-usage.md](docs/mcp-usage.md).
 
 **Sonuçlar** yukarıdaki *Results* tablosundadır ve her sayı `eval/results/` ya da `data/reference/`
 altındaki bir dosyadan kopyalanır. Otobüs varış tahmininin ölçülmüş hatası **12,94 dk** (1.351 tahmin,
-ayarlanmamış 120 sn/durak); 13 Eylül'de kalibre edilen ve aracın kullandığı saat dilimi oranlarının 11,16 dk'lık
-değeri örneklem içi uyumdur (tek 235 sn/durak oranınınki 12,37 dk), eğitimde görülmeyen 523 tahminde 35,82
-dk'ya çıkıyor — yani kalibrasyon tahmini kötüleştiriyor (`eval/results/eta.md`).
+ayarlanmamış 120 sn/durak); 13 Eylül'de kalibre edilen saat dilimi oranlarının 11,16 dk'lık değeri örneklem içi
+uyumdur (tek 235 sn/durak oranınınki 12,37 dk), eğitimde görülmeyen 523 tahminde 35,82 dk'ya çıkıyor; yani
+kalibrasyon tahmini kötüleştiriyor (`eval/results/eta.md`). Bu yüzden 23 Eylül'den beri araçlar ayarlanmamış
+120 sn/durak oranını kullanıyor; kalibre oranlar yalnızca `NABIZ_ETA_PROFILE_MODE=calibrated` ile açılır
+(DECISIONS #18).
 
 **Sınırlar:** otobüs varış saatleri tahmindir ve henüz yeterince iyi değildir · mod karşılaştırması
 navigasyon değildir · tarihçe ince (otopark profilinde yeterli hücre yok, hat düzenliliği iki gün) · 38 değil

@@ -117,7 +117,7 @@ Bu, mimarinin genişleyebilirliğinin kanıtı olur — ama bugün yapılmamış
 | **Güvenilirlik** | Bayat-veri yedeği: ağ geçidi düşerse cevap bozulmaz, yaşını söyler. Üstel geri çekilme. Kaynak hatası tüm cevabı değil yalnız o seçeneği düşürür | `cache.py`, `routing.py` |
 | **Güvenlik** | Anahtarsız; yönetilen kimlik; public repoda sır yok; plaka ve konum hiç saklanmıyor; araçlar parametrik (serbest sorgu yüzeyi yok) | `guardrails.py`, `NOTICE.md` |
 | **Maliyet optimizasyonu** | §4 | `DECISIONS.md` |
-| **Operasyonel mükemmellik** | 943 test (pytest, çevrimdışı, 23 Eyl), ruff, guardrail'ler ve commit kimliği kapısı CI'da (`main`'de henüz yeşil koşu yok); senaryo tabanlı eval elle koşuluyor, merge kapısı değil; OpenTelemetry → App Insights (izin listesiyle); toplayıcı süpervizörü | `.github/workflows/`, `eval/`, `scripts/guardrails.py` |
+| **Operasyonel mükemmellik** | 1250 test (pytest, çevrimdışı, 23 Eyl), ruff, guardrail'ler, mimari sınırlar, web bütçesi ve commit kimliği kapısı CI'da (`main` 23 Eyl'den beri yeşil); senaryo tabanlı eval elle koşuluyor, merge kapısı değil; OpenTelemetry → App Insights (izin listesiyle); toplayıcı süpervizörü | `.github/workflows/`, `eval/`, `scripts/guardrails.py` |
 | **Performans verimliliği** | Önbellek sıcakken 0 sn; soğukta gecikme bilinçli nezaket aralığından kaynaklanır ve raporda böyle yazılır | `eval/results/latest.md` |
 | **Sürdürülebilirlik** | §3.1 | |
 
@@ -178,8 +178,9 @@ Bir CSA'nın güvenini kazandıran bölüm budur.
   tahmin, 8–22 Eylül, ayarlanmamış 120 sn/durak oranıyla); hedef 5 dakika altı. Kalibre edilmiş oranların 11,2
   dakikası yalnızca eğitildikleri iki durakta geçerli bir örneklem içi uyum: eğitimde görülmeyen duraklarda
   yeniden oynatılınca hata 35,8 dakikaya çıkıyor (n = 523). Durak başına süre hatta değil, yolun kesimine
-  bağlı; sıradaki adım durak aralığını hesaba katan bir model ve kalibre edilmiş tahminlerin de kaydedilip
-  ölçülmesi. Kaynak ve sınırlar: `eval/results/eta.md`.
+  bağlı; bu yüzden 23 Eylül'den beri araç ayarlanmamış 120 sn/durak oranını sunuyor (DECISIONS #18). Sıradaki
+  adım durak aralığını hesaba katan bir model; yeniden sunulmadan önce görülmeyen duraklarda ölçülecek.
+  Kaynak ve sınırlar: `eval/results/eta.md`.
 
 ---
 
@@ -187,7 +188,7 @@ Bir CSA'nın güvenini kazandıran bölüm budur.
 
 | Aşama | Durum | Kapı |
 |---|---|---|
-| **Kanıt** (MVP) | ✅ 15 araç canlı veriyle çalışıyor, 943 test (23 Eyl), ölçülmüş eval | — |
+| **Kanıt** (MVP) | ✅ 15 araç canlı veriyle çalışıyor, 1250 test (23 Eyl), ölçülmüş eval | — |
 | **Pilot** | ⏳ Azure'a dağıtım, canlı URL, App Insights telemetrisi | `az` kurulumu, bölge politikası, ADX kimlik testi |
 | **Ölçek** | Fabric Eventhouse aynası, Event Hubs, Copilot Studio yüzeyi, PyPI yayını | Kapasite kararı; kurumsal tenant |
 | **Kurumsal** | İBB iç sistemleriyle entegrasyon, saha ekipleri konsolu | Kurum ortaklığı — açık veriyle yapılamaz |

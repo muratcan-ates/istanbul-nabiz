@@ -135,7 +135,8 @@ mid-route; calibration waits for clean data.
 old targets. Replayed on the new mid-route targets it scores 35.8 min against 10.2 for the untuned 120 s/stop
 on the same 523 predictions, and the collector never logs a calibrated prediction at all. Current measured
 MAE: 12.94 min over 1,351 resolved predictions, all at the untuned rate. Method and limits in
-`eval/results/eta.md`.
+`eval/results/eta.md`. The tools therefore serve the untuned rate again, the calibrated one only with
+`NABIZ_ETA_PROFILE_MODE=calibrated` (DECISIONS #18).
 
 **Update 2026-09-23 (state of the working tree, not yet pushed).** The table above is the 13 September
 snapshot. Since then:
@@ -148,10 +149,11 @@ snapshot. Since then:
   (DECISIONS #15); spans go through one allow-list (#16).
 - The collector's target host is five scheduled Container Apps Jobs (DECISIONS #10), written and tested
   offline; the laptop collector is still what collects until the owner deploys.
-- Tests read only committed data (DECISIONS #17); guardrails and an authorship gate run in CI; CI on `main`
-  has not been green yet because none of this is pushed.
-- Suite: 943 passed, 1 skipped, 3 xfailed (`NABIZ_OFFLINE=1 .venv/bin/python -m pytest -q`, 23 Sep), the same
-  on the clean copy `make ci-local` builds.
+- Tests read only committed data (DECISIONS #17); guardrails and an authorship gate run in CI. CI on `main`
+  went green on 2026-09-23 with the push of that work (`1599c40`, then `d59b5a8`).
+- Suite: 943 passed, 1 skipped, 3 xfailed at `d59b5a8`; 1250 passed, 1 skipped, 4 xfailed on the working tree
+  with the same day's review fixes, the same on the clean copy `make ci-local` builds
+  (`NABIZ_OFFLINE=1 .venv/bin/python -m pytest -q`).
 
 The live status table is [`PLAN.md`](../PLAN.md) §0, the day-by-day plan [`docs/SPRINT.md`](SPRINT.md).
 
@@ -247,7 +249,7 @@ src/ibb_mcp/            the MCP server package (publishable)
   occupancy.py reliability.py eta_profile.py   derived tables: parking history, headway, fitted ETA rates
   routing.py metro_graph.py lines.py traffic_profile.py   plan_journey: modes, rail graph, bus index, traffic norm
 src/nabiz/collector/    snapshots → lake (NDJSON/Blob) → ADX; job.py (Container Apps Jobs); Functions app (off)
-src/nabiz/alerts/       stateless alert engine, rules, the MCP subscription schema
+src/ibb_mcp/alerts/     stateless alert engine, rules, the MCP subscription schema (nabiz.alerts is its old name)
 src/nabiz/web/          FastAPI + static page (CSP, no inline script)
 src/nabiz/agent/        LLM client (swappable), agent loop, faithfulness checker, telemetry allow-list
 scripts/                capture_fixtures collect_forever eta_report eta_holdout calibrate_eta guardrails

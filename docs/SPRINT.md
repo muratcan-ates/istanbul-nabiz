@@ -101,10 +101,18 @@ The lanes share one working tree, so per-file ownership is the only isolation (A
 | 10 | Read every lane's diff and handoff; commit in the suggested order, staging explicit paths; push; watch the run | Owner |
 | 11 | GitHub settings, minutes each: keep the e-mail address private and block command-line pushes that expose it; two-factor authentication; private vulnerability reporting; Dependabot alerts on, version-update PRs off. After the first green run: a ruleset on `main` that requires the CI check | Owner |
 | 12 | Ask the mentor for the written brief: deadline, video length and language, upload channel, whether the repository must be public | Owner |
+| 13 | Rules for code shape and cost, each with a gate: import layers and size ratchets (`scripts/check_architecture.py`), upstream-call and work-once budgets (`tests/test_performance_budgets.py`), the page budget (`scripts/check_web_budget.py`); the alert engine and tracing move into `ibb_mcp` (DECISIONS #19); arrivals serve the untuned rate (DECISIONS #18) | Lane |
+| 14 | Web redesign ("Nabız çizgisi", [`design/DESIGN.md`](design/DESIGN.md)): steps 0–2 of its plan, the before measurements and screenshots, the budget gate, and `app.js` split into ES modules with no visible change | Lane |
 
 Status when the lanes finished (23 Sep): tasks 1–9 are done in the shared working tree and were checked
 together by the integration pass (lint, the full suite, guardrails, the MCP smoke test and `make ci-local` on
-a clean copy). Tasks 10–12 are the owner's.
+a clean copy). The owner committed and pushed them the same night, and **the first exit criterion holds**: the
+run for `1599c40` was the first `success` on `main` (2026-09-23 00:40 UTC), and `d59b5a8` is green too
+(`gh run list --workflow ci.yml --branch main`). Tasks 13 and 14 came in a second wave the same day and went
+through a second integration pass with the same gates plus `make architecture` and `make web-budget`. The
+redesign's steps 3–12 (font and icons, tokens and CSS, markup, the signature line, answers, lazy map,
+compression) are not in the tree yet: its budget gate lists each finding they remove as a target that may only
+shrink. Tasks 10–12 are the owner's.
 
 **Exit criteria**
 
@@ -206,7 +214,7 @@ tool serves.
 | 3 | Make `scripts/eta_report.py` read the cloud layout: it reads `NABIZ_LAKE_DIR` (default `data/lake`), while the jobs write gzipped NDJSON under `<source>/year=/month=/day=/hour=/` in blob storage ([`deploy.md`](deploy.md) §8) | Lane |
 | 4 | Download the cloud ETA predictions and line snapshots into a local lake (`az storage blob download-batch … --auth-mode login`) | Owner |
 | 5 | `NABIZ_OFFLINE=1 .venv/bin/python scripts/eta_report.py --diagnose`, regenerating `eval/results/eta.md`; carry the hand-written sections over, as the file itself asks | Lane |
-| 6 | Decide what `iett_next_arrivals` serves (see [decisions](#decisions-only-the-owner-can-make)), then implement it so that the logged estimator is the served one — what is measured is what users get. Recorded in DECISIONS.md | Owner decides, Lane builds |
+| 6 | Decide what `iett_next_arrivals` serves (see [decisions](#decisions-only-the-owner-can-make)), then implement it so that the logged estimator is the served one — what is measured is what users get. Recorded in DECISIONS.md. **Built on D1 (23 Sep)** as the table's default: the untuned 120 s/stop, the profile only with `NABIZ_ETA_PROFILE_MODE=calibrated` (DECISIONS #18); the owner can still reverse it with that one setting | Owner decides, Lane builds |
 | 7 | Optional: agent-mode eval with a local model (`make eval EVAL_ARGS='--mode agent'` with `NABIZ_LLM_BASE_URL` and `NABIZ_LLM_MODEL` set, `src/nabiz/agent/llm.py`). Without it, numeric faithfulness and tool-call accuracy stay `n/a (reason)` | Owner |
 | 8 | README Results table refreshed from the new files only | Lane |
 
@@ -326,7 +334,7 @@ design; the freeze moves forward to meet the date.
 | `azd up` and every later provision | D3 | nothing deployed | can create billable resources ([`ENGINEERING.md`](ENGINEERING.md) CD-4) |
 | ADX free cluster | D3 | lake only; history ages out after 30 days | his account, outside the subscription |
 | Stop the laptop collector; later, pause or keep the cloud jobs | D3 · D7 | one collector at a time, always | the shared İETT budget |
-| What `iett_next_arrivals` serves: the calibrated profile or the untuned rate | D4 | the untuned 120 s/stop: 10.18 min against 35.82 for the profile on the 523 held-out predictions (`eval/results/eta.md`) | a product claim; recorded in DECISIONS.md |
+| What `iett_next_arrivals` serves: the calibrated profile or the untuned rate | D4 | the untuned 120 s/stop: 10.18 min against 35.82 for the profile on the 523 held-out predictions (`eval/results/eta.md`). In effect since 23 Sep (DECISIONS #18) | a product claim; recorded in DECISIONS.md |
 | LLM path: student credit (Azure OpenAI or Foundry serverless), a local model, or deterministic only | D4 | deterministic; faithfulness stays `n/a (reason)` | spends credit (PLAN.md §9) |
 | Publish the live URL in the README; minimum replicas on demo day | D5 | URL left out; `minReplicas` 0 | public exposure and cost |
 | Record and upload the video | D5 | — | his voice, his account |

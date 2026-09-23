@@ -3,9 +3,11 @@
 How this repository is built, rule by rule. Every rule is tied either to an incident this repository has
 already had or to a named reference with a link, and every rule says what enforces it — or that nothing
 does yet. [`AGENTS.md`](../AGENTS.md) is the short, binding version for coding agents;
-[`docs/NABIZ.md`](NABIZ.md) is the charter. This file is the *why*.
+[`docs/NABIZ.md`](NABIZ.md) is the charter. This file is the *why*. How the code is shaped (§13) and how its
+cost is budgeted (§14) come last, because they are the newest rules.
 
-Last verified: 2026-09-23, against `main` at `c68c6ba` plus the uncommitted working tree of that day.
+Last verified: 2026-09-23, against `main` at `d59b5a8` plus the uncommitted working tree of that day. The CI,
+commit, test and size rows of §1 were re-measured after `d59b5a8` was pushed; the others are from that morning.
 
 **Maturity scale** used throughout, the same one used to review the previous project (§11):
 `0` absent · `1` ad hoc, not written · `2` written, not enforced · `3` enforced — a failing check stops the
@@ -36,25 +38,25 @@ change · `4` enforced and measured over time. "Unknown" means there is no evide
 
 | Fact | Value | Reproduce with |
 |---|---|---|
-| Commits on `main` | 21 (20 pushed; `c68c6ba` local) | `git rev-list --count HEAD` |
+| Commits on `main` | 52, all pushed (21 on the morning of 2026-09-23) | `git rev-list --count HEAD`; `git status -sb` |
 | Pull requests ever opened | 0 | `gh api 'repos/muratcan-ates/istanbul-nabiz/pulls?state=all' --jq length` |
 | `main` protected / rulesets | `protected: false` / `[]` | `gh api repos/muratcan-ates/istanbul-nabiz/branches/main --jq .protected`; `gh api repos/muratcan-ates/istanbul-nabiz/rulesets` |
-| CI runs on `main` | 13, **13 failed**, 0 cancelled | `gh run list --workflow ci.yml --branch main --limit 100` |
-| Why they fail | 10 runs: the same 3 tests in `tests/test_web.py`, which read GTFS files under the gitignored `data/reference/gtfs/` (176 MB locally), so the runner has none. 3 runs on 2026-09-13: the ruff gate (2 errors), so pytest never ran. Fixed in the working tree on 2026-09-23 (`tests/fixtures/gtfs_mini`, DECISIONS #17; `make ci-local` passes on a clean copy); not pushed, so no green run exists yet | `gh run view <id> --log-failed` |
-| First and latest CI run | 2026-09-08 08:49 UTC · 2026-09-22 18:25 UTC — red for 14.4 days, never green | same |
-| CI duration (queued to completed) | median 23 s, range 17–38 s (n = 13) | `createdAt`/`updatedAt` from `gh run list --json` |
-| Local test suite | 943 passed, 1 skipped, 3 xfailed on the integrated working tree, and the same on the clean copy `make ci-local` builds (2026-09-23, after the review fixes) | `NABIZ_OFFLINE=1 .venv/bin/python -m pytest -q` |
-| `scripts/guardrails.py` | 12 checks, 0 failed, 1 warning on the working tree (the warning is a truncated local file the loader never reads); a blocking step in the working-tree `ci.yml`, not pushed | `NABIZ_OFFLINE=1 .venv/bin/python scripts/guardrails.py` |
+| CI runs on `main` | 15: **13 failed**, then **2 succeeded** (`1599c40` and `d59b5a8`, the first green runs), 0 cancelled | `gh run list --workflow ci.yml --branch main --limit 100` |
+| Why they fail | 10 runs: the same 3 tests in `tests/test_web.py`, which read GTFS files under the gitignored `data/reference/gtfs/` (176 MB locally), so the runner has none. 3 runs on 2026-09-13: the ruff gate (2 errors), so pytest never ran. Fixed on 2026-09-23 (`tests/fixtures/gtfs_mini`, DECISIONS #17), pushed with `1599c40`, whose run was the first green one | `gh run view <id> --log-failed` |
+| First and latest CI run | 2026-09-08 08:49 UTC · 2026-09-23 00:44 UTC. Red from the first run until 2026-09-23 00:40 UTC (`1599c40`), 14.7 days | same |
+| CI duration (queued to completed) | median 23 s, range 17–43 s (n = 15; the two green runs 41 and 43 s, because pytest now runs) | `createdAt`/`updatedAt` from `gh run list --json` |
+| Local test suite | 1250 passed, 1 skipped, 4 xfailed on the working tree with the review fixes, and the same on the clean copy `make ci-local` builds (2026-09-23; 1214 after the second integration pass, 943 at `d59b5a8`). The fourth xfail is the İETT hourly budget, an open owner decision (OPT-3) | `NABIZ_OFFLINE=1 .venv/bin/python -m pytest -q` |
+| `scripts/guardrails.py` | 12 checks, 0 failed, 1 warning on the working tree (the warning is a truncated local file the loader never reads), 0 warnings on the clean copy; a blocking CI step since `1599c40` | `NABIZ_OFFLINE=1 .venv/bin/python scripts/guardrails.py` |
 | Deployments | 0 | `gh api repos/muratcan-ates/istanbul-nabiz/deployments --jq length` |
 | Secret scanning / push protection | enabled / enabled | `gh api repos/muratcan-ates/istanbul-nabiz --jq .security_and_analysis` |
 | Dependabot alerts · security updates | off (HTTP 404) · disabled | `gh api -i repos/muratcan-ates/istanbul-nabiz/vulnerability-alerts` |
 | Private vulnerability reporting | disabled | `gh api repos/muratcan-ates/istanbul-nabiz/private-vulnerability-reporting` |
-| Commit identity | 2 of 21 commits use the noreply address; 0 carry a co-author trailer or an assistant footer | `git log --format='%ae'`; `git log --format=%B \| grep -ciE '^co-author\|generated (with\|by)'` |
+| Commit identity | 33 of 52 commits use the noreply address, the other 19 are the early ones with a personal address; 0 carry a co-author trailer or an assistant footer (the `grep` finds 1 line: prose in the body of the commit that adds the authorship gate) | `git log --format='%ae'`; `git log --format=%B \| grep -ciE '^co-author\|generated (with\|by)'` |
 | Lane branches from 2026-09-13 | `feat/route-advisor`, `feat/ops-hardening`: 0 commits past `401ab4b`, their work uncommitted in two worktrees; `main` is 5 commits ahead. Both harvested into the working tree on 2026-09-23 (outcome per file in `docs/route-advisor.md` §9, DECISIONS #11, #15, #16); the worktrees can go once that lands | `git worktree list`; `git rev-list --count 401ab4b..main` |
-| Markdown vs product code (tracked at `c68c6ba`) | 5,059 lines of Markdown; 12,647 lines of Python under `src/` (the working tree adds to both) | `git grep -h -c '' HEAD -- '*.md' \| awk '{s+=$1} END {print s}'`; the same with `'src/*.py'` |
+| Markdown vs product code (tracked at `d59b5a8`) | 7,914 lines of Markdown; 17,242 lines of Python under `src/` (5,059 and 12,647 at `c68c6ba`; the working tree adds to both) | `git grep -h -c '' HEAD -- '*.md' \| awk '{s+=$1} END {print s}'`; the same with `'src/*.py'` |
 
 The single most important line in that table is the fourth. It is the failure the previous project was
-reviewed for (§11), repeating here in smaller form.
+reviewed for (§11), repeated here in smaller form until the first green run on 2026-09-23.
 
 ---
 
@@ -68,9 +70,9 @@ build", "fix broken builds immediately", "keep the build fast", "make the build 
 |---|---|---|---|---|
 | CI-1 | Every push to `main` and every pull request runs CI; the pipeline is code in the repo. | Fowler | `.github/workflows/ci.yml` | holds |
 | CI-2 | Local equals CI: one command runs the gate list CI runs. | "It passed locally" is only useful if locally means the same checks | `make ci-local` (added with this sprint's CI change) | holds locally (green on a clean copy, 2026-09-23) |
-| CI-3 | **Stop the line.** While `main` is red, the only change that merges is the fix. No "this check may stay red". | §1: 13 of 13 runs red for 14.4 days. Two lint errors landed on 2026-09-13 and failed three runs before pytest could start, looking exactly like the failure already there — red hid a new defect. The previous project's red `main` silently switched its delivery off (§11) | nothing yet — a ruleset requiring the CI check is the gate (owner, §12) | **broken** |
-| CI-4 | **Hermetic tests.** CI must not need a file that exists only on a laptop. | The three failing tests read `data/reference/gtfs/`, which is gitignored. They pass locally and fail on every runner — a dev/prod parity failure (Twelve-Factor X) | `tests/fixtures/gtfs_mini` behind the shared test settings; `make ci-local` copies only what a push publishes | fixed in the working tree, not pushed |
-| CI-5 | Keep the build fast; never cancel a run on `main`. | Fowler. The previous project cancelled a large share of its `main` runs through `cancel-in-progress` | `ci.yml`: `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}` in the working tree (on `main` it is still `true` for every ref) | fixed in the working tree, not pushed |
+| CI-3 | **Stop the line.** While `main` is red, the only change that merges is the fix. No "this check may stay red". | §1: the first 13 runs were red, for 14.7 days, until `1599c40`. Two lint errors landed on 2026-09-13 and failed three runs before pytest could start, looking exactly like the failure already there — red hid a new defect. The previous project's red `main` silently switched its delivery off (§11) | nothing yet — a ruleset requiring the CI check is the gate (owner, §12) | **green since `1599c40`, not gated**: nothing stops a red change from landing until the ruleset exists |
+| CI-4 | **Hermetic tests.** CI must not need a file that exists only on a laptop. | The three failing tests read `data/reference/gtfs/`, which is gitignored. They pass locally and fail on every runner — a dev/prod parity failure (Twelve-Factor X) | `tests/fixtures/gtfs_mini` behind the shared test settings; `make ci-local` copies only what a push publishes | holds: pushed with `1599c40`, green on the runner |
+| CI-5 | Keep the build fast; never cancel a run on `main`. | Fowler. The previous project cancelled a large share of its `main` runs through `cancel-in-progress` | `ci.yml`: `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}` | holds (on `main` since `1599c40`) |
 | CI-6 | A gate proves it can fail. A new check lands with evidence that it goes red on the incident it guards. | Fowler, "self-testing"; `scripts/guardrails.py` is built as regression tests for real incidents | review | partial |
 
 CI-3 and CI-4 are one piece of work: every offline test reads a small committed GTFS subset under
@@ -104,7 +106,7 @@ undefined. The proxies below are labelled as proxies; they say something about i
 | Deployment frequency | undefined — 0 deployments | — | — |
 | Change lead time | undefined | commit time → first CI run on `main` that contains the commit | median 0.1 min, p90 53.6 min, max 157 min (n = 20 pushed commits) — commits go straight to `main` |
 | Change fail rate | undefined | share of `main` CI runs that fail | 13 / 13 |
-| Failed deployment recovery time | undefined | time `main` CI stays red | never green: 14.4 days from first to latest run |
+| Failed deployment recovery time | undefined | time `main` CI stays red | 14.7 days, from the first run to the first green one (`1599c40`) |
 | Deployment rework rate | undefined | — | — |
 
 How the proxies were produced, so anyone can redo it:
@@ -193,7 +195,7 @@ each check against the files and the GitHub API on 2026-09-23.
 | CI-Tests | runs, red on `main` | §1; the working tree passes `make ci-local` |
 | Security-Policy | pass once merged | `SECURITY.md` (this change); private reporting still off |
 | Dependency-Update-Tool | **fail** | no Dependabot or Renovate configuration; alerts off |
-| SAST | **fail** | no CodeQL; ruff selects `E, F, I, UP, B, SIM`, not `S` |
+| SAST | **fail** | no CodeQL; ruff selects `E, F, I, UP, B, SIM` and the size rules `C90, PLR0912, PLR0913, PLR0915` (§13), not `S` |
 | Vulnerabilities | unknown | no `pip-audit` / `osv-scanner` run — not run |
 | Binary-Artifacts | pass | `git ls-files` holds no binary |
 | License | pass | `LICENSE` (MIT); data licence in `NOTICE.md` |
@@ -284,7 +286,7 @@ not stop merges, red became normal, and the delivery machinery never ran once.**
 |---|---|---|---|
 | Disclosure policy | no `SECURITY.md` existed | §7, [`SECURITY.md`](../SECURITY.md) | added; private reporting still off |
 | Container image scanning | the shipped image was never scanned | SC-4: scan the image digest once a Dockerfile exists | a `Dockerfile` in the working tree; no scan |
-| Stop the line | `main` CI was almost never green and stayed red for days; a written note allowed a check to stay red | CI-3 | **repeating**: 13 of 13 red (§1) |
+| Stop the line | `main` CI was almost never green and stayed red for days; a written note allowed a check to stay red | CI-3 | **repeated** until 2026-09-23: 13 runs red, then green (§1); still ungated |
 | Release artefact built from the lock | tests used the lockfile, the image installed open ranges | CD-2 | **repeating in advance**: no lockfile |
 | Trunk-based development | lanes merged big-bang through an integration branch, then reverted | CD-3, AI-2 | lane work uncommitted for 10 days |
 | Dependency updates | Dependabot was removed because the bot appeared as a contributor, and nothing replaced it | SC-3 | alerts off; no update tool |
@@ -294,7 +296,7 @@ not stop merges, red became normal, and the delivery machinery never ran once.**
 | Deploy, rollback, DORA | no deployment; every deploy run skipped; no DORA metric defined | CD-1, CD-5, §4 | 0 deployments; no deploy workflow written — correctly |
 | Agent instructions as code | `AGENTS.md` pointed at a long-stale branch; skill copies diverged | AI-1 | `AGENTS.md` dated, points to the charter |
 | Process proportionality | governance documents and approval records grew to the size of the product, and nobody's gate read them | principle 6 | 5,059 lines of Markdown vs 12,647 of product Python at `c68c6ba` (§1) |
-| Personal and machine data | personal and machine metadata in tracked files | SC-6 | guardrail `no-personal-data` in the working-tree CI, not pushed |
+| Personal and machine data | personal and machine metadata in tracked files | SC-6 | guardrail `no-personal-data` in CI, green since `1599c40` |
 
 **Carried over on purpose:** proving a gate can go red; honest `not run` / `n/a (reason)` labels that are
 never upgraded; `CLAUDE.md` as a thin import of `AGENTS.md`; least-privilege workflow tokens; guardrails
@@ -316,12 +318,13 @@ nothing stops a red change from landing anyway.
 
 The integration batch of 2026-09-23 closes several "next steps" below in the working tree (the committed
 GTFS subset, guardrails and the authorship gate in `ci.yml`, SHA pins, the `Dockerfile`, 17 ADRs, a
-refreshed README). None of it is pushed, so the scores stay as they are until a green run on `main`.
+refreshed README). It was pushed the same night and its first run on `main` was green (`1599c40`, §1). The
+scores below were set before that run and have not been re-scored; that is the owner's call.
 
 | Area | Score | Evidence | Next step to +1 |
 |---|---:|---|---|
 | CI pipeline | 2 | `ci.yml` runs on every push and PR; 13 runs, all red (§1) | fix CI-4, protect `main` → 3 |
-| Keeping `main` green | 0 | never green in 14.4 days | CI-3 |
+| Keeping `main` green | 0 | red for 14.7 days; green since `1599c40` (2026-09-23), not yet gated; score not revised since | CI-3 |
 | Merge gate and review | 0 | `protected: false`, no ruleset, 0 PRs | ruleset requiring the CI check (owner) |
 | Trunk-based integration | 1 | all commits straight to `main`; two lanes uncommitted since 2026-09-13 | land or close the two lanes |
 | Continuous delivery | 1 | Bicep compiles in CI; 0 deployments; no lockfile, no Dockerfile | `uv.lock`, then first `azd up` |
@@ -334,7 +337,7 @@ refreshed README). None of it is pushed, so the scores stay as they are until a 
 | Personal data and privacy | 2 | plate drop and alert privacy tested; a public fixture carried plate values until 2026-09-23 | privacy guardrails running in a green, blocking CI → 3 |
 | Supply chain | 1 | read-only token; tag pins, unpinned installer, no lock, no scanning | SHA pins, `uv.lock`, alerts, `pip-audit` |
 | Disclosure and threat model | 1 | `SECURITY.md`; private reporting off; threat model in progress | enable private reporting |
-| Responsible AI in the product | 2 | provenance, off-route refusal, the faithfulness checker and the UI's unofficial badge are all under test (§8) | faithfulness measured on a real model (the "akıcı" defect of T-5 is fixed in the working tree, not pushed) |
+| Responsible AI in the product | 2 | provenance, off-route refusal, the faithfulness checker and the UI's unofficial badge are all under test (§8) | faithfulness measured on a real model (the "akıcı" defect of T-5 is fixed and pushed) |
 | Operations and observability | 1 | `/healthz`; supervised collector; tracing wired in the agent; nothing deployed | deploy, then one availability probe and one freshness alert |
 | Cost governance | 2 | scale-to-zero and one-replica cap in Bicep; do-not-provision list | budget alert in Bicep |
 | Documentation and decisions | 2 | 9 ADRs, charter, privacy doc; drift in README status and positioning (§10) | fix the drift; date every rule file |
@@ -343,3 +346,70 @@ refreshed README). None of it is pushed, so the scores stay as they are until a 
 Unweighted mean: **1.47** over 19 areas. It is not comparable with the previous project's scorecard, which
 averaged a much finer-grained list of principles. The fastest movers are owner actions that take minutes: a
 ruleset on `main`, private vulnerability reporting, Dependabot alerts — plus one test fix (CI-4).
+
+---
+
+## 13. Modular code (MOD)
+
+**Rule, one sentence:** put code in the lowest layer that can own it, import only downward, give every public
+name one meaning, and never let a module, class or function that is already too big get bigger.
+
+References: the measured import graph and size survey behind these rules (design review of 2026-09-23, kept
+outside the repository); McCabe, *A Complexity Measure* (1976) for the threshold of 10; ruff's rule docs,
+<https://docs.astral.sh/ruff/rules/>. Machine check for all of MOD-1 to MOD-6: `scripts/check_architecture.py`
+(`make architecture`, CI step "Architecture fences"), each check shown red on a synthetic tree in
+`tests/test_check_architecture.py`. The fences fail closed: a `nabiz.<app>` package that is not declared,
+and a module under no dependency set, fail rather than pass by being in no table. The baseline of today's
+debt is `scripts/architecture_baseline.json`; entries are meant only to go down (`make
+architecture-tighten`), but nothing compares the file with the committed one, so raising an entry is a
+review matter and needs its reason in the commit.
+
+| # | Rule | Why (incident or reference) | Check |
+|---|---|---|---|
+| MOD-1 | **Import layers.** Inside `ibb_mcp` a module imports its own layer or a lower one: foundation (`config`, `models`, `cache`, `http`, `reference`, `telemetry`, `text`) → `sources` → domain (`eta`, `eta_profile`, `gtfs`, `lines`, `metro_graph`, `occupancy`, `reliability`, `traffic_profile`) → services (`routing`, `analytics`, `alerts`) → facade (`tools`) → transport (`server`) → the `nabiz` apps. **`ibb_mcp` never imports `nabiz`.** Sources never import each other, only `sources.base`. The apps (`nabiz.web`, `.agent`, `.collector`, `.alerts`) never import each other, and the agent and the web page reach İBB data through `ibb_mcp.tools` (DECISIONS #2). Lazy imports count. | DECISIONS #8 held "only because nothing is reviewing it"; on 2026-09-23 four `ibb_mcp` imports reached into `nabiz` and `import ibb_mcp.server` loaded seven `nabiz` modules; two sources imported other sources for a text helper; the agent bypassed the facade for the same helper. Fixed by DECISIONS #19 | `layers`; dated `LAYER_EXCEPTIONS` only shrink (a stale one fails) |
+| MOD-2 | **No import cycles**, lazy ones included. | A cycle makes import order load-bearing and turns every split into an untangling job; zero on 2026-09-23 | `no-cycles` |
+| MOD-3 | **Declared dependency sets.** Beyond the standard library a package imports only what its install extra declares: `ibb_mcp` `httpx`, `pydantic`, `mcp` (the transport also the SDK's own `starlette`, `uvicorn`; tracing the optional `opentelemetry`, `azure`); `nabiz.web` plus FastAPI; `nabiz.collector` plus Azure, Delta; `nabiz.agent` plus the model clients. | DECISIONS #8: installing `ibb-mcp` pulls three runtime packages. Nothing else noticed a fourth | `dependency-sets` |
+| MOD-4 | **Function size (ruff).** C901 max-complexity 10, PLR0912 max-branches 12, PLR0913 max-args 7, PLR0915 max-statements 50. Max-args is 7, not ruff's 5, because an MCP tool's parameters are its public schema and the widest facade tool takes 7. Existing violations carry `# noqa: <rule> - debt, ratcheted in scripts/architecture_baseline.json` on the `def` line, or a per-file ignore in `pyproject.toml` for a file another lane owns. | `build_server` scored 22 with one nested closure per tool; `create_app` 26. Registration functions grow a branch with every feature. On 2026-09-23 a review showed that raising a threshold or adding an `extend-exclude` in `pyproject.toml` turned a real regression into "improved" | `make lint`; `complexity` re-runs ruff `--isolated` with the thresholds as constants in the script (a test holds `pyproject.toml` equal to them), `--ignore-noqa` and only the policy ignore (`tests/**` PLR0913), so debt may get simpler, never worse, a new violation fails, and a grandfathered function ruff stops reading fails |
+| MOD-5 | **Module size, ratcheted.** At most 400 code lines per module in `src/` (blank, comment and docstring lines are free: comments explain *why* here). A module over the cap may shrink, never grow, not even by a line; a fix that must touch one extracts something in the same change. | `src/ibb_mcp/tools.py` went from 445 lines at `c68c6ba` to 885 at `d59b5a8`, the same day (`git show <commit>:src/ibb_mcp/tools.py \| wc -l`); the modules over the cap are exactly those with more than one reason to change | `module-size` |
+| MOD-6 | **Public surface.** One public top-level name, one definition (`main` allowlisted; re-exports and aliases are not definitions). No import of another module's `_private` name in `src/` or `scripts/`, relative imports and one script importing another included (tests may). A class has at most 250 code lines and 15 public methods. `__all__` in a package `__init__.py` that re-exports: review only. | Three `normalize_tr` functions folded Turkish three ways (`ibb_mcp.text` is now the one home); the `Nabiz` facade holds every tool in one class | `one-meaning`, `private-imports`, `class-size` |
+| MOD-7 | **Split by responsibility, one behaviour-preserving step per commit**, proven by the suite, `make smoke` and guardrail `mcp-schemas`; public import paths kept by re-export or alias. | A split by line count moves the problem; a split that changes the MCP contract breaks every client | review; the steps are below |
+| MOD-8 | **Front end without a build step:** one ES module per job, pure modules never touch the DOM, colours only in `css/tokens.css`. | Design spec §15 (FE-MOD; public form in [`docs/design/DESIGN.md`](design/DESIGN.md) §11); the old page's router could only be tested by evaluating all of `app.js` against a DOM stub | `scripts/check_web_budget.py` (`file-size`, `js-modules`, `tokens`, `css-prefix`, `listeners`, `icons`, `contract-ids`, `dashes`), CI step "Web budget"; the server's half of the no-dash rule is `tests/test_answer_text.py`. Today's redesign targets are listed in the script, and a met one must be deleted; a raised one is a review matter with its reason in the commit |
+
+**Split plan.** Done on 2026-09-23: S0 (alert engine → `ibb_mcp.alerts`, tracing → `ibb_mcp.telemetry`), S1
+(`ibb_mcp.text`), S2 (`ibb_mcp.reference.parse_once`, one cache for the three reference tables), S3
+(`build_server` → five `_register_*` groups, complexity 22 → 3; tool names, order and input schemas
+byte-identical, while the descriptions of `iett_next_arrivals` and `plan_journey` changed on purpose for
+DECISIONS #18), the first step of S7 (`nabiz.agent.schemas`). Next, each when its module is next touched,
+because the ratchet makes "touch it, shrink it" the only option: S3b the HTTP edge of `server.py`
+(`TokenBucket` … `HttpGuard`) into its own module; S4 `nabiz.web.main.create_app` into an `APIRouter`
+(web lane); S5 `ibb_mcp.tools` into a package of mixins (a delegate would repeat every tool signature,
+which is the MCP schema); S6 `routing.py` into `routing/` with a `JourneyRequest` parameter object; S7 the
+rest of `agent.py` (router table, renderers); S8 `reliability.py` and `occupancy.py` into packages.
+
+**Alternatives considered.** `import-linter` expresses layers and cycles but not the ratchets or the
+dependency sets, and would add a dependency; ruff `TID251` with a nested config can ban `nabiz` from
+`ibb_mcp` at editor time and is a good echo of MOD-1, not a replacement; a physical-line cap was rejected
+because it taxes comments.
+
+## 14. Optimisation (OPT)
+
+**Rule, one sentence:** measure before optimising, budget what the product actually pays for (the shared
+İBB request budget, cold start, first paint on a phone), and count it rather than time it.
+
+Warm tool latency is single-digit milliseconds offline (`make perf-report`), so it gets only a backstop.
+The binding constraints are external and countable: İBB's gateway (503s after ~15 rapid calls; İETT
+documents 100 an hour; `PoliteClient` stops at 80), the scale-to-zero cold path, and the page's round trips.
+The harness is `scripts/perf_report.py`; `tests/test_performance_budgets.py` asserts with the same code,
+so a number in a commit and a number CI enforces cannot drift apart.
+
+| # | Rule | Why | Check |
+|---|---|---|---|
+| OPT-1 | **Before and after, same machine.** A change that claims to be faster or cheaper carries `make perf-report` (or `make web-budget`) output from before and after in its commit body. | "Faster" without numbers is a claim nobody can check (charter §1.5) | **none**: review. There are no pull requests to lint, so a PR-body check would never run |
+| OPT-2 | **Upstream calls per tool:** a budget per MCP tool on a cold cache, 0 when warm; a new tool fails until it has a budget line and a sample call. Each cold cost also fits the tool's public price in `TOOL_COSTS` (1 per answer, 1 per gateway call, 4 per İETT call). Counted at the cache and at the boundary (a recorded response read offline, a request reaching the client), the larger of the two, because nothing but review forces a source through the cache. | DECISIONS #3 and #15: the gateway budget is shared with everyone, and an undercharged tool lets one caller spend it. On 2026-09-23 a review showed a second read beside the cache passing every gate, because only the cache was counted | `test_upstream_calls_cold_within_budget_and_zero_when_warm`, `test_the_public_price_covers_what_a_cold_call_costs`, `test_every_tool_has_an_upstream_budget_and_a_sample_call`, `test_the_harness_counts_a_read_beside_the_cache` |
+| OPT-3 | **Cache behaviour through the real tool path:** 50 concurrent cold questions cost what one costs (single flight); an expired entry whose reload fails is served marked `cached` (stale-on-error); `DEFAULT_TTL` equals DECISIONS #3's table. **Open, owner decision:** one line asked about continuously costs 3600/60 + 3600/120 = 90 İETT calls an hour against the budget of 80 (raise `iett_line` to ≥ 90 s, raise `iett_fleet`, or accept stale answers after ~53 minutes). | A TTL is an upstream bill; a TTL change has to change the ADR too | `test_fifty_concurrent_questions_cost_what_one_costs`, `test_an_expired_entry_is_served_stale_when_the_upstream_fails`, `test_ttls_match_the_documented_table`; the İETT arithmetic is a strict `xfail` that turns red when it changes in either direction |
+| OPT-4 | **Work once per process:** the GTFS index, stop sequences, the gazetteer and each reference table are parsed at most once per process per file version (`ibb_mcp.reference.parse_once`); the default arrival mode never reads the ETA profile. | Until 2026-09-23 the reliability table and the ETA profile were parsed on every call, and they grow with the history the collector keeps adding | `test_expensive_loads_happen_at_most_once_per_process` (spies over 20 rounds, both ETA modes); `test_the_harness_counts_a_parse_moved_onto_the_request_path` proves the spy can go red |
+| OPT-5 | **Latency backstop, wide margin:** warm p95 ≤ 50 ms per tool over 30 calls, cold offline ≤ 500 ms. The measured values and the margin are stated beside the constants. | Catches an order-of-magnitude regression (a real-GTFS parse on the request path, an accidental sleep) without failing on a slow shared runner | `test_warm_latency_backstop` |
+| OPT-6 | **GTFS on the committed mini fixture:** index load and sequence build each ≤ 250 ms and ≤ 4 MiB tracemalloc peak. tracemalloc counts allocations, so the memory budget is the machine-independent one. The real export is laptop-only; its numbers are re-measured by hand, never in CI. | On the laptop's full export (2026-09-23): index load 0.27 s for 15,386 stops; a full sequence rebuild from `stop_times.txt` 8.62 s for 2,876 routes, with the process peaking at 584 MiB RSS (`/usr/bin/time -l` around `GtfsIndex.load` and `build_stop_sequences`), against the 1 GiB container in `infra/modules/containerapps.bicep`. That is why `.dockerignore` leaves `stop_times.*` and `trips.csv` out | `test_gtfs_mini_index_and_sequences_stay_small` |
+| OPT-7 | **Cold start stays light:** `import ibb_mcp.server` in a fresh interpreter loads none of `nabiz`, `fastapi`, `azure`, `openai`, `deltalake`, `pyarrow`, `agent_framework`. Wall-clock import time is reported, not gated: it measures the SDK and the machine more than this code. | Every VS Code or Claude session starts the server; DECISIONS #8 | `test_importing_the_server_loads_no_app_and_no_optional_extra` |
+| OPT-8 | **The page:** first-party bytes (raw and gzip), no third-party render-blocking resource, fonts, layout-free motion with a reduced-motion path checked by structure (and scripted motion only in `js/motion.js`), token-only colours. Core Web Vitals are measured in the lab by hand (Lighthouse, mobile preset, median of 3), never a CI gate: the page pulls MapLibre and tiles from third parties and lab scores on shared runners move between runs. | Design spec §15 (FE-OPT; [`docs/design/DESIGN.md`](design/DESIGN.md) §11); first paint on a phone is round trips, not bytes | `scripts/check_web_budget.py` (`payload`, `render-blocking`, `third-party`, `fonts`, `motion`), CI step "Web budget"; Web Vitals: **none in CI** |
+
