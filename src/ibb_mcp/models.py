@@ -437,18 +437,24 @@ class MetroStation(BaseModel):
 # Traffic
 # --------------------------------------------------------------------------------------
 class TrafficIndexPoint(BaseModel):
-    index: int
+    #: İBB's 1–99 scale, or ``None`` when the row carried no parseable value. It used to be
+    #: coerced to 0, and ``describe_traffic(0)`` is "akıcı": a missing reading was read out
+    #: to the user as free-flowing traffic. Every consumer now meets the gap as ``None``.
+    index: int | None = None
     at: dt.datetime | None = None
 
     @classmethod
     def from_raw(cls, raw: dict[str, Any]) -> TrafficIndexPoint:
+        value = parse_number(raw.get("TrafficIndex"))
         return cls(
-            index=int(parse_number(raw.get("TrafficIndex")) or 0),
+            index=int(value) if value is not None else None,
             at=parse_ibb_datetime(raw.get("TrafficIndexDate")),
         )
 
 
-def describe_traffic(index: int) -> str:
+def describe_traffic(index: int | None) -> str:
+    if index is None:
+        return "bilinmiyor"
     if index <= 20:
         return "akıcı"
     if index <= 40:

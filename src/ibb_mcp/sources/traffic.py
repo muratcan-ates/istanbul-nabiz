@@ -124,7 +124,9 @@ def compare_with_yesterday(points: Sequence[TrafficIndexPoint]) -> dict[str, Any
     ``description``. Every field is ``None`` when the series cannot support the claim —
     a missing yesterday is reported as missing, never as "değişiklik yok".
     """
-    ordered = sorted((p for p in points if p.at is not None), key=lambda p: p.at)
+    # A point with no index is a gap, not a reading: comparing against it would turn
+    # "unknown" into a number of points more or less congested than yesterday.
+    ordered = sorted((p for p in points if p.at is not None and p.index is not None), key=lambda p: p.at)
     if not ordered:
         return {
             "now": None,
@@ -147,7 +149,7 @@ def compare_with_yesterday(points: Sequence[TrafficIndexPoint]) -> dict[str, Any
     text = f"Trafik yoğunluğu {local_now:%H:%M} itibarıyla {now_point.index} ({now_label})."
 
     delta: int | None = None
-    if yesterday is not None:
+    if yesterday is not None and now_point.index is not None and yesterday.index is not None:
         delta = now_point.index - yesterday.index
         y_label = describe_traffic(yesterday.index)
         if delta > 0:
