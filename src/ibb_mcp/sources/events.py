@@ -235,7 +235,7 @@ class EventsSource:
         source = EventsSource(ctx, adapter=MyFeed())  # the day a feed exists
 
     Every method returns ``(payload, provenance)`` where ``payload["available"]`` is the
-    first thing a caller must read, mirroring :mod:`ibb_mcp.analytics`.
+    first thing a caller must read, mirroring :func:`ibb_mcp.analytics.air_quality_forecast`.
     """
 
     def __init__(self, ctx: SourceContext, adapter: EventsFeedAdapter | None = None) -> None:

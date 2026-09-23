@@ -158,7 +158,7 @@ def test_an_answer_never_borrows_a_neighbouring_hour() -> None:
 
 
 def test_the_weekday_index_entry_point_matches_the_datetime_one() -> None:
-    """``analytics.occupancy_profile`` is keyed by weekday index, so both doors must agree."""
+    """``ispark_typical_occupancy`` is keyed by weekday index, so both doors must agree."""
     profile = build_profile(two_day_rows())
     by_moment = profile.lookup(501, dt.datetime(2026, 9, 15, 18, 30))  # a Tuesday
     by_index = profile.lookup_weekday(501, 1, 18)  # Monday is 0, so 1 is Tuesday

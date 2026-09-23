@@ -624,8 +624,8 @@ def lookup_weekday(
 ) -> dict[str, Any]:
     """:func:`lookup` addressed by ``date.weekday()`` index (Monday 0) and İstanbul hour.
 
-    This is the shape ``analytics.occupancy_profile(ctx, *, park_id, weekday, hour)``
-    already has, so wiring it up is a one-line delegation.
+    This is the shape ``ispark_typical_occupancy(park_id, weekday, hour)`` takes, so the
+    tool can pass its arguments straight through.
     """
     profile = profile if profile is not None else load_profile(settings)
     if profile is None:
