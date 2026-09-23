@@ -244,12 +244,52 @@ def _completion(content=None, tool_calls=None) -> dict:
 
 
 def test_tool_schemas_cover_the_twelve_mcp_tools():
+    """Named for the original twelve; the agent now offers fourteen of the server's fifteen."""
     schemas = build_tool_schemas()
     names = [schema["function"]["name"] for schema in schemas]
-    assert len(names) == 12
+    assert len(names) == 14
     assert set(names) == set(TOOL_DESCRIPTIONS)
     for schema in schemas:
         assert schema["function"]["description"].strip()
+
+
+async def test_the_agent_offers_every_mcp_tool_except_the_ones_it_says_it_cannot_hold(settings):
+    """One surface, two transports: an MCP tool missing from the agent must be a stated choice.
+
+    ``check_alerts`` is the one exception, because its argument is a subscription only the
+    caller holds; the web agent answers one question and holds none.
+    """
+    from ibb_mcp.server import build_server
+
+    mcp_tools = {tool.name for tool in await build_server(settings).list_tools()}
+    assert set(TOOL_DESCRIPTIONS) <= mcp_tools, f"agent tools the server does not have: {set(TOOL_DESCRIPTIONS) - mcp_tools}"
+    assert mcp_tools - set(TOOL_DESCRIPTIONS) == set(agent_module.NOT_OFFERED)
+
+
+def test_new_tools_get_their_schemas_from_the_facade_signatures():
+    by_name = {schema["function"]["name"]: schema["function"] for schema in build_tool_schemas()}
+
+    journey = by_name["plan_journey"]["parameters"]
+    assert set(journey["properties"]) == {
+        "origin",
+        "destination",
+        "origin_lat",
+        "origin_lon",
+        "destination_lat",
+        "destination_lon",
+    }
+    assert journey["required"] == []  # a name or a coordinate pair per end, never both required
+    assert journey["properties"]["origin_lat"]["type"] == "number"
+    assert "yol tarifi DEĞİLDİR" in by_name["plan_journey"]["description"]
+
+    reliability = by_name["line_reliability"]["parameters"]
+    assert reliability["required"] == ["line_code"]
+    assert reliability["properties"]["hour"]["type"] == "integer"
+    assert "GEÇMİŞTİR" in by_name["line_reliability"]["description"]
+    # Every parameter the model sees is explained, so it never has to guess a unit.
+    for name in ("plan_journey", "line_reliability"):
+        for param, schema in by_name[name]["parameters"]["properties"].items():
+            assert schema.get("description"), f"{name}.{param} has no hint"
 
 
 def test_tool_schema_types_and_required_fields_come_from_the_signature():
@@ -507,10 +547,26 @@ def test_a_freshness_question_routes_on_its_keywords_not_on_the_catch_all(agent:
 
 async def test_a_relayed_tool_error_is_evidence_not_a_fabrication(agent: NabizAgent):
     """The error text names the lines that do serve the stop. Those numbers came from the
-    tool, so flagging them would punish the agent for relaying the error verbatim."""
-    answer = await agent.ask("500T hattı Şifa durağına kaç dakika sonra gelir?")
+    tool, so flagging them would punish the agent for relaying the error verbatim.
+
+    8A never calls at a stop named Şifa, so the tool refuses and names the lines that call
+    at the best name match (153 and 25S1 in tests/fixtures/gtfs_mini). The 153 is a bare
+    number a faithfulness check could mistake for an invented one. The 500T is no longer
+    the example: it does call at ŞİFA SONDURAK, and the tool now finds that stop.
+    """
+    answer = await agent.ask("8A hattı Şifa durağına kaç dakika sonra gelir?")
     assert answer.tool_calls[0].ok is False
+    assert "153" in (answer.tool_calls[0].error or "")
     assert answer.faithfulness.passed, answer.faithfulness.explanation
+
+
+async def test_a_stop_name_resolves_to_the_stop_the_line_calls_at(agent: NabizAgent):
+    """"Şifa" matches stops in more than one district; the 500T's is ŞİFA SONDURAK."""
+    answer = await agent.ask("500T hattı Şifa durağına kaç dakika sonra gelir?")
+    call = answer.tool_calls[0]
+    assert call.ok is True
+    assert call.payload["data"]["stop"]["stop_code"] == "401351"
+    assert call.payload["data"]["diagnostics"]["stop_resolution"] == "name_match_on_line"
 
 
 def test_the_attribution_line_never_counts_as_an_invented_number():

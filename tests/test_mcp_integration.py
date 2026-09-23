@@ -13,7 +13,9 @@ tools and call them over stdio. If the entry point, the JSON schemas or the tran
 break, this fails.
 
 Everything runs with ``NABIZ_OFFLINE=1`` against recorded fixtures, so the suite stays
-hermetic and never touches the İBB gateway.
+hermetic and never touches the İBB gateway. The server process is also pointed away from
+the gitignored ``data/reference/gtfs`` and ``data/lake`` and from the committed derived
+tables, so what it answers here is what it answers on a fresh clone in CI.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import json
 import os
 import pathlib
 import sys
+import tempfile
 
 import pytest
 
@@ -46,7 +49,13 @@ EXPECTED_TOOLS = {
     "air_quality_now",
     "air_quality_forecast",
     "city_freshness",
+    "plan_journey",
+    "line_reliability",
+    "check_alerts",
 }
+
+#: A directory that does not exist. Created by nobody: every path under it reads as missing.
+ABSENT = pathlib.Path(tempfile.gettempdir()) / "nabiz-integration-absent"
 
 
 def _server_params() -> StdioServerParameters:
@@ -56,6 +65,12 @@ def _server_params() -> StdioServerParameters:
         "NABIZ_OFFLINE": "1",
         "NABIZ_FIXTURES_DIR": str(ROOT / "tests" / "fixtures"),
         "NABIZ_PLACES_CSV": str(ROOT / "data" / "reference" / "places.csv"),
+        # Fresh-clone conditions: no GTFS export, no lake, no derived tables.
+        "NABIZ_GTFS_DIR": str(ABSENT / "gtfs"),
+        "NABIZ_LAKE_DIR": str(ABSENT / "lake"),
+        "NABIZ_RELIABILITY_TABLE": str(ABSENT / "line_reliability.json"),
+        "NABIZ_OCCUPANCY_PROFILE": str(ABSENT / "occupancy_profile.json"),
+        "NABIZ_ETA_PROFILE": str(ABSENT / "eta_profile.json"),
     }
     return StdioServerParameters(command=sys.executable, args=["-m", "ibb_mcp.server"], env=env)
 
@@ -117,3 +132,29 @@ async def test_a_bad_argument_becomes_a_readable_refusal_not_a_crash():
         payload = await _call(session, "air_quality_now", {"place": "zzz-boyle-bir-yer-yok"})
         assert payload["error"] == "bad_request"
         assert payload["advice"], "the model needs to be told not to make the answer up"
+
+
+@pytest.mark.asyncio
+async def test_the_derived_tools_answer_over_the_wire_on_a_fresh_clone():
+    """The three tools added after the first twelve, called as a real client calls them.
+
+    ``check_alerts`` is the one that matters most here: its argument is a nested object,
+    and only a real client round-trip proves the advertised schema is one the SDK accepts.
+    """
+    assert not ABSENT.exists(), f"{ABSENT} must not exist for this test to mean anything"
+    async with stdio_client(_server_params()) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+
+        journey = await _call(session, "plan_journey", {"origin": "Taksim", "destination": "Kadıköy"})
+        assert {option["mode"] for option in journey["data"]["options"]} == {"drive", "metro"}
+        assert {option["mode"] for option in journey["data"]["unavailable_options"]} == {"bus", "walk"}
+
+        reliability = await _call(session, "line_reliability", {"line_code": "500T", "hour": 12})
+        assert reliability["data"]["available"] is False
+        assert "reliability_report.py" in reliability["note"]
+
+        rules = [{"kind": "traffic", "threshold_index": 1}, {"kind": "metro_disruption", "lines": ["M4"]}]
+        alerts = await _call(session, "check_alerts", {"subscription": {"rules": rules}})
+        assert alerts["data"]["stateless"] is True
+        assert alerts["data"]["privacy"]["stored_server_side"] == "none"
+        assert [alert["kind"] for alert in alerts["data"]["alerts"]] == ["traffic"]

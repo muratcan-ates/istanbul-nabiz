@@ -112,6 +112,30 @@ def test_chain_falls_back_to_global_for_an_unmeasured_line() -> None:
     assert (seconds, provenance) == (230.0, "global, n=503")
 
 
+def test_a_pooled_rate_names_the_lines_it_was_measured_on() -> None:
+    """The committed profile pools 500T alone; "measured across all lines" would be false."""
+    assert sample_profile().pooled_lines == ("500T",)
+    assert sample_profile().pooled_rate_qualifier() == "yalnızca 500T hattında ölçülen"
+    # A line refused its own cell still fed the pool; bucket cells and the global are not lines.
+    wider = EtaProfile(
+        lines={"500T": Cell(230.0, 503)},
+        overall=Cell(228.0, 540),
+        refused={"22": 12, "22|night": 4, "34AS|midday": 3, "global": 0},
+    )
+    assert wider.pooled_lines == ("22", "500T")
+    assert wider.pooled_rate_qualifier() == "ölçülen 2 hattan (22, 500T) havuzlanan"
+
+
+def test_the_tool_sentence_for_a_pooled_rate_never_claims_every_line() -> None:
+    from ibb_mcp.tools import _rate_sentence
+
+    profile = sample_profile()
+    _, provenance = profile.seconds_per_stop_for("22", at(13))
+    sentence = _rate_sentence(provenance, profile.pooled_rate_qualifier())
+    assert "500T" in sentence and "tüm hatlar" not in sentence
+    assert sentence.endswith("(global, n=503).")
+
+
 def test_chain_falls_back_to_the_untuned_default_when_nothing_is_calibrated() -> None:
     seconds, provenance = default_profile().seconds_per_stop_for("500T", at(13))
     assert (seconds, provenance) == (DEFAULT_SECONDS_PER_STOP, "default")
