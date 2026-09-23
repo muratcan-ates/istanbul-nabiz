@@ -64,7 +64,10 @@ check that would exceed the budget returns SKIP instead of making the call.
 The human table goes to stdout, per-check progress and the countdown go to stderr, so
 `probe_day0.py 2>/dev/null` gives a clean report. `docs/day0_report.json` is rewritten on
 **every** run, including `--no-network` ones — re-run with the flags you actually care about
-if you want the file to reflect a full pass.
+if you want the file to reflect a full pass. The file is tracked in a public repository, so it
+records tool versions only (`uv 0.11.14`, not the install path or the build triple after it)
+and the Azure subscription by name and state only, never its ids or the signed-in account.
+Read its diff before committing it anyway.
 
 ### Findings worth knowing (real runs, 2026-09-08)
 

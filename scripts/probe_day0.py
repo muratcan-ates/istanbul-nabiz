@@ -29,6 +29,7 @@ import csv
 import datetime as dt
 import html
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -83,7 +84,7 @@ except ModuleNotFoundError:
     TRANSPORT = "urllib.request (httpx not installed)"
 
 # Regions worth having near İstanbul, best first. Used to recommend one from the
-# intersection of "allowed by policy" and "supports Functions Flex Consumption".
+# intersection of "allowed by policy" and "offers Container Apps jobs" (DECISIONS #10).
 REGION_PREFERENCE = [
     "westeurope",
     "northeurope",
@@ -226,6 +227,32 @@ def az_json(args: list[str], timeout: int = 90) -> Any:
 # ----------------------------------------------------------------------------------
 # TOOLS — local, no network
 # ----------------------------------------------------------------------------------
+def _shown(path: str) -> str:
+    """A tool path as the tracked report may carry it: the home directory becomes ``~``.
+
+    docs/day0_report.json is committed to a public repository, and ``shutil.which`` answers
+    with absolute paths that carry the user name (``~/.local/bin/uv`` is where uv installs).
+    Only failure details use it; a passing check reports the bare version (``_bare_version``).
+    """
+    home = str(pathlib.Path.home())
+    return "~" + path[len(home) :] if home and home != "/" and path.startswith(home + os.sep) else path
+
+
+_VERSION = re.compile(r"\d+\.\d+(?:\.\d+)?")
+
+
+def _bare_version(exe: str, raw: str) -> str:
+    """``uv 0.11.14`` out of ``uv 0.11.14 (3fdfdc7d4 2026-05-12 aarch64-apple-darwin)``.
+
+    The report is public, and what a CLI prints after its version number is a machine
+    fingerprint: the build triple names the CPU and OS, a vendor suffix such as ``(Apple
+    Git-155)`` names the platform, and the install prefix names the package manager. None
+    of it answers "is the tool there, and is it new enough", which is all the gate asks.
+    """
+    match = _VERSION.search(raw)
+    return f"{exe} {match.group(0)}" if match else exe
+
+
 def check_python(ctx: Ctx) -> tuple[str, str]:
     exe = (
         "/opt/homebrew/bin/python3.12"
@@ -233,13 +260,15 @@ def check_python(ctx: Ctx) -> tuple[str, str]:
         else shutil.which("python3.12")
     )
     if not exe:
-        return FAIL, "python3.12 not on PATH (the system 3.14 must not be used)"
+        return FAIL, "python3.12 not on PATH (the project needs 3.12, whatever the system python3 is)"
     rc, out, err = run_cmd([exe, "-V"], timeout=20)
     version = (out or err).replace("Python ", "").strip()
-    ctx.facts["python312"] = {"path": exe, "version": version}
+    # The version only: the interpreter's install prefix says which package manager this
+    # machine uses, and the report is public (see _bare_version).
+    ctx.facts["python312"] = {"version": version}
     if not version.startswith("3.12"):
-        return FAIL, f"{exe} reports {version}, expected 3.12.x"
-    return PASS, f"{version} at {exe}"
+        return FAIL, f"python3.12 reports {version}, expected 3.12.x"
+    return PASS, version
 
 
 def tool_check(
@@ -262,11 +291,11 @@ def tool_check(
             ctx.facts.setdefault("tools", {})[exe] = f"error rc={rc}"
             return (
                 FAIL if required else SKIP
-            ), f"{path} present but `{' '.join(argv)}` exited {rc}: {(err or out)[:80]}"
+            ), f"{_shown(path)} present but `{' '.join(argv)}` exited {rc}: {(err or out)[:80]}"
         version = parse(out, err) if parse else next((ln for ln in (out + "\n" + err).splitlines() if ln.strip()), "?")
-        version = version.strip()[:70]
+        version = _bare_version(exe, version.strip())
         ctx.facts.setdefault("tools", {})[exe] = version
-        return PASS, f"{version}  ({path})"
+        return PASS, version
 
     return _check
 
@@ -296,15 +325,16 @@ def check_account(ctx: Ctx) -> tuple[str, str]:
         acct = az_json(["account", "show"])
     except HttpFailure as exc:
         return FAIL, f"az account show failed: {exc}"
-    user = (acct.get("user") or {}).get("name", "?")
+    # The subscription id, the tenant id and the signed-in account stay out of the report:
+    # docs/day0_report.json is tracked in a public repository, and none of the three is
+    # needed to read the result. `az account show` prints them locally whenever needed.
     ctx.facts["subscription"] = {
-        "id": acct.get("id"),
-        "tenant": acct.get("tenantId"),
-        "user": user,
         "name": acct.get("name"),
         "state": acct.get("state"),
+        "signed_in": bool((acct.get("user") or {}).get("name")),
+        "ids_recorded": False,
     }
-    return PASS, f"{acct.get('name')} · sub {acct.get('id')} · tenant {acct.get('tenantId')} · {user}"
+    return PASS, f"{acct.get('name')} · {acct.get('state')} · signed in (ids not recorded; see `az account show`)"
 
 
 def check_region_policy(ctx: Ctx) -> tuple[str, str]:
@@ -339,19 +369,27 @@ def check_region_policy(ctx: Ctx) -> tuple[str, str]:
     return PASS, f"{hits[0]} allows {len(allowed)}: {', '.join(allowed[:8])}{' …' if len(allowed) > 8 else ''}"
 
 
-def check_flex_regions(ctx: Ctx) -> tuple[str, str]:
+def check_job_regions(ctx: Ctx) -> tuple[str, str]:
+    """Regions the policy allows that also offer Container Apps jobs, where the collector runs.
+
+    The collector moved from Functions Flex timers to scheduled Container Apps Jobs
+    (DECISIONS #10), so Flex Consumption now matters only for the optional Function and is
+    left to docs/deploy.md §3. The provider listing returns display names ("West Europe");
+    the policy holds short names, hence the same normalisation on both sides.
+    """
     if why := _azure_precondition(ctx):
         return SKIP, why
+    query = "resourceTypes[?resourceType=='jobs'].locations[]"
     try:
-        rows = az_json(["functionapp", "list-flexconsumption-locations"]) or []
+        rows = az_json(["provider", "show", "--namespace", "Microsoft.App", "--query", query]) or []
     except HttpFailure as exc:
-        return FAIL, f"az functionapp list-flexconsumption-locations failed: {exc}"
-    flex = sorted({str(r.get("name", "")).lower().replace(" ", "") for r in rows if r.get("name")})
+        return FAIL, f"az provider show --namespace Microsoft.App failed: {exc}"
+    jobs = sorted({str(r).lower().replace(" ", "") for r in rows if r})
     allowed = (ctx.facts.get("region_policy") or {}).get("allowed_regions") or []
-    usable = sorted(set(flex) & set(allowed)) if allowed else flex
+    usable = sorted(set(jobs) & set(allowed)) if allowed else jobs
     pick = next((r for r in REGION_PREFERENCE if r in usable), usable[0] if usable else None)
-    ctx.facts["flex_regions"] = {
-        "flex": flex,
+    ctx.facts["job_regions"] = {
+        "container_apps_jobs": jobs,
         "usable": usable,
         "recommended": pick,
         "constrained_by_policy": bool(allowed),
@@ -360,9 +398,9 @@ def check_flex_regions(ctx: Ctx) -> tuple[str, str]:
         return (
             FAIL,
             f"no overlap between the {len(allowed)} policy-allowed regions "
-            f"and the {len(flex)} Flex Consumption regions",
+            f"and the {len(jobs)} regions offering Container Apps jobs",
         )
-    scope = "policy ∩ flex" if allowed else "flex (policy unrestricted)"
+    scope = "policy ∩ Container Apps jobs" if allowed else "Container Apps jobs (policy unrestricted)"
     ctx.note(f"Deploy region: use '{pick}'. Set AZURE_LOCATION={pick} in azd env / infra params.")
     return (
         PASS,
@@ -766,7 +804,7 @@ SECTIONS: list[tuple[str, list[Check]]] = [
         [
             ("A1", "subscription / tenant / identity", check_account),
             ("A2", "allowed-regions policy", check_region_policy),
-            ("A3", "Functions Flex regions ∩ allowed", check_flex_regions),
+            ("A3", "Container Apps jobs regions ∩ allowed", check_job_regions),
             ("A4", "resource providers registered", check_providers),
         ],
     ),
@@ -793,7 +831,7 @@ SECTIONS: list[tuple[str, list[Check]]] = [
 
 # What to do when a check fails. Keyed by check id; only printed for FAILs.
 REMEDIES: dict[str, str] = {
-    "T1": "brew install python@3.12 — do not fall back to the system 3.14, the MCP SDK pins <3.13 wheels.",
+    "T1": "brew install python@3.12 — do not fall back to another system Python, the MCP SDK pins <3.13 wheels.",
     "T2": "brew install uv   (then: uv venv -p 3.12 .venv && source .venv/bin/activate)",
     "T3": "brew install azure-cli   (then: az login)",
     "T4": "brew install azd",
@@ -813,8 +851,8 @@ REMEDIES: dict[str, str] = {
         "<id>. A region policy you cannot see will fail `azd up` at deploy time, not plan time."
     ),
     "A3": (
-        "No deployable region. Either request a policy exemption, or move Functions to Linux Consumption (Y1) / "
-        "a Container Apps Job — see PLAN §3 fallback column."
+        "No deployable region for the collector jobs. Request a policy exemption, or keep the laptop collector "
+        "running and deploy nothing (DECISIONS #10, docs/deploy.md §3)."
     ),
     "A4": (
         "Register the missing providers (each takes a few minutes): az provider register -n <namespace>. Deploy "
@@ -862,8 +900,8 @@ MANUAL_GATES = [
     "it.",
     "Azure OpenAI quota — deploy gpt-4.1-mini (Global Standard) at https://ai.azure.com. If the TPM quota is 0, "
     "fill https://aka.ms/oai/stuquotarequest immediately; turnaround is days, not hours (PLAN §9).",
-    "Delivery date and brief — get Barbaros's answer in writing today: video length, language, repo visibility, "
-    "upload address (PLAN header).",
+    "Delivery date and brief — get the programme mentor's answer in writing today: video length, language, "
+    "repo visibility, upload address (PLAN header).",
     "Budget alerts — set $20 and $40 alerts in Cost Management and check the Sponsorships balance (PLAN §10 step 6).",
 ]
 

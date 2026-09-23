@@ -5,6 +5,12 @@ Politeness rules (see PLAN.md 4.1):
   * >= 7 s between calls to api.ibb.gov.tr (gateway 503s after ~15 rapid calls)
   * at most 3 calls to the İETT SOAP service (documented 100 requests/hour)
 
+Privacy rule (NOTICE.md, DECISIONS.md §7):
+  * the İETT fleet feed ships every bus's number plate (``Plaka``); the repository is
+    public, so each plate is swapped for a synthetic ``00 XX 001``, ``00 XX 002``, ...
+    before anything is written. Province code 00 does not exist, so a fixture plate can
+    never be a real vehicle, and a CI guardrail can require the ``00 `` prefix.
+
 Run once; fixtures land in tests/fixtures/ and a report in tests/fixtures/_capture_report.json.
 """
 
@@ -25,10 +31,75 @@ FIX.mkdir(parents=True, exist_ok=True)
 
 GATEWAY_GAP_S = 7.0
 TIMEOUT_S = 60
-UA = "istanbul-nabiz/0.1 (open-data client; contact: github.com/muratcanates)"
+UA = "istanbul-nabiz/0.1 (+https://github.com/muratcan-ates/istanbul-nabiz) open-data client"
 
 report: list[dict] = []
 _last_gateway_call = 0.0
+
+#: Real plate -> synthetic plate for this run. One table for the whole capture so the
+#: same bus gets the same stand-in in the ``.soap.xml`` and in the ``.json`` cut from it
+#: (``test_http_cache`` asserts the two agree record for record).
+_synthetic_plates: dict[str, str] = {}
+
+#: Words that make a field a plate field. Matched per word of the key, so a renamed
+#: upstream field (``AracPlaka``, ``plate_no``) is still scrubbed while ``template`` and
+#: ``boilerplate`` are left alone.
+_PLATE_WORDS = {"plaka", "plate", "plates", "numberplate"}
+_KEY_WORDS = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+")
+
+#: Any string-valued key in raw JSON (``"Plaka":"..."``), in the HTML-escaped JSON some
+#: SOAP bodies use (``&quot;Plaka&quot;:&quot;...``), and any plain XML element
+#: (``<Plaka>...</Plaka>``). ``swap`` decides per key whether the value is a plate.
+_KEYED_VALUE = re.compile(
+    r'(?P<head>(?:"|&quot;)(?P<key>[A-Za-z_]+)(?:"|&quot;)\s*:\s*(?:"|&quot;))(?P<value>[^"&<]*)'
+    r"|(?P<open><(?P<tag>[A-Za-z_]+)>)(?P<xml>[^<]*)(?=</)"
+)
+
+#: What a Turkish plate looks like when it turns up somewhere unexpected: two digits,
+#: one to three letters, two to five digits. The lookarounds keep ISO timestamps
+#: (``2026-09-05T09:00``) out; ``00`` is our own synthetic prefix.
+_PLATE_SHAPED = re.compile(r"(?<![\d-])(?!00 )\d{2} ?[A-ZÇĞİÖŞÜ]{1,3} ?\d{2,5}(?![\d:])")
+
+
+def is_plate_key(key: str) -> bool:
+    return any(word.lower() in _PLATE_WORDS for word in _KEY_WORDS.findall(key))
+
+
+def synthetic_plate(real: str) -> str:
+    """Stable stand-in for ``real`` within this run; already-synthetic or empty values pass."""
+    if not real or real.startswith("00 "):
+        return real
+    return _synthetic_plates.setdefault(real, f"00 XX {len(_synthetic_plates) + 1:03d}")
+
+
+def scrub_plates_in_text(text: str) -> str:
+    """Swap every plate value in a raw response body, before any byte of it is written."""
+
+    def swap(m: re.Match[str]) -> str:
+        if m.group("head") is not None:
+            return m.group("head") + synthetic_plate(m.group("value")) if is_plate_key(m.group("key")) else m.group(0)
+        return m.group("open") + synthetic_plate(m.group("xml")) if is_plate_key(m.group("tag")) else m.group(0)
+
+    return _KEYED_VALUE.sub(swap, text)
+
+
+def scrub_plates(value: object) -> object:
+    """Same swap on parsed JSON, for payloads whose plates were escaped past the text pass."""
+    if isinstance(value, list):
+        return [scrub_plates(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: synthetic_plate(item) if isinstance(item, str) and is_plate_key(key) else scrub_plates(item)
+            for key, item in value.items()
+        }
+    return value
+
+
+def warn_if_plate_shaped(name: str, text: str) -> None:
+    """A plate under a key we did not anticipate still reads like a plate; say so loudly."""
+    hits = sorted(set(_PLATE_SHAPED.findall(text)))
+    if hits:
+        print(f"  ! {name}: plate-shaped values survived the scrub, check before committing: {hits[:5]}")
 
 
 def _sleep_for_gateway(url: str) -> None:
@@ -63,14 +134,18 @@ def fetch(name: str, url: str, *, data: bytes | None = None, headers: dict | Non
 
 def save_json(name: str, body: bytes, *, limit: int | None = None) -> object | None:
     try:
-        parsed = json.loads(body)
+        parsed = scrub_plates(json.loads(body))
     except Exception as exc:  # noqa: BLE001
-        (FIX / f"{name}.raw").write_bytes(body)
+        raw = scrub_plates_in_text(body.decode("utf-8", "replace"))
+        warn_if_plate_shaped(name, raw)
+        (FIX / f"{name}.raw").write_text(raw, encoding="utf-8")
         print(f"  ! {name}: not JSON ({exc}); saved raw")
         return None
     trimmed = parsed[:limit] if limit and isinstance(parsed, list) else parsed
     path = FIX / f"{name}.json"
-    path.write_text(json.dumps(trimmed, ensure_ascii=False, indent=1), encoding="utf-8")
+    text = json.dumps(trimmed, ensure_ascii=False, indent=1)
+    warn_if_plate_shaped(name, text)
+    path.write_text(text, encoding="utf-8")
     n = len(parsed) if isinstance(parsed, list) else 1
     kept = len(trimmed) if isinstance(trimmed, list) else 1
     print(f"    -> {path.name} ({kept}/{n} records)")
@@ -91,7 +166,10 @@ def soap(name: str, action: str, body_xml: str, *, limit: int | None = None) -> 
     )
     if raw is None:
         return None
-    text = raw.decode("utf-8", "replace")
+    # Scrub the whole body first: the .soap.xml keeps only its first 4 KB, and the JSON
+    # fixture is extracted from the same text, so both must see the same stand-ins.
+    text = scrub_plates_in_text(raw.decode("utf-8", "replace"))
+    warn_if_plate_shaped(f"{name}.soap.xml", text[:4000])
     (FIX / f"{name}.soap.xml").write_text(text[:4000], encoding="utf-8")
     match = re.search(rf"<{action}Result>(.*?)</{action}Result>", text, re.S)
     if not match:
@@ -139,7 +217,8 @@ def main() -> int:
         headers={"Content-Type": "text/xml; charset=utf-8", "SOAPAction": '"http://tempuri.org/GetPlanlananSeferSaati_json"'},
     )
     if raw:
-        text = raw.decode("utf-8", "replace")
+        text = scrub_plates_in_text(raw.decode("utf-8", "replace"))
+        warn_if_plate_shaped("iett_planlanan.soap.xml", text[:4000])
         (FIX / "iett_planlanan.soap.xml").write_text(text[:4000], encoding="utf-8")
         m = re.search(r"<GetPlanlananSeferSaati_jsonResult>(.*?)</GetPlanlananSeferSaati_jsonResult>", text, re.S)
         if m:
