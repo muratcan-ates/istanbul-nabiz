@@ -13,12 +13,13 @@
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
 <!-- The map library is the only third-party asset on the page. If the CDN is blocked or
-     404s, the onerror handler fires, app.js sees the flag and the answer is rendered as a
-     location list instead — the page never depends on a network it does not control.
-     Append ?nomap=1 to the URL to exercise that fallback deliberately. -->
+     404s, window.maplibregl is never defined, app.js sees that and the answer is rendered
+     as a location list instead — the page never depends on a network it does not control.
+     There is no inline onerror handler: the Content-Security-Policy (nabiz.web.main)
+     allows no inline script. Append ?nomap=1 to the URL to exercise the fallback. -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script defer src="/config.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="window.NABIZ_MAP_BLOCKED = true"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script defer src="/app.js"></script>
 </head>
 <body>
@@ -123,7 +124,7 @@
     <div class="strip-rail" id="strip-rail" role="list" aria-live="off"></div>
   </section>
 
-  <!-- Optional endpoint: rendered only when /api/alerts exists and returns something. -->
+  <!-- Rendered only when this browser holds an alert subscription (localStorage); see docs/privacy.md. -->
   <section class="alerts" id="alerts-panel" hidden aria-labelledby="alerts-title">
     <h2 id="alerts-title"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg> Şehir uyarıları</h2>
     <div id="alerts-body"></div>
@@ -178,10 +179,10 @@
     </aside>
   </div>
 
-  <!-- Optional endpoint: rendered only when /api/reliability exists. -->
+  <!-- Rendered after a bus question, for lines the collector has measured (/api/reliability). -->
   <section class="panel" id="reliability-panel" hidden aria-labelledby="reliability-title">
     <div class="panel-head">
-      <h2 id="reliability-title"><svg class="icon" aria-hidden="true"><use href="#i-gauge"></use></svg> Tahmin güvenilirliği</h2>
+      <h2 id="reliability-title"><svg class="icon" aria-hidden="true"><use href="#i-gauge"></use></svg> Hat düzenliliği</h2>
       <span class="panel-note">ölçülen değerler, iddia değil</span>
     </div>
     <div id="reliability-body"></div>

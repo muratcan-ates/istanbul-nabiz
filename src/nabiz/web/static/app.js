@@ -10,8 +10,9 @@
  *    phrasing rules live in one place (ibb_mcp.models.Provenance.describe_age).
  * 3. Nothing on this page requires the map. MapLibre comes from a CDN; when that CDN is
  *    blocked the answer still renders and the map panel degrades to a location list.
- * 4. Endpoints the integrator has not shipped yet (/api/route, /api/alerts,
- *    /api/reliability) are probed, not assumed: a 404 hides the panel silently.
+ * 4. The alert subscription never leaves this browser except inside one POST body to
+ *    /api/alerts/check: it lives in localStorage, the server evaluates it and forgets it
+ *    (docs/privacy.md). No subscription stored here means no request at all.
  */
 'use strict';
 
@@ -78,6 +79,34 @@ async function api(path, params) {
   return body;
 }
 
+/**
+ * POST a JSON body. Only the alert check uses it: a subscription carries coordinates, and a
+ * query string ends up in access logs where a request body does not (docs/privacy.md §4).
+ */
+async function apiPost(path, payload) {
+  let response;
+  try {
+    response = await fetch(new URL(path, window.location.origin), {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    const offline = new Error('Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.');
+    offline.status = 0;
+    throw offline;
+  }
+  let body = null;
+  try { body = await response.json(); } catch (err) { body = null; }
+  if (!response.ok) {
+    const error = new Error((body && body.message) || `İstek başarısız (HTTP ${response.status}).`);
+    error.status = response.status;
+    error.kind = body && body.error;
+    throw error;
+  }
+  return body;
+}
+
 /** For endpoints the integrator may not have wired yet: a 404 is "not here", not a failure. */
 async function probe(path, params) {
   try {
@@ -104,6 +133,10 @@ const SOURCE_TR = {
   gazetteer: 'Yer sözlüğü',
   nabiz_runtime: 'Nabız çalışma zamanı',
   nabiz_forecast: 'Nabız tahmini',
+  nabiz_history: 'Nabız doluluk geçmişi',
+  nabiz_routing: 'Nabız ulaşım karşılaştırması',
+  nabiz_reliability: 'Nabız hat düzenliliği ölçümü',
+  nabiz_alerts: 'Nabız uyarıları',
 };
 
 function sourceLabel(name) {
@@ -221,7 +254,10 @@ async function showError(err) {
     try {
       const fresh = await api('/api/freshness');
       const rows = Object.entries((fresh.data && fresh.data.sources) || {})
-        .map(([name, s]) => `<li><span>${esc(sourceLabel(name))}</span><span>${esc(shortAge(s.age_seconds))} önce</span></li>`)
+        .map(([name, s]) => {
+          const when = Number.isFinite(s.age_seconds) ? `${shortAge(s.age_seconds)} önce` : 'hiç alınamadı';
+          return `<li><span>${esc(sourceLabel(name))}</span><span>${esc(when)}</span></li>`;
+        })
         .join('');
       if (rows) {
         lastKnown = `<div class="last-known"><h4>En son ne zaman veri alabildik</h4><ul class="kv-list">${rows}</ul></div>`;
@@ -230,9 +266,16 @@ async function showError(err) {
       lastKnown = '';
     }
   }
+  // The server's Turkish message often opens with the same sentence as our heading
+  // ("İBB servisi şu anda yanıt vermiyor: …"); saying it twice reads as a stutter.
+  let detail = err.message || 'Bilinmeyen hata.';
+  if (detail.startsWith(title)) {
+    const trimmed = detail.slice(title.length).replace(/^[\s:—-]+/, '');
+    if (trimmed) detail = trimmed;
+  }
   results.innerHTML = `<div class="error-card">
     <h3>${icon('alert')}${esc(title)}</h3>
-    <p>${esc(err.message || 'Bilinmeyen hata.')}</p>
+    <p>${esc(detail)}</p>
     ${status === 503 ? '<p>Bu bir Nabız hatası değil: üst kaynak (İBB) yanıt vermedi. Sayı uydurmak yerine boş bırakıyoruz.</p>' : ''}
     ${lastKnown}
   </div>`;
@@ -258,7 +301,7 @@ let lastPoints = [];
 const KIND_TR = { park: 'Otopark', bus: 'Otobüs', station: 'İstasyon / durak', air: 'Hava ölçüm istasyonu', place: 'Yer' };
 
 function mapAvailable() {
-  return !mapForcedOff && !window.NABIZ_MAP_BLOCKED && typeof window.maplibregl !== 'undefined' && !mapBroken;
+  return !mapForcedOff && typeof window.maplibregl !== 'undefined' && !mapBroken;
 }
 
 /** OSM raster by default; Azure Maps raster when the server injected a key. */
@@ -678,6 +721,8 @@ function trafficCard(payload, prov, id) {
     ${history.length ? `<div class="chart dense">${bars}</div><div class="chart-axis">${axis}</div>` : ''}
     ${metaList([
     '1 akıcı — 99 kilitli',
+    // Against the median of the same weekday and hour; says so when there is no norm yet.
+    payload.typical && payload.typical.description ? payload.typical.description : null,
     yday ? `dün aynı saat: ${int(yday.index)} (${yday.label || ''})` : null,
     has(payload.at) ? `ölçüm saati ${clock(payload.at)}` : null,
   ])}`;
@@ -731,6 +776,7 @@ const JOURNEYS = {
       + cards(shown.map((b, i) => busCard(b, res.provenance, ids[i])).join(''), true),
       shown.map((b, i) => ({ lat: b.lat, lon: b.lon, kind: 'bus', card: ids[i], label: `${b.door_no} → ${b.direction || ''}` })),
     );
+    loadReliability(res.data.line_code);
   },
 
   async arrivals({ line, stop }) {
@@ -748,6 +794,7 @@ const JOURNEYS = {
       + (res.data.disclaimer ? `<p class="hint">${esc(res.data.disclaimer)}</p>` : ''),
       [{ lat: stopInfo.lat, lon: stopInfo.lon, kind: 'station', card: stopId, label: stopInfo.name || stop }],
     );
+    loadReliability(res.data.line_code);
   },
 
   async metro({ line }) {
@@ -879,28 +926,54 @@ const JOURNEYS = {
     );
   },
 
-  /* Optional endpoint. Hidden behind a 404 until the integrator ships /api/route. */
-  async route({ from, to, q }) {
-    const res = await probe('/api/route', { from, to, q, origin: from, destination: to });
-    if (!res) {
-      render('<p class="callout">Güzergâh önerisi bu sürümde yok. Şimdilik trafik indeksi, metro durumu ve otopark doluluğunu ayrı ayrı sorabilirsiniz.</p>', []);
+  /* A comparison of modes, never navigation — the server's disclaimer is shown verbatim. */
+  async route({ from, to }) {
+    if (!from || !to) {
+      render('<p class="callout">Başlangıcı ve varışı şöyle yazın: <em>Kadıköy’den Taksim’e nasıl giderim</em>. '
+        + 'Semt, meydan ya da istasyon adı kullanın.</p>', []);
       return;
     }
-    const options = res.data.options || res.data.routes || res.data.legs || (Array.isArray(res.data) ? res.data : []);
+    const res = await api('/api/route', { from, to });
+    const d = res.data;
+    const options = d.options || [];
+    const ids = options.map(() => nextCardId());
+    const ends = [
+      { lat: d.origin.lat, lon: d.origin.lon, kind: 'place', card: ids[0], label: d.origin.name },
+      { lat: d.destination.lat, lon: d.destination.lon, kind: 'place', card: ids[0], label: d.destination.name },
+    ];
     render(
-      resultHead('Güzergâh önerisi', `${options.length} seçenek`, res.provenance, res.note)
+      resultHead(`${d.origin.name} → ${d.destination.name}`, `${options.length} seçenek`, res.provenance, res.note)
       + (options.length
-        ? cards(options.map((o) => simpleCard({
-          id: nextCardId(), kind: '', icon: 'route', prov: res.provenance,
-          title: o.title || o.mode || o.summary || 'Seçenek',
-          sub: o.description || o.detail || '',
-          meta: Object.entries(o).filter(([, v]) => typeof v === 'number' || typeof v === 'string').slice(0, 6).map(([k, v]) => `${k}: ${v}`),
-        })).join(''), true)
-        : `<pre class="hint">${esc(JSON.stringify(res.data, null, 2).slice(0, 1200))}</pre>`),
-      [],
+        ? cards(options.map((o, i) => routeCard(o, d, res.provenance, ids[i])).join(''), true)
+        : '<p class="callout">Bu iki nokta arasında hiçbir seçenek hesaplanamadı.</p>')
+      + (d.disclaimer ? `<p class="hint">${esc(d.disclaimer)}</p>` : ''),
+      ends,
     );
   },
 };
+
+const MODE_ICON = { drive: 'traffic', metro: 'metro', bus: 'bus', walk: 'pin' };
+
+function routeCard(option, advice, prov, id) {
+  const tags = [];
+  if (advice.fastest_mode === option.mode) tags.push('en hızlı');
+  if (advice.most_comfortable_mode === option.mode) tags.push('en konforlu');
+  return simpleCard({
+    id, kind: '', icon: MODE_ICON[option.mode] || 'route', prov,
+    title: `${option.label} · ${num(option.total_minutes, 0)} dk`,
+    sub: tags.join(' · '),
+    meta: (option.legs || []).map((leg) => `${leg.description}: ${num(leg.minutes, 0)} dk`)
+      .concat([
+        `güven: ${CONFIDENCE_TR[option.confidence] || option.confidence}`,
+        option.comfort ? `konfor puanı: ${num(option.comfort.score, 0)}/100` : null,
+      ])
+      // The option's own notes carry what the numbers cannot: a disruption on a line the
+      // path rides, an input that could not be read ("okunamadı … bilinmiyor"), the
+      // traffic against its usual level, the other buses that also go there. Without
+      // them an unknown input would look like good news.
+      .concat(option.notes || []),
+  });
+}
 
 /* -------------------------------------------------------------- text routing */
 
@@ -942,6 +1015,17 @@ function meaningful(tokens) {
   return tokens.filter((t) => !isFiller(t) && !BUS_RE.test(t) && !METRO_RE.test(t));
 }
 
+/* "Kadıköy'den Taksim'e nasıl giderim": the ablative (-dan/-den/-tan/-ten, after an optional
+ * buffer n as in "Meydanı'ndan") marks the origin and the dative (-a/-e/-ya/-ye) the
+ * destination. Only this one shape is read; anything else asks the user to phrase it so,
+ * because guessing which word is which end would be a guessed answer. */
+const JOURNEY_RE = /^(.+?)[’']?n?(?:dan|den|tan|ten)\s+(.+?)[’']?n?(?:ya|ye|a|e)?\s+(?:nasıl|nasil)\s+gid/i;
+
+function splitJourney(text) {
+  const match = JOURNEY_RE.exec((text || '').trim());
+  return match ? { from: match[1].trim(), to: match[2].trim() } : null;
+}
+
 /** Map free text onto one journey. Keyword matching, not a model — and the UI says so. */
 function route(text) {
   const tokens = tokenize(text);
@@ -954,8 +1038,8 @@ function route(text) {
   if (/tazeli|veri yaş|güncellik/.test(low)) return { journey: 'freshness', args: {} };
   // Explicit wording only: an over-eager "from X to Y" pattern would steal ordinary
   // questions, and the route endpoint may not even exist on this server.
-  if (/nasıl giderim|nasil giderim|güzergâh|güzergah|rota öner|rota onar/.test(low)) {
-    return { journey: 'route', args: { q: text.trim() } };
+  if (/nas[ıi]l gid(?:erim|ilir|ebilirim)|güzergâh|güzergah|rota öner|rota onar/.test(low)) {
+    return { journey: 'route', args: { q: text.trim(), ...(splitJourney(text) || {}) } };
   }
   if (/trafik|yoğunluk/.test(low)) return { journey: 'traffic', args: {} };
   if (/istasyon|asansör|engelli|bebek odası|yürüyen/.test(low) && rest) return { journey: 'station', args: { name: rest } };
@@ -1007,9 +1091,10 @@ function paintFreshness(sources, budget) {
   }
   rail.innerHTML = entries.map(([name, s]) => {
     const cls = s.errors ? 'err' : freshnessClass(s.age_seconds, false);
-    return `<span class="src-chip ${cls}" role="listitem" title="${esc(sourceLabel(name))} · ${s.healthy ? 'sağlıklı' : 'sorunlu'}">
+    const age = Number.isFinite(s.age_seconds) ? shortAge(s.age_seconds) : 'veri yok';
+    return `<span class="src-chip ${cls}" role="listitem" title="${esc(sourceLabel(name))} · ${s.healthy ? 'sağlıklı' : 'sorunlu'}${s.last_error ? ' · ' + esc(s.last_error) : ''}">
       <i class="dot" aria-hidden="true"></i><b>${esc(sourceLabel(name))}</b>
-      <span class="num">${esc(shortAge(s.age_seconds))}</span></span>`;
+      <span class="num">${esc(age)}</span></span>`;
   }).join('');
   const worst = entries.reduce((acc, [, s]) => (s.errors ? acc + 1 : acc), 0);
   if (meta) {
@@ -1043,46 +1128,97 @@ async function refreshFreshness(button) {
 
 /* ----------------------------------------------- optional endpoint probes */
 
-function alertText(item) {
-  return item.message || item.title || item.headline || item.summary || item.description || item.text || JSON.stringify(item);
+const ALERT_SUBSCRIPTION_KEY = 'nabiz.alerts.subscription.v1';
+const ALERT_COOLDOWNS_KEY = 'nabiz.alerts.cooldowns.v1';
+
+function readStored(key) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null; // private mode or a hand-edited value: behave as if nothing is stored
+  }
 }
 
+function writeStored(key, value) {
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* private mode */ }
+}
+
+/** Keys still inside their cooldown. The server gets them as muted_keys and forgets them. */
+function mutedKeys(cooldowns, now) {
+  return Object.entries(cooldowns || {})
+    .filter(([, seen]) => seen && Number.isFinite(seen.at) && now - seen.at < (seen.cooldown_seconds || 0) * 1000)
+    .map(([key]) => key);
+}
+
+function resetAlerts() {
+  try {
+    window.localStorage.removeItem(ALERT_SUBSCRIPTION_KEY);
+    window.localStorage.removeItem(ALERT_COOLDOWNS_KEY);
+  } catch (err) { /* nothing stored, nothing to clear */ }
+  const panel = $('#alerts-panel');
+  if (panel) panel.hidden = true;
+}
+
+/**
+ * Evaluate the subscription this browser holds, if any. The cooldown is enforced here, not
+ * on the server: remembering "already shown" server-side would be a per-user history.
+ */
 async function loadAlerts() {
-  let res = null;
-  try { res = await probe('/api/alerts'); } catch (err) { res = null; }
   const panel = $('#alerts-panel');
   const body = $('#alerts-body');
   if (!panel || !body) return;
-  const data = res && res.data;
-  const items = !data ? [] : (data.alerts || data.items || (Array.isArray(data) ? data : []));
-  if (!items.length) { panel.hidden = true; return; }
-  body.innerHTML = items.slice(0, 5).map((item) => `<div class="alert-card">
+  const subscription = readStored(ALERT_SUBSCRIPTION_KEY);
+  if (!subscription || !Array.isArray(subscription.rules) || !subscription.rules.length) { panel.hidden = true; return; }
+  const cooldowns = readStored(ALERT_COOLDOWNS_KEY) || {};
+  const now = Date.now();
+  let res;
+  try {
+    res = await apiPost('/api/alerts/check', { ...subscription, muted_keys: mutedKeys(cooldowns, now) });
+  } catch (err) {
+    body.innerHTML = `<p class="note">Uyarılar kontrol edilemedi: ${esc(err.message)}</p>`;
+    panel.hidden = false;
+    return;
+  }
+  const alerts = (res.data && res.data.alerts) || [];
+  alerts.forEach((alert) => { cooldowns[alert.dedupe_key] = { at: now, cooldown_seconds: alert.cooldown_seconds }; });
+  writeStored(ALERT_COOLDOWNS_KEY, cooldowns);
+  body.innerHTML = alerts.slice(0, 5).map((alert) => `<div class="alert-card">
     ${icon('alert')}
-    <div><p>${esc(alertText(item))}</p>${stamp(res.provenance)}</div>
-  </div>`).join('');
+    <div><p>${esc(alert.message_tr)}</p>${stamp(res.provenance)}</div>
+  </div>`).join('')
+    + (res.note ? `<p class="note">${esc(res.note)}</p>` : '')
+    + '<p class="hint">Aboneliğiniz yalnızca bu tarayıcıda saklanır; sunucu değerlendirir ve unutur. '
+    + '<button type="button" class="link-button" id="alerts-reset">Uyarıları sıfırla</button></p>';
+  const reset = $('#alerts-reset');
+  if (reset) reset.addEventListener('click', resetAlerts);
   panel.hidden = false;
 }
 
-const RELIABILITY_TR = {
-  mae: 'ortalama mutlak hata', mae_minutes: 'ortalama mutlak hata (dk)', mape: 'ortalama yüzde hata',
-  samples: 'örnek sayısı', n: 'örnek sayısı', predictions: 'tahmin sayısı', window: 'pencere',
-  method: 'yöntem', updated_at: 'güncellenme', bias_minutes: 'sapma (dk)',
-};
-
-async function loadReliability() {
-  let res = null;
-  try { res = await probe('/api/reliability'); } catch (err) { res = null; }
+/** Measured headway regularity for the line just asked about; hidden for lines never watched. */
+async function loadReliability(line) {
   const panel = $('#reliability-panel');
   const body = $('#reliability-body');
-  if (!panel || !body) return;
-  if (!res || !res.data) { panel.hidden = true; return; }
-  const flat = Object.entries(res.data).filter(([, v]) => v === null || ['number', 'string', 'boolean'].includes(typeof v));
-  if (!flat.length) { panel.hidden = true; return; }
-  body.innerHTML = `<div class="kv-grid">${flat.map(([k, v]) => `<div class="stat">
-      <div class="k">${esc(RELIABILITY_TR[k] || k)}</div>
-      <div class="v">${esc(typeof v === 'number' ? num(v, Number.isInteger(v) ? 0 : 1) : String(v === null ? '—' : v))}</div>
-    </div>`).join('')}</div>
-    <div style="margin-top:.6rem">${stamp(res.provenance)}</div>`;
+  if (!panel || !body || !line) return;
+  let res = null;
+  try { res = await probe('/api/reliability', { line }); } catch (err) { res = null; }
+  const d = res && res.data;
+  if (!d || !(d.observed_lines || []).includes(d.line_code)) { panel.hidden = true; return; }
+  const stats = d.available
+    ? [
+      ['ortanca sefer aralığı', `${num(d.median_headway_min)} dk`],
+      ['düzenlilik', d.bunching_label || '—'],
+      ['aralık değişim katsayısı (cv)', num(d.headway_cv, 2)],
+      ['aralık gözlemi', int(d.samples)],
+      ['gözlenen araç', int(d.vehicles_seen)],
+    ]
+    : [];
+  body.innerHTML = `<p class="sub"><b>${esc(d.line_code)}</b> · saat ${esc(String(d.hour).padStart(2, '0'))}:00</p>`
+    + (stats.length ? `<div class="kv-grid">${stats.map(([k, v]) => `<div class="stat">
+      <div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>
+    </div>`).join('')}</div>` : '')
+    + (res.note ? `<p class="note">${esc(res.note)}</p>` : '')
+    + `<div style="margin-top:.6rem">${stamp(res.provenance)}</div>`;
   panel.hidden = false;
 }
 
@@ -1174,7 +1310,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshFreshness(null);
   loadAlerts();
-  loadReliability();
 
   // /api/freshness reads cache statistics only — it never touches İBB — so polling it is
   // free for the upstream. Pause while the tab is hidden anyway; a background tab that

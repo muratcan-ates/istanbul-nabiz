@@ -1,4 +1,4 @@
-"""FastAPI service that puts the twelve Nabız tools on HTTP and serves the web UI.
+"""FastAPI service that puts the fifteen Nabız tools on HTTP and serves the web UI.
 
 Three rules shape this module.
 
@@ -32,7 +32,7 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as metadata_version
 from typing import Any
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Body, Depends, FastAPI, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -47,6 +47,37 @@ from ibb_mcp.tools import Nabiz
 log = logging.getLogger("nabiz.web")
 
 STATIC_DIR = pathlib.Path(__file__).resolve().parent / "static"
+
+#: What the page may load, and from where. Everything is same-origin except MapLibre (one
+#: script and one stylesheet from cdnjs) and the raster tiles (OpenStreetMap, or Azure Maps
+#: when NABIZ_MAPS_KEY is set). MapLibre fetches tiles with ``fetch`` and decodes them from
+#: ``blob:`` URLs, and runs its workers from ``blob:`` too, which is what its own CSP notes
+#: ask for. ``style-src 'unsafe-inline'`` stays because app.js sets bar widths and gauge
+#: colours as inline ``style`` attributes; scripts get no such allowance.
+CONTENT_SECURITY_POLICY = "; ".join(
+    [
+        "default-src 'self'",
+        "script-src 'self' https://cdnjs.cloudflare.com",
+        "style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'",
+        "img-src 'self' data: blob: https://tile.openstreetmap.org https://atlas.microsoft.com",
+        "connect-src 'self' https://tile.openstreetmap.org https://atlas.microsoft.com",
+        "worker-src blob:",
+        "child-src blob:",
+        "font-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ]
+)
+
+#: Sent on every response. ``no-referrer`` because a URL on this site can carry a question
+#: ("/api/route?from=...&to=..."), and the tile servers have no need to see it.
+SECURITY_HEADERS = {
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+}
 
 
 def _version() -> str:
@@ -170,6 +201,12 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # Tracing is configured once per process and is a no-op without Application
+        # Insights or NABIZ_TRACE_CONSOLE; here rather than at import, so importing the
+        # module (as uvicorn and the tests do) configures nothing by itself.
+        from nabiz.agent.telemetry import setup_telemetry
+
+        setup_telemetry("nabiz-web")
         owned = app.state.nabiz is None
         if owned:
             app.state.nabiz = Nabiz(SourceContext.create(settings=app.state.settings))
@@ -206,6 +243,8 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         log.info("%s %s -> %s in %.1f ms", request.method, request.url.path, response.status_code, elapsed_ms)
         response.headers["X-Response-Time-ms"] = f"{elapsed_ms:.1f}"
+        for name, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
         return response
 
     # -- health ----------------------------------------------------------------------
@@ -247,6 +286,18 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
     ):
         return await call_tool(n.ispark_typical_occupancy, park_id=park_id, weekday=weekday, hour=hour)
 
+    # -- 2b. travel-mode comparison ---------------------------------------------------
+    @app.get("/api/route")
+    async def api_route(
+        origin: str = Query(..., alias="from", min_length=1, max_length=80),
+        destination: str = Query(..., alias="to", min_length=1, max_length=80),
+        n: Nabiz = NabizDep,
+    ):
+        """Place names only, never coordinates: this is a GET, and a query string lands in
+        access logs. A gazetteer name ("Kadıköy") is the same granularity ``/api/parking``
+        already takes; a coordinate pair would be a location trace (docs/privacy.md)."""
+        return await call_tool(n.plan_journey, origin=origin, destination=destination)
+
     # -- 3. buses ----------------------------------------------------------------------
     @app.get("/api/stops")
     async def api_stops(q: str = Query(..., min_length=1), limit: int = Query(8, ge=1, le=30), n: Nabiz = NabizDep):
@@ -264,6 +315,14 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
         n: Nabiz = NabizDep,
     ):
         return await call_tool(n.iett_next_arrivals, line_code=line, stop=stop, limit=limit)
+
+    @app.get("/api/reliability")
+    async def api_reliability(
+        line: str = Query(..., min_length=1, max_length=12),
+        hour: int | None = Query(None, ge=0, le=23),
+        n: Nabiz = NabizDep,
+    ):
+        return await call_tool(n.line_reliability, line_code=line, hour=hour)
 
     # -- 4. metro ----------------------------------------------------------------------
     @app.get("/api/metro")
@@ -293,6 +352,18 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
         n: Nabiz = NabizDep,
     ):
         return await call_tool(n.air_quality_forecast, place=place, horizon_hours=hours)
+
+    # -- 6b. alerts -------------------------------------------------------------------
+    @app.post("/api/alerts/check")
+    async def api_alerts_check(subscription: dict[str, Any] = Body(...), n: Nabiz = NabizDep):
+        """Evaluate the subscription in this request body and forget it.
+
+        POST because the subscription carries coordinates, and a body — unlike a query
+        string — is not written to access logs. Typed as a plain object on purpose: the
+        engine is the one validator, and its Turkish refusal names a place *key*, never a
+        coordinate, where FastAPI's own 422 would echo the rejected input back.
+        """
+        return await call_tool(n.check_alerts, subscription=subscription)
 
     # -- 7. freshness ------------------------------------------------------------------
     @app.get("/api/freshness")
@@ -346,7 +417,15 @@ def main() -> None:  # pragma: no cover - process entry point
     import uvicorn
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-    uvicorn.run(app, host=os.getenv("NABIZ_HOST", "127.0.0.1"), port=int(os.getenv("NABIZ_PORT", "8000")))
+    # uvicorn's own access log writes the client address and the full request line, query
+    # string included, so /api/route?from=...&to=... would reach the log with an IP beside
+    # it. ``log_requests`` already writes method, path, status and duration, and nothing else.
+    uvicorn.run(
+        app,
+        host=os.getenv("NABIZ_HOST", "127.0.0.1"),
+        port=int(os.getenv("NABIZ_PORT", "8000")),
+        access_log=False,
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover

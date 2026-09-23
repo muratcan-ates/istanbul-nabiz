@@ -1,4 +1,4 @@
-"""Nabız web app: the 12 MCP tools over plain HTTP, plus the single-page UI.
+"""Nabız web app: the 15 MCP tools over plain HTTP, plus the single-page UI.
 
 The web layer deliberately owns no data logic. Every endpoint is a thin wrapper around a
 :class:`ibb_mcp.tools.Nabiz` method, so the browser sees exactly what an MCP client sees —
