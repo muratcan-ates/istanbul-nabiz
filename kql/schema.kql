@@ -1,0 +1,66 @@
+// İstanbul Nabız — Azure Data Explorer schema for the free cluster, database `nabiz`.
+//
+// GENERATED from nabiz.collector.kusto.TABLES; do not edit by hand. Regenerate with
+//   .venv/bin/python -m nabiz.collector.kusto > kql/schema.kql
+// tests/test_collector.py fails when this file and TABLES disagree.
+//
+// Paste into the free cluster's query window (https://dataexplorer.azure.com), with the
+// database selected, and run the commands one at a time — the web UI runs the command
+// under the cursor. Every command is idempotent: .create-merge adds missing columns and
+// keeps rows, the policy and mapping commands overwrite themselves.
+//
+// Streaming ingestion is not optional here: the free cluster has no ingest- endpoint, so a
+// table without the policy rejects every write the collector makes (DECISIONS #1).
+//
+// The collector identity is admitted separately, once, with the command the azd
+// postprovision hook prints:
+//   .add database nabiz ingestors ('aadapp=<NABIZ_COLLECTOR_CLIENT_ID>;<AZURE_TENANT_ID>')
+
+// ---- ispark_snapshot ----
+.create-merge table ispark_snapshot (park_id:int, ts_utc:datetime, snapshot_ts_utc:datetime, capacity:int, empty:int, occupancy_pct:real, is_open:bool, district:string)
+
+.alter table ispark_snapshot policy streamingingestion enable
+
+.create-or-alter table ispark_snapshot ingestion json mapping 'ispark_snapshot_mapping' '[{"column": "park_id", "path": "$.park_id", "datatype": "int"}, {"column": "ts_utc", "path": "$.ts_utc", "datatype": "datetime"}, {"column": "snapshot_ts_utc", "path": "$.snapshot_ts_utc", "datatype": "datetime"}, {"column": "capacity", "path": "$.capacity", "datatype": "int"}, {"column": "empty", "path": "$.empty", "datatype": "int"}, {"column": "occupancy_pct", "path": "$.occupancy_pct", "datatype": "real"}, {"column": "is_open", "path": "$.is_open", "datatype": "bool"}, {"column": "district", "path": "$.district", "datatype": "string"}]'
+
+// ---- iett_fleet_snapshot ----
+.create-merge table iett_fleet_snapshot (door_no:string, ts_utc:datetime, snapshot_ts_utc:datetime, lat:real, lon:real, speed_kmh:real)
+
+.alter table iett_fleet_snapshot policy streamingingestion enable
+
+.create-or-alter table iett_fleet_snapshot ingestion json mapping 'iett_fleet_snapshot_mapping' '[{"column": "door_no", "path": "$.door_no", "datatype": "string"}, {"column": "ts_utc", "path": "$.ts_utc", "datatype": "datetime"}, {"column": "snapshot_ts_utc", "path": "$.snapshot_ts_utc", "datatype": "datetime"}, {"column": "lat", "path": "$.lat", "datatype": "real"}, {"column": "lon", "path": "$.lon", "datatype": "real"}, {"column": "speed_kmh", "path": "$.speed_kmh", "datatype": "real"}]'
+
+// ---- iett_line_snapshot ----
+.create-merge table iett_line_snapshot (line_code:string, route_code:string, door_no:string, nearest_stop_code:string, direction:string, lat:real, lon:real, ts_utc:datetime, snapshot_ts_utc:datetime)
+
+.alter table iett_line_snapshot policy streamingingestion enable
+
+.create-or-alter table iett_line_snapshot ingestion json mapping 'iett_line_snapshot_mapping' '[{"column": "line_code", "path": "$.line_code", "datatype": "string"}, {"column": "route_code", "path": "$.route_code", "datatype": "string"}, {"column": "door_no", "path": "$.door_no", "datatype": "string"}, {"column": "nearest_stop_code", "path": "$.nearest_stop_code", "datatype": "string"}, {"column": "direction", "path": "$.direction", "datatype": "string"}, {"column": "lat", "path": "$.lat", "datatype": "real"}, {"column": "lon", "path": "$.lon", "datatype": "real"}, {"column": "ts_utc", "path": "$.ts_utc", "datatype": "datetime"}, {"column": "snapshot_ts_utc", "path": "$.snapshot_ts_utc", "datatype": "datetime"}]'
+
+// ---- eta_predictions ----
+.create-merge table eta_predictions (predicted_at_utc:datetime, line_code:string, stop_code:string, stop_name:string, door_no:string, eta_minutes:real, method:string, confidence:string, stops_away:int, distance_km:real, buses_considered:int)
+
+.alter table eta_predictions policy streamingingestion enable
+
+.create-or-alter table eta_predictions ingestion json mapping 'eta_predictions_mapping' '[{"column": "predicted_at_utc", "path": "$.predicted_at_utc", "datatype": "datetime"}, {"column": "line_code", "path": "$.line_code", "datatype": "string"}, {"column": "stop_code", "path": "$.stop_code", "datatype": "string"}, {"column": "stop_name", "path": "$.stop_name", "datatype": "string"}, {"column": "door_no", "path": "$.door_no", "datatype": "string"}, {"column": "eta_minutes", "path": "$.eta_minutes", "datatype": "real"}, {"column": "method", "path": "$.method", "datatype": "string"}, {"column": "confidence", "path": "$.confidence", "datatype": "string"}, {"column": "stops_away", "path": "$.stops_away", "datatype": "int"}, {"column": "distance_km", "path": "$.distance_km", "datatype": "real"}, {"column": "buses_considered", "path": "$.buses_considered", "datatype": "int"}]'
+
+// ---- metro_status ----
+.create-merge table metro_status (line_id:int, line_name:string, description:string, is_active:bool, has_notice:bool, ts_utc:datetime, snapshot_ts_utc:datetime, color:string)
+
+.alter table metro_status policy streamingingestion enable
+
+.create-or-alter table metro_status ingestion json mapping 'metro_status_mapping' '[{"column": "line_id", "path": "$.line_id", "datatype": "int"}, {"column": "line_name", "path": "$.line_name", "datatype": "string"}, {"column": "description", "path": "$.description", "datatype": "string"}, {"column": "is_active", "path": "$.is_active", "datatype": "bool"}, {"column": "has_notice", "path": "$.has_notice", "datatype": "bool"}, {"column": "ts_utc", "path": "$.ts_utc", "datatype": "datetime"}, {"column": "snapshot_ts_utc", "path": "$.snapshot_ts_utc", "datatype": "datetime"}, {"column": "color", "path": "$.color", "datatype": "string"}]'
+
+// ---- traffic_index_hourly ----
+.create-merge table traffic_index_hourly (traffic_index:int, ts_utc:datetime, snapshot_ts_utc:datetime)
+
+.alter table traffic_index_hourly policy streamingingestion enable
+
+.create-or-alter table traffic_index_hourly ingestion json mapping 'traffic_index_hourly_mapping' '[{"column": "traffic_index", "path": "$.traffic_index", "datatype": "int"}, {"column": "ts_utc", "path": "$.ts_utc", "datatype": "datetime"}, {"column": "snapshot_ts_utc", "path": "$.snapshot_ts_utc", "datatype": "datetime"}]'
+
+// ---- aq_hourly ----
+.create-merge table aq_hourly (station_id:string, station_name:string, ts_utc:datetime, snapshot_ts_utc:datetime, pm10:real, so2:real, o3:real, no2:real, co:real, aqi_index:real, dominant:string)
+
+.alter table aq_hourly policy streamingingestion enable
+
+.create-or-alter table aq_hourly ingestion json mapping 'aq_hourly_mapping' '[{"column": "station_id", "path": "$.station_id", "datatype": "string"}, {"column": "station_name", "path": "$.station_name", "datatype": "string"}, {"column": "ts_utc", "path": "$.ts_utc", "datatype": "datetime"}, {"column": "snapshot_ts_utc", "path": "$.snapshot_ts_utc", "datatype": "datetime"}, {"column": "pm10", "path": "$.pm10", "datatype": "real"}, {"column": "so2", "path": "$.so2", "datatype": "real"}, {"column": "o3", "path": "$.o3", "datatype": "real"}, {"column": "no2", "path": "$.no2", "datatype": "real"}, {"column": "co", "path": "$.co", "datatype": "real"}, {"column": "aqi_index", "path": "$.aqi_index", "datatype": "real"}, {"column": "dominant", "path": "$.dominant", "datatype": "string"}]'

@@ -1,0 +1,27 @@
+// İstanbul Nabız — is the collector alive? One row per table: newest row, its age, rows in
+// the last 24 hours, and whether the table is stale against the cadence that fills it.
+//
+// Run in the ADX free cluster's query window against database `nabiz`, after kql/schema.kql.
+// Written against the tables in kql/schema.kql; not yet executed against a cluster, because
+// none exists yet (DECISIONS #1 gate) — treat a syntax error as a bug in this file.
+//
+// `expected_minutes` is the job cadence from nabiz.collector.job.SCHEDULES. "Stale" means
+// three cadences without a row, which tolerates one failed execution and a slow one without
+// crying wolf. Two tables are legitimately quiet at night: iett_line_snapshot when no bus is
+// on a watched line, and eta_predictions with it — the laptop logged 19 such line ticks
+// between 01:50 and 04:06 Istanbul time on 14 Sep. Read their staleness with the clock.
+//
+// The lake is the durable copy (DECISIONS #1): a table stale here but fresh in the lake is an
+// ingestion problem, not a collection problem.
+union
+    (ispark_snapshot      | summarize newest = max(snapshot_ts_utc),  rows_24h = countif(snapshot_ts_utc > ago(24h))  | extend table_name = "ispark_snapshot",      expected_minutes = 10),
+    (iett_fleet_snapshot  | summarize newest = max(snapshot_ts_utc),  rows_24h = countif(snapshot_ts_utc > ago(24h))  | extend table_name = "iett_fleet_snapshot",  expected_minutes = 10),
+    (iett_line_snapshot   | summarize newest = max(snapshot_ts_utc),  rows_24h = countif(snapshot_ts_utc > ago(24h))  | extend table_name = "iett_line_snapshot",   expected_minutes = 3),
+    (eta_predictions      | summarize newest = max(predicted_at_utc), rows_24h = countif(predicted_at_utc > ago(24h)) | extend table_name = "eta_predictions",      expected_minutes = 3),
+    (metro_status         | summarize newest = max(snapshot_ts_utc),  rows_24h = countif(snapshot_ts_utc > ago(24h))  | extend table_name = "metro_status",         expected_minutes = 60),
+    (traffic_index_hourly | summarize newest = max(snapshot_ts_utc),  rows_24h = countif(snapshot_ts_utc > ago(24h))  | extend table_name = "traffic_index_hourly", expected_minutes = 360),
+    (aq_hourly            | summarize newest = max(snapshot_ts_utc),  rows_24h = countif(snapshot_ts_utc > ago(24h))  | extend table_name = "aq_hourly",            expected_minutes = 720)
+| extend age_minutes = datetime_diff('minute', now(), newest)
+| extend stale = isnull(newest) or age_minutes > 3 * expected_minutes
+| project table_name, newest, age_minutes, expected_minutes, stale, rows_24h
+| order by stale desc, table_name asc

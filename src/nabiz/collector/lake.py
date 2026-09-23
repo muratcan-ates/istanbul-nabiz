@@ -11,8 +11,9 @@ chosen from the environment rather than compiled in:
   turn the same rows into a Delta table: ACID commits make a retried timer idempotent
   instead of a duplicate-row problem, and time travel answers "what did we know at
   08:00?" when auditing a wrong ETA (DECISIONS.md §6).
-* **Azure Functions.** ``AZURE_STORAGE_ACCOUNT`` switches the whole thing to ADLS Gen2
-  via ``azure-storage-blob``, authenticating with the Function's managed identity.
+* **Azure (Container Apps Jobs, or the Functions app).** ``AZURE_STORAGE_ACCOUNT``
+  switches the whole thing to ADLS Gen2 via ``azure-storage-blob``, authenticating with
+  the collector's managed identity.
 
 Every backend writes the *same* Hive-style layout, because that is what makes the choice
 reversible::
@@ -252,7 +253,7 @@ def _write_blob(source: str, rows: list[dict[str, Any]], stamp: dt.datetime) -> 
     """Upload one snapshot to ADLS Gen2 / Blob Storage.
 
     Auth order is connection string (local ``func start``) then
-    ``DefaultAzureCredential``, which resolves to the Function's managed identity in
+    ``DefaultAzureCredential``, which resolves to the collector's managed identity in
     Azure. ``overwrite=True`` is safe *because* the name is content-derived: the only
     blob it can replace is a byte-identical one.
     """

@@ -1,5 +1,11 @@
 """The Azure Functions app: five timers, one shared client, one line of log per tick.
 
+**Superseded by** :mod:`nabiz.collector.job` **(DECISIONS.md #10).** The deployed collector
+is now five scheduled Container Apps Jobs, which also collect the watched lines and the ETA
+prediction log that these timers never did. This app stays as the fallback for a region
+that refuses Container Apps; ``infra/main.bicep`` deploys it only with
+``deployCollectorFunction``, and never alongside the jobs.
+
 Everything that could fail interestingly lives in :mod:`nabiz.collector.snapshots`,
 :mod:`nabiz.collector.lake` and :mod:`nabiz.collector.kusto`. What is left here is
 scheduling, and three decisions worth stating:

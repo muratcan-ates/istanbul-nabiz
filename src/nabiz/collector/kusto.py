@@ -16,7 +16,7 @@ ADX deployment and three of its limits shape every decision here (DECISIONS.md �
 
       .add database nabiz ingestors ('aadapp=<clientId>;<tenantId>')
 
-  :func:`principal_command` prints that line for the Function's managed identity. Whether
+  :func:`principal_command` prints that line for the collector's managed identity. Whether
   the free cluster accepts a headless principal from this student subscription is the
   unverified Day-0 gate in PLAN.md §10; if it refuses, the fallback is Azure SQL free and
   this module is the only place that changes.
@@ -63,13 +63,19 @@ class KustoTable:
         return f"{self.name}_mapping"
 
 
-#: The five tables the collector fills, keyed by the source name the snapshot functions
-#: use. Column names match the snapshot row keys exactly, so the JSON ingestion mapping
-#: below is generated rather than maintained.
+#: The seven tables the collector fills, keyed by the source name the snapshot functions
+#: use. Column names match the row keys exactly, so the JSON ingestion mapping below is
+#: generated rather than maintained, and ``kql/schema.kql`` is generated from it in turn
+#: (``tests/test_collector.py`` fails if the checked-in file drifts).
 #:
 #: ``traffic_index_hourly`` deviates from the ``traffic_index_5m`` sketched in PLAN.md
 #: §4.2: the collector samples hourly, and a table name that claims five-minute
 #: resolution would be a lie told to every future query.
+#:
+#: ``iett_line_snapshot`` and ``eta_predictions`` arrived last and matter most: they are
+#: the observed arrivals and the predictions that the measured ETA error is computed
+#: from. Before they had tables here, :meth:`KustoSink.ingest` dropped both with "no
+#: table defined", so the headline number could only ever be computed from the lake.
 #:
 #: There is deliberately no plate column anywhere in this file (DECISIONS.md §7), and the
 #: free cluster's terms forbid personal data regardless.
@@ -96,6 +102,36 @@ TABLES: dict[str, KustoTable] = {
             ("lat", "real"),
             ("lon", "real"),
             ("speed_kmh", "real"),
+        ),
+    ),
+    "iett_line_snapshot": KustoTable(
+        "iett_line_snapshot",
+        (
+            ("line_code", "string"),
+            ("route_code", "string"),
+            ("door_no", "string"),
+            ("nearest_stop_code", "string"),
+            ("direction", "string"),
+            ("lat", "real"),
+            ("lon", "real"),
+            ("ts_utc", "datetime"),
+            ("snapshot_ts_utc", "datetime"),
+        ),
+    ),
+    "eta_predictions": KustoTable(
+        "eta_predictions",
+        (
+            ("predicted_at_utc", "datetime"),
+            ("line_code", "string"),
+            ("stop_code", "string"),
+            ("stop_name", "string"),
+            ("door_no", "string"),
+            ("eta_minutes", "real"),
+            ("method", "string"),
+            ("confidence", "string"),
+            ("stops_away", "int"),
+            ("distance_km", "real"),
+            ("buses_considered", "int"),
         ),
     ),
     "metro_status": KustoTable(
@@ -208,16 +244,55 @@ def ensure_tables(*, execute: bool = False, database: str | None = None) -> list
     return commands
 
 
+SCHEMA_KQL_HEADER = """\
+// İstanbul Nabız — Azure Data Explorer schema for the free cluster, database `nabiz`.
+//
+// GENERATED from nabiz.collector.kusto.TABLES; do not edit by hand. Regenerate with
+//   .venv/bin/python -m nabiz.collector.kusto > kql/schema.kql
+// tests/test_collector.py fails when this file and TABLES disagree.
+//
+// Paste into the free cluster's query window (https://dataexplorer.azure.com), with the
+// database selected, and run the commands one at a time — the web UI runs the command
+// under the cursor. Every command is idempotent: .create-merge adds missing columns and
+// keeps rows, the policy and mapping commands overwrite themselves.
+//
+// Streaming ingestion is not optional here: the free cluster has no ingest- endpoint, so a
+// table without the policy rejects every write the collector makes (DECISIONS #1).
+//
+// The collector identity is admitted separately, once, with the command the azd
+// postprovision hook prints:
+//   .add database nabiz ingestors ('aadapp=<NABIZ_COLLECTOR_CLIENT_ID>;<AZURE_TENANT_ID>')
+"""
+
+
+def render_schema_kql() -> str:
+    """The text of ``kql/schema.kql``: :func:`ensure_tables`' commands, grouped per table.
+
+    Generated rather than hand-written so the file a human pastes into the cluster and
+    the columns the sink ingests cannot drift apart — the failure mode being a renamed
+    row key that ADX silently ingests as null forever.
+    """
+    blocks = [SCHEMA_KQL_HEADER]
+    for table in TABLES.values():
+        blocks.append(
+            f"\n// ---- {table.name} ----\n"
+            f"{create_merge_command(table)}\n\n"
+            f"{streaming_policy_command(table)}\n\n"
+            f"{mapping_command(table)}\n"
+        )
+    return "".join(blocks)
+
+
 # --------------------------------------------------------------------------------------
 # ingestion
 # --------------------------------------------------------------------------------------
 def choose_auth() -> str:
     """Pick a credential: ``msi``, ``azcli`` or ``device``.
 
-    Managed identity first, because that is how the deployed Function authenticates and
+    Managed identity first, because that is how the deployed collector authenticates and
     it is the only one that works unattended. Az CLI second — a developer who has run
     ``az login`` needs no extra step — but only when the binary actually exists, which it
-    does not on a Functions host. Device code last: it always works and always needs a
+    does not in the collector image. Device code last: it always works and always needs a
     human at a browser, so it must never be reachable in Azure.
 
     The check is on the environment rather than on a failed sign-in on purpose: a Kusto
@@ -327,3 +402,7 @@ class KustoSink:
             log.error("kusto: ingest into %s failed (%d rows kept in the lake): %r", table.name, len(rows), exc)
             return 0
         return len(rows)
+
+
+if __name__ == "__main__":  # pragma: no cover - regenerates kql/schema.kql, see its header
+    print(render_schema_kql(), end="")

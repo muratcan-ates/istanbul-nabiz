@@ -32,9 +32,11 @@ Timestamps in every row are ISO-8601 UTC with a ``Z`` suffix. Two are carried:
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import datetime as dt
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from typing import Any
 
 from ibb_mcp.cache import TTLCache
@@ -70,17 +72,57 @@ _FAST_TTL_SOURCES = ("ispark", "iett_fleet", "metro_status", "traffic", "aq_read
 TRAFFIC_HOURS = 3
 
 
-def build_collector_context(settings: Settings | None = None) -> SourceContext:
+def build_collector_context(
+    settings: Settings | None = None,
+    *,
+    client: PoliteClient | None = None,
+) -> SourceContext:
     """A :class:`SourceContext` tuned for collection rather than for serving answers.
 
     The MCP server wants long TTLs — N users must cost one upstream call. The collector
     wants the opposite: each tick is a fresh observation, so the cache is reduced to a
     few seconds for the live sources. Everything else (one client, per-host 6 s spacing,
     the İETT hourly budget) is shared machinery we very much do want.
+
+    ``client`` lets a caller choose the retry policy. The run-once job
+    (:mod:`nabiz.collector.job`) passes a client that never retries İETT, because in a
+    process that lives for one tick the schedule — not an in-process counter — is what
+    bounds the hourly spend.
     """
     resolved = settings or Settings.from_env()
     cache = TTLCache(ttl_by_source=dict.fromkeys(_FAST_TTL_SOURCES, COLLECTOR_TTL_SECONDS))
-    return SourceContext.create(client=PoliteClient(), cache=cache, settings=resolved)
+    return SourceContext.create(client=client or PoliteClient(), cache=cache, settings=resolved)
+
+
+#: Names of the reads that failed inside :func:`count_failed_reads`, or ``None`` outside it.
+_failed_reads: contextvars.ContextVar[list[str] | None] = contextvars.ContextVar("failed_reads", default=None)
+
+
+@contextlib.contextmanager
+def count_failed_reads() -> Iterator[list[str]]:
+    """Collect the names of reads that failed or were stale while the block runs.
+
+    Every snapshot returns ``[]`` for both "İBB had nothing to report" and "İBB failed",
+    and for a timer that is the right contract. A run-once job needs to tell them apart
+    to choose its exit code: a watched line with no buses at 03:00 is an ordinary night
+    (the laptop logged 19 line ticks between 01:50 and 04:06 on 14 Sep that read zero
+    buses without a single failed read), while an unreachable gateway is a failed
+    execution the platform should record. The list is filled by
+    :func:`_read`, which already sees both failure modes, so no snapshot signature
+    changes.
+    """
+    sink: list[str] = []
+    token = _failed_reads.set(sink)
+    try:
+        yield sink
+    finally:
+        _failed_reads.reset(token)
+
+
+def _note_failed_read(name: str) -> None:
+    sink = _failed_reads.get()
+    if sink is not None:
+        sink.append(name)
 
 
 def iso_utc(moment: dt.datetime | None) -> str | None:
@@ -111,9 +153,11 @@ async def _read[T](
         value, provenance = await loader()
     except Exception as exc:  # noqa: BLE001 - a timer must never die on an upstream wobble
         log.error("collector/%s: read failed, tick skipped: %r", name, exc)
+        _note_failed_read(name)
         return None
     if provenance.cached:
         log.warning("collector/%s: upstream unavailable, stale cache not re-recorded", name)
+        _note_failed_read(name)
         return None
     return value, provenance
 
