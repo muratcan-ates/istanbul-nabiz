@@ -3,9 +3,10 @@
 Three decisions shape this file.
 
 **The tools are the MCP server's tools.** The agent calls :class:`~ibb_mcp.tools.Nabiz`
-in-process rather than over MCP, but the twelve function schemas are built from those same
-method signatures and carry the same Turkish descriptions the MCP server advertises. One
-surface, two transports: whatever VS Code Copilot can ask, this agent can ask.
+in-process rather than over MCP, but the function schemas are built from those same method
+signatures and carry the same Turkish descriptions the MCP server advertises. One surface,
+two transports: whatever VS Code Copilot can ask, this agent can ask, except
+``check_alerts``, which needs a subscription only the caller holds (:data:`NOT_OFFERED`).
 
 **Every answer is checked before it is returned.** After the model writes prose we run
 :mod:`nabiz.agent.faithfulness` over it with the raw tool payloads as the evidence. A
@@ -24,8 +25,8 @@ faithfulness check. That is what keeps the demo alive with no quota.
 
 from __future__ import annotations
 
-import contextlib
 import inspect
+import itertools
 import json
 import logging
 import pathlib
@@ -41,6 +42,7 @@ from ibb_mcp.sources.places import normalize_tr
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
+from nabiz.agent.telemetry import Span, span
 
 log = logging.getLogger("nabiz.agent")
 
@@ -72,16 +74,43 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     "metro_station_info": "Bir metro istasyonunun hattını, sırasını ve erişilebilirlik bilgisini döner. "
     "Asansör, yürüyen merdiven, WC, bebek bakım odası ve mescit bilgisi içerir.",
     "traffic_index": "İstanbul geneli trafik yoğunluk indeksini döner (1 akıcı, 99 kilitli). `window=\"now\"` anlık "
-    "değeri, `window=\"24h\"` son 24 saati ve dünkü aynı saatle karşılaştırmayı döner.",
+    "değeri, `window=\"24h\"` son 24 saati ve dünkü aynı saatle karşılaştırmayı döner. `now` ayrıca `typical` alanında "
+    "anlık değeri bu gün ve saatin İBB geçmişinden (son 28 gün, saatlik) ölçülen ortancasıyla karşılaştırır; hücrede "
+    "3'ten az gözlem varsa ya da geçmiş okunamazsa `available: false` ve gerekçe döner.",
     "air_quality_now": "Bir yere en yakın istasyonun güncel hava kalitesi ölçümünü döner. PM10, SO2, O3, NO2, CO "
     "derişimleri ile AQI indeksi ve sağlık durumu metnini içerir. PM2.5 İBB API'sinde yoktur. "
     "Sağlık tavsiyesi değildir.",
     "air_quality_forecast": "Kısa vadeli PM10 tahmini ve önümüzdeki en temiz zaman aralığını döner. İndeks değil "
     "saatlik derişim tahmin edilir, çünkü İBB PM10 indeksini 24 saatlik hareketli ortalamadan hesaplar. "
     "Sağlık tavsiyesi değildir.",
+    "plan_journey": "İki nokta arasında araba, metro, tek hatlı otobüs ve yürüyüşü süre ve konforla KARŞILAŞTIRIR. "
+    "\"Şu an arabayla mı, metroyla mı?\" sorusunu yanıtlar; adım adım yol tarifi DEĞİLDİR. Her uç için yer adı "
+    "(`origin`, `destination`; ör. \"Kadıköy\") ya da koordinat (`origin_lat`/`origin_lon`, "
+    "`destination_lat`/`destination_lon`; derece, WGS84, İstanbul içi) ver. Süreler dakika, mesafeler km. Canlı trafik "
+    "indeksi, İSPARK boş yer, metro duyuruları ve İETT GTFS durak sıralarından hesaplanır; kullanılan her varsayım "
+    "(hız, yol katsayısı, otopark arama süresi) sonuçta adıyla ve değeriyle döner. Yarım koordinat, İstanbul dışı nokta "
+    "ya da bulunamayan yer adı reddedilir. Hesaplanamayan seçenekler (aktarmalı otobüs, Boğaz'ı yürüyerek geçmek, GTFS "
+    "yoksa otobüs) `unavailable_options` içinde gerekçesiyle gelir. Metro seçeneği istasyon ağı üzerinde hat hat gider "
+    "(binilen her hat ve her aktarma ayrı bacak); Boğaz'ı yalnızca Marmaray tüpüyle geçer, Metrobüs ve vapur veride "
+    "yoktur. Otobüs süresi ölçülmüş durak-başı orandan gelir ve uzun yolculukta üst sınırdır; aynı yönde aktarmasız "
+    "giden diğer hatlar `other_direct_lines` içinde durak sayısıyla, süresiz gelir. `readings` içindeki "
+    "`traffic_typical`, anlık trafiği bu saatin ölçülmüş olağan seviyesiyle kıyaslar.",
+    "line_reliability": "Bir İETT hattının belirli saatteki sefer aralığını ve düzenliliğini (kümelenme) döner. "
+    "\"500T bu saatte ne sıklıkla gelir, otobüsler kümeleniyor mu?\" sorusunu yanıtlar. `line_code` hat kodu "
+    "(ör. \"500T\"); `hour` 0–23 İstanbul saati, verilmezse şu an. Sonuç: ortanca sefer aralığı (dakika), aralıkların "
+    "değişim katsayısı (cv) ve etiketi, gözlem ve araç sayısı, ölçüm penceresi. İETT bu ölçüyü yayınlamaz; değerler "
+    "projenin kendi araç konumu anlık görüntülerinden (~3,2 dk adımla) hesaplanmış GEÇMİŞTİR, canlı değildir ve "
+    "kaçırılan geçişler yüzünden üst sınırdır. Yeterli gözlem yoksa `available: false` ve gerekçe döner "
+    "(kaynak: data/reference/line_reliability.json).",
     "city_freshness": "Her veri kaynağının ne kadar güncel olduğunu ve kalan istek bütçesini döner. Bir cevabın ne "
     "kadar taze veriye dayandığını söylemen gerektiğinde bunu çağır.",
 }
+
+#: MCP tools the agent deliberately does not offer its model. ``check_alerts`` evaluates a
+#: subscription the *caller* holds (places with coordinates, rules, muted keys); the web
+#: agent is asked one question and holds none, so offering the tool would invite the model
+#: to invent a subscription. The web page reaches the alert engine through its own route.
+NOT_OFFERED: dict[str, str] = {"check_alerts": "needs a client-held subscription the agent does not have"}
 
 #: Parameters the MCP server does not advertise; the agent keeps the same surface.
 HIDDEN_PARAMS: dict[str, set[str]] = {"ispark_find_parking": {"with_tariff"}}
@@ -98,29 +127,22 @@ PARAM_HINTS: dict[str, str] = {
     "park_id": "İSPARK otopark kimliği (ispark_find_parking sonucundaki park_id).",
     "radius_km": "Arama yarıçapı, kilometre.",
     "min_free": "En az kaç boş yer olsun.",
+    "origin": "Başlangıç yeri adı, ör. 'Taksim'. Koordinat verildiyse yalnızca etiket olur.",
+    "destination": "Varış yeri adı, ör. 'Kadıköy'. Koordinat verildiyse yalnızca etiket olur.",
+    "origin_lat": "Başlangıç enlemi, derece (WGS84); origin_lon ile birlikte verilmeli.",
+    "origin_lon": "Başlangıç boylamı, derece (WGS84); origin_lat ile birlikte verilmeli.",
+    "destination_lat": "Varış enlemi, derece (WGS84); destination_lon ile birlikte verilmeli.",
+    "destination_lon": "Varış boylamı, derece (WGS84); destination_lat ile birlikte verilmeli.",
+    "hour": "0–23 İstanbul saati; verilmezse şu an.",
+    "weekday": "0=Pazartesi … 6=Pazar; verilmezse bugün.",
 }
 
 _JSON_TYPES: dict[Any, str] = {str: "string", int: "integer", float: "number", bool: "boolean"}
 
-try:  # Optional: traces land in Application Insights when the exporter is configured.
-    from opentelemetry import trace as _otel  # noqa: PLC0415
-
-    _tracer = _otel.get_tracer("nabiz.agent")
-except ImportError:  # pragma: no cover - opentelemetry is not a hard dependency
-    _tracer = None
-
-
-@contextlib.contextmanager
-def _span(name: str, **attributes: Any):
-    """One span, or nothing at all when OpenTelemetry is not installed."""
-    if _tracer is None:
-        yield None
-        return
-    with _tracer.start_as_current_span(name) as span:
-        for key, value in attributes.items():
-            if value is not None:
-                span.set_attribute(key, value)
-        yield span
+#: Turn ordinal within this process, so a trace can be read in the order the questions
+#: were asked. It is not a conversation id and must never become one: the agent keeps no
+#: per-user state, and a trace that could be grouped by user is a trace that identifies one.
+_turns = itertools.count(1)
 
 
 @dataclass
@@ -324,7 +346,7 @@ def _num(value: Any, digits: int = 1) -> str:
 
 
 class NabizAgent:
-    """A city agent over the twelve İBB tools, with or without a language model."""
+    """A city agent over the İBB tools of :data:`TOOL_DESCRIPTIONS`, with or without a language model."""
 
     def __init__(
         self,
@@ -353,16 +375,25 @@ class NabizAgent:
         """Answer one question, then verify every number in the answer against the tools."""
         lang = lang or detect_language(question)
         warnings: list[str] = []
-        with _span("nabiz.ask", **{"nabiz.lang": lang, "nabiz.provider": self.config.provider}):
+        # The question is not an attribute of this span and never will be: it is the
+        # user's own words, and a span is shipped to a cloud log (docs/NABIZ.md §1.3).
+        with span(
+            "nabiz.agent.turn",
+            **{
+                "nabiz.agent.turn": next(_turns),
+                "nabiz.agent.lang": lang,
+                "nabiz.agent.provider": self.config.provider,
+            },
+        ) as turn:
             if llm.available(self.config):
                 try:
-                    return await self._ask_model(question, lang, max_steps)
+                    return _describe_turn(turn, await self._ask_model(question, lang, max_steps))
                 except llm.LlmError as exc:
                     log.warning("model unavailable mid-run, falling back to deterministic mode: %r", exc)
                     warnings.append(f"Model çağrısı başarısız ({exc}); deterministic moda düşüldü.")
             answer = await self._ask_deterministic(question, lang)
             answer.warnings = warnings + answer.warnings
-            return answer
+            return _describe_turn(turn, answer)
 
     # -- model path ---------------------------------------------------------------
     async def _ask_model(self, question: str, lang: str, max_steps: int) -> AgentAnswer:
@@ -380,7 +411,7 @@ class NabizAgent:
 
         for _ in range(max(1, max_steps)):
             steps += 1
-            with _span("nabiz.model", **{"nabiz.step": steps}):
+            with span("nabiz.llm.chat", **{"nabiz.agent.step": steps}):
                 response = await llm.chat(self.config, messages, tools=self.schemas)
             _merge_usage(usage, response.get("usage"))
             model_name = response.get("model") or model_name
@@ -407,7 +438,7 @@ class NabizAgent:
                 )
         if pending_tools or not text:
             # Step budget spent while still calling tools: ask once more for prose only.
-            with _span("nabiz.model", **{"nabiz.step": steps + 1, "nabiz.forced": True}):
+            with span("nabiz.llm.chat", **{"nabiz.agent.step": steps + 1, "nabiz.agent.forced": True}):
                 response = await llm.chat(self.config, [*messages, {"role": "user", "content": _FORCE_PROSE[lang]}])
             steps += 1
             _merge_usage(usage, response.get("usage"))
@@ -427,7 +458,7 @@ class NabizAgent:
                 {"role": "assistant", "content": text},
                 {"role": "user", "content": report.repair_instruction(lang)},
             ]
-            with _span("nabiz.model", **{"nabiz.repair": True}):
+            with span("nabiz.llm.chat", **{"nabiz.agent.step": steps + 1, "nabiz.agent.repair": True}):
                 response = await llm.chat(self.config, messages)
             steps += 1
             _merge_usage(usage, response.get("usage"))
@@ -462,29 +493,47 @@ class NabizAgent:
         arguments = dict(arguments or {})
         error: str | None = None
         payload: dict[str, Any] | None = None
-        with _span("nabiz.tool", **{"nabiz.tool": name}):
+        # Argument *names*, never their values: `place` is a label, "Taksim" is what the
+        # user typed. The error message is left off the span for the same reason (it
+        # quotes the input back: "Bilinmeyen yer: …"), so only its kind is recorded.
+        with span(
+            "nabiz.tool",
+            **{"nabiz.tool.name": name, "nabiz.tool.arg_names": ",".join(sorted(arguments))},
+        ) as tool_span:
+            error_kind: str | None = None
             if name not in TOOL_DESCRIPTIONS:
                 error = f"Bilinmeyen araç: {name}. Kullanılabilir araçlar: {', '.join(TOOL_DESCRIPTIONS)}."
+                error_kind = "unknown_tool"
             else:
                 try:
                     result: ToolResult = await getattr(self.nabiz, name)(**arguments)
                     payload = _payload(result)
+                    tool_span.set(
+                        **{
+                            "nabiz.tool.cached": result.provenance.cached,
+                            "nabiz.tool.data_age_s": round(result.provenance.age_seconds, 1),
+                        }
+                    )
                 except (ValueError, TypeError) as exc:
-                    error = str(exc)
+                    error, error_kind = str(exc), type(exc).__name__
                 except RateLimitExceeded as exc:
-                    error = f"İstek bütçesi doldu: {exc}"
+                    error, error_kind = f"İstek bütçesi doldu: {exc}", type(exc).__name__
                 except UpstreamUnavailable as exc:
-                    error = f"İBB servisi şu anda yanıt vermiyor: {exc}"
+                    error, error_kind = f"İBB servisi şu anda yanıt vermiyor: {exc}", type(exc).__name__
                 except Exception as exc:  # noqa: BLE001 - a tool must never end the turn
                     log.exception("tool %s failed", name)
-                    error = f"Beklenmeyen hata: {type(exc).__name__}"
+                    error, error_kind = f"Beklenmeyen hata: {type(exc).__name__}", type(exc).__name__
+            duration_ms = round((time.perf_counter() - started) * 1000, 1)
+            tool_span.set(
+                **{"nabiz.tool.ok": error is None, "nabiz.tool.duration_ms": duration_ms, "nabiz.tool.error_kind": error_kind}
+            )
         return ToolCallRecord(
             name=name,
             arguments=arguments,
             ok=error is None,
             payload=payload,
             error=error,
-            duration_ms=round((time.perf_counter() - started) * 1000, 1),
+            duration_ms=duration_ms,
         )
 
     # -- deterministic path -------------------------------------------------------
@@ -584,7 +633,7 @@ class NabizAgent:
                 lang=lang,
                 warnings=[_DETERMINISTIC_NOTE[lang]],
             )
-        with _span("nabiz.deterministic", **{"nabiz.tool": tool}):
+        with span("nabiz.agent.deterministic", **{"nabiz.tool.name": tool}):
             record = await self._call_tool(tool, arguments)
         if record.ok and record.payload is not None:
             text = _render(tool, record.payload, lang)
@@ -613,6 +662,27 @@ class NabizAgent:
             warnings=warnings,
             model=None,
         )
+
+
+def _describe_turn(turn: Span, answer: AgentAnswer) -> AgentAnswer:
+    """Summarise a finished turn onto its span and hand the answer straight back.
+
+    Shapes and verdicts only: how many tools ran, which ones, and whether the faithfulness
+    check believed the result. The prose itself stays out: it answers a question a person
+    asked, and the trace it would land in is a server-side store.
+    """
+    turn.set(
+        **{
+            "nabiz.agent.mode": answer.mode,
+            "nabiz.agent.steps": answer.steps,
+            "nabiz.agent.tool_calls": len(answer.tool_calls),
+            "nabiz.agent.tools": ",".join(answer.tool_names),
+            "nabiz.agent.repaired": answer.repaired,
+            "nabiz.agent.model": answer.model,
+            "nabiz.agent.faithful": None if answer.faithfulness is None else answer.faithfulness.passed,
+        }
+    )
+    return answer
 
 
 def _assistant_message(content: str | None, calls: list[dict[str, Any]]) -> dict[str, Any]:

@@ -27,6 +27,12 @@ from urllib.parse import urlsplit
 
 import httpx
 
+# The tracing shim, not OpenTelemetry itself: it has no third-party dependency of its own
+# (it uses OpenTelemetry when importable and degrades to no-ops when not), and it filters
+# every span attribute through one allow-list. nabiz.agent exports lazily, so this import
+# does not load the agent, which itself imports this module.
+from nabiz.agent.telemetry import span, traced
+
 log = logging.getLogger("ibb_mcp.http")
 
 USER_AGENT = "istanbul-nabiz/0.1 (+https://github.com/muratcan-ates/istanbul-nabiz) open-data client"
@@ -151,35 +157,52 @@ class PoliteClient:
         content: bytes | None = None,
         params: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        if budget and budget in self.budgets:
-            self.budgets[budget].consume()
+        parts = urlsplit(url)
+        # Host and path only. The query string is not attached and never should be: it
+        # carries ids and dates today, but it is one refactor away from carrying a place
+        # name the user typed, and a span attribute is shipped to a cloud log.
+        with span(
+            "nabiz.http.request",
+            **{
+                "nabiz.http.method": method,
+                "nabiz.http.host": parts.netloc,
+                "nabiz.http.path": parts.path,
+                "nabiz.http.source": source,
+            },
+        ) as upstream:
+            if budget and budget in self.budgets:
+                self.budgets[budget].consume()
+                upstream.set(**{"nabiz.http.budget": budget, "nabiz.http.budget_remaining": self.budgets[budget].remaining})
 
-        gate = self._gate_for(url)
-        last_error: Exception | None = None
-        for attempt in range(1, self._max_attempts + 1):
-            await gate.wait()
-            try:
-                response = await self._client.request(method, url, headers=headers, content=content, params=params)
-            except httpx.HTTPError as exc:
-                last_error = exc
-                log.warning("%s: transport error on attempt %d: %r", source, attempt, exc)
-            else:
-                if response.status_code == 200:
-                    return response
-                last_error = UpstreamUnavailable(
-                    f"{source}: HTTP {response.status_code}", source=source, status=response.status_code
-                )
-                if response.status_code not in RETRY_STATUS:
-                    raise last_error
-                log.warning("%s: HTTP %d on attempt %d", source, response.status_code, attempt)
-            if attempt < self._max_attempts:
-                # The gateway needs roughly a minute and a half to recover from a 503 burst.
-                backoff = min(30.0, 4.0 * 2 ** (attempt - 1)) * (0.7 + 0.6 * random.random())
-                await asyncio.sleep(backoff)
+            gate = self._gate_for(url)
+            last_error: Exception | None = None
+            for attempt in range(1, self._max_attempts + 1):
+                upstream.set(**{"nabiz.http.attempts": attempt})
+                await gate.wait()
+                try:
+                    response = await self._client.request(method, url, headers=headers, content=content, params=params)
+                except httpx.HTTPError as exc:
+                    last_error = exc
+                    upstream.set(**{"nabiz.http.error_kind": type(exc).__name__})
+                    log.warning("%s: transport error on attempt %d: %r", source, attempt, exc)
+                else:
+                    upstream.set(**{"nabiz.http.status": response.status_code})
+                    if response.status_code == 200:
+                        return response
+                    last_error = UpstreamUnavailable(
+                        f"{source}: HTTP {response.status_code}", source=source, status=response.status_code
+                    )
+                    if response.status_code not in RETRY_STATUS:
+                        raise last_error
+                    log.warning("%s: HTTP %d on attempt %d", source, response.status_code, attempt)
+                if attempt < self._max_attempts:
+                    # The gateway needs roughly a minute and a half to recover from a 503 burst.
+                    backoff = min(30.0, 4.0 * 2 ** (attempt - 1)) * (0.7 + 0.6 * random.random())
+                    await asyncio.sleep(backoff)
 
-        if isinstance(last_error, UpstreamUnavailable):
-            raise last_error
-        raise UpstreamUnavailable(f"{source}: {last_error!r}", source=source)
+            if isinstance(last_error, UpstreamUnavailable):
+                raise last_error
+            raise UpstreamUnavailable(f"{source}: {last_error!r}", source=source)
 
     async def get_json(
         self,
@@ -199,6 +222,7 @@ class PoliteClient:
         response = await self.request("GET", url, source=source, budget=budget, headers=headers, params=params)
         return _loads(response, source)
 
+    @traced("nabiz.http.soap")
     async def post_soap_json(
         self,
         url: str,
@@ -208,7 +232,11 @@ class PoliteClient:
         body_xml: str,
         budget: str | None = None,
     ) -> Any:
-        """Call an İETT ``.asmx`` operation whose result is a JSON string inside SOAP XML."""
+        """Call an İETT ``.asmx`` operation whose result is a JSON string inside SOAP XML.
+
+        The span wraps the unwrapping as well as the request, because an İETT call fails
+        as often in the payload (an Oracle error delivered as a 200) as on the wire.
+        """
         envelope = (
             '<?xml version="1.0" encoding="utf-8"?>'
             '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">'
