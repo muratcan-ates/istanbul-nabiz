@@ -14,3 +14,8 @@ data/reference/gtfs/
 docs/screenshots/*.mov
 eval/results/*.json
 logs/
+# pytest --junitxml output (CI and make ci-local); its test ids quote the trailers and
+# addresses the guardrail tests feed in.
+reports/
+# Personal Claude Code overrides; .claude/settings.json stays tracked (AGENTS.md §2).
+.claude/settings.local.json

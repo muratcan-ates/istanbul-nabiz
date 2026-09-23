@@ -1,9 +1,13 @@
 # İstanbul Nabız — continuous integration.
 #
-# Two jobs, both offline: the repository is public and holds no secrets, so nothing here
+# Three jobs, all offline: the repository is public and holds no secrets, so nothing here
 # reads `secrets.*` and nothing deploys. See .github/workflows/README.md for why deployment
-# is a laptop command (`azd deploy`) rather than a workflow, and for the ruff-format
-# decision encoded below.
+# is a laptop command (`azd deploy`) rather than a workflow, for the ruff-format decision
+# encoded below, and for what the authorship gate does and does not check.
+#
+# Every third-party action is pinned to a full commit SHA, with its release in a comment,
+# and uv to the SHA-256 of its wheels (.github/requirements-uv.txt). A tag such as `v5` or a
+# versioned installer URL can serve different code at any time; a hash cannot.
 name: CI
 
 on:
@@ -16,9 +20,12 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request makes the older run pointless, so it is cancelled. On main
+# every run is kept: a cancelled run leaves that commit with no verdict, and "which commit
+# turned main red" is exactly the question a run on main exists to answer.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   # PyPI is slow from some networks; give uv room before it gives up.
@@ -30,21 +37,21 @@ env:
 
 jobs:
   python:
-    name: Lint, test and MCP smoke test
+    name: Lint, test, guardrails and MCP smoke test
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
 
       - name: Cache the uv download cache
-        uses: actions/cache@v4
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ~/.cache/uv
           key: uv-${{ runner.os }}-py3.12-${{ hashFiles('pyproject.toml') }}
@@ -52,21 +59,27 @@ jobs:
             uv-${{ runner.os }}-py3.12-
 
       - name: Install uv
+        # One release, from PyPI, checked against the wheel hashes committed in
+        # .github/requirements-uv.txt: a wheel whose bytes differ fails here instead of
+        # running. Wheels only, so pip never builds anything. pip puts `uv` next to the
+        # Python that setup-python installed, which is already on PATH.
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          python -m pip install --disable-pip-version-check --no-deps --only-binary :all: --require-hashes -r .github/requirements-uv.txt
+          uv --version
 
       - name: Cache the virtualenv
-        uses: actions/cache@v4
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: .venv
           # No restore-keys on purpose: a venv restored against a different dependency set
           # would install on top of stale wheels and hide a broken pyproject.toml. The
           # workflow file is in the key too, because the extras this job installs are named
-          # here and not in pyproject.toml — changing them has to invalidate the venv.
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pyproject.toml', '.github/workflows/ci.yml') }}
+          # here and not in pyproject.toml — changing them has to invalidate the venv — and so
+          # is the uv pin, because another uv may resolve the same ranges differently.
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pyproject.toml', '.github/workflows/ci.yml', '.github/requirements-uv.txt') }}
 
       - name: Create the venv and install the project
+        id: install
         # `uv venv` recreates the environment, which would defeat the cache above, so it only
         # runs when the restored venv is missing or unusable — a cached venv whose interpreter
         # symlink points at a hosted-tool-cache Python that has since been patched away looks
@@ -88,7 +101,7 @@ jobs:
           uv pip install --python .venv/bin/python -e ".[dev,web]"
 
       - name: Ruff lint (gate)
-        run: .venv/bin/ruff check src/ scripts/ tests/
+        run: .venv/bin/ruff check src/ scripts/ tests/ .github/scripts/
 
       - name: Ruff format check (advisory)
         # Deliberately non-blocking. The project sets line-length 130 and wraps long
@@ -99,11 +112,13 @@ jobs:
         run: .venv/bin/ruff format --check --diff src/ scripts/ tests/
 
       - name: Pytest
+        # GTFS comes from the committed tests/fixtures/gtfs_mini, not the gitignored
+        # data/reference/gtfs that only exists on a laptop (see tests/conftest.py).
         run: .venv/bin/python -m pytest -q --junitxml=reports/junit.xml
 
       - name: Upload the JUnit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: pytest-junit
           path: reports/junit.xml
@@ -114,20 +129,68 @@ jobs:
 
       - name: MCP server smoke test
         # The tests exercise the tool layer; this exercises the server that ships. It builds
-        # the real MCP server and asks it for its tool list, so a tool that fails to register
-        # (a bad signature, a broken import) fails CI here rather than inside someone's editor.
-        # NABIZ_OFFLINE=1 comes from the workflow env: no upstream call is made.
+        # the real MCP server offline, requires at least 12 tools, each with a JSON-schema
+        # input whose parameters have real names (never args/kwargs), and prints them. The
+        # count is a floor: new tools land without editing CI. `ibb-mcp --help` proves the
+        # console script that `uvx ibb-mcp` depends on was installed.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           .venv/bin/ibb-mcp --help > /dev/null
-          .venv/bin/python -c "
-          import asyncio
-          from ibb_mcp.server import build_server
-          tools = asyncio.run(build_server().list_tools())
-          names = sorted(t.name for t in tools)
-          assert len(tools) == 12, f'expected 12 MCP tools, got {len(tools)}: {names}'
-          print('MCP server started offline and exposes 12 tools:')
-          print('  ' + ', '.join(names))
-          "
+          .venv/bin/python .github/scripts/mcp_smoke.py
+
+      - name: Guardrails
+        # Regression fences for incidents this project has already had: plates past the
+        # parser or real plates in fixtures, schemas collapsing to (*args, **kwargs), İBB
+        # calls bypassing PoliteClient, secrets, personal e-mail or home paths, AI credit
+        # in files, unsourced README numbers. No network, no git history; see the script.
+        # Runs even when lint or tests failed, so one push reports every broken fence.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: .venv/bin/python scripts/guardrails.py
+
+  authorship:
+    name: Authorship gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out the repository with full history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The pushed range has to be walkable, and a shallow clone holds one commit.
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Check the commits being pushed or proposed
+        # Only the new commits are checked, never the whole history: 19 early commits carry
+        # a personal address and rewriting them is the owner's decision (README). The SHAs
+        # travel through env, not ${{ }} inside the script, so no event field is ever
+        # interpolated into shell code.
+        env:
+          EVENT: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            python scripts/check_authorship.py "$PR_BASE..$PR_HEAD"
+            exit $?
+          fi
+          # A force-push leaves the previous tip unreachable, so the clone above does not
+          # have it. GitHub still serves it by SHA until it is garbage-collected; without it
+          # the script checks the pushed tip alone and says so.
+          case "$PUSH_BEFORE" in
+            *[!0]*)
+              git cat-file -e "${PUSH_BEFORE}^{commit}" 2>/dev/null \
+                || git fetch --quiet --no-tags origin "$PUSH_BEFORE" 2>/dev/null \
+                || echo "::warning::previous tip $PUSH_BEFORE is not fetchable; checking the pushed tip only"
+              ;;
+          esac
+          python scripts/check_authorship.py --push "$PUSH_BEFORE" "$PUSH_AFTER"
 
   bicep:
     name: Bicep build
@@ -136,7 +199,7 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       # `hashFiles` is evaluated against the checked-out workspace, so this guard has to sit
       # on the steps and not on the job — at job level the workspace is still empty and the
