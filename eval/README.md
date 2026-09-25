@@ -7,7 +7,7 @@ a plausible-looking placeholder in a results table is worse than an admission.
 
 ```bash
 .venv/bin/python eval/run_eval.py --selftest                          # scenario file + metric helpers
-.venv/bin/python eval/run_eval.py --mode deterministic --offline      # 30 scenarios, no network
+.venv/bin/python eval/run_eval.py --mode deterministic --offline      # 66 scenarios, no network
 .venv/bin/python eval/run_eval.py --mode deterministic                # live İBB, budget-capped
 .venv/bin/python eval/run_eval.py --mode agent --offline              # adds the answer-level metrics
 .venv/bin/python eval/run_eval.py --mode agent --require-llm          # …and refuses to run without a model
@@ -69,26 +69,35 @@ conjunction of all four.
 
 ## The scenarios
 
-`journeys.jsonl` holds 30 scenarios — the four journeys of PLAN.md §1 (J1 parking, J2 bus
-arrivals, J3 metro status and accessibility, J4 air quality) and, since 23 September 2026, J5, the
-cross-journey questions answered by the three derived tools and the traffic norm (travel-mode
-comparison, line regularity, alerts, traffic against its usual level). Six each, fifteen Turkish and
-fifteen English. `--selftest`, which also runs in the test suite (`tests/test_eval_harness.py`),
+`journeys.jsonl` holds 66 scenarios across J1-J11, six each, 33 Turkish and 33 English. J1-J6 cover
+parking, bus arrivals, metro status and accessibility, air quality, cross-journey tools, and the
+equipment snapshot. J7-J8 are agent-only policy traps about rights, fares, fines, health, cash,
+rent, tips, and prompt injection. J9 checks step-free access, J10 checks ambiguous names, and J11
+checks unknown requests and honest data limits. `--selftest`, which also runs in the test suite (`tests/test_eval_harness.py`),
 requires every tool the MCP server registers to appear in at least one scenario. Every place, line and stop is real: 500T is the Tuzla Şifa Mahallesi ↔ 4.
 Levent Metro line, 3068 is the İSPARK lot at 15 Temmuz Şehitler Meydanı, 220641 is the
 Kavacık Köprüsü stop the 500T actually calls at.
 
 | Key | Meaning |
 |---|---|
-| `id`, `lang`, `journey` | `j2-en-1`, `tr`/`en`, `J1`–`J5` |
+| `id`, `lang`, `journey` | `j2-en-1`, `tr`/`en`, `J1`–`J11` |
 | `question` | what a person would type, in that language |
 | `expected_tools` | the tool chain the answer requires, in order |
 | `calls` | the same chain with concrete arguments, so the deterministic runner never has to guess them; a call may carry `"expect": "refusal"` and `error_contains` |
 | `expected_fields` | field assertions (grammar below) |
 | `forbidden_phrases` | overclaiming the answer must not contain |
 | `answer_must_contain_any` | agent mode only: the answer must contain at least one of these, so a refusal or a stated limit has to survive into the prose; ignored by the deterministic runner |
-| `modes` | optional; the modes the scenario can be scored in (default both). `j5-tr-2` is `["deterministic"]`: `check_alerts` evaluates a subscription only the caller holds, and the web agent holds none and does not offer the tool, so agent mode records it as skipped rather than failed |
+| `modes` | optional; the modes the scenario can be scored in (default both). `j5-tr-2` is deterministic because the web agent does not offer `check_alerts`; J9-J11 are deterministic and J7-J8 are agent-only |
+| `policy` | optional policy-layer label. `"refuse"` marks J7-J8 for the separate refusal tests; the journey harness does not interpret this field |
 | `notes` | why the scenario exists and what the honest answer looks like |
+
+### Policy scenarios are scored in two places
+
+The agent-mode journey harness drives `NabizAgent`, while the refusal rule lives in the console
+chat layer (`nabiz.console.chat`). J7-J8 therefore show “skipped: agent-only scenario” in a
+deterministic run, and agent runs do not exercise the console's refusal event. This is a measurement
+gap. `tests/test_policy.py` reads those same rows and verifies the policy directly with
+`refuses_in_context`; it does not claim the console chat emitted the refusal event.
 
 ### Field assertion grammar
 
@@ -124,6 +133,47 @@ checks are reported separately as "optional checks not applicable".
   return `available: false` with the reason, and a 24-hour air-quality outlook must report
   `baseline_only: true` with every point at `confidence: "low"` — it is yesterday's value
   at the same hour, not a forecast in the meteorological sense.
+* **Policy traps** (J7-J8): no tool is called. These agent-only cases ask for rights, fares,
+  fines, health guidance, or try to override source rules. The expected answer directs the
+  person to 153 and avoids an unsupported amount or entitlement.
+* **Unknown and empty data** (J11): three tools must refuse an unknown name or code, and
+  three must state that the requested history is unavailable. A missing result is not a
+  license to invent one.
+
+## Knowledge layer evaluation
+
+`knowledge_questions.jsonl` is a separate, locked 100-question acceptance set for G14's
+retrieval, source quotes, and `unknown` gate. It is not read by `run_eval.py` or its selftest.
+The buckets are 20 general services, 20 transport, 15 İSKİ, 10 İSPARK, 10 open data, 15
+focused sensitive cases, and 10 unanswered or injection cases. The seed questions' original
+category and sensitivity flags are retained; this gives 60 records with `sensitive: true`,
+including transport and open-data questions, and every sensitive or unanswered record has
+`forbidden_claims`. All 100 records are Turkish. Only `k-yanitsiz-*` records are
+`answerable: false`.
+
+Run `make eval-knowledge` to validate the schema, count, buckets, and forbidden-claim lists.
+Its offline mock returns the fixed answer `unknown` for every record. It does not call a
+retriever or model, so Recall@5, citation coverage, quote accuracy, paraphrase violations,
+and injection success are not measured by this command. The eventual acceptance targets,
+reported but not yet gates, are Recall@5 ≥ 90% overall and ≥ 95% on sensitive cases, 100%
+citation coverage, 100% exact quote-in-source matches, zero sensitive paraphrases, zero
+injection violations, and zero fabricated answers on unanswered cases.
+
+No source text was fetched for this lane, so `required_quote_substrings` is empty rather than
+guessing a quotation; G14 fills it after reading the actual source text. Source and selection
+caveats for questions without a seed entry:
+
+* `k-iski-14` and `k-iski-15` are two hand-written water and sewer service questions because
+  the seed pool has 13 of the 15 requested items. They have no verified source URL and keep
+  `gold_urls` empty.
+* `k-ispark-08` through `k-ispark-10` are derived from the existing parking-counts and
+  capacities dataset URL because the seed pool has seven İSPARK questions.
+* `k-acikveri-03` through `k-acikveri-10` are eight hand-derived questions using the portal,
+  data-request form, parking, earthquake-scenario, youth-support, household-support, and park
+  dataset URLs. The URLs were recorded as verified, but the portal content was inaccessible
+  on day one; answers require retrieval from Murat's machine before they can be source-backed.
+  Seeded portal records `Q031` and `Q118` retain their original dataset URLs as well.
+* The three manual parking questions in the İSPARK bucket also retain the same dataset URL.
 
 ## What each metric means
 
@@ -237,9 +287,11 @@ model would eventually have to beat.
 
 ```
 eval/
-├── journeys.jsonl   30 scenarios, 15 TR / 15 EN, six per journey (J1–J5)
-├── run_eval.py      the harness: runner, metrics, markdown report, --selftest
-└── results/         evidence runs: <timestamp>-<mode>-<offline|live>.{json,md} + latest.md (the last live run)
+├── journeys.jsonl          66 scenarios, 33 TR / 33 EN, six per journey (J1-J11)
+├── run_eval.py             journey harness: runner, metrics, markdown report, --selftest
+├── knowledge_questions.jsonl  locked 100-question acceptance set for G14
+├── run_knowledge_eval.py   offline schema and bucket validator; fixed unknown mock only
+└── results/                evidence runs: <timestamp>-<mode>-<offline|live>.{json,md} + latest.md (the last live run)
 ```
 
 Contains public sector information from the İstanbul Metropolitan Municipality Open Data
