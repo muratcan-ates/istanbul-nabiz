@@ -19,6 +19,7 @@ SRC      := src/ scripts/ tests/ .github/scripts/ eval/
 MCP_HOST ?= 127.0.0.1
 MCP_PORT ?= 8000
 WEB_PORT ?= 8080
+CONSOLE_PORT ?= 8090
 # The free disk below which `make status` warns. The owner sets the real value.
 STATUS_MIN_FREE_GB ?= 5
 # dev alone is not enough to run the suite: tests/test_web.py imports fastapi at module
@@ -32,7 +33,7 @@ AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit architecture \
-        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web eval eval-record eval-live fixtures places \
+        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console eval eval-record eval-live fixtures places \
         sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
 
@@ -98,6 +99,9 @@ mcp-http:  ## run the MCP server on streamable HTTP — the shape Container Apps
 
 web:  ## serve the Nabız web UI on :8080 with reload (WEB_PORT=, needs the web extra)
 	./.venv/bin/uvicorn nabiz.web.main:app --reload --no-access-log --port $(WEB_PORT)
+
+console:  ## serve the product app: citizen face (/) and simulated-operator console (/console) on :8090 (CONSOLE_PORT=; reads .env)
+	NABIZ_CONSOLE_PORT=$(CONSOLE_PORT) $(PY) -m nabiz.console
 
 eval:  ## run the journey eval offline into reports/eval (gitignored); never writes eval/results (EVAL_ARGS='--mode agent')
 	$(PY) eval/run_eval.py --offline --results-dir $(EVAL_OUT) $(EVAL_ARGS)

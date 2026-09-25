@@ -20,9 +20,10 @@ order they run::
                        several with no privileged path; it reaches İBB data through
                        ``ibb_mcp.tools``, and the web app through the same facade plus
                        what a composition root needs to build it.
-                     * independent apps: nabiz.web, .agent, .collector, .alerts never
-                       import each other (the page has no LLM; the collector carries the
-                       Azure SDKs).
+                     * independent apps: nabiz.web, .agent, .collector, .alerts, .console
+                       never import each other (the page has no LLM; the collector carries
+                       the Azure SDKs), except the edges in APP_IMPORTS: the console runs
+                       the agent in its chat (DECISIONS #21).
     no-cycles        A cycle makes import order load-bearing and turns every split into an
                      untangling job. Zero on 2026-09-23; kept at zero, lazy imports included.
     dependency-sets  DECISIONS #8: installing ``ibb-mcp`` pulls three runtime packages. A
@@ -128,7 +129,12 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
 #: of ``ibb_mcp.alerts`` and stays in the list so nothing starts depending on it. A package
 #: ``nabiz.<x>`` not listed here fails ``layers``: an undeclared app would otherwise pass every
 #: fence below by being in none of their tables.
-INDEPENDENT_APPS = ("nabiz.web", "nabiz.agent", "nabiz.collector", "nabiz.alerts")
+INDEPENDENT_APPS = ("nabiz.web", "nabiz.agent", "nabiz.collector", "nabiz.alerts", "nabiz.console")
+
+#: The one exception to "siblings never import each other", and why (DECISIONS #21): the product
+#: app ``nabiz.console`` is a composition root that runs the agent in its chat. The edge is one
+#: way; nothing may import ``nabiz.console``.
+APP_IMPORTS: dict[str, tuple[str, ...]] = {"nabiz.console": ("nabiz.agent",)}
 
 #: Apps allowed any ``ibb_mcp`` module, and why. Every other app is in FACADE_ONLY; an app in
 #: neither fails ``layers``.
@@ -151,6 +157,16 @@ FACADE_ONLY: dict[str, tuple[str, ...]] = {
         "ibb_mcp.sources.base",
         "ibb_mcp.telemetry",
     ),
+    # A composition root like the web app, which also folds Turkish text for the chat's rules.
+    "nabiz.console": (
+        "ibb_mcp.tools",
+        "ibb_mcp.models",
+        "ibb_mcp.http",
+        "ibb_mcp.config",
+        "ibb_mcp.sources.base",
+        "ibb_mcp.telemetry",
+        "ibb_mcp.text",
+    ),
 }
 
 #: Import names allowed per package, beyond the standard library. CORE is pyproject
@@ -171,6 +187,8 @@ DEPENDENCY_SETS: dict[str, frozenset[str]] = {
     "ibb_mcp.telemetry": CORE | {"opentelemetry", "azure"},
     "nabiz.alerts": CORE,
     "nabiz.web": CORE | {"fastapi", "starlette", "uvicorn", "jinja2"},
+    # nexus_core is the decision core's own package (stdlib and pydantic), bound through ports.
+    "nabiz.console": CORE | {"fastapi", "starlette", "uvicorn", "nexus_core"},
     "nabiz.collector": CORE | {"azure", "deltalake", "pyarrow"},
     "nabiz.agent": CORE | {"openai", "agent_framework", "azure", "opentelemetry"},
 }
@@ -335,7 +353,7 @@ def edge_violation(src: str, dst: str) -> str | None:
         return f"source imports sibling source {dst}"
     app_s = next((app for app in INDEPENDENT_APPS if under(src, app)), None)
     app_d = next((app for app in INDEPENDENT_APPS if under(dst, app)), None)
-    if app_s and app_d and app_s != app_d:
+    if app_s and app_d and app_s != app_d and app_d not in APP_IMPORTS.get(app_s, ()):
         return f"{app_s} imports sibling app {app_d}"
     allowed = next((v for k, v in FACADE_ONLY.items() if under(src, k)), None)
     if allowed is not None and under(dst, "ibb_mcp") and not any(under(dst, a) for a in allowed):

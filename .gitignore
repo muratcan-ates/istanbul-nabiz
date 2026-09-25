@@ -10,6 +10,8 @@
 .venv/
 __pycache__/
 data/lake/
+# The product app's daily model-spend count (nabiz.console.budget): local state, not source.
+data/console/
 data/reference/gtfs/
 docs/screenshots/*.mov
 eval/results/*.json
