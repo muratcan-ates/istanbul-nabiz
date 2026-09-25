@@ -16,6 +16,11 @@ configured, when today's spend ceiling is reached (:mod:`nabiz.console.budget`),
 model call fails, and when a model answer still fails the numeric check after its repair:
 a sentence built from the tool payload is better than a number nobody can back.
 
+**A service question goes to the service-page index when one is built** (:mod:`ibb_mcp.knowledge`).
+A refused question gets İBB's own sentence as a quote (``quote_only``) when a verified one
+exists, else the refusal; a question no tool covers gets an ``answer`` from quotes or an
+``unknown`` that points to 153. With no index, both keep their fixed text.
+
 **The spend ceiling holds under load.** A model turn reserves room for the most calls it can
 make (:data:`TURN_CALLS`) before it starts, at most :data:`MODEL_TURNS_AT_ONCE` model turns
 run at a time, and what a turn spent is recorded even when the model failed half-way: the
@@ -47,10 +52,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
+from ibb_mcp.knowledge import answer as knowledge_answer
+from ibb_mcp.knowledge import open_from_env
 from ibb_mcp.models import utcnow
 from nabiz.agent import llm
 from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS
+from nabiz.agent.templates import OUT_OF_SCOPE
 from nabiz.console.budget import SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.policy import (
@@ -82,6 +90,8 @@ SCHEDULE_SOURCES = frozenset({"iett_schedule", "gtfs"})
 REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places"})
 #: A model answer may name a price only when the person asked about car parks (İSPARK's tariff).
 _TARIFF_TOOLS = frozenset({"ispark_find_parking", "ispark_park_detail", "ispark_typical_occupancy"})
+#: The citation source of a service-page quote (the page's label: "Hizmet sayfaları (yerel dizin)").
+KNOWLEDGE_SOURCE = "local:knowledge"
 
 Emit = Callable[[str, dict[str, Any]], None]
 
@@ -250,6 +260,7 @@ class ChatService:
         self.offline = offline
         self._base_prompt: str | None = None
         self._model_turns = asyncio.Semaphore(MODEL_TURNS_AT_ONCE)
+        self._knowledge: tuple[Any, Any] | None = None
 
     @property
     def base_prompt(self) -> str:
@@ -264,7 +275,7 @@ class ChatService:
         earlier = [turn.content for turn in request.history if turn.role == "user"]
         needs = functional_needs(request.needs)
         suggestion = memory_suggestion(request.message, earlier, needs)
-        early = self._early_events(request, earlier, suggestion, started)
+        early = await self._early_events(request, earlier, suggestion, started)
         if early is not None:
             for event in early:
                 yield event
@@ -295,20 +306,25 @@ class ChatService:
             ))
             return
         answer, author = task.result()
+        for event in await self._answer_events(request.message, answer, author, suggestion, started):
+            yield event
+
+    async def _answer_events(self, question: str, answer: AgentAnswer, author: str, suggestion: Any, started: float) -> list[str]:
+        """The finished answer as events, after the price filter and the service-page index."""
         if author != "kural" and names_a_price(answer.text) and not _TARIFF_TOOLS & set(answer.tool_names):
             # The last line of R-06: a model answer that states a price is not shown.
-            for event in self._refusal(suggestion, started):
-                yield event
-            return
+            return self._refusal(suggestion, started)
+        if author == "kural" and answer.text == OUT_OF_SCOPE.get(answer.lang):
+            quoted = await self._from_knowledge(question, sensitive=False, suggestion=suggestion, started=started)
+            if quoted:
+                return quoted
         text = display_text(answer.text)
-        for piece in text_pieces(text):
-            yield sse("token", {"text": piece})
-        yield sse("final", self._final(
-            text, citations(answer, offline=self.offline), author, suggestion,
-            FinalFields(refused=False, how=_how(answer, started, rule_id=None), mode="answer"),
-        ))
+        events = [sse("token", {"text": piece}) for piece in text_pieces(text)]
+        fields = FinalFields(refused=False, how=_how(answer, started, rule_id=None), mode="answer")
+        events.append(sse("final", self._final(text, citations(answer, offline=self.offline), author, suggestion, fields)))
+        return events
 
-    def _early_events(
+    async def _early_events(
         self,
         request: ChatRequest,
         earlier: Sequence[str],
@@ -319,8 +335,39 @@ class ChatService:
             fields = FinalFields(refused=False, how=_empty_how(started, rule_id=None), mode="redirect", emergency=True)
             return [sse("final", self._final("", [], "kural", suggestion, fields))]
         if refuses_in_context(request.message, earlier):
-            return self._refusal(suggestion, started)
+            quoted = await self._from_knowledge(request.message, sensitive=True, suggestion=suggestion, started=started)
+            return quoted or self._refusal(suggestion, started)
         return None
+
+    def knowledge_index(self) -> tuple[Any, Any]:
+        """The service-page index once it is built, else ``(None, None)``; offline, lexical search only."""
+        if self._knowledge is None:
+            store, embedder = open_from_env()
+            if store is None:
+                return None, None
+            self._knowledge = (store, None if self.offline else embedder)
+        return self._knowledge
+
+    async def _from_knowledge(self, question: str, *, sensitive: bool, suggestion: Any, started: float) -> list[str] | None:
+        """Quotes from İBB's service pages, or ``None`` for the fixed text: no index, no quote for a
+        refused question, or an index that failed."""
+        store, embedder = self.knowledge_index()
+        if store is None:
+            return None
+        try:
+            found = await knowledge_answer(question, store=store, embedder=embedder, sensitive=sensitive)
+        except Exception as exc:  # noqa: BLE001 - a broken index must not break the turn
+            log.warning("knowledge answer failed, keeping the fixed text: %s", type(exc).__name__)
+            return None
+        if sensitive and found.mode != "quote_only":
+            return None  # no verified quote: the refusal, which also names 112
+        cited = [{**item, "source": KNOWLEDGE_SOURCE} for item in found.to_dict()["citations"]]
+        text = display_text(found.text)
+        how = _empty_how(started, rule_id="knowledge")
+        fields = FinalFields(refused=found.refused, how=how, mode=found.mode, steps=list(found.steps) or None)
+        events = [sse("token", {"text": piece}) for piece in text_pieces(text)]
+        events.append(sse("final", self._final(text, cited, found.author, suggestion, fields)))
+        return events
 
     def _refusal(
         self,

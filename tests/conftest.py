@@ -44,6 +44,11 @@ SRC_DIR = REPO_ROOT / "src"
 FIXTURES_DIR = TESTS_DIR / "fixtures"
 GTFS_MINI_DIR = FIXTURES_DIR / "gtfs_mini"
 
+# The chat answers service questions from the local index once one is built (data/knowledge,
+# gitignored). The suite sees no index unless a test seeds its own, so an owner's ingest run
+# cannot change what the chat tests expect. The file named here never exists.
+os.environ["NABIZ_KNOWLEDGE_DB"] = str(TESTS_DIR / "no-knowledge-index.db")
+
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 

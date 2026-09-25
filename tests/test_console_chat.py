@@ -16,16 +16,18 @@ import httpx
 import pytest
 from conftest import offline_settings, refuse_network
 from fastapi.testclient import TestClient
+from test_knowledge_store import seed_page
 
 from ibb_mcp.cache import TTLCache
 from ibb_mcp.http import PoliteClient
+from ibb_mcp.knowledge.store import KnowledgeStore
 from ibb_mcp.sources.base import SourceContext
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import llm
 from nabiz.console import chat as chat_module
 from nabiz.console.app import build_console_app
 from nabiz.console.budget import BudgetConfig, SpendGuard
-from nabiz.console.policy import NEEDS, memory_suggestion, refuses
+from nabiz.console.policy import NEEDS, REFUSAL_TEXT, memory_suggestion, refuses
 
 CLOUD = llm.LlmConfig(base_url="http://model.invalid/v1", model="fake-model", provider="openai_compatible")
 LOCAL = llm.LlmConfig(base_url="http://localhost:5273/v1", model="fake-local", provider="foundry_local")
@@ -478,3 +480,64 @@ def test_a_timetable_or_a_reference_file_is_never_cited_as_live() -> None:
     assert source_mode("gazetteer", offline=False) == "recorded"
     assert source_mode("local:data/reference/places.csv", offline=False) == "recorded"
     assert source_mode("ispark", offline=False) == "live" and source_mode("ispark", offline=True) == "recorded"
+
+
+# --------------------------------------------------------------------------------------
+# the service-page index (G14): a question no tool covers, and a refused one
+# --------------------------------------------------------------------------------------
+SERVICE_QUESTION = "Su aboneliği başvurusu nasıl yapılır?"
+SERVICE_QUOTE = "Su aboneliği başvurusu İSKİ şubelerinden ve e-Devlet üzerinden yapılır."
+FEE_QUESTION = "Su aboneliği ücreti nedir?"
+FEE_QUOTE = "Su aboneliği ücreti İSKİ tarifesinde güncel olarak yayımlanır."
+
+
+def with_index(monkeypatch: pytest.MonkeyPatch, tmp_path: Any, *quotes: str) -> None:
+    store_path = tmp_path / "knowledge.db"
+    for quote in quotes:
+        seed_page(KnowledgeStore(store_path), quote)
+    monkeypatch.setenv("NABIZ_KNOWLEDGE_DB", str(store_path))
+    monkeypatch.delenv("NABIZ_LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("NABIZ_LLM_API_KEY", raising=False)
+
+
+def test_without_an_index_an_uncovered_question_keeps_its_text_and_names_153(nabiz: Nabiz) -> None:
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, SERVICE_QUESTION)
+    assert "yanıtlayamıyorum" in final["answer"]
+    assert "153 Çözüm Merkezi'ne bağlanabilir ya da ilgili resmî sayfaya gidebilirsin." in final["answer"]
+    assert final["mode"] == "answer" and final["citations"] == []
+
+
+def test_with_an_index_an_uncovered_question_is_answered_from_quotes(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    with_index(monkeypatch, tmp_path, SERVICE_QUOTE)
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, SERVICE_QUESTION)
+    assert final["mode"] == "answer" and final["refused"] is False and final["author"] == "kural"
+    assert SERVICE_QUOTE in final["answer"]
+    assert final["citations"][0]["quote"] == SERVICE_QUOTE
+    assert final["citations"][0]["source"] == chat_module.KNOWLEDGE_SOURCE
+    assert final["how"]["rule_id"] == "knowledge"
+
+
+def test_with_an_index_a_refused_question_gets_a_quote_not_an_answer(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    with_index(monkeypatch, tmp_path, FEE_QUOTE)
+    fake = FakeModel()
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        _, final = ask(client, FEE_QUESTION)
+    assert final["mode"] == "quote_only" and final["refused"] is True
+    assert final["citations"][0]["quote"] == FEE_QUOTE and "153" in final["answer"]
+    assert fake.calls == [], "a refused question never reaches the model, quoted or not"
+
+
+def test_with_an_index_but_no_quote_a_refused_question_keeps_the_refusal(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    with_index(monkeypatch, tmp_path, SERVICE_QUOTE)
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, "Kaçak geçiş cezası kaç lira?")
+    assert final["mode"] == "refused" and final["answer"] == REFUSAL_TEXT and final["citations"] == []
