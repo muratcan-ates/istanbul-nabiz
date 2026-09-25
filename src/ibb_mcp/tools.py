@@ -151,6 +151,10 @@ class Nabiz:
                 from ibb_mcp.sources.metro import MetroSource
 
                 self._sources[name] = MetroSource(self.ctx)
+            elif name == "metro_equipment":
+                from ibb_mcp.sources.metro_equipment import MetroEquipmentSource
+
+                self._sources[name] = MetroEquipmentSource(self.ctx)
             elif name == "traffic":
                 from ibb_mcp.sources.traffic import TrafficSource
 
@@ -751,6 +755,22 @@ class Nabiz:
             raise ValueError(f"'{name}' adlı bir metro istasyonu bulamadım.")
         _, prov = await source.stations()
         return ToolResult(data={"query": name, "count": len(matches), "stations": _dump(matches)}, provenance=prov)
+
+    async def metro_equipment_status(
+        self, station: str | None = None, line: str | None = None, group: str | None = None
+    ) -> ToolResult:
+        """Lifts, escalators and moving walkways İBB lists as unusable (``ibb_mcp.accessibility``)."""
+        from ibb_mcp.accessibility import equipment_status
+
+        sources = self._source("metro_equipment"), self._source("metro")
+        return await equipment_status(*sources, station=station, line=line, group=group)
+
+    async def accessible_alternative(self, station: str, needs: list[str] | None = None) -> ToolResult:
+        """A station's lifts and, if one is listed unusable, the nearest step-free station (not an MCP tool)."""
+        from ibb_mcp.accessibility import alternative_answer
+
+        sources = self._source("metro_equipment"), self._source("metro")
+        return await alternative_answer(*sources, station=station, needs=needs)
 
     # -- 5. traffic ---------------------------------------------------------------
     async def traffic_index(self, window: str = "now") -> ToolResult:

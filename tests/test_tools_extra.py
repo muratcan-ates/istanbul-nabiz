@@ -373,6 +373,7 @@ EXPECTED_PARAMETERS = {
     "plan_journey": {"origin", "destination", "origin_lat", "origin_lon", "destination_lat", "destination_lon"},
     "line_reliability": {"line_code", "hour"},
     "check_alerts": {"subscription"},
+    "metro_equipment_status": {"station", "line", "group"},
 }
 
 
@@ -380,7 +381,7 @@ async def test_the_server_advertises_the_new_tools_with_real_signatures(nabiz: N
     tools = {tool.name: tool for tool in await build_server(app=nabiz).list_tools()}
 
     assert set(tools) >= NEW_TOOLS
-    assert len(tools) == 15
+    assert len(tools) == 16
     for name, parameters in EXPECTED_PARAMETERS.items():
         schema = tools[name].input_schema
         assert set(schema["properties"]) == parameters, f"{name} lost its signature (functools.wraps)"

@@ -176,6 +176,9 @@ def test_escalation_settings_merge_to_the_strictest() -> None:
 
 
 def test_the_mission_directory_holds_only_toml_the_loader_reads() -> None:
+    """Besides the README that documents the format, nothing sits there that the loader would skip."""
     for path in MISSIONS_DIR.iterdir():
+        if path.name == "README.md":
+            continue
         assert path.suffix == ".toml", path
         tomllib.loads(path.read_text(encoding="utf-8"))

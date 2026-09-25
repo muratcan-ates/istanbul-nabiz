@@ -44,6 +44,12 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     "olan hatları döndürür; bir hat listede yoksa o hat için bildirilmiş bir aksaklık yok demektir.",
     "metro_station_info": "Bir metro istasyonunun hattını, sırasını ve erişilebilirlik bilgisini döner. "
     "Asansör, yürüyen merdiven, WC, bebek bakım odası ve mescit bilgisi içerir.",
+    "metro_equipment_status": "Metro İstanbul'un kullanılamaz olarak kaydettiği asansör, yürüyen merdiven ve yürüyen bantları "
+    "döner. `station` (ör. \"Kartal\"), `line` (ör. \"M2\") ve `group` (\"Asansör\", \"Yürüyen Merdiven\", \"Yürüyen Bant\") "
+    "isteğe bağlı süzgeçlerdir. İstasyon verilirse `data.station` o istasyonun asansör durumunu özetler. Her kayıtta İBB'nin "
+    "tipi (Arıza, Revizyon, Çalıştırılmıyor) ayrı döner. Listede olmayan bir ekipman kullanılabilir diye doğrulanmış DEĞİLDİR: "
+    "\"çalışıyor\" deme, \"İBB kaydında arıza yok\" de. `ibb_date` İBB kaydındaki tarihtir; anlamı belgelenmemiştir, dönüş "
+    "tarihi olarak söyleme. `uncertainty` kodlarını ve `note` alanını kullanıcıya aktar.",
     "traffic_index": "İstanbul geneli trafik yoğunluk indeksini döner (1 akıcı, 99 kilitli). `window=\"now\"` anlık "
     "değeri, `window=\"24h\"` son 24 saati ve dünkü aynı saatle karşılaştırmayı döner. `now` ayrıca `typical` alanında "
     "anlık değeri bu gün ve saatin İBB geçmişinden (son 28 gün, saatlik) ölçülen ortancasıyla karşılaştırır; hücrede "
@@ -95,6 +101,8 @@ PARAM_HINTS: dict[str, str] = {
     "line": "Metro hat adı, ör. 'M4'.",
     "stop": "Durak adı veya durak kodu.",
     "name": "İstasyon adı, ör. 'Kartal'.",
+    "station": "Metro istasyonu adı, ör. 'Kartal'.",
+    "group": "'Asansör', 'Yürüyen Merdiven' ya da 'Yürüyen Bant'; verilmezse üçü de.",
     "window": "'now' ya da '24h'.",
     "horizon_hours": "Kaç saatlik tahmin isteniyor (en fazla 6).",
     "park_id": "İSPARK otopark kimliği (ispark_find_parking sonucundaki park_id).",

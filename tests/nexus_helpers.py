@@ -69,6 +69,7 @@ def elevator(outage: str = "ASN-01@2026-09-25T08:00", *, observed_at: dt.datetim
         "equipment_type": "elevator",
         "outage_id": outage,
         "alternative_station": "Şişhane",
+        "alternative_line": "M2",
         "alternative_faulty": False,
         "extra_minutes": 4,
     }

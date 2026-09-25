@@ -24,8 +24,8 @@ separate SOAP and REST endpoints. There is a Mobiett app, an İSPARK app, a CepH
 app — but no single conversational surface, no open integration layer, and no history to answer *"how full
 is it **usually** at this hour?"*.
 
-Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 15 tools) that any agent can call,
-and ships a web page and a city agent as its first clients. Five journeys drive the design; each has six
+Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 16 tools) that any agent can call,
+and ships a web page and a city agent as its first clients. Six journeys drive the design; each has six
 eval scenarios in `eval/journeys.jsonl`:
 
 | # | Who | The question | Tool chain | What the answer contains |
@@ -35,6 +35,7 @@ eval scenarios in `eval/journeys.jsonl`:
 | **J3** | Metro passenger / accessibility | *"Any disruption on M4? Is there a lift at Kartal?"* | `metro_status` → `metro_station_info` | live disruption notices, lift / escalator / baby room / WC / prayer room per station |
 | **J4** | Runner, parent | *"When is the air good enough for a run in Beşiktaş today?"* | `air_quality_now` → `air_quality_forecast` | current AQI and dominant pollutant, hourly PM10 outlook, best window, health note |
 | **J5** | Commuter | *"Taksim to Kadıköy right now — car or metro? Do the 500Ts bunch at noon? Anything I should know about M4?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` | a mode comparison (never directions) with every assumption stated, measured headway history over a stated window, stateless alerts, today's traffic against its usual level |
+| **J6** | Step-free traveller | *"Can I use the lift at Kartal right now? Which lifts are out on M2?"* | `metro_equipment_status` | lifts, escalators and moving walkways Metro İstanbul records as unusable, each with İBB's own type and recorded date; a station's lift state, never called "working", at most "no fault in İBB's record" |
 
 **Three things make this more than an API wrapper:**
 
@@ -69,7 +70,7 @@ day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status
 | Infrastructure | **written, never deployed** — Bicep + `azd`, one `Dockerfile` for server and jobs (never built) | `infra/`, `azure.yaml`, `Dockerfile`, [docs/deploy.md](docs/deploy.md) |
 | CI | **green on `main` since 23 Sep** (`1599c40`, then `d59b5a8`), after 13 red runs from 8 to 22 Sep, 10 of them because three tests read the gitignored GTFS export ([docs/ENGINEERING.md](docs/ENGINEERING.md) §1). Lint, tests, the MCP smoke test, guardrails, the architecture fences, the web budget and the authorship gate; `make ci-local` runs the same list on a clean copy. `main` is not protected yet | `.github/workflows/ci.yml` |
 | Tests | **1250 passed**, 1 skipped, 4 xfailed (two documented defects, and the İETT hourly budget that waits for an owner decision), offline, on 23 Sep, in the working tree and on the clean copy `make ci-local` builds | `tests/` |
-| Eval harness | **30 scenarios** (J1–J5). The committed results are the 24-scenario runs of 8 Sep; J5 has no committed run yet | `eval/` |
+| Eval harness | **36 scenarios** (J1–J6). The committed results are the 24-scenario runs of 8 Sep; J5 and J6 have no committed run yet | `eval/` |
 
 ## Architecture
 
@@ -102,7 +103,7 @@ flowchart LR
     AI[Application Insights<br/>allow-listed spans]
   end
   REF[(data/reference<br/>occupancy · reliability · ETA rates)]
-  TL[Tool layer · Nabiz<br/>15 tools · shared cache · PoliteClient]
+  TL[Tool layer · Nabiz<br/>16 tools · shared cache · PoliteClient]
   subgraph CL["Clients"]
     WEB[Nabız web page]
     AG[Nabız agent<br/>tool loop + faithfulness check]
@@ -251,6 +252,7 @@ NABIZ_OFFLINE=1 make web                  # the web page on http://127.0.0.1:808
 | `iett_next_arrivals(line_code, stop, limit)` | estimated arrivals, each with its method and confidence; a stop the line never calls at is refused, and so is a code İETT does not list (with the GTFS export present) |
 | `metro_status(line)` | live disruption notices; no notice means none reported |
 | `metro_station_info(name)` | a station's lift, escalators, baby room, WC and prayer room |
+| `metro_equipment_status(station, line, group)` | lifts, escalators and moving walkways Metro İstanbul records as unusable, with İBB's type and recorded date (meaning undocumented), a station's lift state and uncertainty codes; never "working" |
 | `traffic_index(window)` | the city traffic index now, against the same weekday and hour's median, or its last 24 hours |
 | `air_quality_now(place)` | the nearest station's latest reading, AQI band and a health disclaimer |
 | `air_quality_forecast(place, horizon_hours)` | a baseline PM10 outlook and the cleanest upcoming window |
@@ -376,7 +378,7 @@ Stated plainly, because a public-data project that hides these is not trustworth
 ## Türkçe
 
 **İstanbul Nabız**, İBB'nin kayıt istemeyen canlı açık verisini (İSPARK doluluk, İETT otobüs konumları,
-Metro arıza durumu, trafik indeksi, hava kalitesi) **15 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
+Metro arıza durumu, trafik indeksi, hava kalitesi) **16 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
 sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının yanında kaynağı ve zaman damgası vardır.
 
 > **Bu resmî bir İBB hizmeti değildir.** Bağımsız bir öğrenci projesidir; İBB, İETT, İSPARK veya Metro
@@ -394,6 +396,7 @@ sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının y
 | J3 | Metro yolcusu | *"M4'te arıza var mı? Kartal'da asansör var mı?"* | `metro_status` → `metro_station_info` |
 | J4 | Koşucu, ebeveyn | *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"* | `air_quality_now` → `air_quality_forecast` |
 | J5 | İşe giden | *"Taksim'den Kadıköy'e şu an arabayla mı metroyla mı? 500T öğlen kümeleniyor mu?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` |
+| J6 | Adımsız yolculuk | *"Kartal'da asansörü şu an kullanabilir miyim? M2'de hangi asansörler kullanılamıyor?"* | `metro_equipment_status` |
 
 **Neden bir API sarmalayıcısından fazlası**
 

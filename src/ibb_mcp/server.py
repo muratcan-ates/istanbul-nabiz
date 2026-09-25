@@ -211,6 +211,8 @@ def _error(exc: Exception) -> str:
 #:   ``ispark_typical_occupancy`` and ``line_reliability`` (committed tables),
 #:   ``city_freshness`` (process state).
 #: * ``metro_status``, ``metro_station_info``: one GET each (2).
+#: * ``metro_equipment_status``: the summary GET, one detail POST per equipment group (three)
+#:   and the station list (6).
 #: * ``traffic_index``: ``now`` reads the index and, at most every six hours, the 28-day
 #:   history for its norm (3). ``air_quality_now`` / ``_forecast``: stations + readings (3).
 #: * ``ispark_find_parking``: the park list plus up to three ``ParkDetay`` tariffs (5).
@@ -229,6 +231,7 @@ TOOL_COSTS: dict[str, int] = {
     "city_freshness": 1,
     "metro_status": 2,
     "metro_station_info": 2,
+    "metro_equipment_status": 6,
     "traffic_index": 3,
     "air_quality_now": 3,
     "air_quality_forecast": 3,
@@ -773,6 +776,20 @@ def _register_transit(mcp: MCPServer, app: Nabiz) -> None:
         Asansör, yürüyen merdiven, WC, bebek bakım odası ve mescit bilgisi içerir.
         """
         return await app.metro_station_info(name=name)
+
+    @mcp.tool()
+    @tool
+    async def metro_equipment_status(station: Name | None = None, line: Code | None = None, group: Name | None = None) -> str:
+        """Metro İstanbul'un kullanılamaz olarak kaydettiği asansör, yürüyen merdiven ve yürüyen bantları döner.
+
+        `station` (ör. "Kartal"), `line` (ör. "M2") ve `group` ("Asansör", "Yürüyen Merdiven",
+        "Yürüyen Bant") isteğe bağlı süzgeçlerdir. İstasyon verilirse `data.station` o istasyonun
+        asansör durumunu özetler. Her kayıtta İBB'nin tipi (Arıza, Revizyon, Çalıştırılmıyor) ayrı
+        döner. Listede olmayan bir ekipman kullanılabilir diye doğrulanmış DEĞİLDİR: "çalışıyor" deme,
+        "İBB kaydında arıza yok" de. `ibb_date` İBB kaydındaki tarihtir; anlamı belgelenmemiştir,
+        dönüş tarihi olarak söyleme. `uncertainty` kodlarını ve `note` alanını kullanıcıya aktar.
+        """
+        return await app.metro_equipment_status(station=station, line=line, group=group)
 
 
 def _register_environment(mcp: MCPServer, app: Nabiz) -> None:
