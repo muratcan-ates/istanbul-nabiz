@@ -109,6 +109,7 @@ async def citizen_brief(request: Request, stations: str = "", lines: str = "", n
         lines=split_csv(lines),
         needs=functional_needs(split_csv(needs, limit=16)),
         fresh=state.fresh,
+        published=state.ports.published,
     )
 
 

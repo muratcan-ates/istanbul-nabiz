@@ -21,13 +21,15 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from nabiz.console.arrival import BY_TIMETABLE, arrival_view
-from nabiz.console.cards import Status, card, freshness_status, iso_now, number_tr, provenance_view, unknown_provenance
+from nabiz.console.cards import Status, card, freshness_status, how_view, iso_now, number_tr, provenance_view, unknown_provenance
+from nexus_core.arena import UNCERTAINTY_TEXT
 
 log = logging.getLogger("nabiz.console.brief")
 
@@ -65,18 +67,41 @@ def last_known(body: str, status: Status) -> str:
     return f"Son bilinen durum: {body}" if status == "stale" and body else body
 
 
-def _unverified(kind: str, key: str, title: str, source: str) -> dict[str, Any]:
+def codes_for(status: Status, provenance: dict[str, Any]) -> list[str]:
+    """Uncertainty codes for a city card, restricted to the Arena's published vocabulary."""
+    codes = set()
+    if status == "stale":
+        codes.add("stale_data")
+    if status == "unverified":
+        codes.add("no_evidence")
+    if provenance.get("mode") == "recorded":
+        codes.add("recorded_data")
+    if provenance.get("age_s") is None:
+        codes.add("unknown_age")
+    return [code for code in UNCERTAINTY_TEXT if code in codes]
+
+
+def _how(tool: str, provenance: dict[str, Any], status: Status, elapsed_s: float) -> dict[str, Any]:
+    return how_view(tool, provenance, rule_id=None, signal_id=None,
+                    uncertainty=codes_for(status, provenance), latency_ms=round(elapsed_s * 1000, 1))
+
+
+def _unverified(kind: str, key: str, title: str, source: str, *, tool: str, elapsed_s: float) -> dict[str, Any]:
     body = "Veri alınamadı; doğrulanamadı."
-    return card(kind, key, title=title, body=body, status="unverified", provenance=unknown_provenance(source))
+    provenance = unknown_provenance(source)
+    return card(kind, key, title=title, body=body, status="unverified", provenance=provenance,
+                how=_how(tool, provenance, "unverified", elapsed_s))
 
 
 async def metro_status_card(nabiz: Any, lines: Sequence[str], fresh: Freshness) -> dict[str, Any]:
     wanted = {line.upper() for line in lines}
     title = "Metro: " + ", ".join(sorted(wanted)) if wanted else "Metro duyuruları"
+    started = time.perf_counter()
     try:
         result = await nabiz.metro_status()
     except _UNREADABLE:
-        return _unverified("metro_status", "metro", title, "metro")
+        return _unverified("metro_status", "metro", title, "metro", tool="metro_status",
+                           elapsed_s=time.perf_counter() - started)
     notices = [n for n in result.data.get("lines") or [] if not wanted or (n.get("line_name") or "").upper() in wanted]
     if notices:
         body = " ".join(f"{n.get('line_name') or ''}: {n.get('description') or ''}".strip() for n in notices[:3])
@@ -85,11 +110,13 @@ async def metro_status_card(nabiz: Any, lines: Sequence[str], fresh: Freshness) 
         body, content = "Bildirilmiş arıza ya da çalışma duyurusu yok.", "ok"
     status = freshness_status(result.provenance, stale_after_s=fresh.card_stale_after_s, content=content)
     provenance = provenance_view(result.provenance, offline=fresh.offline)
-    return card("metro_status", "metro", title=title, body=last_known(body, status), status=status, provenance=provenance)
+    return card("metro_status", "metro", title=title, body=last_known(body, status), status=status,
+                provenance=provenance, how=_how("metro_status", provenance, status, time.perf_counter() - started))
 
 
 async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> list[dict[str, Any]]:
     """The lift card for one saved station, and the alternative card when it is needed and known."""
+    started = time.perf_counter()
     try:
         view = await step_free.alternative(station, list(needs))
     except Exception as exc:  # noqa: BLE001 - one station's failure must not blank the page
@@ -103,7 +130,9 @@ async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> l
         status = "stale"
         body = last_known(body, status)
     provenance = view.get("provenance") or unknown_provenance("metro_equipment")
-    cards = [card("metro_equipment", station, title=f"{station} asansör", body=body, status=status, provenance=provenance)]
+    elapsed = time.perf_counter() - started
+    cards = [card("metro_equipment", station, title=f"{station} asansör", body=body, status=status,
+                  provenance=provenance, how=_how("accessible_alternative", provenance, status, elapsed))]
     alternative = view.get("alternative")
     if "step_free" in needs and lift == "out_of_service" and alternative:
         extra = alternative.get("extra_minutes")
@@ -117,7 +146,8 @@ async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> l
             body = f"{view['approved_text']} (Simüle operatör onayladı.)"
         title = f"{station} için adımsız seçenek"
         shown: Status = "stale" if view.get("stale") else "warning"
-        cards.append(card("alternative", station, title=title, body=body, status=shown, provenance=provenance))
+        cards.append(card("alternative", station, title=title, body=body, status=shown, provenance=provenance,
+                          how=_how("accessible_alternative", provenance, shown, elapsed)))
     return cards
 
 
@@ -125,6 +155,7 @@ async def arrival_card(nabiz: Any, pair: str, fresh: Freshness) -> dict[str, Any
     line, _, stop = pair.partition(":")
     if not line.strip() or not stop.strip():
         return None
+    started = time.perf_counter()
     try:
         view = await arrival_view(
             nabiz, line.strip(), stop.strip(), stale_after_s=fresh.arrival_stale_after_s, offline=fresh.offline
@@ -133,32 +164,39 @@ async def arrival_card(nabiz: Any, pair: str, fresh: Freshness) -> dict[str, Any
         return None
     status: Status = "ok" if view["minutes"] is not None else ("stale" if view["display"] == BY_TIMETABLE else "unverified")
     title, body = f"{view['line']} · {view['stop']}", f"Tahmini varış: {view['display']}"
-    return card("arrival", pair, title=title, body=body, status=status, provenance=view["provenance"])
+    return card("arrival", pair, title=title, body=body, status=status, provenance=view["provenance"],
+                how=_how("iett_next_arrivals", view["provenance"], status, time.perf_counter() - started))
 
 
 async def traffic_card(nabiz: Any, fresh: Freshness) -> dict[str, Any]:
     title = "Trafik"
+    started = time.perf_counter()
     try:
         result = await nabiz.traffic_index(window="now")
     except _UNREADABLE:
-        return _unverified("traffic", "city", title, "traffic")
+        return _unverified("traffic", "city", title, "traffic", tool="traffic_index",
+                           elapsed_s=time.perf_counter() - started)
     data = result.data or {}
     provenance = provenance_view(result.provenance, offline=fresh.offline)
     if data.get("index") is None:
         body = "Trafik indeksi bu ölçümde okunamadı; doğrulanamadı."
-        return card("traffic", "city", title=title, body=body, status="unverified", provenance=provenance)
+        return card("traffic", "city", title=title, body=body, status="unverified", provenance=provenance,
+                    how=_how("traffic_index", provenance, "unverified", time.perf_counter() - started))
     body = f"İstanbul trafik yoğunluk indeksi {number_tr(data['index'])} ({data.get('description') or ''})."
     status = freshness_status(result.provenance, stale_after_s=fresh.card_stale_after_s)
-    return card("traffic", "city", title=title, body=last_known(body, status), status=status, provenance=provenance)
+    return card("traffic", "city", title=title, body=last_known(body, status), status=status, provenance=provenance,
+                how=_how("traffic_index", provenance, status, time.perf_counter() - started))
 
 
 async def air_card(nabiz: Any, place: str, fresh: Freshness) -> dict[str, Any] | None:
+    started = time.perf_counter()
     try:
         result = await nabiz.air_quality_now(place=place)
     except ValueError:
         return None  # not a place the gazetteer knows: no card rather than a guessed district
     except _UNREADABLE:
-        return _unverified("air", place, f"Hava kalitesi: {place}", "airquality")
+        return _unverified("air", place, f"Hava kalitesi: {place}", "airquality", tool="air_quality_now",
+                           elapsed_s=time.perf_counter() - started)
     data = result.data or {}
     reading, band = data.get("reading") or {}, data.get("band") or {}
     content: Status = "ok"
@@ -172,7 +210,8 @@ async def air_card(nabiz: Any, place: str, fresh: Freshness) -> dict[str, Any] |
     status = freshness_status(result.provenance, stale_after_s=fresh.card_stale_after_s, content=content)
     title = f"Hava kalitesi: {data.get('place') or place}"
     provenance = provenance_view(result.provenance, offline=fresh.offline)
-    return card("air", place, title=title, body=last_known(body, status), status=status, provenance=provenance)
+    return card("air", place, title=title, body=last_known(body, status), status=status, provenance=provenance,
+                how=_how("air_quality_now", provenance, status, time.perf_counter() - started))
 
 
 async def build_brief(
@@ -183,13 +222,16 @@ async def build_brief(
     lines: Sequence[str],
     needs: Sequence[str],
     fresh: Freshness,
+    published: Any | None = None,
 ) -> dict[str, Any]:
-    """All the cards, in the order the page shows them."""
+    """Build cards without ingesting signals; queue reads are the sole source of new ledger signals."""
     metro_lines = [line for line in lines if _METRO_LINE.match(line)]
     pairs = [line for line in lines if ":" in line]
     cards = [await metro_status_card(nabiz, metro_lines, fresh)]
     for station in stations:
         cards += await station_cards(step_free, station, needs)
+    if published is not None:
+        cards.extend(await published.published(stations=stations))
     for pair in pairs:
         if (one := await arrival_card(nabiz, pair, fresh)) is not None:
             cards.append(one)

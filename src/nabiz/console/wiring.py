@@ -30,6 +30,7 @@ from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import env_seconds
 from nabiz.console.nexus_port import DEFAULT_INGEST_EVERY_S, NexusConsole
 from nabiz.console.ports import Ports
+from nabiz.console.published import PublishedCards
 from nabiz.console.step_free import StepFreeService
 from nexus_core import Ledger, Mission, NexusEngine, load_missions
 
@@ -104,4 +105,5 @@ def wire_ports(
         ingest_every_s=env_seconds("NABIZ_CONSOLE_INGEST_S", DEFAULT_INGEST_EVERY_S),
     )
     step_free = StepFreeService(nabiz, engine, offline=settings.offline)
-    return Ports(step_free=step_free, console=console), recorded.aclose
+    published = PublishedCards(engine, offline=settings.offline, stale_after_s=engine.stale_after_s)
+    return Ports(step_free=step_free, console=console, published=published), recorded.aclose
