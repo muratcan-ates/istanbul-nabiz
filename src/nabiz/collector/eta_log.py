@@ -28,8 +28,8 @@ from typing import Any
 from ibb_mcp.config import Settings
 from ibb_mcp.eta import EtaParams, estimate_arrivals
 from ibb_mcp.gtfs import get_index, load_stop_sequences
-from ibb_mcp.models import BusPosition, parse_ibb_datetime, utcnow
-from nabiz.collector.snapshots import iso_utc
+from ibb_mcp.models import BusPosition, utcnow
+from nabiz.collector.snapshots import iso_utc, parse_iso_utc
 
 #: Lines watched for ETA ground truth. Long, busy and geographically spread, so the sample
 #: covers both free-flowing and congested conditions. 500T is the verified reference
@@ -72,7 +72,7 @@ def rows_to_positions(rows: Sequence[dict[str, Any]]) -> list[BusPosition]:
             route_code=row.get("route_code"),
             direction=row.get("direction"),
             nearest_stop_code=row.get("nearest_stop_code"),
-            reported_at=parse_ibb_datetime(row.get("ts_utc")),
+            reported_at=parse_iso_utc(row.get("ts_utc")),
         )
         for row in rows
     ]

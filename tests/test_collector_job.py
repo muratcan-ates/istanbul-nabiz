@@ -343,6 +343,15 @@ async def test_eta_prediction_rows_match_the_adx_table(ctx: SourceContext, monke
     assert not any("plaka" in key.lower() or "plate" in key.lower() for key in predictions[0])
 
 
+def test_rows_to_positions_keeps_the_stored_timestamp() -> None:
+    """The lake's ``...Z`` stamp must survive the round trip: an arrival with no age is withheld."""
+    rows = [{"door_no": "C-1", "lat": 41.0, "lon": 29.0, "line_code": "500T", "ts_utc": "2026-09-08T06:08:53Z"}]
+
+    (bus,) = eta_log.rows_to_positions(rows)
+
+    assert bus.reported_at == dt.datetime(2026, 9, 8, 6, 8, 53, tzinfo=dt.UTC)
+
+
 def test_eta_predictions_refuse_to_hide_missing_gtfs(tmp_path: pathlib.Path) -> None:
     """An image without GTFS must say so on every tick, not log nothing forever."""
     rows = [{"line_code": "500T", "door_no": "C-1", "lat": 41.0, "lon": 29.0, "ts_utc": "2026-09-08T06:00:00Z"}]

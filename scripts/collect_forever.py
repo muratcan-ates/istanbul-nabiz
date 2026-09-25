@@ -57,7 +57,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from ibb_mcp.config import Settings  # noqa: E402
 from ibb_mcp.eta import EtaParams, estimate_arrivals  # noqa: E402
 from ibb_mcp.gtfs import get_index, load_stop_sequences  # noqa: E402
-from ibb_mcp.models import BusPosition, parse_ibb_datetime, utcnow  # noqa: E402
+from ibb_mcp.models import BusPosition, utcnow  # noqa: E402
 from nabiz.collector import lake  # noqa: E402
 from nabiz.collector.equipment import (  # noqa: E402
     EQUIPMENT_INTERVAL_S,
@@ -69,6 +69,7 @@ from nabiz.collector.equipment import (  # noqa: E402
 from nabiz.collector.snapshots import (  # noqa: E402
     build_collector_context,
     iso_utc,
+    parse_iso_utc,
     snapshot_air_quality,
     snapshot_ispark,
     snapshot_lines,
@@ -191,7 +192,7 @@ def _rows_to_positions(rows: list[dict]) -> list[BusPosition]:
                 route_code=row.get("route_code"),
                 direction=row.get("direction"),
                 nearest_stop_code=row.get("nearest_stop_code"),
-                reported_at=parse_ibb_datetime(row.get("ts_utc")),
+                reported_at=parse_iso_utc(row.get("ts_utc")),
             )
         )
     return positions

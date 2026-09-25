@@ -133,6 +133,25 @@ def iso_utc(moment: dt.datetime | None) -> str | None:
     return aware.astimezone(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
+def parse_iso_utc(value: str | None) -> dt.datetime | None:
+    """Read back what :func:`iso_utc` wrote: an aware UTC datetime, or ``None``.
+
+    Stored rows carry ``...Z`` stamps, which :func:`ibb_mcp.models.parse_ibb_datetime`
+    does not read (it parses İBB's naive local shapes). Rebuilding positions from rows
+    through that parser silently lost every timestamp; since arrivals with an unknown
+    age are withheld, that turned the ETA log off. Naive input is assumed to be UTC,
+    mirroring :func:`iso_utc`.
+    """
+    if not value:
+        return None
+    try:
+        moment = dt.datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    aware = moment.replace(tzinfo=dt.UTC) if moment.tzinfo is None else moment
+    return aware.astimezone(dt.UTC)
+
+
 def _observed_at(provenance: Provenance) -> dt.datetime:
     """The moment the snapshot was taken, as the source recorded it."""
     return provenance.observed_at
