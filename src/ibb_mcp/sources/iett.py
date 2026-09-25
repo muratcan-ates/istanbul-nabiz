@@ -38,9 +38,10 @@ from ibb_mcp.models import (
     PlannedDeparture,
     Provenance,
     day_type_for,
+    to_istanbul,
     utcnow,
 )
-from ibb_mcp.sources.base import SourceContext, make_provenance
+from ibb_mcp.sources.base import SourceContext, fixture_captured_at, make_provenance
 
 log = logging.getLogger("ibb_mcp.sources.iett")
 
@@ -236,6 +237,17 @@ def _redate_future_clocks(buses: Sequence[BusPosition], *, now: dt.datetime | No
     ]
 
 
+def _date_clocks_on_capture_day(buses: Sequence[BusPosition], captured: dt.datetime) -> list[BusPosition]:
+    """Offline: a recorded bare clock belongs to the day of the capture, not to today.
+
+    ``parse_ibb_datetime`` dates the fleet's clocks today, so a recording read weeks later
+    looked minutes old. Moving every stamp back by the same whole days keeps each clock and
+    the gaps between them; ``_redate_future_clocks`` then takes the capture as "now".
+    """
+    days = dt.datetime.now(ISTANBUL_TZ).date() - to_istanbul(captured).date()
+    return [bus.model_copy(update={"reported_at": bus.reported_at - days}) if bus.reported_at else bus for bus in buses]
+
+
 def _line_of(record: dict[str, Any]) -> str:
     return str(record.get("hatkodu") or record.get("SHATKODU") or "").strip().upper()
 
@@ -299,8 +311,10 @@ class IettSource:
         )
 
     async def _fetch_fleet_positions(self) -> list[BusPosition]:
+        captured: dt.datetime | None = None
         if self.ctx.settings.offline:
             raw = self.ctx.load_fixture("iett_fleet")
+            captured = fixture_captured_at(self.ctx.settings.fixtures_dir, "iett_fleet")
         else:
             raw = await self.ctx.client.post_soap_json(
                 IETT_FLEET_ASMX,
@@ -309,8 +323,10 @@ class IettSource:
                 body_xml=f"<{IETT_ACTION_FLEET_POSITIONS} xmlns='http://tempuri.org/' />",
                 budget="iett",
             )
-        buses = _parse_records(raw, BusPosition.from_fleet_raw, what=IETT_ACTION_FLEET_POSITIONS)
-        return _redate_future_clocks([b for b in buses if b.door_no])
+        buses = [b for b in _parse_records(raw, BusPosition.from_fleet_raw, what=IETT_ACTION_FLEET_POSITIONS) if b.door_no]
+        if captured is not None:
+            buses = _date_clocks_on_capture_day(buses, captured)
+        return _redate_future_clocks(buses, now=captured)
 
     # -- timetable ---------------------------------------------------------------------
     async def schedule(

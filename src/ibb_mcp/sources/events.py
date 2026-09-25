@@ -293,7 +293,7 @@ class EventsSource:
         return Provenance(
             source=f"{SOURCE}:{self.adapter.name}",
             source_url=self.adapter.source_url,
-            observed_at=entry.stored_at_utc,
+            observed_at=entry.observed_at_utc,
             cached=not entry.fresh,
             license=self.adapter.license,
         )

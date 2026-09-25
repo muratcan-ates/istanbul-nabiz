@@ -14,8 +14,10 @@ have waited.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import datetime as dt
 import json
+import os
 
 import httpx
 import pytest
@@ -28,7 +30,11 @@ from ibb_mcp.http import (
     UpstreamUnavailable,
     extract_soap_json,
 )
-from ibb_mcp.sources.base import make_provenance
+from ibb_mcp.sources.airquality import AirQualitySource
+from ibb_mcp.sources.base import SourceContext, fixture_captured_at, make_provenance
+from ibb_mcp.sources.iett import IettSource
+from ibb_mcp.sources.ispark import IsparkSource
+from ibb_mcp.sources.metro import MetroSource
 
 LINE_ACTION = "GetHatOtoKonum_json"
 FLEET_ACTION = "GetFiloAracKonum_json"
@@ -473,14 +479,14 @@ async def test_cache_refetches_once_the_entry_expires() -> None:
 async def test_cache_uses_the_per_source_default_ttl() -> None:
     cache = TTLCache()
     assert cache.ttl_for("ispark") == 300.0
-    assert cache.ttl_for("iett_line") == 60.0
+    assert cache.ttl_for("iett_line") == 90.0
     assert cache.ttl_for("unknown_source") == 300.0
 
     async def loader() -> str:
         return "v"
 
     _, entry = await cache.get_or_fetch("k", loader, source="iett_line")
-    assert entry.ttl == 60.0
+    assert entry.ttl == 90.0
 
 
 async def test_cache_is_single_flight_under_concurrency() -> None:
@@ -642,6 +648,124 @@ async def test_freshness_reports_the_data_age_beside_the_fetch_age() -> None:
     # A source that states no timestamp is as old as the read, and says it has none.
     assert ispark["reported_at_utc"] is None
     assert ispark["data_age_seconds"] == pytest.approx(ispark["age_seconds"], abs=1)
+
+
+# =================================================================================
+# Offline, recorded data is as old as its capture, not as its read
+# =================================================================================
+#: Every fixture a source reads offline (``SourceContext.load_fixture``).
+SOURCE_FIXTURES = (
+    "ispark_park", "ispark_parkdetay", "iett_hat_500T", "iett_fleet", "iett_planlanan",
+    "metro_status", "metro_stations", "traffic_index_1h", "aq_stations", "aq_readings",
+)
+
+
+def capture_times(fixtures_dir) -> dict[str, dt.datetime]:
+    report = json.loads((fixtures_dir / "_capture_report.json").read_text(encoding="utf-8"))
+    return {call["name"]: dt.datetime.fromisoformat(call["captured_at_utc"]) for call in report if "captured_at_utc" in call}
+
+
+def test_the_capture_report_dates_every_fixture_a_source_reads(fixtures_dir) -> None:
+    """The time offline answers are dated by must exist, and must not postdate what was recorded.
+
+    The capture of 2026-09-08 did not record the time of each call, so the report carries the
+    minute derived from the recording itself: the newest vehicle position in
+    ``iett_hat_500T.json`` is 09:08:59 İstanbul time (06:08:59 UTC), the third of the run's
+    calls, which were spaced 7 s apart. A capture cannot come before the newest reading it
+    recorded, so a minute's rounding is the only tolerance.
+    """
+    captured = capture_times(fixtures_dir)
+    assert set(SOURCE_FIXTURES) <= set(captured)
+    assert all(moment.tzinfo is not None for moment in captured.values())
+
+    newest_position = max(
+        dt.datetime.strptime(row["son_konum_zamani"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=dt.timezone(dt.timedelta(hours=3)))
+        for row in json.loads((fixtures_dir / "iett_hat_500T.json").read_text(encoding="utf-8"))
+    )
+    assert captured["iett_hat_500T"] >= newest_position - dt.timedelta(minutes=1)
+
+
+@pytest.mark.parametrize(
+    ("fixture", "read"),
+    [
+        ("ispark_park", lambda ctx: IsparkSource(ctx).list_parks()),
+        ("metro_stations", lambda ctx: MetroSource(ctx).stations()),
+        ("aq_stations", lambda ctx: AirQualitySource(ctx).stations()),
+        ("iett_planlanan", lambda ctx: IettSource(ctx).schedule("500T")),
+    ],
+)
+async def test_offline_data_with_no_timestamp_of_its_own_is_as_old_as_its_capture(ctx, fixtures_dir, fixture, read) -> None:
+    """The sources whose payload carries no time used to report the fixture read as the data's age.
+
+    So a recording from weeks ago answered "3 sn önce" offline, and the page's status pill
+    called it live. Offline, observed time is the capture; ``reported_at`` stays empty
+    because İBB stated none.
+    """
+    captured = capture_times(fixtures_dir)[fixture]
+
+    _, provenance = await read(ctx)
+
+    assert provenance.reported_at is None
+    assert provenance.observed_at == captured
+    assert provenance.age_seconds == pytest.approx((dt.datetime.now(dt.UTC) - captured).total_seconds(), abs=5)
+    # city_freshness and the page's age strip use the same rule as the answer.
+    row = ctx.cache.freshness()[provenance.source]
+    assert row["data_age_seconds"] == pytest.approx(provenance.age_seconds, abs=5)
+    assert row["age_seconds"] < 60  # the read itself was just now, and that is still said
+
+
+async def test_offline_fleet_clocks_are_dated_on_the_capture_day(ctx, fixtures_dir) -> None:
+    """The fleet sends bare clocks ("09:08:52"), which parse as today: a recording looked live.
+
+    Offline they belong to the capture's day, and a clock later than the capture belongs to
+    the day before it, as it would have live.
+    """
+    captured = capture_times(fixtures_dir)["iett_fleet"]
+
+    buses, provenance = await IettSource(ctx).fleet_positions()
+
+    stamps = [bus.reported_at for bus in buses if bus.reported_at is not None]
+    assert stamps
+    assert all(captured - dt.timedelta(days=1) <= stamp <= captured + dt.timedelta(minutes=2) for stamp in stamps)
+    assert provenance.reported_at == max(stamps)
+    assert provenance.age_seconds >= (dt.datetime.now(dt.UTC) - captured).total_seconds() - 5
+
+
+async def test_single_flight_waiters_get_the_capture_time_too(ctx, fixtures_dir) -> None:
+    """The entry is stamped before any waiter can see it: fifty readers, one date."""
+    results = await asyncio.gather(*(IsparkSource(ctx).list_parks() for _ in range(50)))
+    assert {provenance.observed_at for _, provenance in results} == {capture_times(fixtures_dir)["ispark_park"]}
+    assert ctx.cache.stats["ispark"].misses == 1
+
+
+async def test_a_fixture_the_report_does_not_date_is_dated_by_its_file(ctx, tmp_path) -> None:
+    """With no capture time, the file's modification time: never earlier than the capture.
+
+    So the age it gives can only be too young, never invented, and never the read time.
+    """
+    write_time = dt.datetime(2026, 9, 1, 12, 0, tzinfo=dt.UTC)
+    fixture = tmp_path / "metro_stations.json"
+    fixture.write_text((ctx.settings.fixtures_dir / "metro_stations.json").read_text(encoding="utf-8"), encoding="utf-8")
+    os.utime(fixture, (write_time.timestamp(), write_time.timestamp()))
+    settings = dataclasses.replace(ctx.settings, fixtures_dir=tmp_path)
+    offline = SourceContext.create(client=ctx.client, cache=TTLCache(), settings=settings)
+
+    assert fixture_captured_at(tmp_path, "metro_stations") == write_time
+    _, provenance = await MetroSource(offline).stations()
+    assert provenance.observed_at == write_time
+
+
+async def test_live_reads_are_dated_by_the_fetch(ctx) -> None:
+    """Only an offline read is re-dated; a live fetch is observed when it happens."""
+    live = SourceContext.create(client=ctx.client, cache=TTLCache(), settings=dataclasses.replace(ctx.settings, offline=False))
+
+    async def loader() -> object:
+        return live.load_fixture("metro_stations")  # a live loader never reads one; this proves no stamp leaks
+
+    before = dt.datetime.now(dt.UTC)
+    _, entry = await live.cached("metro:stations", loader, source="metro_stations")
+    assert entry.captured_at is None
+    assert make_provenance("metro_stations", entry=entry).observed_at >= before
 
 
 # =================================================================================

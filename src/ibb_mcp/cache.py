@@ -28,7 +28,11 @@ log = logging.getLogger("ibb_mcp.cache")
 #: to how hard we are willing to hit the gateway.
 DEFAULT_TTL = {
     "ispark": 300.0,       # occupancy refreshes roughly every 10 minutes
-    "iett_line": 60.0,     # vehicle positions move every few seconds, but the budget is 100/h
+    # Positions move every few seconds, but İETT allows 100 calls an hour and PoliteClient stops
+    # at 80. Arrivals for one line asked about nonstop read that line once per iett_line TTL and
+    # the fleet once per iett_fleet TTL: 3600/60 + 3600/120 = 90 an hour was over the budget,
+    # 3600/90 + 3600/120 = 70 fits under it (DECISIONS #3).
+    "iett_line": 90.0,
     "iett_fleet": 120.0,
     "iett_schedule": 86400.0,
     "metro_status": 300.0,
@@ -49,6 +53,15 @@ class CacheEntry[T]:
     #: Nabız read it: a 14-day-old reading fetched a minute ago is a minute old by that clock
     #: and 14 days old by this one. Set by ``make_provenance``, which is where it is known.
     reported_at: dt.datetime | None = None
+    #: Offline only: when the recorded response behind this entry was fetched from İBB. The
+    #: read of a fixture is not a fetch, so observed time and data age use this instead of
+    #: ``stored_at_utc``. Set by ``SourceContext.cached``, which knows which fixture was read.
+    captured_at: dt.datetime | None = None
+
+    @property
+    def observed_at_utc(self) -> dt.datetime:
+        """When İBB was last actually read for this entry: the capture offline, the fetch live."""
+        return self.captured_at or self.stored_at_utc
 
     @property
     def age(self) -> float:
@@ -157,8 +170,9 @@ class TTLCache:
         data of that read is: from the source's own timestamp (``reported_at_utc``) when it
         states one, otherwise from the fetch, the same rule every answer's provenance uses.
         Offline, a recorded traffic reading is minutes old by the first and days old by the
-        second, and only the second may be called fresh. ``healthy`` means the last fetch
-        did not fail; it says nothing about the data's age.
+        second, and only the second may be called fresh; a recorded response with no
+        timestamp of its own is as old as its capture (``CacheEntry.captured_at``). ``healthy``
+        means the last fetch did not fail; it says nothing about the data's age.
         """
         now = dt.datetime.now(dt.UTC)
         out: dict[str, dict[str, Any]] = {}
@@ -169,7 +183,7 @@ class TTLCache:
                 "last_success_utc": stats.last_success_utc.isoformat() if stats.last_success_utc else None,
                 "age_seconds": _seconds_since(stats.last_success_utc, now),
                 "reported_at_utc": reported.isoformat() if reported else None,
-                "data_age_seconds": _seconds_since(reported or (entry.stored_at_utc if entry else None), now),
+                "data_age_seconds": _seconds_since(reported or (entry.observed_at_utc if entry else None), now),
                 "healthy": stats.last_error is None and stats.last_success_utc is not None,
                 "hits": stats.hits,
                 "misses": stats.misses,

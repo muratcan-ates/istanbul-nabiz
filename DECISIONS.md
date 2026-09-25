@@ -8,7 +8,7 @@ the reasoning stays readable.
 |---|---|---|
 | [1](#1-azure-data-explorer-free-cluster-for-history-not-fabric-eventhouse-or-azure-sql) | Azure Data Explorer free cluster for history, not Fabric Eventhouse or Azure SQL | Accepted — **gated** on headless ingestion auth |
 | [2](#2-the-mcp-server-is-the-product-the-agent-is-its-first-client) | The MCP server is the product; the agent is its first client | Accepted |
-| [3](#3-one-shared-collector-and-a-ttl-cache-never-a-per-user-upstream-call) | One shared collector and a TTL cache, never a per-user upstream call | Accepted — the collector's host is now #10 |
+| [3](#3-one-shared-collector-and-a-ttl-cache-never-a-per-user-upstream-call) | One shared collector and a TTL cache, never a per-user upstream call | Accepted — the collector's host is now #10; line positions cached 90 s since 2026-09-23 |
 | [4](#4-bus-eta-from-stop-sequence-and-distance-not-machine-learning) | Bus ETA from stop sequence and distance, not machine learning | Accepted |
 | [5](#5-the-llm-is-swappable-through-environment-variables) | The LLM is swappable through environment variables | Accepted |
 | [6](#6-delta-lake-for-silver-and-gold-rather-than-plain-parquet) | Delta Lake for silver and gold rather than plain Parquet | Accepted |
@@ -141,8 +141,15 @@ reads then go through `TTLCache` (`src/ibb_mcp/cache.py`), which adds:
   `city_freshness` tool and the daily data-quality report publish.
 
 Time-to-live is set per source from how fast the upstream really moves, not uniformly: İSPARK 5 min, İETT
-line positions 60 s, fleet 2 min, metro status 5 min, metro stations and timetables 1 day, traffic 5 min,
+line positions 90 s, fleet 2 min, metro status 5 min, metro stations and timetables 1 day, traffic 5 min,
 air-quality readings 30 min.
+
+*(2026-09-23: line positions were 60 s until this date. Arrivals for one line read that line's positions
+once per line TTL and the fleet once per fleet TTL, so a line asked about nonstop cost 3600/60 + 3600/120 =
+90 İETT calls an hour against the budget of 80, and after about 53 minutes every İETT answer went stale.
+At 90 s it costs 40 + 30 = 70. A position can now be up to 90 s old instead of 60 s, which the stated age
+already tells the user. `test_one_hot_line_fits_the_hourly_iett_budget` in `tests/test_performance_budgets.py`
+holds the arithmetic.)*
 
 ### Consequences
 
@@ -814,8 +821,14 @@ parser.
 - `scripts/guardrails.py` encodes the incidents already had (plates, collapsed schemas, raw İBB calls,
   secrets, personal data, AI credit, unsourced README numbers) and runs in CI; `scripts/check_authorship.py`
   checks the identity and message of every pushed or proposed commit. Neither needs the network.
-- `make ci-local` reproduces CI on a copy of exactly what a push would publish, which is the check that
-  would have caught the gitignored dependency.
+- `make ci-local` reproduces CI on a clean copy of the working tree as `git add -A` would publish it, which
+  is the check that would have caught the gitignored dependency; `make ci-commit` runs the same gates on
+  `HEAD` exactly as committed, which is what a push publishes.
+- Offline, a recorded response is as old as its capture, never as its read: sources date it by
+  `captured_at_utc` in `tests/fixtures/_capture_report.json` (2026-09-23). Before that the İSPARK list,
+  Metro and air-quality stations, the İETT timetable and the fleet's bare clocks, which carry no date,
+  made a recording weeks old look live. The capture of 2026-09-08 did not record its times, so its
+  entries carry the minute derived from the newest vehicle position it recorded (`iett_hat_500T.json`).
 
 ### Consequences
 

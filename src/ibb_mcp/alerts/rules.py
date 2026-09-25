@@ -162,7 +162,7 @@ class BunchingObservation:
     It comes from ``ibb_mcp.reliability``, which reconstructs arrivals from the position
     snapshots this project collects, so it is a **history** figure — "bu hat bu saatte
     genelde kümeleniyor" — and never a live detection. İETT publishes no headway feed, and
-    claiming a live one from 60-second position samples would be exactly the invented number
+    claiming a live one from position samples 90 seconds apart would be exactly the invented number
     the charter forbids. The alert says which of the two it is.
 
     Kept as our own type so :class:`BusBunchingRule` stays pure and testable whether or not

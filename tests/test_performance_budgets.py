@@ -137,7 +137,7 @@ def test_ttls_match_the_documented_table() -> None:
     """DECISIONS #3 publishes these. A TTL is an upstream bill: change it there too."""
     documented = {
         "ispark": 300.0,
-        "iett_line": 60.0,
+        "iett_line": 90.0,
         "iett_fleet": 120.0,
         "iett_schedule": 86400.0,
         "metro_status": 300.0,
@@ -149,14 +149,16 @@ def test_ttls_match_the_documented_table() -> None:
     assert DETAIL_TTL_S == 86400.0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="owner decision pending (docs/ENGINEERING.md §14, OPT-3): one line asked about continuously costs "
-    "3600/60 + 3600/120 = 90 İETT calls an hour against PoliteClient's budget of 80; after ~53 minutes it "
-    "degrades to stale answers. Strict, so the arithmetic changing in either direction turns this red.",
-)
 def test_one_hot_line_fits_the_hourly_iett_budget() -> None:
+    """Arrivals for one line asked about nonstop must not run out of İETT budget (OPT-3).
+
+    ``iett_next_arrivals`` reads the line's positions and the fleet, each at most once per
+    TTL. At 60 s for the line that was 3600/60 + 3600/120 = 90 calls an hour against
+    PoliteClient's 80, so after about 53 minutes every İETT answer went stale; 90 s makes it
+    40 + 30 = 70, and the 10 left over are headroom for a second line or the schedule.
+    """
     per_hour = 3600 / DEFAULT_TTL["iett_line"] + 3600 / DEFAULT_TTL["iett_fleet"]
+    assert per_hour == 70
     assert per_hour <= PoliteClient().budgets["iett"].limit
 
 
