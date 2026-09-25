@@ -132,7 +132,14 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "services",
-        ("ibb_mcp.routing", "ibb_mcp.analytics", "ibb_mcp.alerts", "ibb_mcp.accessibility", "ibb_mcp.equipment_signals"),
+        (
+            "ibb_mcp.routing",
+            "ibb_mcp.analytics",
+            "ibb_mcp.alerts",
+            "ibb_mcp.accessibility",
+            "ibb_mcp.equipment_signals",
+            "ibb_mcp.knowledge",
+        ),
     ),
     ("facade", ("ibb_mcp.tools",)),
     ("transport", ("ibb_mcp.server",)),
@@ -189,6 +196,8 @@ FACADE_ONLY: dict[str, tuple[str, ...]] = {
         "ibb_mcp.sources.base",
         "ibb_mcp.telemetry",
         "ibb_mcp.text",
+        # the knowledge index is a local SQLite file the console reads directly; IBB calls stay behind the facade
+        "ibb_mcp.knowledge",
     ),
 }
 
@@ -208,6 +217,7 @@ DEPENDENCY_SETS: dict[str, frozenset[str]] = {
     # Both imported under ImportError: opentelemetry-api arrives with mcp, the Azure
     # exporter with the `telemetry` extra. Without them tracing is a no-op, not a crash.
     "ibb_mcp.telemetry": CORE | {"opentelemetry", "azure"},
+    "ibb_mcp.knowledge": CORE | {"numpy", "pypdf"},
     "nabiz.alerts": CORE,
     "nabiz.web": CORE | {"fastapi", "starlette", "uvicorn", "jinja2"},
     # nexus_core is first-party (FIRST_PARTY); the console is its composition root.
