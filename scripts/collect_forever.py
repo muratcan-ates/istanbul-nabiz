@@ -18,6 +18,7 @@ source                  cadence     reason
 Metro status            60 min      current-state only, and it changes rarely
 Traffic index           6 h         the endpoint itself serves 30 days of history
 Air quality             12 h        the endpoint itself serves years of history
+Metro faulty equipment  15 min      no public history; at most 4 calls on the Metro host, none on İETT
 ======================  ==========  ==================================================
 
 Steady-state cost is roughly 6 + 60 + 1 upstream calls an hour. The İETT budget in
@@ -58,6 +59,13 @@ from ibb_mcp.eta import EtaParams, estimate_arrivals  # noqa: E402
 from ibb_mcp.gtfs import get_index, load_stop_sequences  # noqa: E402
 from ibb_mcp.models import BusPosition, parse_ibb_datetime, utcnow  # noqa: E402
 from nabiz.collector import lake  # noqa: E402
+from nabiz.collector.equipment import (  # noqa: E402
+    EQUIPMENT_INTERVAL_S,
+    EQUIPMENT_SOURCE,
+    equipment_fault_counts,
+    iter_equipment_rows,
+    snapshot_equipment,
+)
 from nabiz.collector.snapshots import (  # noqa: E402
     build_collector_context,
     iso_utc,
@@ -106,6 +114,7 @@ INTERVALS_S = {
     "metro": 3600,
     "traffic": 21_600,
     "air_quality": 43_200,
+    "equipment": EQUIPMENT_INTERVAL_S,
 }
 
 
@@ -265,6 +274,11 @@ async def tick(name: str, ctx, settings: Settings, state: dict) -> int:
         elif name == "air_quality":
             rows = await snapshot_air_quality(ctx, hours=24)
             written = lake.write_rows("aq_hourly", rows).rows
+        elif name == "equipment":
+            rows = await snapshot_equipment(ctx)
+            written = lake.write_rows(EQUIPMENT_SOURCE, rows).rows
+            if written:
+                state.setdefault("snapshots", {})["equipment"] = state.get("snapshots", {}).get("equipment", 0) + 1
     except Exception as exc:  # noqa: BLE001 - a loop must outlive any single tick
         log.error("tick %s failed: %r", name, exc)
         return 0
@@ -319,6 +333,19 @@ def show_status() -> int:
     print("\nrows written this run:")
     for name, count in sorted(state.get("rows", {}).items()):
         print(f"  {name:20s} {count:>9,}")
+
+    equipment_root = pathlib.Path(os.getenv("NABIZ_LAKE_DIR", ROOT / "data" / "lake"))
+    equipment_rows = list(iter_equipment_rows(equipment_root))
+    equipment_snapshots = {row.get("snapshot_ts_utc") for row in equipment_rows if row.get("snapshot_ts_utc")}
+    print("\nekipman (Metro arızalı ekipman):")
+    if not equipment_snapshots:
+        print("  henüz snapshot yok")
+    else:
+        counts = equipment_fault_counts(equipment_root)
+        print(f"  toplam snapshot: {len(equipment_snapshots)}")
+        print(f"  farklı ekipman kodu: {len(counts)}")
+        for code, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:3]:
+            print(f"  {code}  {count}/{len(equipment_snapshots)} snapshot")
 
     lake_dir = pathlib.Path(os.getenv("NABIZ_LAKE_DIR", ROOT / "data" / "lake"))
     if lake_dir.exists():

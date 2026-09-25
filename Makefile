@@ -139,7 +139,7 @@ collect-bg:  ## NETWORK start the collector detached, logging to logs/collector.
 collect-supervise:  ## NETWORK start the self-restarting collector supervisor (survives sleep and crashes)
 	@nohup bash scripts/supervise_collector.sh > /dev/null 2>&1 & echo "supervisor started"
 
-collect-status:  ## what the collector has gathered so far (no network)
+collect-status:  ## what the collector has gathered so far, incl. the "ekipman" (Metro equipment) block (no network)
 	$(PY) scripts/collect_forever.py --status
 
 collect-stop:  ## OWNER stop the supervisor and the collector (pattern kill: stops every collector on this machine)

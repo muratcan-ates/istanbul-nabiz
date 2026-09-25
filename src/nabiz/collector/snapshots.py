@@ -55,7 +55,7 @@ log = logging.getLogger("nabiz.collector.snapshots")
 #: Cache TTL used by the collector, in seconds.
 #:
 #: Short, but deliberately not zero. Zero would make every freshly stored entry compare
-#: as expired, and :func:`_read` would then discard every tick as stale. Five seconds is
+#: as expired, and :func:`read_or_skip` would then discard every tick as stale. Five seconds is
 #: long enough for that check to pass and far shorter than the fastest timer (two
 #: minutes), so a tick always re-reads İBB rather than re-recording the previous answer.
 COLLECTOR_TTL_SECONDS = 5.0
@@ -108,7 +108,7 @@ def count_failed_reads() -> Iterator[list[str]]:
     (the laptop logged 19 line ticks between 01:50 and 04:06 on 14 Sep that read zero
     buses without a single failed read), while an unreachable gateway is a failed
     execution the platform should record. The list is filled by
-    :func:`_read`, which already sees both failure modes, so no snapshot signature
+    :func:`read_or_skip`, which already sees both failure modes, so no snapshot signature
     changes.
     """
     sink: list[str] = []
@@ -138,7 +138,7 @@ def _observed_at(provenance: Provenance) -> dt.datetime:
     return provenance.observed_at
 
 
-async def _read[T](
+async def read_or_skip[T](
     name: str,
     loader: Callable[[], Awaitable[tuple[T, Provenance]]],
 ) -> tuple[T, Provenance] | None:
@@ -189,7 +189,7 @@ async def snapshot_ispark(ctx: SourceContext) -> list[dict[str, Any]]:
     would cost 249 gateway calls at 6 s spacing. Reading time is therefore our own
     observation time, and can lag by up to the ~10 minute İSPARK refresh.
     """
-    read = await _read("ispark", IsparkSource(ctx).list_parks)
+    read = await read_or_skip("ispark", IsparkSource(ctx).list_parks)
     if read is None:
         return []
     lots, provenance = read
@@ -238,7 +238,7 @@ async def snapshot_fleet(ctx: SourceContext) -> list[dict[str, Any]]:
     day. A vehicle whose clock cannot be read keeps a null rather than borrowing the tick
     time, so a unit parked since last night can never be mistaken for a live one.
     """
-    read = await _read("iett_fleet", IettSource(ctx).fleet_positions)
+    read = await read_or_skip("iett_fleet", IettSource(ctx).fleet_positions)
     if read is None:
         return []
     buses, provenance = read
@@ -291,7 +291,7 @@ async def snapshot_lines(ctx: SourceContext, line_codes: Sequence[str]) -> list[
     source = IettSource(ctx)
     rows: list[dict[str, Any]] = []
     for line_code in line_codes:
-        read = await _read(f"iett_line:{line_code}", lambda code=line_code: source.line_positions(code))
+        read = await read_or_skip(f"iett_line:{line_code}", lambda code=line_code: source.line_positions(code))
         if read is None:
             continue
         buses, provenance = read
@@ -336,7 +336,7 @@ async def snapshot_metro(ctx: SourceContext) -> list[dict[str, Any]]:
     snapshot_ts_utc     str      timer tick that produced the row
     color               str?     line colour, ``#RRGGBB``
     """
-    read = await _read("metro_status", MetroSource(ctx).service_status)
+    read = await read_or_skip("metro_status", MetroSource(ctx).service_status)
     if read is None:
         return []
     statuses, provenance = read
@@ -387,7 +387,7 @@ async def snapshot_traffic(ctx: SourceContext, hours: int = TRAFFIC_HOURS) -> li
     ts_utc              str      ``TrafficIndexDate`` of the bucket
     snapshot_ts_utc     str      timer tick that produced the row
     """
-    read = await _read("traffic", lambda: TrafficSource(ctx).index_history(days=1, period="H"))
+    read = await read_or_skip("traffic", lambda: TrafficSource(ctx).index_history(days=1, period="H"))
     if read is None:
         return []
     points, provenance = read
@@ -433,7 +433,7 @@ async def snapshot_air_quality(ctx: SourceContext, hours: int = 2) -> list[dict[
     dominant            str?     ``ContaminantParameter`` driving the index
     """
     source = AirQualitySource(ctx)
-    listing = await _read("aq_stations", source.stations)
+    listing = await read_or_skip("aq_stations", source.stations)
     if listing is None:
         return []
     stations, _ = listing
@@ -448,7 +448,7 @@ async def snapshot_air_quality(ctx: SourceContext, hours: int = 2) -> list[dict[
     rows: list[dict[str, Any]] = []
     seen: set[tuple[str, str | None]] = set()
     for station in stations:
-        read = await _read(
+        read = await read_or_skip(
             f"aq_readings/{station.station_id}",
             lambda station=station: source.readings(station.station_id, start, end),
         )
