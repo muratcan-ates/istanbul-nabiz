@@ -1,0 +1,8 @@
+.voice { display: grid; gap: var(--space-2); }
+.voice-disclosure { color: var(--text-muted); font-size: var(--text-sm); }
+.voice-preview { padding: var(--space-2); border: 1px solid currentColor; color: var(--text-muted); }
+.voice-preview:empty { display: none; }
+.voice-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.voice-confirm p { flex-basis: 100%; color: var(--text-muted); }
+.voice-confirm[hidden], #voice-stop[hidden] { display: none; }
+#voice-talk[aria-pressed="true"] { border-color: var(--primary); }
