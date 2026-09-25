@@ -47,7 +47,7 @@
     <a class="topbar-brand" href="/console">Nabız konsol</a>
     <span class="topbar-role"><svg class="icon" aria-hidden="true"><use href="#i-shield-lock"></use></svg><span>Simüle operatör · Resmî İBB hizmeti değildir</span></span>
     <div class="topbar-actions">
-      <span id="ledger-badge" aria-live="polite"><span class="tag">defter okunuyor</span></span>
+      <span id="ledger-badge"><span class="tag">defter okunuyor</span></span>
       <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
       <button type="button" class="icon-btn" id="theme-toggle" aria-label="Tema: sistem. Açık temaya geçmek için basın.">
         <svg class="icon" aria-hidden="true"><use href="#i-device-desktop"></use></svg>
@@ -65,9 +65,10 @@
 </div>
 
 <main class="wrap" id="main" tabindex="-1">
+  <h1 id="page-title" class="sr-only">Nabız konsol: simüle operatör</h1>
   <section aria-labelledby="stats-title">
     <div class="section-head">
-      <h1 id="stats-title">Bugün</h1>
+      <h2 id="stats-title">Bugün</h2>
       <span class="section-note">sayılar simülasyon; pilotta ölçülecek. Kişi bazında metrik yok.</span>
     </div>
     <ul class="stats" id="stats" aria-label="Zaman paneli">
@@ -83,18 +84,18 @@
           <svg class="icon" aria-hidden="true"><use href="#i-bolt"></use></svg>Kayıtlı sinyali oynat
         </button>
       </div>
-      <p class="status-line" id="simulate-status" role="status"></p>
       <p class="sr-only" id="queue-status" role="status"></p>
       <h3>Onay bekleyen <span class="section-note" id="queue-arena-count"></span></h3>
       <ol class="queue-list" id="queue-arena"><li class="queue-empty">yükleniyor</li></ol>
       <details class="queue-reflex" open>
-        <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>Refleksle kapananlar <span id="queue-reflex-count"></span></summary>
+        <summary><h3><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>Refleksle kapananlar</h3><span id="queue-reflex-count"></span></summary>
         <ol class="queue-list" id="queue-reflex"><li class="queue-empty">yükleniyor</li></ol>
       </details>
     </section>
 
     <section class="decision" id="decision" aria-labelledby="decision-title" tabindex="-1">
       <h2 id="decision-title">Karar kartı</h2>
+      <p class="status-line" id="console-status" role="status" aria-live="polite"></p>
       <div id="decision-body"><p class="decision-empty">Sinyal kutusundan bir sinyal seçin. Kart kanıtı, veri tazeliğini,
         seçenekleri, üç koltuğun görüşünü ve itiraz özetini gösterir; onay kanıt açılmadan verilmez.</p></div>
     </section>

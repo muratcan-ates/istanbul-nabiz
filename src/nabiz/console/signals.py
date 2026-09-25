@@ -40,6 +40,11 @@ ALERT_KINDS: dict[str, str] = {
     "air_quality": "air_quality",
     "bus_bunching": "bus_bunching",
 }
+OPERATOR_LEAD = {
+    "parking_full": "İzlenen otopark eşiği geçti",
+    "air_quality": "İzlenen yerde hava kalitesi eşiği geçti (sağlık tavsiyesi değildir)",
+    "bus_bunching": "İzlenen hatta ölçülmüş yığılma geçmişi (canlı tespit değildir)",
+}
 
 #: The console's watch list. A design parameter, not a measurement: two large İSPARK car parks
 #: that are in the recorded fixtures, Taksim Meydanı (``data/reference/places.csv``) for the
@@ -152,6 +157,13 @@ def _citation_text(citation: Mapping[str, Any]) -> str:
     return _trim(f"{citation.get('label')}: {shown}")
 
 
+def operator_text(kind: str, citations: Sequence[Mapping[str, Any]]) -> str:
+    """An operator-facing alert summary, separate from the citizen publication text."""
+    lead = OPERATOR_LEAD.get(kind, "İzlenen şehir eşiği geçti")
+    details = "; ".join(_citation_text(citation) for citation in citations)
+    return _trim(f"{lead}: {details}")
+
+
 def _alert_signal(alert: Mapping[str, Any], mode: str) -> Incoming | None:
     kind = ALERT_KINDS.get(str(alert.get("kind")))
     message = str(alert.get("message_tr") or "").strip()
@@ -162,7 +174,12 @@ def _alert_signal(alert: Mapping[str, Any], mode: str) -> Incoming | None:
     created = _parse_time(alert.get("created_at"), dt.datetime.now(dt.UTC))
     origin = origins[0] if origins else Origin(source="nabiz_alerts", url=None, observed_at=created, mode="unknown")
     observed = max((o.observed_at for o in origins if o.observed_at is not None), default=created)
-    payload = {"text": message, "alert_rule": alert.get("rule_id"), "dedupe_key": alert.get("dedupe_key")}
+    payload = {
+        "text": message,
+        "operator_text": operator_text(kind, citations),
+        "alert_rule": alert.get("rule_id"),
+        "dedupe_key": alert.get("dedupe_key"),
+    }
     severity = alert.get("severity") if alert.get("severity") in {"info", "warning", "critical"} else "warning"
     signal = Signal.create(
         kind=kind,

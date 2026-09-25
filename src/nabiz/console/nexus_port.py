@@ -273,6 +273,7 @@ class NexusConsole:
         payload = queue_payload(states.values())
         for item in payload["items"]:
             item["title"] = titled(item["title"], states[item["signal_id"]])
+            item["operator_summary"] = states[item["signal_id"]].signal.payload.get("operator_text", item["summary"])
         payload["reading_sources"] = reading
         return payload
 

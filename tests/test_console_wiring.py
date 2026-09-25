@@ -184,6 +184,21 @@ def test_an_alert_becomes_one_signal_with_its_citations_as_evidence() -> None:
     assert engine_rules["parking_full"] == "R-07"
 
 
+def test_an_alert_carries_an_operator_text_beside_the_citizen_text() -> None:
+    original = alert_result()
+    alert = {
+        **original.data["alerts"][0],
+        "message_tr": "Takip ettiğiniz otopark doluyor: Kadıköy yüzde 95. (İSPARK, 3 dk önce)",
+    }
+    result = ToolResult(data={"alerts": [alert]}, provenance=original.provenance)
+    (one,) = alert_incoming(result, offline=True)
+    citizen_text = one.signal.payload["text"]
+    operator_summary = one.signal.payload["operator_text"]
+    assert citizen_text.startswith("Takip ettiğiniz")
+    assert operator_summary.startswith("İzlenen otopark")
+    assert "Takip ettiğiniz" not in operator_summary and "-niz" not in operator_summary
+
+
 def test_the_city_watch_holds_public_places_only() -> None:
     assert CITY_WATCH["places"] == [{"key": "taksim", "label": "Taksim Meydanı", "lat": 41.037, "lon": 28.985}]
     assert city_watch({"NABIZ_CONSOLE_WATCH_PARKS": "7, 8,x"})["rules"][0]["park_ids"] == [7, 8]
