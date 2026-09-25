@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>İstanbul Nabız: şehir kartları ve yapay zekâ asistanı</title>
+<meta name="description" content="Kayıtlı hat ve istasyonlarınızın durumu, asansör kayıtları, tek dakikalık varış ve kaynak gösteren bir yapay zekâ asistanı. Bağımsız öğrenci projesi; resmî İBB hizmeti değildir.">
+<meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1628" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%232457aa%7Dpath%7Bstroke:%23fbfcfe%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%235285d9%7Dpath%7Bstroke:%23060f20%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/citizen.css">
+<!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
+<link rel="modulepreload" href="/js/citizen.js">
+<link rel="modulepreload" href="/js/api.js">
+<link rel="modulepreload" href="/js/config.js">
+<link rel="modulepreload" href="/js/cards.js">
+<link rel="modulepreload" href="/js/chat.js">
+<link rel="modulepreload" href="/js/profile.js">
+<link rel="modulepreload" href="/js/provenance.js">
+<link rel="modulepreload" href="/js/format.js">
+<link rel="modulepreload" href="/js/icons.js">
+<link rel="modulepreload" href="/js/theme.js">
+<script type="module" src="/js/citizen.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">İçeriğe atla</a>
+
+<!-- icons:start -->
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false">
+<!-- Tabler Icons 3.48.0, outline set, MIT licence: /icons.LICENSE.txt. Built by the sprite step; do not edit by hand. -->
+<symbol id="i-device-desktop" viewBox="0 0 24 24"><path d="M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></symbol>
+<symbol id="i-info-circle" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></symbol>
+<symbol id="i-elevator" viewBox="0 0 24 24"><path d="M5 5a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -14"/><path d="M10 10l2 -2l2 2"/><path d="M10 14l2 2l2 -2"/></symbol>
+<symbol id="i-bus" viewBox="0 0 24 24"><path d="M4 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8"/><path d="M16 5l1.5 7l4.5 0"/><path d="M2 10l15 0"/><path d="M7 5l0 5"/><path d="M12 5l0 5"/></symbol>
+<symbol id="i-wheelchair" viewBox="0 0 24 24"><path d="M3 16a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"/><path d="M17 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M19 17a3 3 0 0 0 -3 -3h-3.4"/><path d="M3 3h1a2 2 0 0 1 2 2v6"/><path d="M6 8h11"/><path d="M15 8v6"/></symbol>
+<symbol id="i-history" viewBox="0 0 24 24"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></symbol>
+<symbol id="i-external-link" viewBox="0 0 24 24"><path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6"/><path d="M11 13l9 -9"/><path d="M15 4h5v5"/></symbol>
+</svg>
+<!-- icons:end -->
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="topbar-brand" href="/">İstanbul Nabız</a>
+    <nav class="topbar-nav" aria-label="Sayfa bölümleri">
+      <a href="#asistan">Asistan</a>
+      <a href="#profilim">Profilim</a>
+      <a href="#hafizam">Hafızam</a>
+    </nav>
+    <div class="topbar-actions">
+      <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Tema: sistem. Açık temaya geçmek için basın.">
+        <svg class="icon" aria-hidden="true"><use href="#i-device-desktop"></use></svg>
+      </button>
+      <a class="topbar-role" href="#hakkinda"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Resmî İBB hizmeti değildir</span></a>
+    </div>
+  </div>
+</header>
+
+<div class="band" role="note" aria-label="Yapay zekâ bandı">
+  <svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg>
+  <p><b>Bu bir yapay zekâ asistanıdır.</b> Cevaplar İBB açık verisine dayanır ve verinin yaşını gösterir. Hak, ücret, ceza ve
+    sağlık sorularında cevap üretmez; sizi 153'e ve resmî sayfaya yönlendirir. <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
+</div>
+
+<main class="wrap" id="main" tabindex="-1">
+  <section class="hero" aria-labelledby="hero-title">
+    <h1 id="hero-title">Şehrin bugünü, <em class="hero-em">size göre.</em></h1>
+    <p class="hero-sub">Kayıtlı hat ve istasyonlarınızın durumu, asansör kayıtları, trafik ve hava. Her kart kaynağını ve
+      verinin yaşını söyler; veri yoksa "doğrulanamadı" der, sayı uydurmaz.</p>
+  </section>
+
+  <div class="workspace">
+    <div class="workspace-main">
+      <section aria-labelledby="cards-title">
+        <div class="section-head">
+          <h2 id="cards-title">Şehir kartları</h2>
+          <span class="section-note" id="cards-meta">yükleniyor</span>
+          <button type="button" class="icon-btn" id="cards-refresh" aria-label="Kartları yenile">
+            <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+          </button>
+        </div>
+        <div class="cards" id="cards"></div>
+        <p class="sr-only" id="cards-status" role="status"></p>
+      </section>
+
+      <section aria-labelledby="arrival-title">
+        <div class="section-head">
+          <h2 id="arrival-title">Tahmini varış</h2>
+          <span class="section-note">tek dakika, kaynağı ve yaşıyla</span>
+        </div>
+        <form id="arrival-form" class="arrival-form" autocomplete="off">
+          <div class="field"><label for="arrival-line">Hat</label><input id="arrival-line" name="line" type="text"></div>
+          <div class="field"><label for="arrival-stop">Durak</label><input id="arrival-stop" name="stop" type="text"></div>
+          <button type="submit" class="btn">Göster</button>
+          <p class="field-hint">Araç konumu eskiyince kart kendiliğinden "tarifeye göre" der; tarife de yoksa "doğrulanamadı".</p>
+        </form>
+        <div id="arrival"></div>
+      </section>
+
+      <section aria-labelledby="alternative-title">
+        <div class="section-head">
+          <h2 id="alternative-title">Adımsız yol</h2>
+          <span class="section-note">ilk kayıtlı istasyonunuz için</span>
+        </div>
+        <div id="alternative"></div>
+      </section>
+    </div>
+
+    <section class="chat" id="asistan" aria-labelledby="chat-title">
+      <div class="chat-band">
+        <svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg>
+        <p>Bu bir yapay zekâ asistanıdır. Her cevabın altında kaynakları ve "cevabı yazan" yazar.</p>
+      </div>
+      <h2 id="chat-title">Yapay zekâ asistanı</h2>
+      <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
+      <p class="sr-only" id="chat-status" role="status"></p>
+      <form id="chat-form" class="chat-form" autocomplete="off">
+        <label for="chat-input">Sorunuz</label>
+        <div class="chat-row">
+          <input id="chat-input" name="q" type="text" enterkeyhint="send" placeholder="Kartal'da asansör var mı?" aria-describedby="chat-hint">
+          <button type="submit" class="btn btn-primary" id="chat-submit">Gönder<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
+        </div>
+        <p class="field-error" hidden>Bir soru yazın.</p>
+        <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak
+          için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a>.</p>
+      </form>
+      <div class="chips" role="group" aria-label="Örnek sorular">
+        <button type="button" class="chip" data-ask="Kartal istasyonunda asansör var mı?"><svg class="icon" aria-hidden="true"><use href="#i-elevator"></use></svg><span>Kartal'da asansör var mı?</span></button>
+        <button type="button" class="chip" data-ask="500T Şifa Sondurak durağına ne zaman gelir?"><svg class="icon" aria-hidden="true"><use href="#i-bus"></use></svg><span>500T ne zaman gelir?</span></button>
+        <button type="button" class="chip" data-ask="Adımsız yolla Kadıköy'e nasıl giderim?"><svg class="icon" aria-hidden="true"><use href="#i-wheelchair"></use></svg><span>Adımsız yolla Kadıköy'e</span></button>
+        <button type="button" class="chip" data-ask="Bilet ücreti ne kadar?"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Bilet ücreti ne kadar?</span></button>
+      </div>
+    </section>
+  </div>
+
+  <section id="profilim" aria-labelledby="profile-title">
+    <div class="section-head">
+      <h2 id="profile-title">Profilim</h2>
+      <span class="section-note">yalnız bu tarayıcıda, isteğe bağlı</span>
+    </div>
+    <form id="profile-form" class="profile-grid" autocomplete="off">
+      <fieldset>
+        <legend>İhtiyaçlarım</legend>
+        <div class="needs" id="needs"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Kayıtlı yerlerim</legend>
+        <div class="field">
+          <label for="station-input">İstasyon</label>
+          <div class="places-add">
+            <input id="station-input" type="text" list="stations-known">
+            <button type="button" class="btn" data-add="station">Ekle</button>
+          </div>
+        </div>
+        <datalist id="stations-known">
+          <option value="Kartal"><option value="Kadıköy"><option value="Pendik"><option value="Ayrılık Çeşmesi"><option value="Yenikapı"><option value="Taksim"><option value="Levent">
+        </datalist>
+        <ul class="places-list" id="stations-list" aria-label="Kayıtlı istasyonlar"></ul>
+        <div class="field">
+          <label for="line-input">Hat</label>
+          <div class="places-add">
+            <input id="line-input" type="text" list="lines-known">
+            <button type="button" class="btn" data-add="line">Ekle</button>
+          </div>
+        </div>
+        <datalist id="lines-known">
+          <option value="M1A"><option value="M2"><option value="M4"><option value="M5"><option value="T1"><option value="500T"><option value="34AS">
+        </datalist>
+        <ul class="places-list" id="lines-list" aria-label="Kayıtlı hatlar"></ul>
+      </fieldset>
+      <div class="consent profile-wide">
+        <label class="check">
+          <input type="checkbox" id="profile-consent">
+          <span><span class="check-label">Anladım, profilimi bu cihazda saklamak istiyorum.</span><br>
+            <span class="field-hint">Seçimler yalnız bu tarayıcıda durur. Sunucuya kimlik, tanı ya da sağlık bilgisi gitmez; yalnız
+              işlevsel kısıt listesi gider (örnek: step_free). Kişi skoru üretilmez. Tek dokunuşla silinir.</span></span>
+        </label>
+        <p class="field-error" id="consent-error" hidden>Kaydetmek için onay kutusunu işaretleyin.</p>
+        <p class="status-line" id="profile-sent"></p>
+        <ul class="privacy-list">
+          <li>Toplanmayanlar: kamera, konum geçmişi, ses kaydı, kişi skoru.</li>
+          <li>Kayıtlı yerler yalnız kart isteklerinde hat ve istasyon adı olarak gider.</li>
+        </ul>
+      </div>
+      <div class="btn-row profile-wide">
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <button type="button" class="btn btn-danger" id="profile-clear">Profili sil</button>
+      </div>
+      <p class="status-line profile-wide" id="profile-status" role="status"></p>
+    </form>
+  </section>
+
+  <section id="hafizam" aria-labelledby="memory-title">
+    <div class="section-head">
+      <h2 id="memory-title"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg> Hafızam</h2>
+      <span class="section-note">asistanın önerdiği, sizin onayladığınız</span>
+    </div>
+    <p>Asistan bir şey öğrenmek istediğinde sorar: "Profiline ekleyeyim mi?". Siz onaylamadan hiçbir şey kaydedilmez.
+      Kayıtlar burada görünür ve tek tuşla silinir.</p>
+    <ul class="memory-list" id="memory-list"></ul>
+    <p class="memory-empty" id="memory-empty">Henüz kayıt yok.</p>
+    <div class="btn-row"><button type="button" class="btn" id="memory-clear" hidden>Tümünü sil</button></div>
+    <p class="status-line" id="memory-status" role="status"></p>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div>
+    <p id="attribution">
+      Kamu sektörü bilgilerini içerir: İBB Açık Veri Portalı,
+      <a href="https://data.ibb.gov.tr/license" rel="noopener noreferrer" target="_blank">İBB Açık Veri Lisansı <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a>.
+    </p>
+    <p id="hakkinda">
+      Bağımsız öğrenci projesi; <strong>resmî İBB hizmeti değildir</strong>. İBB, İETT, İSPARK ve Metro İstanbul ile bağlantısı
+      yoktur. Varış süreleri <strong>tahmindir</strong>; hava kalitesi çıktısı sağlık tavsiyesi değildir. Yolculuk planlarken
+      resmî İETT ve Metro İstanbul kaynaklarını esas alın. İnsanla konuşmak için 153.
+    </p>
+  </div>
+  <p>
+    <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a><br>
+    <a href="/console">İBB çalışanı konsolu (simüle operatör)</a><br>
+    Yazı tipi: Source Sans 3 (OFL)<br>
+    Simgeler: Tabler Icons (MIT)
+  </p>
+</footer>
+</body>
+</html>

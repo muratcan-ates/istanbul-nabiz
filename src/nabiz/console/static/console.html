@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Nabız konsol: simüle operatör</title>
+<meta name="description" content="İBB çalışanı karar konsolu prototipi: sinyal kutusu, kanıtlı onay kartı, karar defteri ve kural taslakları. Simüle operatör; resmî İBB hizmeti değildir.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1628" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%232457aa%7Dpath%7Bstroke:%23fbfcfe%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%235285d9%7Dpath%7Bstroke:%23060f20%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/console.css">
+<!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
+<link rel="modulepreload" href="/js/console.js">
+<link rel="modulepreload" href="/js/api.js">
+<link rel="modulepreload" href="/js/config.js">
+<link rel="modulepreload" href="/js/console-cards.js">
+<link rel="modulepreload" href="/js/cards.js">
+<link rel="modulepreload" href="/js/provenance.js">
+<link rel="modulepreload" href="/js/format.js">
+<link rel="modulepreload" href="/js/icons.js">
+<link rel="modulepreload" href="/js/theme.js">
+<script type="module" src="/js/console.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">İçeriğe atla</a>
+
+<!-- icons:start -->
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false">
+<!-- Tabler Icons 3.48.0, outline set, MIT licence: /icons.LICENSE.txt. Built by the sprite step; do not edit by hand. -->
+<symbol id="i-shield-lock" viewBox="0 0 24 24"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/><path d="M11 11a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12l0 2.5"/></symbol>
+<symbol id="i-device-desktop" viewBox="0 0 24 24"><path d="M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></symbol>
+<symbol id="i-info-circle" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 6l6 6l-6 6"/></symbol>
+<symbol id="i-external-link" viewBox="0 0 24 24"><path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6"/><path d="M11 13l9 -9"/><path d="M15 4h5v5"/></symbol>
+</svg>
+<!-- icons:end -->
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="topbar-brand" href="/console">Nabız konsol</a>
+    <span class="topbar-role"><svg class="icon" aria-hidden="true"><use href="#i-shield-lock"></use></svg><span>Simüle operatör · Resmî İBB hizmeti değildir</span></span>
+    <div class="topbar-actions">
+      <span id="ledger-badge" aria-live="polite"><span class="tag">defter okunuyor</span></span>
+      <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Tema: sistem. Açık temaya geçmek için basın.">
+        <svg class="icon" aria-hidden="true"><use href="#i-device-desktop"></use></svg>
+      </button>
+      <a class="topbar-nav" href="/">Vatandaş yüzü</a>
+    </div>
+  </div>
+</header>
+
+<div class="band" role="note" aria-label="Rol bandı">
+  <svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg>
+  <p><b>Simüle operatör.</b> Bu konsol bir prototiptir; Resmî İBB hizmeti değildir. Kararların tek gerçek etkisi karar defterine
+    yazılan kayıt ve vatandaş yüzünde görünen metindir; dışarıya hiçbir şey gönderilmez. Model onay çağıramaz; onay yalnız insandan
+    gelir. <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
+</div>
+
+<main class="wrap" id="main" tabindex="-1">
+  <section aria-labelledby="stats-title">
+    <div class="section-head">
+      <h1 id="stats-title">Bugün</h1>
+      <span class="section-note">sayılar simülasyon; pilotta ölçülecek. Kişi bazında metrik yok.</span>
+    </div>
+    <ul class="stats" id="stats" aria-label="Zaman paneli">
+      <li class="stat"><span class="stat-value is-word">yükleniyor</span><span class="stat-label">zaman paneli</span></li>
+    </ul>
+  </section>
+
+  <div class="console-grid">
+    <section id="queue" aria-labelledby="queue-title">
+      <div class="section-head">
+        <h2 id="queue-title">Sinyal kutusu</h2>
+        <button type="button" class="btn" id="simulate" data-fixture="metro_faulty_kartal">
+          <svg class="icon" aria-hidden="true"><use href="#i-bolt"></use></svg>Kayıtlı sinyali oynat
+        </button>
+      </div>
+      <p class="sr-only" id="queue-status" role="status"></p>
+      <h3>Onay bekleyen <span class="section-note" id="queue-arena-count"></span></h3>
+      <ol class="queue-list" id="queue-arena"><li class="queue-empty">yükleniyor</li></ol>
+      <details class="queue-reflex" open>
+        <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>Refleksle kapananlar <span id="queue-reflex-count"></span></summary>
+        <ol class="queue-list" id="queue-reflex"><li class="queue-empty">yükleniyor</li></ol>
+      </details>
+    </section>
+
+    <section class="decision" id="decision" aria-labelledby="decision-title" tabindex="-1">
+      <h2 id="decision-title">Karar kartı</h2>
+      <div id="decision-body"><p class="decision-empty">Sinyal kutusundan bir sinyal seçin. Kart kanıtı, veri tazeliğini,
+        seçenekleri, üç koltuğun görüşünü ve itiraz özetini gösterir; onay kanıt açılmadan verilmez.</p></div>
+    </section>
+  </div>
+
+  <section aria-labelledby="drafts-title">
+    <div class="section-head">
+      <h2 id="drafts-title">Kural taslakları</h2>
+      <span class="section-note">aynı desende 30 günde en az 3 onay; benimseyen insan, süreli kural</span>
+    </div>
+    <ul class="drafts" id="drafts"><li class="section-note">yükleniyor</li></ul>
+    <p class="status-line" id="drafts-status" role="status"></p>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div>
+    <p id="attribution">
+      Kamu sektörü bilgilerini içerir: İBB Açık Veri Portalı,
+      <a href="https://data.ibb.gov.tr/license" rel="noopener noreferrer" target="_blank">İBB Açık Veri Lisansı <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a>.
+    </p>
+    <p id="hakkinda">
+      Bağımsız öğrenci projesi; <strong>resmî İBB hizmeti değildir</strong>. Operatör rolü simüledir: gerçek bir İBB çalışanı ya da
+      yetkisi yoktur. Kararlar İBB sistemlerine yazılmaz; refleks kuralları izinli eylem kataloğunun dışına çıkamaz.
+    </p>
+  </div>
+  <p>
+    <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a><br>
+    Yazı tipi: Source Sans 3 (OFL)<br>
+    Simgeler: Tabler Icons (MIT)
+  </p>
+</footer>
+</body>
+</html>

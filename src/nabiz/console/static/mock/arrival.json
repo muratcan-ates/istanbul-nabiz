@@ -1,0 +1,7 @@
+{
+  "line": "500T",
+  "stop": "Şifa Sondurak",
+  "minutes": 7,
+  "display": "7 dk",
+  "provenance": { "source": "iett_arrivals", "url": "https://data.ibb.gov.tr/", "observed_at": "2026-09-25T10:41:20+03:00", "age_s": 40, "mode": "live" }
+}

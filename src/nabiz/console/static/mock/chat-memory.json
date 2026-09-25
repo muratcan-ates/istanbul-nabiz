@@ -1,0 +1,29 @@
+{
+  "events": [
+    { "event": "tool", "data": { "name": "metro_equipment_status", "status": "start" } },
+    { "event": "tool", "data": { "name": "metro_equipment_status", "status": "end" } },
+    { "event": "tool", "data": { "name": "accessible_alternative", "status": "start" } },
+    { "event": "tool", "data": { "name": "accessible_alternative", "status": "end" } },
+    { "event": "token", "data": { "text": "Kartal'da " } },
+    { "event": "token", "data": { "text": "asansör İBB kaydında arızalı; " } },
+    { "event": "token", "data": { "text": "adımsız yol için " } },
+    { "event": "token", "data": { "text": "Pendik'ten (M4) binin, " } },
+    { "event": "token", "data": { "text": "yaklaşık 6 dakika ek süre. " } },
+    { "event": "token", "data": { "text": "Kadıköy'de asansör kaydı arızasız; " } },
+    { "event": "token", "data": { "text": "peron erişimi kaynakta yok, " } },
+    { "event": "token", "data": { "text": "yerinde teyit edin." } },
+    {
+      "event": "final",
+      "data": {
+        "answer": "Kartal'da asansör İBB kaydında arızalı; adımsız yol için Pendik'ten (M4) binin, yaklaşık 6 dakika ek süre. Kadıköy'de asansör kaydı arızasız; peron erişimi kaynakta yok, yerinde teyit edin.",
+        "citations": [
+          { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" },
+          { "source": "metro_stations", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-10T09:00:00+03:00", "age_s": 1302000, "mode": "recorded" }
+        ],
+        "author": "model",
+        "memory_suggestion": { "key": "step_free", "label": "Adımsız erişim: asansörlü yol sorularında hep bunu esas al" },
+        "refused": false
+      }
+    }
+  ]
+}

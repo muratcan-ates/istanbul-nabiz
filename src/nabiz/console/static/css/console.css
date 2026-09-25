@@ -1,0 +1,77 @@
+/* The operator page (console.html): the queue, the decision card, the trace, rule drafts. */
+
+.console-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+@media (min-width: 1024px) { .console-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+
+/* Queue: each signal is a button; the reflex-closed ones sit behind a counter. */
+.queue-list { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
+.queue-item { display: grid; grid-template-columns: var(--icon-size) minmax(0, 1fr); gap: var(--space-1) var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); text-align: start; transition: background-color var(--dur-ui), border-color var(--dur-ui); }
+.queue-item > * { grid-column: 2; min-width: 0; }
+.queue-item > .queue-sev { grid-area: 1 / 1; color: var(--text-muted); }
+.queue-item:hover { background: var(--surface-sunken); }
+.queue-item[aria-current="true"] { border-color: var(--primary); background: var(--selected-row); }
+.queue-item.is-critical > .queue-sev { color: var(--bad); }
+.queue-item.is-warning > .queue-sev { color: var(--warn); }
+.queue-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.queue-title { font-weight: var(--weight-semibold); }
+.queue-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--text-subtle); font-size: var(--text-sm); }
+.queue-summary { color: var(--text-muted); font-size: var(--text-sm); }
+.queue-empty { color: var(--text-muted); font-size: var(--text-sm); }
+.queue-reflex .queue-item { padding-block: var(--space-2); }
+
+/* Decision card: sections separated by hairlines inside one raised surface. */
+.decision { padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); box-shadow: var(--shadow-2); }
+.decision-empty { color: var(--text-muted); }
+.decision-part { display: grid; gap: var(--space-2); padding-block: var(--space-4); border-top: 1px solid var(--border); }
+.decision-part:first-of-type { padding-top: 0; border-top: 0; }
+.decision-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.decision-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); color: var(--text-subtle); font-size: var(--text-sm); }
+.decision-fresh { display: inline-flex; align-items: center; gap: var(--space-1); font-weight: var(--weight-semibold); }
+.decision-fresh.is-warn { color: var(--warn); }
+.evidence { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
+.evidence-item { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
+.evidence-item .stamp { flex-wrap: wrap; }
+.alts { display: grid; gap: var(--space-2); padding-inline-start: 1.25em; }
+.alts b { display: block; }
+
+.opinions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); padding: 0; list-style: none; }
+@media (min-width: 768px) { .opinions { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.opinion { display: grid; gap: var(--space-2); align-content: start; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
+.opinion-role { font-weight: var(--weight-semibold); }
+.opinion-stance { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.opinion.is-support .opinion-stance { color: var(--ok); }
+.opinion.is-oppose .opinion-stance { color: var(--bad); }
+.opinion.is-conditional .opinion-stance { color: var(--warn); }
+.opinion-text { font-size: var(--text-sm); }
+.opinion .cites { --icon-size: var(--icon-size-sm); }
+
+.proposed { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--primary); border-radius: var(--radius-control); background: var(--primary-subtle); color: var(--on-primary-subtle); }
+.proposed p { max-width: none; }
+.confidence { display: grid; gap: var(--space-1); }
+.confidence-level { display: inline-flex; align-items: center; gap: var(--space-1); font-weight: var(--weight-semibold); }
+.confidence.is-high .confidence-level { color: var(--ok); }
+.confidence.is-medium .confidence-level { color: var(--warn); }
+.confidence.is-low .confidence-level { color: var(--bad); }
+.confidence ul { color: var(--text-muted); font-size: var(--text-sm); }
+
+.actions { display: grid; gap: var(--space-3); }
+.actions .btn-row { gap: var(--space-2); }
+.actions-gate { color: var(--text-muted); font-size: var(--text-sm); }
+
+/* Trace: the steps in order, the hash badge in the head. */
+.trace { display: grid; gap: var(--space-2); padding-inline-start: 1.5em; }
+.trace-step { display: grid; gap: 2px; padding-block: var(--space-1); }
+.trace-at { color: var(--text-subtle); font-size: var(--text-sm); }
+.trace-actor { font-weight: var(--weight-semibold); }
+.trace-kind { color: var(--text-muted); font-size: var(--text-sm); }
+
+/* Rule drafts. */
+.drafts { display: grid; gap: var(--space-3); padding: 0; list-style: none; }
+.draft { display: grid; gap: var(--space-3); padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.draft-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.draft-evidence { color: var(--text-muted); font-size: var(--text-sm); }
+.draft-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+@media (min-width: 768px) { .draft-form { grid-template-columns: 8rem minmax(0, 1fr) auto; align-items: end; } }
+.draft-form .field-hint { grid-column: 1 / -1; }
+
+@media (forced-colors: active) { .queue-item, .decision, .evidence-item, .opinion, .draft, .proposed { border: 1px solid CanvasText; } }

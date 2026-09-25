@@ -1,0 +1,57 @@
+{
+  "signal_id": "sig-001",
+  "signal": {
+    "signal_id": "sig-001",
+    "kind": "metro_equipment",
+    "title": "Kartal (M4): aktarma noktasında 2 asansör arızalı",
+    "severity": "critical",
+    "path": "arena",
+    "status": "awaiting_approval",
+    "created_at": "2026-09-25T10:31:00+03:00",
+    "summary": "Aynı istasyonda iki asansör aynı anlık kayıtta arızalı; adımsız erişim kalmadı. E-02 eskalasyonu."
+  },
+  "evidence": [
+    { "text": "KRT-ASN-02 (peron katı): İBB kaydında Arıza, ilk görülme 25.09 10:15.", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" } },
+    { "text": "KRT-ASN-03 (sokak katı): İBB kaydında Revizyon, ilk görülme 24.09 18:00.", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" } },
+    { "text": "Pendik (M4) asansörleri aynı anlık kayıtta arızasız; yürüme mesafesi ve ek süre istasyon grafından: +6 dk (tahmin).", "provenance": { "source": "nabiz_routing", "url": null, "observed_at": "2026-09-25T10:31:00+03:00", "age_s": 660, "mode": "live" } },
+    { "text": "Özet uç ile detay uç aynı sayıyı veriyor (2 arıza).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" } }
+  ],
+  "freshness_s": 720,
+  "alternatives": [
+    { "label": "A. Onaylı alternatifi yayımla ve karta bağla", "detail": "Pendik (M4), +6 dk. Vatandaş kartı ve asistan bu metni gösterir. Geri alınabilir: tek tık, gerekçe koduyla." },
+    { "label": "B. Bakım talebi taslağı (simüle)", "detail": "Dışarıya gönderilmez; yalnız kayıt düşer." },
+    { "label": "C. Beklet ve doğrula", "detail": "Sonraki anlık kayıtta (15 dk) yeniden değerlendir." },
+    { "label": "D. Hiçbir şey yapma", "detail": "Kart son bilinen durumu yaşıyla göstermeye devam eder." }
+  ],
+  "opinions": [
+    {
+      "role": "Erişilebilirlik",
+      "stance": "support",
+      "rationale": "İki asansör de kayıtta arızalı; adımsız erişim yok. Alternatif metni beklemek vatandaşın yolda öğrenmesi demek. A seçeneği.",
+      "citations": [ { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" } ]
+    },
+    {
+      "role": "Operasyon",
+      "stance": "conditional",
+      "rationale": "A uygun, ancak Pendik'in asansörü de aynı kayıtta denetlenmeli (R-05); ek süre tahmindir, 'tahmin' etiketiyle yayımlanmalı.",
+      "citations": [ { "source": "nabiz_routing", "url": null, "observed_at": "2026-09-25T10:31:00+03:00", "age_s": 660, "mode": "live" } ]
+    },
+    {
+      "role": "İletişim",
+      "stance": "support",
+      "rationale": "Metin sade ve tek eylemli: 'Kartal'da asansör arızalı; adımsız yol için Pendik'ten binin, +6 dk.' Hiçbir yerde 'çalışıyor' demiyor.",
+      "citations": [ { "source": "nexus_rules", "url": null, "observed_at": "2026-09-25T10:31:00+03:00", "age_s": 660, "mode": "live" } ]
+    }
+  ],
+  "dissent_summary": "Operasyon koltuğu şartlı: alternatif istasyonun asansörü aynı anlık kayıtta denetlenmeden ve ek süre 'tahmin' etiketi almadan yayımlanmamalı.",
+  "proposed_action": {
+    "kind": "publish_alternative",
+    "text": "Kartal'da asansör arızalı (İBB kaydı). Adımsız yol için Pendik'ten (M4) binin; yaklaşık 6 dk ek süre (tahmin).",
+    "expires_at": "2026-10-25T10:31:00+03:00"
+  },
+  "confidence": {
+    "level": "medium",
+    "reasons": [ "Tek kaynak (Metro İstanbul ekipman kaydı); ikinci kaynak yok.", "Ek süre istasyon grafından tahmin, ölçüm değil.", "Veri 12 dk önce alındı; eşiğin (15 dk) altında." ]
+  },
+  "author": "kural"
+}

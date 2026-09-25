@@ -1,0 +1,29 @@
+{
+  "events": [
+    { "event": "tool", "data": { "name": "metro_equipment_status", "status": "start" } },
+    { "event": "tool", "data": { "name": "metro_equipment_status", "status": "end" } },
+    { "event": "token", "data": { "text": "Kartal " } },
+    { "event": "token", "data": { "text": "istasyonunda " } },
+    { "event": "token", "data": { "text": "İBB kaydına göre " } },
+    { "event": "token", "data": { "text": "bir asansör arızalı " } },
+    { "event": "token", "data": { "text": "(KRT-ASN-02, peron katı). " } },
+    { "event": "token", "data": { "text": "Kayıt 12 dakika önce alındı. " } },
+    { "event": "token", "data": { "text": "Adımsız yol için " } },
+    { "event": "token", "data": { "text": "en yakın seçenek Pendik (M4), " } },
+    { "event": "token", "data": { "text": "yaklaşık 6 dakika ek süre; " } },
+    { "event": "token", "data": { "text": "bu alternatif operatör onaylı (simüle)." } },
+    {
+      "event": "final",
+      "data": {
+        "answer": "Kartal istasyonunda İBB kaydına göre bir asansör arızalı (KRT-ASN-02, peron katı). Kayıt 12 dakika önce alındı. Adımsız yol için en yakın seçenek Pendik (M4), yaklaşık 6 dakika ek süre; bu alternatif operatör onaylı (simüle).",
+        "citations": [
+          { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" },
+          { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T09:58:00+03:00", "age_s": 2640, "mode": "live" }
+        ],
+        "author": "model",
+        "memory_suggestion": null,
+        "refused": false
+      }
+    }
+  ]
+}

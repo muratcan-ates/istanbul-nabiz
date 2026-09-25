@@ -1,0 +1,64 @@
+{
+  "items": [
+    {
+      "signal_id": "sig-001",
+      "kind": "metro_equipment",
+      "title": "Kartal (M4): aktarma noktasında 2 asansör arızalı",
+      "severity": "critical",
+      "path": "arena",
+      "status": "awaiting_approval",
+      "created_at": "2026-09-25T10:31:00+03:00",
+      "summary": "Aynı istasyonda iki asansör aynı anlık kayıtta arızalı; adımsız erişim kalmadı. E-02 eskalasyonu."
+    },
+    {
+      "signal_id": "sig-002",
+      "kind": "metro_equipment",
+      "title": "Ayrılık Çeşmesi (M4): asansör 9 gündür arızalı",
+      "severity": "warning",
+      "path": "arena",
+      "status": "awaiting_approval",
+      "created_at": "2026-09-25T09:15:00+03:00",
+      "summary": "Kesinti 7 günü aştı, istasyonda çalışan başka asansör kaydı yok. E-01 eskalasyonu; tarih alanının anlamı belgesiz."
+    },
+    {
+      "signal_id": "sig-003",
+      "kind": "metro_equipment",
+      "title": "Pendik (M4): yürüyen merdiven arızalı",
+      "severity": "info",
+      "path": "reflex",
+      "status": "closed_by_reflex",
+      "created_at": "2026-09-25T10:02:00+03:00",
+      "summary": "Asansör çalışır kayıtta; R-01 vatandaş kartını güncelledi, eylem gerekmedi."
+    },
+    {
+      "signal_id": "sig-004",
+      "kind": "air",
+      "title": "Hava kalitesi kaynağı 3 saattir bayat",
+      "severity": "info",
+      "path": "reflex",
+      "status": "closed_by_reflex",
+      "created_at": "2026-09-25T10:05:00+03:00",
+      "summary": "R-02: kartlar son bilinen değeri yaşıyla gösteriyor, 'doğrulanamadı' etiketi basıldı."
+    },
+    {
+      "signal_id": "sig-005",
+      "kind": "metro_equipment",
+      "title": "Yenikapı (M2): asansör arızası tekrar",
+      "severity": "info",
+      "path": "reflex",
+      "status": "closed_by_reflex",
+      "created_at": "2026-09-25T08:40:00+03:00",
+      "summary": "R-07: açık karta katlandı, tekrar sayacı 2. Yeni bilgi yok."
+    },
+    {
+      "signal_id": "sig-006",
+      "kind": "metro_equipment",
+      "title": "Kartal (M4): kayıtlı sinyal (oynatıldı)",
+      "severity": "warning",
+      "path": "arena",
+      "status": "awaiting_approval",
+      "created_at": "2026-09-25T10:44:00+03:00",
+      "summary": "Kayıtlı bir arıza sinyali oynatıldı: 1 asansör arızalı, onaylı alternatif var. R-05 çalışma anı denetimi bekliyor."
+    }
+  ]
+}

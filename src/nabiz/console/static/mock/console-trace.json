@@ -1,0 +1,11 @@
+{
+  "steps": [
+    { "at": "2026-09-25T10:30:05+03:00", "actor": "toplayıcı", "kind": "signal.received", "detail": "Metro ekipman kaydı okundu: Kartal'da 2 asansör arızalı (KRT-ASN-02, KRT-ASN-03)." },
+    { "at": "2026-09-25T10:30:06+03:00", "actor": "yönlendirici", "kind": "route.arena", "detail": "E-02: aynı aktarma noktasında 2 asansör; refleks yolu kapalı, arenaya gönderildi." },
+    { "at": "2026-09-25T10:30:09+03:00", "actor": "arena", "kind": "opinions.collected", "detail": "3 koltuk, kural tabanlı (model yok): 2 destek, 1 şartlı. İtiraz özeti yazıldı." },
+    { "at": "2026-09-25T10:30:09+03:00", "actor": "arena", "kind": "proposal.drafted", "detail": "Önerilen eylem: onaylı alternatifi yayımla (Pendik, +6 dk tahmin). Güven: orta." },
+    { "at": "2026-09-25T10:44:31+03:00", "actor": "simüle operatör", "kind": "decision.approved", "detail": "Onaylandı, gerekçe: kanıt yeterli ve taze. Kanıt açıldı: 4/4." },
+    { "at": "2026-09-25T10:44:32+03:00", "actor": "defter", "kind": "ledger.sealed", "detail": "Kayıt led-000124 zincire eklendi; önceki kayıt led-000123." }
+  ],
+  "hash_ok": true
+}

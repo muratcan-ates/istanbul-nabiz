@@ -1,0 +1,11 @@
+{
+  "drafts": [
+    {
+      "draft_id": "draft-01",
+      "pattern": "Tek asansör arızası ve onaylı alternatif varsa vatandaş kartını güncelle",
+      "evidence_decisions": [ "sig-0087", "sig-0093", "sig-0101" ],
+      "proposed_rule_toml": "[[reflex]]\nid = \"R-101\"\nsignal = \"S1\"\nrequires = [\"oa_active\"]\nguards = [\"alt_not_faulty_same_snapshot\", \"age_below_threshold\"]\naction = \"publish_bound_alternative\"\non_guard_fail = \"E-05\"\nexpires_days = 30\n",
+      "expires_days": 30
+    }
+  ]
+}

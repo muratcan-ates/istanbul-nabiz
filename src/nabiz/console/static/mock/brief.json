@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-09-25T10:42:00+03:00",
+  "cards": [
+    {
+      "id": "kartal-asansor",
+      "kind": "metro_equipment",
+      "title": "Kartal (M4): asansör",
+      "body": "İBB kaydında 1 asansör arızalı (KRT-ASN-02, peron katı). Adımsız alternatif: Pendik, +6 dk.",
+      "status": "warning",
+      "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" },
+      "author": "kural"
+    },
+    {
+      "id": "m4-durum",
+      "kind": "metro_status",
+      "title": "M4 Kadıköy - Sabiha Gökçen",
+      "body": "İBB duyurularında bu hat için kesinti kaydı yok.",
+      "status": "ok",
+      "provenance": { "source": "metro_status", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:40:10+03:00", "age_s": 110, "mode": "live" },
+      "author": "kural"
+    },
+    {
+      "id": "kadikoy-asansor",
+      "kind": "metro_equipment",
+      "title": "Kadıköy (M4): asansör",
+      "body": "İBB kaydında arıza yok. Peron erişimi kaynakta yok.",
+      "status": "ok",
+      "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" },
+      "author": "kural"
+    },
+    {
+      "id": "trafik",
+      "kind": "traffic",
+      "title": "Trafik, tüm şehir",
+      "body": "Trafik indeksi 41, hafif yoğun. Önceki gün aynı saatte 38.",
+      "status": "ok",
+      "provenance": { "source": "traffic", "url": "https://data.ibb.gov.tr/", "observed_at": "2026-09-25T10:35:00+03:00", "age_s": 420, "mode": "live" },
+      "author": "kural"
+    },
+    {
+      "id": "hava-kadikoy",
+      "kind": "air",
+      "title": "Hava kalitesi, Kadıköy",
+      "body": "Son ölçüm 3 saatten eski; son bilinen değer AQI 52, orta.",
+      "status": "stale",
+      "provenance": { "source": "aq_readings", "url": "https://data.ibb.gov.tr/", "observed_at": "2026-09-25T07:00:00+03:00", "age_s": 13320, "mode": "live" },
+      "author": "kural"
+    },
+    {
+      "id": "otopark-kartal",
+      "kind": "parking",
+      "title": "Otopark, Kartal çevresi",
+      "body": "İSPARK ucuna ulaşılamadı; son bilinen durum gösterilemiyor.",
+      "status": "unverified",
+      "provenance": { "source": "ispark", "url": "https://data.ibb.gov.tr/", "observed_at": null, "age_s": null, "mode": "unknown" },
+      "author": "kural"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+/* Every number carries its source and its age. The contract's Provenance is
+ * {source, url, observed_at, age_s, mode: live | recorded | schedule | unknown}; the stamp says the
+ * mode with its icon and the age the server measured (age_s), never the visitor's clock. Pure. */
+
+import { dateTime, esc, shortAge } from './format.js';
+import { icon } from './icons.js';
+
+const SOURCE_TR = {
+  ispark: 'İSPARK otoparkları',
+  iett_line: 'İETT hat konumları',
+  iett_fleet: 'İETT filo',
+  iett_schedule: 'İETT planlanan sefer',
+  iett_arrivals: 'İETT varış tahmini',
+  metro_status: 'Metro İstanbul duyuruları',
+  metro_stations: 'Metro İstanbul istasyonları',
+  metro_equipment: 'Metro İstanbul ekipman kaydı',
+  aq_stations: 'Hava kalitesi istasyonları',
+  aq_readings: 'Hava kalitesi ölçümleri',
+  traffic: 'Trafik indeksi',
+  gtfs: 'GTFS (İETT)',
+  gazetteer: 'Yer sözlüğü',
+  nabiz_runtime: 'Nabız çalışma zamanı',
+  nabiz_forecast: 'Nabız tahmini',
+  nabiz_routing: 'Nabız ulaşım karşılaştırması',
+  nabiz_alerts: 'Nabız uyarıları',
+  nexus_ledger: 'Nabız karar defteri',
+  nexus_rules: 'Nabız kural kataloğu',
+};
+
+const MODE_TR = { live: 'canlı', old: 'ölçüm', recorded: 'kayıtlı', schedule: 'tarifeye göre', unknown: 'bilinmiyor' };
+const MODE_ICON = { live: 'antenna-bars-5', old: 'history', recorded: 'history', schedule: 'clock', unknown: 'clock-question' };
+/** A live feed's reading counts as "canlı" only while it is under two hours old (the web page's
+ * rule for its live dot); older than that it is a measurement with an age, never "canlı". */
+const LIVE_SECONDS = 7200;
+
+function sourceLabel(name) {
+  return SOURCE_TR[name] || name || 'kaynak bilinmiyor';
+}
+
+/** The mode the stamp shows: the server's mode, except that a stale live reading reads "ölçüm". */
+function modeOf(prov) {
+  if (!prov || !MODE_TR[prov.mode] || prov.mode === 'old') return 'unknown';
+  if (prov.mode === 'live' && !(Number.isFinite(prov.age_s) && prov.age_s < LIVE_SECONDS)) return 'old';
+  return prov.mode;
+}
+
+/** "2 dk önce" from the server's age; a recorded capture says its date, because "önce" would lie. */
+function ageText(prov) {
+  if (!prov) return 'veri yaşı bilinmiyor';
+  if (modeOf(prov) === 'recorded' && prov.observed_at) return dateTime(prov.observed_at);
+  if (Number.isFinite(prov.age_s)) return `${shortAge(prov.age_s)} önce`;
+  return 'veri yaşı bilinmiyor';
+}
+
+/** The stamp: mode icon, mode word, age. Colour is never alone: the icon and the word say it too. */
+function stamp(prov) {
+  const mode = modeOf(prov);
+  return `<span class="stamp is-${mode}">${icon(MODE_ICON[mode])}<span>${MODE_TR[mode]} · <b>${esc(ageText(prov))}</b></span></span>`;
+}
+
+/** Age alone, for a card whose metric row already names the mode (the arrival card). */
+function ageStamp(prov) {
+  const recent = prov && Number.isFinite(prov.age_s) && prov.age_s < 3600;
+  return `<span class="stamp">${icon(recent ? 'clock' : 'history')}<b>${esc(ageText(prov))}</b></span>`;
+}
+
+/** The same fact as a sentence, for a status region. */
+function ageSentence(prov) {
+  const mode = modeOf(prov);
+  if (mode === 'recorded') return `Kayıtlı veri, ${esc(ageText(prov))}.`;
+  if (!Number.isFinite(prov && prov.age_s)) return 'Veri yaşı bilinmiyor.';
+  return `Veri ${shortAge(prov.age_s)} önce alındı${mode === 'schedule' ? ', tarifeye göre' : ''}.`;
+}
+
+function sourceLink(prov) {
+  if (!prov) return '';
+  const label = esc(sourceLabel(prov.source));
+  const href = prov.url && /^https?:\/\//.test(prov.url) ? prov.url : null;
+  return href
+    ? `<a class="src" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${label} ${icon('external-link')}</a>`
+    : `<span class="src">${label}</span>`;
+}
+
+/** One citation chip: source, then the stamp. */
+function citation(prov) {
+  return `<li class="cite">${sourceLink(prov)}${stamp(prov)}</li>`;
+}
+
+function citations(list) {
+  const items = (list || []).filter(Boolean);
+  if (!items.length) return '';
+  return `<ul class="cites" aria-label="Kaynaklar">${items.map(citation).join('')}</ul>`;
+}
+
+export {
+  SOURCE_TR, MODE_TR, MODE_ICON, LIVE_SECONDS, sourceLabel, modeOf, ageText, stamp, ageStamp, ageSentence, sourceLink, citation,
+  citations,
+};
