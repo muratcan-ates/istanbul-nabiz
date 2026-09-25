@@ -35,7 +35,7 @@ AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit lane-gates architecture \
-        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console eval eval-knowledge eval-record eval-live fixtures places \
+        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console console-offline eval eval-knowledge eval-record eval-live fixtures places \
         sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
 
@@ -110,6 +110,9 @@ web:  ## serve the Nabız web UI on :8080 with reload (WEB_PORT=, needs the web 
 
 console:  ## serve the product app: citizen face (/) and simulated-operator console (/console) on :8090 (CONSOLE_PORT=; reads .env)
 	NABIZ_CONSOLE_PORT=$(CONSOLE_PORT) $(PY) -m nabiz.console
+
+console-offline:  ## the product app from recordings only: no İBB call, no .env read, no model probe, sprint flag on (CONSOLE_PORT=)
+	NABIZ_ENV_FILE=/dev/null NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 NABIZ_SPRINT_MODE=1 NABIZ_CONSOLE_PORT=$(CONSOLE_PORT) $(PY) -m nabiz.console
 
 eval:  ## run the journey eval offline into reports/eval (gitignored); never writes eval/results (EVAL_ARGS='--mode agent')
 	$(PY) eval/run_eval.py --offline --results-dir $(EVAL_OUT) $(EVAL_ARGS)

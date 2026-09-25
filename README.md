@@ -242,6 +242,7 @@ make mcp-http                             # streamable HTTP on 127.0.0.1:8000, t
 NABIZ_OFFLINE=1 make web                  # the web page on http://127.0.0.1:8080, from fixtures
 make console                              # the product app on http://127.0.0.1:8090: citizen face at /, simulated operator at /console
 NABIZ_OFFLINE=1 make console              # the same, from recordings only (no İBB call)
+make console-offline                      # the same from recordings, without reading .env or probing a model (CONSOLE_PORT=8090)
 ```
 
 The product app (`python -m nabiz.console`) reads `.env`, binds the decision core (`nexus_core`, ledger in
