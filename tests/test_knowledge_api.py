@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from test_knowledge_store import seed_page
 
 from ibb_mcp.knowledge.store import KnowledgeStore
-from nabiz.console.knowledge_api import knowledge_routes
+from nabiz.console.knowledge_api import INDEX_MISSING, knowledge_routes
 
 
 def client() -> TestClient:
@@ -54,9 +54,16 @@ def test_missing_index_answers_503(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("NABIZ_KNOWLEDGE_DB", str(tmp_path / "missing.db"))
     monkeypatch.delenv("NABIZ_LLM_BASE_URL", raising=False)
     monkeypatch.delenv("NABIZ_LLM_API_KEY", raising=False)
-    response = client().get("/api/knowledge/search", params={"q": "su aboneliği"})
-    assert response.status_code == 503 and response.json() == {"error": "knowledge_index_missing"}
+    for response in (
+        client().get("/api/knowledge/search", params={"q": "su aboneliği"}),
+        client().post("/api/knowledge/ask", json={"question": "Su aboneliği nasıl yapılır?"}),
+    ):
+        assert response.status_code == 503
+        assert response.json() == {"error": "knowledge_index_missing", "message": INDEX_MISSING}
+    assert "153" in INDEX_MISSING
 
 
 def test_empty_query_is_a_bad_request() -> None:
-    assert client().get("/api/knowledge/search", params={"q": " "}).status_code == 400
+    response = client().get("/api/knowledge/search", params={"q": " "})
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_query" and response.json()["message"]

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
 
 from ibb_mcp.knowledge import answer, open_from_env, search
+from nabiz.console.operator import port_problem
 
 knowledge_routes = APIRouter()
+#: The 503 the page shows when this server has no service-page index built.
+INDEX_MISSING = "Hizmet sayfası dizini bu sunucuda kurulu değil; şimdilik 153 Çözüm Merkezi'ne ya da ilgili resmî sayfaya bak."
 
 
 def _index(request: Request):
@@ -24,10 +26,10 @@ def _index(request: Request):
 async def knowledge_search(request: Request, q: str = "", limit: int = 5):
     """Return local hybrid-search hits in the stable public schema."""
     if not q.strip() or len(q) > 200 or not 1 <= limit <= 10:
-        return JSONResponse({"error": "invalid_query"}, status_code=400)
+        return port_problem(400, "invalid_query", "Arama metni 1 ile 200 karakter, limit 1 ile 10 arasında olmalı.")
     store, embedder = _index(request)
     if store is None:
-        return JSONResponse({"error": "knowledge_index_missing"}, status_code=503)
+        return port_problem(503, "knowledge_index_missing", INDEX_MISSING)
     hits = await search(store, q, embedder=embedder, limit=limit)
     return {
         "hits": [hit.to_dict() for hit in hits],
@@ -42,7 +44,7 @@ async def knowledge_ask(request: Request):
     try:
         body = await request.json()
     except Exception:
-        return JSONResponse({"error": "invalid_body"}, status_code=400)
+        return port_problem(400, "invalid_body", "İstek gövdesi okunamadı.")
     question = body.get("question") if isinstance(body, dict) else None
     lang = body.get("lang", "tr") if isinstance(body, dict) else "tr"
     if (
@@ -52,9 +54,9 @@ async def knowledge_ask(request: Request):
         or not isinstance(lang, str)
         or lang not in {"tr", "en"}
     ):
-        return JSONResponse({"error": "invalid_question"}, status_code=400)
+        return port_problem(400, "invalid_question", "Soru 1 ile 200 karakter arasında olmalı; dil tr ya da en.")
     store, embedder = _index(request)
     if store is None:
-        return JSONResponse({"error": "knowledge_index_missing"}, status_code=503)
+        return port_problem(503, "knowledge_index_missing", INDEX_MISSING)
     result = await answer(question, store=store, embedder=embedder)
     return result.to_dict()
