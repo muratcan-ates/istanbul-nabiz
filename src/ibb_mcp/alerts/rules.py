@@ -34,6 +34,7 @@ from ibb_mcp.models import (
     AirQualityReading,
     AirQualityStation,
     MetroLineStatus,
+    MetroStation,
     ParkingLot,
     Provenance,
     TrafficIndexPoint,
@@ -41,6 +42,7 @@ from ibb_mcp.models import (
     describe_traffic,
     utcnow,
 )
+from ibb_mcp.sources.metro_equipment import EquipmentRecord
 from ibb_mcp.text import fold_tr
 
 Severity = Literal["info", "warning", "critical"]
@@ -49,13 +51,7 @@ Severity = Literal["info", "warning", "critical"]
 SEVERITY_ORDER: dict[str, int] = {"critical": 0, "warning": 1, "info": 2}
 
 #: Turkish traffic bands (:func:`~ibb_mcp.models.describe_traffic`) in English.
-TRAFFIC_EN = {
-    "akıcı": "free flowing",
-    "hafif yoğun": "light",
-    "yoğun": "busy",
-    "çok yoğun": "heavy",
-    "kilitli": "gridlocked",
-}
+TRAFFIC_EN = {"akıcı": "free flowing", "hafif yoğun": "light", "yoğun": "busy", "çok yoğun": "heavy", "kilitli": "gridlocked"}
 
 AQI_BAND_EN = {
     "good": "good",
@@ -67,11 +63,7 @@ AQI_BAND_EN = {
 }
 
 #: ``ibb_mcp.reliability``'s Turkish headway verdicts, for the English half of an alert.
-BUNCHING_EN = {
-    "düzenli": "regular",
-    "biraz düzensiz": "somewhat irregular",
-    "kümelenme var": "bunched",
-}
+BUNCHING_EN = {"düzenli": "regular", "biraz düzensiz": "somewhat irregular", "kümelenme var": "bunched"}
 
 HEALTH_DISCLAIMER_TR = "Sağlık tavsiyesi değildir."
 HEALTH_DISCLAIMER_EN = "Not health advice."
@@ -105,6 +97,7 @@ class Alert(BaseModel):
     dedupe_key: str
     cooldown_seconds: int
     citations: list[Citation] = Field(default_factory=list)
+    uncertainty: list[str] = Field(default_factory=list)
     created_at: dt.datetime = Field(default_factory=utcnow)
 
     @property
@@ -181,6 +174,18 @@ class BunchingObservation:
 
 
 @dataclass(frozen=True)
+class LiftObservation:
+    """One request's Metro İstanbul equipment records and station accessibility counts."""
+
+    records: tuple[EquipmentRecord, ...]
+    stations: tuple[MetroStation, ...]
+    provenance: Provenance
+    groups_read: tuple[str, ...]
+    stale: bool = False
+    uncertainty: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class AlertContext:
     """Everything the rules may look at. Built once per request, discarded with it."""
 
@@ -189,6 +194,7 @@ class AlertContext:
     air_quality: Mapping[str, AirQualityObservation] = field(default_factory=dict)
     traffic: TrafficObservation | None = None
     bunching: Mapping[str, BunchingObservation] = field(default_factory=dict)
+    lift: LiftObservation | None = None
     now: dt.datetime = field(default_factory=utcnow)
     #: Sources that could not be read, by source key — reported to the user as "kontrol
     #: edilemedi" instead of being silently treated as "her şey yolunda".
@@ -211,17 +217,17 @@ class Rule(Protocol):
 # --------------------------------------------------------------------------------------
 # helpers
 # --------------------------------------------------------------------------------------
-def _digest(*parts: str) -> str:
+def alert_digest(*parts: str) -> str:
     """Short, stable hash of free text, for dedupe keys that must not carry a timestamp."""
     joined = "|".join(part.strip() for part in parts)
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:10]
 
 
-def _age_tr(provenance: Provenance | None) -> str:
+def alert_age_tr(provenance: Provenance | None) -> str:
     return provenance.describe_age() if provenance else "yaşı bilinmiyor"
 
 
-def _age_en(provenance: Provenance | None) -> str:
+def alert_age_en(provenance: Provenance | None) -> str:
     """English mirror of :meth:`Provenance.describe_age`, same thresholds."""
     if provenance is None:
         return "age unknown"
@@ -297,13 +303,13 @@ class MetroDisruptionRule:
             severity=self.severity,
             message_tr=(
                 f"{names} hattında bildirilen aksaklık var."
-                f"{' ' + details if details else ''} (Metro İstanbul duyurusu, {_age_tr(provenance)})"
+                f"{' ' + details if details else ''} (Metro İstanbul duyurusu, {alert_age_tr(provenance)})"
             ),
             message_en=(
                 f"Reported disruption on {names}."
-                f"{' ' + details if details else ''} (Metro İstanbul notice, {_age_en(provenance)})"
+                f"{' ' + details if details else ''} (Metro İstanbul notice, {alert_age_en(provenance)})"
             ),
-            dedupe_key=f"metro:{'+'.join(sorted(s.line_name or '?' for s in hits))}:{_digest(details)}",
+            dedupe_key=f"metro:{'+'.join(sorted(s.line_name or '?' for s in hits))}:{alert_digest(details)}",
             cooldown_seconds=self.cooldown_seconds,
             citations=citations,
         )
@@ -376,8 +382,8 @@ class ParkingFillingRule:
             rule_id=self.rule_id,
             kind=self.kind,
             severity=severity,
-            message_tr=f"Takip ettiğiniz otopark doluyor: {'; '.join(parts_tr)}. (İSPARK, {_age_tr(provenance)})",
-            message_en=f"A car park you watch is filling up: {'; '.join(parts_en)}. (İSPARK, {_age_en(provenance)})",
+            message_tr=f"Takip ettiğiniz otopark doluyor: {'; '.join(parts_tr)}. (İSPARK, {alert_age_tr(provenance)})",
+            message_en=f"A car park you watch is filling up: {'; '.join(parts_en)}. (İSPARK, {alert_age_en(provenance)})",
             dedupe_key=f"parking:{ids}:ge{self.threshold_pct:g}:{severity}",
             cooldown_seconds=self.cooldown_seconds,
             citations=citations,
@@ -447,13 +453,13 @@ class AirQualityRule:
             message_tr=(
                 f"{observation.place_label} çevresinde hava kalitesi indeksi {_tr_number(index)} "
                 f"({band_label}); eşiğiniz {_tr_number(self.aqi_threshold)}.{pm10_tr}"
-                f" Ölçüm: {observation.station.name} istasyonu, {_age_tr(provenance)}.{rolling_tr} "
+                f" Ölçüm: {observation.station.name} istasyonu, {alert_age_tr(provenance)}.{rolling_tr} "
                 f"{HEALTH_DISCLAIMER_TR}"
             ),
             message_en=(
                 f"Air quality index near {observation.place_label} is {index:g} "
                 f"({AQI_BAND_EN.get(band_key, band_key)}); your threshold is {self.aqi_threshold:g}.{pm10_en}"
-                f" Measured at {observation.station.name} station, {_age_en(provenance)}.{rolling_en} "
+                f" Measured at {observation.station.name} station, {alert_age_en(provenance)}.{rolling_en} "
                 f"{HEALTH_DISCLAIMER_EN}"
             ),
             dedupe_key=f"air:{self.place}:{band_key}",
@@ -501,11 +507,11 @@ class TrafficRule:
             severity=severity,
             message_tr=(
                 f"İstanbul trafik yoğunluk indeksi {index} ({label_tr}); eşiğiniz {self.threshold_index}. "
-                f"(İBB Trafik Yoğunluk İndeksi, {_age_tr(provenance)})"
+                f"(İBB Trafik Yoğunluk İndeksi, {alert_age_tr(provenance)})"
             ),
             message_en=(
                 f"İstanbul traffic index is {index} ({TRAFFIC_EN.get(label_tr, label_tr)}); "
-                f"your threshold is {self.threshold_index}. (İBB traffic index, {_age_en(provenance)})"
+                f"your threshold is {self.threshold_index}. (İBB traffic index, {alert_age_en(provenance)})"
             ),
             dedupe_key=f"traffic:city:ge{self.threshold_index}:{severity}",
             cooldown_seconds=self.cooldown_seconds,
@@ -601,12 +607,12 @@ class BusBunchingRule:
             message_tr=(
                 f"{line} hattında {hour_tr}ölçülen sefer aralıkları düzensiz ({label}){detail_tr}. "
                 "Bu, geçmiş gözlemlerin özetidir; canlı bir arıza bildirimi değildir."
-                f"{window_tr} (Nabız hat düzenlilik ölçümü, {_age_tr(provenance)})"
+                f"{window_tr} (Nabız hat düzenlilik ölçümü, {alert_age_tr(provenance)})"
             ),
             message_en=(
                 f"Headways measured on {line} {hour_en}are irregular ({label_en}){detail_en}. "
                 "This summarises past observations; it is not a live disruption notice. "
-                f"(Nabız headway measurement, {_age_en(provenance)})"
+                f"(Nabız headway measurement, {alert_age_en(provenance)})"
             ),
             dedupe_key=f"bunching:{line}:{observation.hour if observation.hour is not None else 'any'}",
             cooldown_seconds=self.cooldown_seconds,

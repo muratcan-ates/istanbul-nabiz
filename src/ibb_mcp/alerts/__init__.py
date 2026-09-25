@@ -38,6 +38,7 @@ from ibb_mcp.alerts.engine import (
     evaluate_subscription,
     parse_subscription,
 )
+from ibb_mcp.alerts.lift import LiftOutageRule
 from ibb_mcp.alerts.rules import (
     AirQualityObservation,
     AirQualityRule,
@@ -46,6 +47,7 @@ from ibb_mcp.alerts.rules import (
     BunchingObservation,
     BusBunchingRule,
     Citation,
+    LiftObservation,
     MetroDisruptionRule,
     MetroObservation,
     ParkingFillingRule,
@@ -70,6 +72,8 @@ __all__ = [
     "BunchingObservation",
     "BusBunchingRule",
     "Citation",
+    "LiftObservation",
+    "LiftOutageRule",
     "MetroDisruptionRule",
     "MetroObservation",
     "ParkingFillingRule",

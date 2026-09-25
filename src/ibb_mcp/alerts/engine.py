@@ -32,6 +32,15 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from ibb_mcp.alerts.lift import (  # noqa: F401 - schema constants remain available through this module
+    LIFT_EQUIPMENT,
+    MAX_LINES_PER_RULE,
+    MAX_STATIONS_PER_RULE,
+    LiftOutageRule,
+    build_lift_context,
+    build_lift_observation,
+    parse_lift_rule,
+)
 from ibb_mcp.alerts.rules import (
     AirQualityObservation,
     AirQualityRule,
@@ -39,6 +48,7 @@ from ibb_mcp.alerts.rules import (
     AlertContext,
     BunchingObservation,
     BusBunchingRule,
+    LiftObservation,
     MetroDisruptionRule,
     MetroObservation,
     ParkingFillingRule,
@@ -64,6 +74,7 @@ DEFAULT_COOLDOWNS: dict[str, int] = {
     "air_quality": 10_800,
     "traffic": 3600,
     "bus_bunching": 1800,
+    "lift_outage": 3600,
 }
 MIN_COOLDOWN_S = 300
 MAX_COOLDOWN_S = 86_400
@@ -73,7 +84,6 @@ MAX_COOLDOWN_S = 86_400
 MAX_RULES = 20
 MAX_PLACES = 5
 MAX_PARK_IDS = 10
-
 KNOWN_KINDS = frozenset(DEFAULT_COOLDOWNS)
 
 #: Rule thresholds: the default when the client sends none, and the accepted range. Named
@@ -161,12 +171,21 @@ def _parse_places(subscription: Mapping[str, Any]) -> dict[str, WatchedPlace]:
     return places
 
 
-def _parse_rule(raw: Mapping[str, Any], places: Mapping[str, WatchedPlace]) -> Rule | None:  # noqa: C901, PLR0912 - debt, ratcheted in scripts/architecture_baseline.json
-    """Build one typed rule. Returns ``None`` for a kind this server does not implement."""
+async def _lift_observation(source_ctx: SourceContext, equipment: Sequence[str]) -> LiftObservation:
+    return await build_lift_observation(source_ctx, equipment)
+
+
+def _parse_lift_rule(raw: Mapping[str, Any], cooldown: int) -> LiftOutageRule:
+    return parse_lift_rule(raw, cooldown)
+
+
+def _parse_rule(raw: Mapping[str, Any], places: Mapping[str, WatchedPlace]) -> Rule:  # noqa: C901, PLR0912 - debt, ratcheted in scripts/architecture_baseline.json
+    """Build one typed rule; unknown kinds are skipped by the subscription parser."""
     kind = str(raw.get("kind") or "").strip()
-    if kind not in KNOWN_KINDS:
-        return None
     cooldown = _cooldown_for(kind, raw)
+
+    if kind == "lift_outage":
+        return _parse_lift_rule(raw, cooldown)
 
     if kind == "metro_disruption":
         lines = tuple(str(line).strip() for line in (raw.get("lines") or []) if str(line).strip())
@@ -231,10 +250,10 @@ def parse_subscription(subscription: Mapping[str, Any]) -> ParsedSubscription:
     for entry in raw_rules:
         if not isinstance(entry, Mapping):
             raise ValueError("Her kural bir nesne olmalı: {kind: ...}.")
-        rule = _parse_rule(entry, places)
-        if rule is None:
+        if str(entry.get("kind") or "").strip() not in KNOWN_KINDS:
             skipped.append(str(entry.get("kind") or "?"))
             continue
+        rule = _parse_rule(entry, places)
         rules.append(rule)
 
     muted = subscription.get("muted_keys") or []
@@ -488,7 +507,6 @@ async def build_context(  # noqa: C901 - debt, ratcheted in scripts/architecture
     parking: dict[int, ParkingObservation] = {}
     air_quality: dict[str, AirQualityObservation] = {}
     bunching: dict[str, BunchingObservation] = {}
-
     if "metro_disruption" in kinds:
         try:
             metro = await _metro_observation(source_ctx)
@@ -532,6 +550,7 @@ async def build_context(  # noqa: C901 - debt, ratcheted in scripts/architecture
         air_quality=air_quality,
         traffic=traffic,
         bunching=bunching,
+        lift=await build_lift_context(source_ctx, parsed.rules, kinds, unavailable),
         now=now or utcnow(),
         unavailable=unavailable,
     )

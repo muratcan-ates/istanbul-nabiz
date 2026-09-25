@@ -128,7 +128,7 @@ async def test_the_subscription_schema_is_typed_not_an_opaque_object(nabiz: Nabi
     assert set(place["required"]) == {"key", "lat", "lon"}
     variants = sub["properties"]["rules"]["items"]["oneOf"]
     kinds = {resolve(schema, variant)["properties"]["kind"]["const"] for variant in variants}
-    assert kinds == {"metro_disruption", "parking_filling", "air_quality", "traffic", "bus_bunching"}
+    assert kinds == {"metro_disruption", "parking_filling", "air_quality", "traffic", "bus_bunching", "lift_outage"}
     # The KVKK promise is part of what the model reads, not only of docs/privacy.md.
     assert "SAKLANMAZ" in tool.description and "docs/privacy.md" in tool.description
 
