@@ -122,6 +122,31 @@ def test_the_mcp_transport_may_use_what_the_sdk_brings(tmp_path: pathlib.Path) -
     assert arch.check_dependency_sets(tmp_path, mods, {}).status == arch.PASS
 
 
+#: The product app runs the agent (DECISIONS #23): the one declared edge between sibling apps.
+CONSOLE = {"nabiz/console/app.py": "from nabiz.agent.agent import X\nfrom ibb_mcp.tools import Y\nfrom ibb_mcp.text import Z\n"}
+
+
+def test_the_console_may_run_the_agent_and_bind_the_decision_core(tmp_path: pathlib.Path) -> None:
+    files = CLEAN | CONSOLE | {"nabiz/console/ports.py": "import fastapi\nimport nexus_core\n"}
+    mods = tree(tmp_path, files)
+    for check in (arch.check_layers, arch.check_dependency_sets):
+        assert check(tmp_path, mods, {}).status == arch.PASS
+
+
+@pytest.mark.parametrize(
+    ("name", "text", "why"),
+    [
+        ("nabiz/agent/agent.py", "from nabiz.console.app import X\n", "sibling app"),  # the edge is one way
+        ("nabiz/web/main.py", "from nabiz.console.app import X\n", "sibling app"),
+        ("nabiz/console/chat.py", "from nabiz.web.main import X\n", "sibling app"),  # only the agent
+        ("nabiz/console/chat.py", "from ibb_mcp.sources.metro import X\n", "bypasses the ibb_mcp.tools facade"),
+    ],
+)
+def test_the_console_edge_stays_narrow(tmp_path: pathlib.Path, name: str, text: str, why: str) -> None:
+    result = arch.check_layers(tmp_path, tree(tmp_path, CLEAN | CONSOLE | {name: text}), {})
+    assert result.status == arch.FAIL and any(why in f.message for f in result.findings), result
+
+
 def test_a_new_repeated_public_name_fails_and_a_known_one_may_only_go(tmp_path: pathlib.Path) -> None:
     twice = "def normalize_tr(t):\n    return t\n"
     files = CLEAN | {"ibb_mcp/text.py": twice, "ibb_mcp/gtfs.py": twice}

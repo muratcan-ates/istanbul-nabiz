@@ -28,6 +28,7 @@ the reasoning stays readable.
 | [20](#20-the-js-payload-target-is-raised-to-the-step-7-tree-for-the-3-day-product-sprint) | The JS payload target is raised to the step 7 tree for the 3-day product sprint | Accepted — temporary; the JS budget itself stays the owner's |
 | [21](#21-nexus_core-is-a-third-package-a-library-that-imports-nothing-from-the-other-two) | `nexus_core` is a third package: a library that imports nothing from the other two | Accepted |
 | [22](#22-metro-equipment-status-joins-the-facade-and-the-size-baseline-is-raised-for-it) | Metro equipment status joins the facade, and the size baseline is raised for it | Accepted, temporary; needs the owner's review |
+| [23](#23-the-product-app-is-a-composition-root-that-may-import-the-agent) | The product app is a composition root that may import the agent | Accepted |
 
 ---
 
@@ -1001,7 +1002,7 @@ escalation, human approval, a hash-chained ledger, rule drafts, stats). #8 allow
 
 ### Consequences
 
-- `nabiz.console`, when it lands, still has to be declared in `INDEPENDENT_APPS` and `FACADE_ONLY`.
+- `nabiz.console` is declared in `INDEPENDENT_APPS` and `FACADE_ONLY` (#23); it is the composition root that feeds `nexus_core`.
 - The container image does not copy `missions/` yet; a deployed console needs it added.
 
 ---
@@ -1039,3 +1040,35 @@ an edge module) is out of scope for the sprint.
 - The equipment responses are not recorded yet: the capture (`scripts/capture_metro_equipment.py --live`,
   four calls, 6.5 s apart) is a NETWORK step the owner runs. Until then the tool answers `available: false`
   offline and the tests that read a recording skip, saying why.
+
+---
+
+## 23. The product app is a composition root that may import the agent
+
+**Date:** 2026-09-25 · **Status:** Accepted
+
+### Context
+
+The 3-day sprint's product app, `nabiz.console` (the citizen face at `/` and the simulated operator's console
+at `/console`), streams the agent's answers in its chat. #19 holds the `nabiz` apps independent: none imports
+another, and an app `scripts/check_architecture.py` does not know fails `layers`. Running the agent in the
+same process is the smallest way to serve the chat; a second service for the same answer is one more thing to
+deploy in three days.
+
+### Decision
+
+- `scripts/check_architecture.py`: `nabiz.console` joins `INDEPENDENT_APPS` and `FACADE_ONLY` (the web app's
+  list plus `ibb_mcp.text`) and gets its dependency set (`fastapi`, `starlette`, `uvicorn`; `nexus_core` is first-party, #21). A
+  new table, `APP_IMPORTS`, lets `nabiz.console`, and only it, import `nabiz.agent`. The edge is one way;
+  `tests/test_check_architecture.py` shows the reverse edge and a web-to-console edge red.
+- The decision core (`nexus_core`) and the step-free alternative are reached through the ports in
+  `src/nabiz/console/ports.py`, which answer "not wired" (503) or "unknown" until they are bound.
+- `python -m nabiz.console` (`make console`) reads the repository root's `.env` with the standard library,
+  never overriding a variable already set and never logging a value. The MCP server still never reads it.
+
+### Consequences
+
+- The independence fence has one declared exception; a second one needs its own entry here.
+- A change to the agent's surface the console uses (`NabizAgent`, `AgentAnswer`, `PROMPT_PATH`,
+  `TOOL_DESCRIPTIONS`) can break the console; `tests/test_console_chat.py` runs that surface offline.
+- `.env.example` no longer says that nothing loads `.env`.

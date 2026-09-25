@@ -151,7 +151,7 @@ def unreadable_state(name: str) -> LiftState:
 
 
 @dataclass(frozen=True)
-class Alternative:
+class StepFreeAlternative:
     station: str
     line: str
     extra_minutes: int | None
@@ -193,7 +193,7 @@ def find_alternative(
     stations: Sequence[MetroStation],
     faults: dict[PlatformKey, list[EquipmentRecord]],
     graph: MetroGraph,
-) -> Alternative | None:
+) -> StepFreeAlternative | None:
     """The candidate with the shortest estimated ride, at most :data:`MAX_TRANSFERS` changes away.
 
     The ride must begin on a line whose platform here has the unusable lift: a rider who cannot
@@ -221,7 +221,7 @@ def find_alternative(
         f"{station.name} ({station.line_name}) istasyonunda {station.lifts} asansör kayıtlı ve İBB kaydında "
         f"asansör arızası yok. {origin} ile arası tahminen {minutes} dk. {ALTERNATIVE_NOTE_TR}"
     )
-    return Alternative(station.name or "", station.line_name or "", minutes, reason)
+    return StepFreeAlternative(station.name or "", station.line_name or "", minutes, reason)
 
 
 def accessible_alternative(
@@ -258,7 +258,12 @@ def accessible_alternative(
 
 
 def _answer(
-    name: str, lines: list[str], needs: tuple[str, ...], state: LiftState, alternative: Alternative | None, codes: tuple[str, ...]
+    name: str,
+    lines: list[str],
+    needs: tuple[str, ...],
+    state: LiftState,
+    alternative: StepFreeAlternative | None,
+    codes: tuple[str, ...],
 ) -> dict[str, Any]:
     return {
         "station": name,
@@ -405,7 +410,7 @@ def transfer_hubs(stations: Sequence[MetroStation]) -> dict[PlatformKey, str]:
     return hubs
 
 
-def _fault_signal(record: EquipmentRecord, alternative: Alternative | None, now: dt.datetime) -> dict[str, Any]:
+def _fault_signal(record: EquipmentRecord, alternative: StepFreeAlternative | None, now: dt.datetime) -> dict[str, Any]:
     hours = None if record.ibb_date is None else round(max(0.0, (now - record.ibb_date).total_seconds()) / 3600, 1)
     payload: dict[str, Any] = {
         "equipment_type": record.equipment_type,

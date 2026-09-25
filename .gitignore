@@ -12,6 +12,8 @@ __pycache__/
 data/lake/
 # The NEXUS decision ledger (SQLite): the operator's rulings and reasons, never committed.
 data/nexus/
+# The product app's daily model-spend count (nabiz.console.budget): local state, not source.
+data/console/
 data/reference/gtfs/
 docs/screenshots/*.mov
 eval/results/*.json
