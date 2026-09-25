@@ -50,6 +50,7 @@ from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.envfile import load_env_file
+from nabiz.console.journey_api import accessible_journey_route
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
@@ -143,6 +144,9 @@ async def citizen_alternative(
     if view.get("lift_status") not in {"working", "out_of_service", "unknown"}:
         view = {**view, "lift_status": "unknown"}
     return view
+
+
+citizen_routes.add_api_route("/api/journey/accessible", accessible_journey_route, methods=["GET"])
 
 
 @citizen_routes.get("/console")
