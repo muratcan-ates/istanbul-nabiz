@@ -4,16 +4,16 @@
   "src/ibb_mcp/occupancy.py": 416,
   "src/ibb_mcp/reliability.py": 445,
   "src/ibb_mcp/routing.py": 870,
-  "src/ibb_mcp/server.py": 528,
-  "src/ibb_mcp/tools.py": 582,
+  "src/ibb_mcp/server.py": 540,
+  "src/ibb_mcp/tools.py": 590,
   "src/nabiz/agent/agent.py": 445
  },
  "class_code_lines": {
   "src/ibb_mcp/metro_graph.py::MetroGraph": 280,
-  "src/ibb_mcp/tools.py::Nabiz": 525
+  "src/ibb_mcp/tools.py::Nabiz": 533
  },
  "class_public_methods": {
-  "src/ibb_mcp/tools.py::Nabiz": 24
+  "src/ibb_mcp/tools.py::Nabiz": 26
  },
  "one_meaning": {
   "load_profile": 2,
