@@ -21,6 +21,8 @@ from nexus_core import NexusEngine
 from nexus_core.approved import Binding
 
 LIFT_STATUSES = frozenset({"working", "out_of_service", "unknown"})
+# The console crosses the tools facade, so it keeps this facade contract without importing the domain module.
+CONSOLE_SUPPORTED_NEEDS = ("step_free", "slow_walk")
 
 
 def _same_station(a: Any, b: Any) -> bool:
@@ -53,7 +55,8 @@ class StepFreeService:
         return None
 
     async def alternative(self, station: str, needs: Sequence[str]) -> dict[str, Any]:
-        result = await self.nabiz.accessible_alternative(station, list(needs) or None)
+        supported = [need for need in needs if need in CONSOLE_SUPPORTED_NEEDS]
+        result = await self.nabiz.accessible_alternative(station, supported or None)
         data = result.data
         raw = data.get("alternative")
         alternative = None

@@ -185,6 +185,17 @@ class RoutingParams:
 
 DEFAULT_PARAMS = RoutingParams()
 
+
+def slow_walk_params(base: RoutingParams = DEFAULT_PARAMS) -> RoutingParams:
+    """Lower walking pace and raise the cost of transfers for a slow walker."""
+    return dataclasses.replace(
+        base,
+        walk_kmh=base.walk_kmh * 0.6,
+        max_walk_km=base.max_walk_km * 0.6,
+        rail=dataclasses.replace(base.rail, transfer_seconds=base.rail.transfer_seconds * 2),
+        comfort_per_transfer=base.comfort_per_transfer * 2,
+    )
+
 #: Unit and Turkish wording for every ``basis`` a leg can name. Keeping the text here rather
 #: than at the call sites is what makes the honesty contract checkable: a leg whose basis is
 #: not the key of a live reading must resolve to an entry in this table.

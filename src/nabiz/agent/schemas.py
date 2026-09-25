@@ -114,6 +114,8 @@ PARAM_HINTS: dict[str, str] = {
     "origin_lon": "Başlangıç boylamı, derece (WGS84); origin_lat ile birlikte verilmeli.",
     "destination_lat": "Varış enlemi, derece (WGS84); destination_lon ile birlikte verilmeli.",
     "destination_lon": "Varış boylamı, derece (WGS84); destination_lat ile birlikte verilmeli.",
+    "slow_walk": "Yavaş yürüyen kişi: yürüme hızı düşük, aktarma cezası yüksek.",
+    "planned": "True ise günün ilk ve son planlanan seferi de döner (tarife, tahmin değil).",
     "hour": "0–23 İstanbul saati; verilmezse şu an.",
     "weekday": "0=Pazartesi … 6=Pazar; verilmezse bugün.",
 }

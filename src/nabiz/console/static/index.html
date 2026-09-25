@@ -82,7 +82,8 @@
         <button type="submit" class="btn btn-primary" id="chat-submit">Sor<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
       </div>
       <p class="field-error" hidden>Bir soru yazın.</p>
-      <p class="chat-hint" id="chat-hint">İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a>.</p>
+      <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz.</p>
+      <p id="chat-lang">Cevap dili: <button type="button" class="btn" id="chat-lang-en" aria-pressed="false">English</button></p>
     </form>
     <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
     <div class="band" role="note">
@@ -186,10 +187,11 @@
           <li>Kayıtlı yerler yalnız kart isteklerinde hat ve istasyon adı olarak gider.</li>
         </ul>
       </div>
-      <div class="btn-row profile-wide">
+      <div class="btn-row profile-wide" id="profile-actions">
         <button type="submit" class="btn btn-primary">Kaydet</button>
         <button type="button" class="btn btn-danger" id="profile-clear">Profili sil</button>
       </div>
+      <div class="callout profile-wide" id="profile-review" hidden></div>
       <p class="status-line profile-wide" id="profile-status" role="status"></p>
     </form>
   </section>
@@ -217,7 +219,7 @@
     <p id="hakkinda">
       Bağımsız öğrenci projesi; <strong>resmî İBB hizmeti değildir</strong>. İBB, İETT, İSPARK ve Metro İstanbul ile bağlantısı
       yoktur. Varış süreleri <strong>tahmindir</strong>; hava kalitesi çıktısı sağlık tavsiyesi değildir. Yolculuk planlarken
-      resmî İETT ve Metro İstanbul kaynaklarını esas alın. İnsanla konuşmak için 153.
+      resmî İETT ve Metro İstanbul kaynaklarını esas alın. İnsanla konuşmak için <a href="tel:153">153</a>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz.
     </p>
   </div>
   <p>

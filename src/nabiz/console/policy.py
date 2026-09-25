@@ -39,10 +39,20 @@ NEEDS: dict[str, str] = {
         "Bir asansörün çalıştığını söyleme; en fazla 'İBB kaydında arıza yok' de."
     ),
     "stroller": "Bebek arabasıyla yolculuk: merdivensiz ve geniş geçişli yolu tercih et.",
-    "slow_walk": "Yavaş yürüyor: kısa yürüme mesafesini ve az aktarmayı tercih et.",
+    "slow_walk": (
+        "Yavaş yürüyor: kısa yürüme mesafesini ve az aktarmayı tercih et; `plan_journey` çağırırken "
+        "`slow_walk=true` ver ve en az aktarmalı seçeneği öne al."
+    ),
     "low_vision": "Az görüyor: kısa, sıralı ve net cümleler kur; bilgiyi yalnız renge bağlama.",
     "hearing": "İşitme kısıtı var: sesli anonsa dayanan bilgi yerine yazılı bilgi ver.",
-    "plain_language": "Sade dil iste: kısa cümleler, teknik terim yok.",
+    "plain_language": (
+        "Sade dil: en fazla 2 cümle, tek sayı, tek eylem; liste ve teknik terim yok; hat kodunu "
+        "'M4 metrosu', '500T otobüsü' diye yaz."
+    ),
+    "answer_en": (
+        "Cevap dilini İngilizce ver; arayüz Türkçe kalır, kullanıcı Türkçe sorsa bile bu cümle işaretliyse "
+        "cevap İngilizce olur."
+    ),
 }
 
 #: What the page shows when it offers to remember a need.

@@ -1206,3 +1206,20 @@ the whole gate list a lane spends the sprint on the gates' paperwork instead of 
 - On 2026-10-01 the flag comes out of `make lane-gates` (or the target goes), the ratchets are re-measured
   against that day's tree, and this entry's status becomes "expired". A later sprint that wants the same
   mode writes its own entry with its own end date.
+
+
+## 27. Persona needs shape route choice, schedule summaries and on-device preferences
+
+**Date:** 2026-09-25 · **Status:** Accepted for the `gun2/personalar` lane; integration review pending
+
+### Context
+`slow_walk` must affect route and step-free alternatives, while first/last departures need a deterministic cached timetable summary.
+
+### Decision
+- Add `slow_walk` and `planned` as optional facade arguments; the MCP server tool surface stays unchanged.
+- Keep persona state on-device; `answer_en` travels through the existing needs list, with a 30-day profile review and a marked TİD URL placeholder.
+- Set only the measured architecture baselines to routing 870, tools 582, and `Nabiz` 525 code lines.
+
+### Consequences
+- Personas widen two facade signatures; MCP surface unchanged. The measured growth belongs to the routing helper and the facade methods.
+- Model prompts carry plain-language and last-departure guidance; deterministic rule templates do not implement those behaviors yet.
