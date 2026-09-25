@@ -63,33 +63,46 @@
   </div>
 </header>
 
-<div class="band" role="note" aria-label="Yapay zekâ bandı">
-  <svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg>
-  <p><b>Bu bir yapay zekâ asistanıdır.</b> Cevaplar İBB açık verisine dayanır ve verinin yaşını gösterir. Hak, ücret, ceza ve
-    sağlık sorularında cevap üretmez; sizi 153'e ve resmî sayfaya yönlendirir. <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
-</div>
-
 <main class="wrap" id="main" tabindex="-1">
-  <section class="hero" aria-labelledby="hero-title">
-    <h1 id="hero-title">Şehrin bugünü, <em class="hero-em">size göre.</em></h1>
-    <p class="hero-sub">Kayıtlı hat ve istasyonlarınızın durumu, asansör kayıtları, trafik ve hava. Her kart kaynağını ve
-      verinin yaşını söyler; veri yoksa "doğrulanamadı" der, sayı uydurmaz.</p>
+  <section class="hero" id="home-screen" aria-labelledby="home-title">
+    <div class="section-head">
+      <h1 id="home-title">İstanbul'a Sor</h1>
+      <div class="btn-row" role="group" aria-label="Dil">
+        <button type="button" class="btn" data-language="tr">Türkçe</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" class="btn" data-language="en">English</button>
+      </div>
+    </div>
+    <form id="chat-form" class="chat-form" autocomplete="off">
+      <label for="chat-input">Sorunuz</label>
+      <div class="chat-row">
+        <input id="chat-input" name="q" type="text" enterkeyhint="send" placeholder="İstanbul hakkında ne öğrenmek istiyorsun?" autofocus tabindex="0" aria-describedby="chat-hint">
+        <button type="submit" class="btn btn-primary" id="chat-submit">Sor<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
+      </div>
+      <p class="field-error" hidden>Bir soru yazın.</p>
+      <p class="chat-hint" id="chat-hint">İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a>.</p>
+    </form>
+    <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
+    <div class="band" role="note">
+      <p>Yanıtlar resmî İstanbul kaynaklarına dayanır. Kaynak bulamazsam tahmin etmem.
+        <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
+    </div>
+  </section>
+
+  <section id="city-cards" aria-labelledby="cards-title">
+    <div class="section-head">
+      <h2 id="cards-title">Şehir durumu</h2>
+      <span class="section-note" id="cards-meta">yükleniyor</span>
+      <button type="button" class="icon-btn" id="cards-refresh" aria-label="Kartları yenile">
+        <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+      </button>
+    </div>
+    <div class="cards" id="cards"></div>
+    <p class="sr-only" id="cards-status" role="status"></p>
   </section>
 
   <div class="workspace">
     <div class="workspace-main">
-      <section aria-labelledby="cards-title">
-        <div class="section-head">
-          <h2 id="cards-title">Şehir kartları</h2>
-          <span class="section-note" id="cards-meta">yükleniyor</span>
-          <button type="button" class="icon-btn" id="cards-refresh" aria-label="Kartları yenile">
-            <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
-          </button>
-        </div>
-        <div class="cards" id="cards"></div>
-        <p class="sr-only" id="cards-status" role="status"></p>
-      </section>
-
       <section aria-labelledby="arrival-title">
         <div class="section-head">
           <h2 id="arrival-title">Tahmini varış</h2>
@@ -114,29 +127,9 @@
     </div>
 
     <section class="chat" id="asistan" aria-labelledby="chat-title">
-      <div class="chat-band">
-        <svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg>
-        <p>Bu bir yapay zekâ asistanıdır. Her cevabın altında kaynakları ve "cevabı yazan" yazar.</p>
-      </div>
-      <h2 id="chat-title">Yapay zekâ asistanı</h2>
+      <h2 id="chat-title">Yanıtlar</h2>
       <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
       <p class="sr-only" id="chat-status" role="status"></p>
-      <form id="chat-form" class="chat-form" autocomplete="off">
-        <label for="chat-input">Sorunuz</label>
-        <div class="chat-row">
-          <input id="chat-input" name="q" type="text" enterkeyhint="send" placeholder="Kartal'da asansör var mı?" aria-describedby="chat-hint">
-          <button type="submit" class="btn btn-primary" id="chat-submit">Gönder<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
-        </div>
-        <p class="field-error" hidden>Bir soru yazın.</p>
-        <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak
-          için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a>.</p>
-      </form>
-      <div class="chips" role="group" aria-label="Örnek sorular">
-        <button type="button" class="chip" data-ask="Kartal istasyonunda asansör var mı?"><svg class="icon" aria-hidden="true"><use href="#i-elevator"></use></svg><span>Kartal'da asansör var mı?</span></button>
-        <button type="button" class="chip" data-ask="500T Şifa Sondurak durağına ne zaman gelir?"><svg class="icon" aria-hidden="true"><use href="#i-bus"></use></svg><span>500T ne zaman gelir?</span></button>
-        <button type="button" class="chip" data-ask="Adımsız yolla Kadıköy'e nasıl giderim?"><svg class="icon" aria-hidden="true"><use href="#i-wheelchair"></use></svg><span>Adımsız yolla Kadıköy'e</span></button>
-        <button type="button" class="chip" data-ask="Bilet ücreti ne kadar?"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Bilet ücreti ne kadar?</span></button>
-      </div>
     </section>
   </div>
 

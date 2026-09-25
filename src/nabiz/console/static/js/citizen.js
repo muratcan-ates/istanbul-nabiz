@@ -4,6 +4,7 @@
 import { MOCK, get } from './api.js';
 import { alternativeCard, arrivalCard, cardsSentence, cityCard, errorCard, skeleton } from './cards.js';
 import { mountChat } from './chat.js';
+import { mountHome } from './home.js';
 import { DEFAULT_ARRIVAL, DEFAULT_LINES, DEFAULT_STATIONS, REFRESH_MS } from './config.js';
 import { dateTime, esc } from './format.js';
 import { icon } from './icons.js';
@@ -26,12 +27,14 @@ const rendered = new WeakMap();
 
 function keepFocus(host, html) {
   if (rendered.get(host) === html) return;
+  const openDetails = [...host.querySelectorAll('details[open][id]')].map((panel) => panel.id);
   const active = document.activeElement;
   const inside = host.contains(active) && active !== host;
   const card = inside ? active.closest('[id]') : null;
   const tag = inside ? active.tagName.toLowerCase() : null;
   rendered.set(host, html);
   host.innerHTML = html;
+  openDetails.forEach((id) => { const panel = document.getElementById(id); if (panel && host.contains(panel)) panel.open = true; });
   const again = card && card.id ? document.getElementById(card.id) : null;
   if (!again) return;
   const target = (tag && again.querySelector(tag)) || again;
@@ -241,6 +244,7 @@ function boot() {
     log: $('#chat-log'), form: $('#chat-form'), input: $('#chat-input'), submit: $('#chat-submit'), status: $('#chat-status'),
     getNeeds: needs, onMemorySuggestion: acceptSuggestion,
   });
+  mountHome({ form: $('#chat-form'), input: $('#chat-input') });
   document.querySelectorAll('.chip[data-ask]').forEach((chip) => {
     chip.addEventListener('click', () => { $('#chat-input').value = chip.dataset.ask; $('#chat-form').requestSubmit(); });
   });

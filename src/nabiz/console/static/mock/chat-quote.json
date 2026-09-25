@@ -1,0 +1,56 @@
+{
+  "events": [
+    {
+      "event": "session_started",
+      "data": {}
+    },
+    {
+      "event": "token",
+      "data": {
+        "text": "Örnek kaynak metni gösteriliyor."
+      }
+    },
+    {
+      "event": "final",
+      "data": {
+        "answer": "Örnek kaynak metni gösteriliyor.",
+        "answer_text": "Örnek kaynak metni gösteriliyor.",
+        "author": "kural",
+        "memory_suggestion": null,
+        "refused": false,
+        "mode": "quote_only",
+        "steps": null,
+        "emergency": false,
+        "citations": [
+          {
+            "url": "https://example.ibb.gov.tr/ornek/hassas",
+            "title": "Hassas bilgi için örnek kaynak",
+            "quote": "Bu ifade yalnızca sahte arayüz örneğidir.",
+            "fetched_at": "2026-09-25T10:30:00+03:00",
+            "source_updated_at": "2026-09-01T00:00:00+03:00",
+            "institution": "Örnek İBB kaynağı"
+          }
+        ],
+        "how": {
+          "tools": [
+            {
+              "name": "check_alerts",
+              "ok": true,
+              "duration_ms": 8.0,
+              "source": "nabiz_alerts",
+              "source_url": "https://example.ibb.gov.tr/ornek/hassas",
+              "observed_at": "2026-09-25T10:30:00+03:00"
+            }
+          ],
+          "tool_calls": 1,
+          "elapsed_s": 0.1,
+          "rule_id": null,
+          "uncertainty": [
+            "recorded_data"
+          ],
+          "latency_ms": 100
+        }
+      }
+    }
+  ]
+}

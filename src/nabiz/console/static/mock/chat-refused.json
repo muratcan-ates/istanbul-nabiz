@@ -1,8 +1,27 @@
 {
   "events": [
-    { "event": "token", "data": { "text": "Bu soruda cevap üretmiyorum: " } },
-    { "event": "token", "data": { "text": "ücret, hak, ceza ve sağlık konularında " } },
-    { "event": "token", "data": { "text": "doğru adres 153 Çözüm Merkezi ve resmî sayfalardır." } },
+    {
+      "event": "session_started",
+      "data": {}
+    },
+    {
+      "event": "token",
+      "data": {
+        "text": "Bu soruda cevap üretmiyorum: "
+      }
+    },
+    {
+      "event": "token",
+      "data": {
+        "text": "ücret, hak, ceza ve sağlık konularında "
+      }
+    },
+    {
+      "event": "token",
+      "data": {
+        "text": "doğru adres 153 Çözüm Merkezi ve resmî sayfalardır."
+      }
+    },
     {
       "event": "final",
       "data": {
@@ -10,7 +29,19 @@
         "citations": [],
         "author": "kural",
         "memory_suggestion": null,
-        "refused": true
+        "refused": true,
+        "answer_text": "Bu soruda cevap üretmiyorum: ücret, hak, ceza ve sağlık konularında doğru adres 153 Çözüm Merkezi ve resmî sayfalardır.",
+        "mode": "refused",
+        "steps": null,
+        "emergency": false,
+        "how": {
+          "tools": [],
+          "tool_calls": 0,
+          "elapsed_s": 0.1,
+          "rule_id": "refusal",
+          "uncertainty": [],
+          "latency_ms": 100
+        }
       }
     }
   ]
