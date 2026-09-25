@@ -46,12 +46,13 @@ kısıtlaması aşılmamıştır.
 
 ## Üçüncü taraf bileşenler
 
-Depoda iki üçüncü taraf dosya grubu vardır; ikisi de lisans metniyle birlikte sunulur:
+Depoda üç üçüncü taraf dosya grubu vardır; her biri lisans metniyle birlikte sunulur:
 
 | Bileşen | Kaynak | Lisans | Depodaki dosyalar |
 |---|---|---|---|
 | Source Sans 3 (Adobe), yazı tipi | google/fonts `ofl/sourcesans3/SourceSans3[wght].ttf`, commit `4591e3457ab8be6d70167aa6818922b91e78ab2d`, sürüm 3.052; üst kaynak <https://github.com/adobe-fonts/source-sans> | SIL Open Font License 1.1 | `src/nabiz/web/static/fonts/nabiz-sans-tr-v1.woff2` (Türkçe alt küme, 400-700 ağırlık ekseni) ve lisans metni `src/nabiz/web/static/fonts/OFL.txt` |
 | Tabler Icons 3.48.0, çizgi (outline) seti | npm `@tabler/icons@3.48.0`, npm'in yayımladığı `dist.integrity` ile doğrulanmış paket; <https://github.com/tabler/tabler-icons> | MIT, Copyright (c) 2020-2026 Paweł Kuna | `src/nabiz/web/static/index.html` içindeki üretilmiş simge bloğu ve favicon, `src/nabiz/web/static/icons.svg`; lisans metni `src/nabiz/web/static/icons.LICENSE.txt` |
+| Leaflet 1.9.4 | npm `leaflet@1.9.4`, dağıtım dosyaları değiştirilmeden kopyalandı; <https://github.com/Leaflet/Leaflet/tree/v1.9.4> | BSD-2-Clause, <https://github.com/Leaflet/Leaflet/blob/v1.9.4/LICENSE> | `src/nabiz/console/static/vendor/leaflet/` |
 
 Yazı tipi alt kümesi OFL'in "Değiştirilmiş Sürüm" koşulu gereği yeniden adlandırılmıştır: "Source"
 lisansta Ayrılmış Yazı Tipi Adı'dır, bu yüzden alt küme kendini "Nabiz Sans TR" olarak tanıtır; telif, marka
@@ -64,7 +65,7 @@ Web sayfası iki bileşeni çalışma anında, ziyaretçinin tarayıcısında y�
 | Bileşen | Kaynak | Lisans | Kullanım |
 |---|---|---|---|
 | MapLibre GL JS 4.7.1 | `https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/` (`maplibre-gl.min.js`, `maplibre-gl.min.css`) | BSD-3-Clause, <https://github.com/maplibre/maplibre-gl-js/blob/v4.7.1/LICENSE.txt> | harita; konumu olan ilk yanıtla, SRI özetleriyle sabitlenmiş olarak yüklenir; yüklenemezse konumlar liste olarak gösterilir |
-| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | harita altlığı; atıf haritada ve sayfanın altında |
+| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | web ve vatandaş konsolu harita altlığı; atıf harita üzerinde |
 
 ## Sorumluluk reddi
 
