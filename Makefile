@@ -35,7 +35,7 @@ AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit lane-gates architecture \
-        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console eval eval-record eval-live fixtures places \
+        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console eval eval-knowledge eval-record eval-live fixtures places \
         sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
 
@@ -51,8 +51,8 @@ venv:  ## create .venv on python 3.12 (uv)
 install:  ## install project + dev tools into .venv, editable (EXTRAS=dev,web,collector for a tier)
 	UV_HTTP_TIMEOUT=180 uv pip install --python $(PY) -e ".[$(EXTRAS)]"
 
-test:  ## run the test suite (offline, no upstream calls; the same NABIZ_OFFLINE=1 CI sets)
-	NABIZ_OFFLINE=1 $(PY) -m pytest -q
+test:  ## run the test suite (offline, no upstream calls, no Foundry Local probe; the same NABIZ_OFFLINE=1 CI sets)
+	NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) -m pytest -q
 
 lint:  ## ruff lint — the check CI gates on
 	$(RUFF) check $(SRC)
@@ -94,7 +94,7 @@ ci-commit:  ## run every CI gate on HEAD exactly as committed: what a push publi
 	CI_LOCAL_REF=HEAD bash .github/scripts/ci_local.sh
 
 lane-gates:  ## the sprint's gates for a lane branch (DECISIONS #26): tests, lint, architecture with ratchets as WARN, guardrails
-	NABIZ_OFFLINE=1 $(PY) -m pytest -q -x
+	NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) -m pytest -q -x
 	$(RUFF) check $(SRC)
 	NABIZ_SPRINT_MODE=1 $(MAKE) --no-print-directory architecture
 	$(MAKE) --no-print-directory guardrails
