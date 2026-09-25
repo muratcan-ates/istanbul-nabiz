@@ -2,8 +2,18 @@
  * {source, url, observed_at, age_s, mode: live | recorded | schedule | unknown}; the stamp says the
  * mode with its icon and the age the server measured (age_s), never the visitor's clock. Pure. */
 
-import { dateTime, esc, shortAge } from './format.js';
+import { dateTime, esc, int, shortAge } from './format.js';
 import { icon } from './icons.js';
+
+const AUTHOR_TR = { model: 'model', 'yerel model': 'yerel model', kural: 'kural' };
+const TOOL_TR = {
+  places_resolve: 'yer arama', ispark_find_parking: 'otopark arama', ispark_typical_occupancy: 'otopark doluluk geçmişi',
+  iett_stops_search: 'durak arama', iett_line_buses: 'hattaki otobüsler', iett_next_arrivals: 'varış tahmini',
+  metro_status: 'Metro duyuruları', metro_station_info: 'istasyon bilgisi', metro_equipment_status: 'Metro arıza kaydı',
+  metro_equipment_signals: 'Metro ekipman sinyalleri', check_alerts: 'şehir uyarıları',
+  traffic_index: 'trafik indeksi', air_quality_now: 'hava kalitesi', air_quality_forecast: 'hava kalitesi tahmini',
+  plan_journey: 'yolculuk karşılaştırması', line_reliability: 'hat güvenilirliği', city_freshness: 'veri tazeliği',
+};
 
 const SOURCE_TR = {
   ispark: 'İSPARK otoparkları',
@@ -49,6 +59,11 @@ function ageText(prov) {
   if (!prov) return 'veri yaşı bilinmiyor';
   if (modeOf(prov) === 'recorded' && prov.observed_at) return dateTime(prov.observed_at);
   if (Number.isFinite(prov.age_s)) return `${shortAge(prov.age_s)} önce`;
+  const sourceTime = prov.source_updated_at || prov.observed_at || prov.fetched_at;
+  if (sourceTime) {
+    const timestamp = Date.parse(sourceTime);
+    if (Number.isFinite(timestamp)) return `${shortAge(Math.max(0, (Date.now() - timestamp) / 1000))} önce`;
+  }
   return 'veri yaşı bilinmiyor';
 }
 
@@ -92,7 +107,37 @@ function citations(list) {
   return `<ul class="cites" aria-label="Kaynaklar">${items.map(citation).join('')}</ul>`;
 }
 
+function howPanel(how, id) {
+  if (!how) return '';
+  const tools = Array.isArray(how.tools) && how.tools.length ? how.tools : (how.tool ? [how] : []);
+  const toolRows = tools.length
+    ? tools.map((tool) => {
+      const name = tool.name || tool.tool || 'bilinmiyor';
+      const label = TOOL_TR[name] || name;
+      const result = tool.ok === undefined ? '' : ` · ${tool.ok ? 'başarılı' : 'başarısız'}`;
+      return `<li class="cite">Araç: ${esc(label)} (${esc(name)})${result}</li>`;
+    })
+    : ['<li class="cite">Araç: bilinmiyor</li>'];
+  const sourceRows = tools.map((tool) => {
+    const url = tool.source_url || tool.url;
+    const provenance = { source: tool.source || url, url };
+    return `<li class="cite">Kaynak adresi: ${sourceLink(provenance)}</li>`;
+  });
+  const observed = tools.map((tool) => tool.observed_at).filter(Boolean);
+  const observedText = observed.length ? observed.map(dateTime).join(', ') : 'zaman bilinmiyor';
+  const rule = how.rule_id || 'kural yok';
+  const uncertainty = Array.isArray(how.uncertainty) && how.uncertainty.length ? how.uncertainty.join(', ') : 'yok';
+  const latency = Number.isFinite(Number(how.latency_ms)) ? Math.trunc(Number(how.latency_ms)) : null;
+  return `<details id="${esc(id)}-how"><summary>${icon('list-details')}Bu nasıl bulundu?</summary><ul class="cites">`
+    + `${toolRows.join('')}${sourceRows.join('')}`
+    + `<li class="cite">Kayıt zamanı: ${esc(observedText)}</li>`
+    + `<li class="cite">Kural: ${esc(rule)}</li>`
+    + `<li class="cite">Belirsizlik: ${esc(uncertainty)}</li>`
+    + `<li class="cite">Sistem gecikmesi: ${esc(int(latency))} ms</li>`
+    + '</ul></details>';
+}
+
 export {
-  SOURCE_TR, MODE_TR, MODE_ICON, LIVE_SECONDS, sourceLabel, modeOf, ageText, stamp, ageStamp, ageSentence, sourceLink, citation,
-  citations,
+  SOURCE_TR, MODE_TR, MODE_ICON, LIVE_SECONDS, AUTHOR_TR, TOOL_TR, sourceLabel, modeOf, ageText, stamp, ageStamp,
+  ageSentence, sourceLink, citation, citations, howPanel,
 };

@@ -4,7 +4,7 @@
 
 import { UNKNOWN, esc, has, trName } from './format.js';
 import { icon } from './icons.js';
-import { MODE_ICON, MODE_TR, ageSentence, ageStamp, modeOf, sourceLink, stamp } from './provenance.js';
+import { AUTHOR_TR, MODE_ICON, MODE_TR, ageSentence, ageStamp, howPanel, modeOf, sourceLink, stamp } from './provenance.js';
 
 const KIND_ICON = {
   metro_equipment: 'elevator', metro_status: 'train', arrival: 'bus', traffic: 'traffic-lights', air: 'wind',
@@ -12,7 +12,6 @@ const KIND_ICON = {
 };
 const STATUS_TR = { ok: 'güncel', warning: 'dikkat', stale: 'bayat veri', unverified: 'doğrulanamadı' };
 const STATUS_ICON = { ok: 'circle-check', warning: 'alert-triangle', stale: 'history', unverified: 'clock-question' };
-const AUTHOR_TR = { kural: 'kural', model: 'model', 'yerel model': 'yerel model' };
 const LIFT_TR = {
   working: 'İBB kaydında arıza yok',
   out_of_service: 'asansör arızalı (İBB kaydı)',
@@ -56,6 +55,7 @@ function cityCard(card, i) {
     + `<p class="card-body">${esc(card.body)}</p>`
     + statusLine(status)
     + foot(card.provenance, card.author)
+    + howPanel(card.how, id)
     + '</article>';
 }
 

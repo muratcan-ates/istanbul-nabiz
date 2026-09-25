@@ -39,19 +39,23 @@ import datetime as dt
 import json
 import logging
 import re
+import time
 from collections.abc import AsyncIterator, Callable, Sequence
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from ibb_mcp.models import utcnow
+from ibb_mcp.text import normalize_tr
 from nabiz.agent import llm
 from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS
 from nabiz.console.budget import SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.policy import (
+    EMERGENCY_TERMS,
     REFUSAL_TEXT,
     constraint_block,
     functional_needs,
@@ -92,6 +96,15 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=1000)
     needs: list[str] = Field(default_factory=list, max_length=16)
     history: list[ChatTurn] = Field(default_factory=list, max_length=40)
+
+
+@dataclass(frozen=True)
+class FinalFields:
+    refused: bool
+    how: dict[str, Any]
+    mode: str
+    steps: list[str] | None = None
+    emergency: bool = False
 
 
 def sse(event: str, data: dict[str, Any]) -> str:
@@ -159,16 +172,52 @@ def source_mode(source: Any, *, offline: bool) -> Mode:
 
 def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
     """The agent's citations as the contract's Provenance objects."""
-    return [
-        {
+    result = []
+    for item in answer.citations:
+        if any(key in item for key in ("fetched_at", "source_updated_at", "institution", "quote")):
+            result.append(dict(item))
+            continue
+        result.append({
             "source": item.get("source"),
             "url": item.get("source_url") or None,
             "observed_at": item.get("as_of"),
             "age_s": _age_s(item.get("as_of")),
             "mode": source_mode(item.get("source"), offline=offline),
-        }
-        for item in answer.citations
-    ]
+        })
+    return result
+
+
+def emergency_intent(message: str) -> bool:
+    """Recognize the small, explicit emergency vocabulary before any agent or tool is called."""
+    words = normalize_tr(message).split()
+    return any(word.startswith(term) for term in EMERGENCY_TERMS["acil"] for word in words)
+
+
+def _how(answer: AgentAnswer | None, started: float, *, rule_id: str | None) -> dict[str, Any]:
+    tools = []
+    for call in answer.tool_calls if answer is not None else []:
+        provenance = (call.payload or {}).get("provenance") or {}
+        tools.append({
+            "name": call.name,
+            "ok": call.ok,
+            "duration_ms": call.duration_ms,
+            "source": provenance.get("source"),
+            "source_url": provenance.get("source_url") or provenance.get("url"),
+            "observed_at": provenance.get("observed_at") or provenance.get("reported_at"),
+        })
+    elapsed_s = max(0.0, time.perf_counter() - started)
+    return {
+        "tools": tools,
+        "tool_calls": len(tools),
+        "elapsed_s": round(elapsed_s, 3),
+        "rule_id": rule_id,
+        "uncertainty": [],
+        "latency_ms": round(elapsed_s * 1000, 1),
+    }
+
+
+def _empty_how(started: float, *, rule_id: str | None) -> dict[str, Any]:
+    return _how(None, started, rule_id=rule_id)
 
 
 def earlier_questions(history: Sequence[ChatTurn]) -> list[str]:
@@ -217,11 +266,14 @@ class ChatService:
 
     async def events(self, request: ChatRequest) -> AsyncIterator[str]:
         """The whole turn as SSE text: tool events while it runs, then the answer and the final event."""
+        started = time.perf_counter()
+        yield sse("session_started", {})
         earlier = [turn.content for turn in request.history if turn.role == "user"]
         needs = functional_needs(request.needs)
         suggestion = memory_suggestion(request.message, earlier, needs)
-        if refuses_in_context(request.message, earlier):
-            async for event in self._refusal(suggestion):
+        early = self._early_events(request, earlier, suggestion, started)
+        if early is not None:
+            for event in early:
                 yield event
             return
 
@@ -244,27 +296,76 @@ class ChatService:
         if task.exception() is not None:
             log.error("chat turn failed: %s", type(task.exception()).__name__)
             yield sse("token", {"text": TURN_FAILED})
-            yield sse("final", self._final(TURN_FAILED, [], "kural", suggestion, refused=False))
+            yield sse("final", self._final(
+                TURN_FAILED, [], "kural", suggestion,
+                FinalFields(refused=False, how=_empty_how(started, rule_id=None), mode="unknown"),
+            ))
             return
         answer, author = task.result()
         if author != "kural" and names_a_price(answer.text) and not _TARIFF_TOOLS & set(answer.tool_names):
             # The last line of R-06: a model answer that states a price is not shown.
-            async for event in self._refusal(suggestion):
+            for event in self._refusal(suggestion, started):
                 yield event
             return
         text = display_text(answer.text)
         for piece in text_pieces(text):
             yield sse("token", {"text": piece})
-        yield sse("final", self._final(text, citations(answer, offline=self.offline), author, suggestion, refused=False))
+        yield sse("final", self._final(
+            text, citations(answer, offline=self.offline), author, suggestion,
+            FinalFields(refused=False, how=_how(answer, started, rule_id=None), mode="answer"),
+        ))
 
-    async def _refusal(self, suggestion: Any) -> AsyncIterator[str]:
-        for piece in text_pieces(REFUSAL_TEXT):
-            yield sse("token", {"text": piece})
-        yield sse("final", self._final(REFUSAL_TEXT, [], "kural", suggestion, refused=True))
+    def _early_events(
+        self,
+        request: ChatRequest,
+        earlier: Sequence[str],
+        suggestion: Any,
+        started: float,
+    ) -> list[str] | None:
+        if emergency_intent(request.message):
+            fields = FinalFields(refused=False, how=_empty_how(started, rule_id=None), mode="redirect", emergency=True)
+            return [sse("final", self._final("", [], "kural", suggestion, fields))]
+        if refuses_in_context(request.message, earlier):
+            return self._refusal(suggestion, started)
+        return None
+
+    def _refusal(
+        self,
+        suggestion: Any,
+        started: float,
+        *,
+        cited: list[dict[str, Any]] | None = None,
+        how: dict[str, Any] | None = None,
+        answer_text: str | None = None,
+        mode: str = "refused",
+        steps: list[str] | None = None,
+    ) -> list[str]:
+        answer = answer_text or REFUSAL_TEXT
+        fields = FinalFields(refused=True, how=how or _empty_how(started, rule_id="refusal"), mode=mode, steps=steps)
+        events = [sse("token", {"text": piece}) for piece in text_pieces(answer)]
+        events.append(sse("final", self._final(answer, cited or [], "kural", suggestion, fields)))
+        return events
 
     @staticmethod
-    def _final(answer: str, cited: list[dict[str, Any]], author: str, suggestion: Any, *, refused: bool) -> dict[str, Any]:
-        return {"answer": answer, "citations": cited, "author": author, "memory_suggestion": suggestion, "refused": refused}
+    def _final(
+        answer: str,
+        citations: list[dict[str, Any]],
+        author: str,
+        suggestion: Any,
+        fields: FinalFields,
+    ) -> dict[str, Any]:
+        return {
+            "answer": answer,
+            "answer_text": answer,
+            "citations": citations,
+            "author": author,
+            "memory_suggestion": suggestion,
+            "refused": fields.refused,
+            "how": fields.how,
+            "mode": fields.mode,
+            "steps": fields.steps,
+            "emergency": fields.emergency,
+        }
 
     async def _run(
         self, question: str, prompt: str, emit: Emit, context: list[dict[str, str]] | None = None

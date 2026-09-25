@@ -1,7 +1,7 @@
 """The two shapes every citizen answer shares: ``Provenance`` and ``Card`` (the API contract).
 
-    Provenance = {source, url, observed_at, age_s, mode: live|recorded|schedule|unknown}
-    Card       = {id, kind, title, body, status: ok|warning|stale|unverified, provenance, author}
+Provenance = {source, url, observed_at, age_s, mode: live|recorded|schedule|unknown}
+Card       = {id, kind, title, body, status, provenance, author, how}
 
 ``mode`` is what the page's source icon shows. A recorded answer (``NABIZ_OFFLINE=1``, a
 fixture) is ``recorded`` and never ``live``: the product promise is that no card claims a live
@@ -14,7 +14,7 @@ from __future__ import annotations
 import datetime as dt
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from ibb_mcp.config import ATTRIBUTION
@@ -112,6 +112,7 @@ def card(
     body: str,
     status: Status,
     provenance: dict[str, Any],
+    how: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One home-page card. Every card here is written by a template, so its author is "kural"."""
     return {
@@ -122,6 +123,28 @@ def card(
         "status": status,
         "provenance": provenance,
         "author": "kural",
+        "how": how,
+    }
+
+
+def how_view(
+    tool: str,
+    provenance: dict[str, Any],
+    *,
+    rule_id: str | None,
+    signal_id: str | None,
+    uncertainty: Sequence[str],
+    latency_ms: float | int | None,
+) -> dict[str, Any]:
+    """The compact public provenance panel shared by city and published signal cards."""
+    return {
+        "tool": tool,
+        "source_url": provenance.get("url") or provenance.get("source_url"),
+        "observed_at": provenance.get("observed_at"),
+        "rule_id": rule_id,
+        "signal_id": signal_id,
+        "uncertainty": list(uncertainty),
+        "latency_ms": latency_ms,
     }
 
 

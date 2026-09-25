@@ -7,19 +7,13 @@
 
 import { stream } from './api.js';
 import { HISTORY_TURNS } from './config.js';
-import { esc } from './format.js';
+import { dateTime, esc, has, int, num } from './format.js';
 import { icon } from './icons.js';
-import { citations } from './provenance.js';
+import { AUTHOR_TR, TOOL_TR, ageText, howPanel, sourceLabel, sourceLink } from './provenance.js';
 
-const AUTHOR_TR = { model: 'model', 'yerel model': 'yerel model', kural: 'kural' };
-/* What each İBB tool is, in the words a visitor reads; an internal name never reaches the page. */
-const TOOL_TR = {
-  places_resolve: 'yer arama', ispark_find_parking: 'otopark arama', ispark_typical_occupancy: 'otopark doluluk geçmişi',
-  iett_stops_search: 'durak arama', iett_line_buses: 'hattaki otobüsler', iett_next_arrivals: 'varış tahmini',
-  metro_status: 'Metro duyuruları', metro_station_info: 'istasyon bilgisi', metro_equipment_status: 'Metro arıza kaydı',
-  traffic_index: 'trafik indeksi', air_quality_now: 'hava kalitesi', air_quality_forecast: 'hava kalitesi tahmini',
-  plan_journey: 'yolculuk karşılaştırması', line_reliability: 'hat güvenilirliği', city_freshness: 'veri tazeliği',
-};
+const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
+const AI_NOTICE = 'Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum. Resmî karar veren bir görevli değilim.';
+const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';
 
 function refusalNote() {
   return `<div class="callout callout-warn">${icon('info-circle')}<div>`
@@ -49,6 +43,63 @@ function message(cls, inner) {
   return li;
 }
 
+function sourceItem(item) {
+  const place = item.institution || sourceLabel(item.source) || 'Kurum bilinmiyor';
+  const title = item.title || item.source || 'Başlık bilinmiyor';
+  const updated = item.source_updated_at
+    ? `güncelleme ${dateTime(item.source_updated_at)}` : 'güncelleme tarihi kaynakta yok';
+  const fetchedAt = item.fetched_at || item.observed_at;
+  const fetched = fetchedAt ? `alınma ${dateTime(fetchedAt)}` : 'alınma tarihi bilinmiyor';
+  const link = sourceLink({ source: item.source || place, url: item.url || item.source_url });
+  return `<li class="cite">${esc(place)} · ${esc(title)} · ${esc(updated)} · ${esc(fetched)} ${link}</li>`;
+}
+
+function answerCard(data, turnId) {
+  const mode = data.mode || (data.refused ? 'refused' : 'answer');
+  const how = data.how;
+  if (mode === 'redirect' && data.emergency === true) {
+    return `<div class="callout callout-warn" role="alert"><div><p>${EMERGENCY_TEXT}</p>`
+      + '<div class="btn-row"><a class="btn btn-danger" href="tel:112">112 (Acil)</a>'
+      + '<a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>';
+  }
+
+  const unknown = mode === 'unknown' || mode === 'refused';
+  const answer = unknown ? UNKNOWN_TEXT : (data.answer_text ?? data.answer ?? '');
+  const cited = Array.isArray(data.citations) ? data.citations.filter(Boolean) : [];
+  const steps = Array.isArray(data.steps) ? data.steps : [];
+  const first = cited[0];
+  const author = AUTHOR_TR[data.author] || data.author || 'bilinmiyor';
+  const source = first ? sourceLabel(first.institution || first.source) : 'kaynak yok';
+  const age = first ? ageText(first) : 'veri yaşı bilinmiyor';
+  const calls = how && Number.isFinite(Number(how.tool_calls)) ? int(how.tool_calls) : '0';
+  const elapsed = how && has(how.elapsed_s) ? num(how.elapsed_s, 1) : 'bilinmiyor';
+  let html = '<section class="answer-short"><h3>KISA CEVAP</h3>'
+    + `<p>${esc(answer)}</p></section>`;
+  if (!unknown && mode === 'quote_only' && first && typeof first.quote === 'string') {
+    html += `<blockquote class="quote-exact">${esc(first.quote)}</blockquote>`;
+  }
+  if (!unknown && steps.length) {
+    html += `<section><h3>NASIL YAPILIR</h3><ol>${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>`;
+  }
+  if (!unknown) {
+    html += `<section><h3>KAYNAK</h3>${cited.length
+      ? `<ul class="cites">${cited.map(sourceItem).join('')}</ul>` : '<p>Kaynak yok.</p>'}</section>`;
+  }
+  const officialLinks = !unknown ? cited.map((item) => item.url || item.source_url).filter((url) => /^https?:\/\//.test(url || '')) : [];
+  html += '<div class="btn-row">';
+  officialLinks.forEach((url) => {
+    html += `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Resmî kaynağı aç</a>`;
+  });
+  html += '<a class="btn btn-primary" href="tel:153">153\'e sor</a></div>';
+  if (!unknown) {
+    html += `<p class="chat-foot"><span>${esc(source)} · ${esc(age)} · cevabı yazan: <b>${esc(AUTHOR_TR[data.author] || author)}</b>`
+      + ` · ${esc(calls)} araç çağrısı · ${esc(elapsed)} sn</span></p>`;
+    html += howPanel(how, turnId);
+    html += `<div class="feedback-slot" data-turn-id="${esc(turnId)}"></div>`;
+  }
+  return html;
+}
+
 /**
  * Wire the panel. `getNeeds` returns the functional constraints allowed to leave the device;
  * `onMemorySuggestion(suggestion)` stores a confirmed suggestion and returns true when it did.
@@ -56,24 +107,26 @@ function message(cls, inner) {
 function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggestion }) {
   const history = [];
   let controller = null;
+  let sessionStarted = false;
+  let turnCount = 0;
 
   const say = (text) => { status.textContent = text; };
   const scrollDown = () => { log.scrollTop = log.scrollHeight; };
 
-  function renderFinal(shell, data, question, streamed) {
+  function renderFinal(shell, data, question, streamed, turnId) {
     const textEl = shell.querySelector('.chat-text');
     const finalEl = shell.querySelector('.chat-final');
-    const answer = data.answer || streamed;
-    textEl.textContent = answer;
-    let html = '';
-    if (data.refused) { shell.classList.add('is-refused'); html += refusalNote(); }
-    html += citations(data.citations);
-    html += `<p class="chat-foot"><span>cevabı yazan: <b>${esc(AUTHOR_TR[data.author] || data.author || 'bilinmiyor')}</b></span></p>`;
-    finalEl.innerHTML = html;
+    const answer = data.answer_text ?? data.answer ?? streamed;
+    const mode = data.mode || (data.refused ? 'refused' : 'answer');
+    textEl.hidden = true;
+    textEl.textContent = '';
+    if (data.refused || mode === 'unknown') shell.classList.add('is-refused');
+    if (mode === 'redirect' && data.emergency === true) shell.classList.add('is-emergency');
+    finalEl.innerHTML = answerCard({ ...data, answer_text: answer }, turnId);
     // The refusal text is not context. The refused question stays so the server can refuse a
     // follow-up to it ("peki öğrenciler için?"); the server never hands it to the model.
-    history.push({ role: 'user', content: question });
-    if (!data.refused) history.push({ role: 'assistant', content: answer });
+    if (!data.emergency) history.push({ role: 'user', content: question });
+    if (!data.refused && !data.emergency && mode !== 'unknown') history.push({ role: 'assistant', content: answer });
     if (data.memory_suggestion && onMemorySuggestion) {
       const box = suggestionBox(data.memory_suggestion);
       box.addEventListener('click', (evt) => {
@@ -86,7 +139,8 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       finalEl.appendChild(box);
     }
     shell.setAttribute('aria-busy', 'false');
-    say(data.refused ? 'Asistan bu soruda cevap üretmedi; 153 ve resmî sayfaya yönlendirdi.' : 'Yanıt hazır.');
+    say(data.emergency ? 'Acil iletişim bilgileri gösterildi.'
+      : data.refused || mode === 'unknown' ? 'Asistan doğrulanmış kaynak bulamadı; 153 ve resmî sayfaya yönlendirdi.' : 'Yanıt hazır.');
     scrollDown();
   }
 
@@ -96,6 +150,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     log.appendChild(message('is-user', `<p class="chat-who">Siz</p><p class="chat-text">${esc(question)}</p>`));
     const shell = message('is-assistant', '<p class="chat-who">Asistan</p><p class="chat-tool" hidden></p>'
       + '<p class="chat-text"></p><div class="chat-final"></div>');
+    const turnId = `turn-${++turnCount}`;
     shell.setAttribute('aria-busy', 'true');
     log.appendChild(shell);
     log.setAttribute('aria-busy', 'true');
@@ -107,7 +162,12 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     let streamed = '';
     let finalData = null;
     const onEvent = (event, data) => {
-      if (event === 'token') {
+      if (event === 'session_started') {
+        if (!sessionStarted) {
+          sessionStarted = true;
+          log.prepend(message('is-notice', `<div class="chat-band" role="note"><p>${esc(AI_NOTICE)}</p></div>`));
+        }
+      } else if (event === 'token') {
         streamed += (data && data.text) || '';
         textEl.textContent = streamed;
         scrollDown();
@@ -124,9 +184,10 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       }
     };
     try {
-      await stream('/api/chat', { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2) },
+      const lang = new URLSearchParams(window.location.search).get('lang') || 'tr';
+      await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2) },
         onEvent, controller.signal);
-      if (finalData) renderFinal(shell, finalData, question, streamed);
+      if (finalData) renderFinal(shell, finalData, question, streamed, turnId);
       else { shell.setAttribute('aria-busy', 'false'); say('Yanıt tamamlanmadı.'); }
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -159,4 +220,4 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
   return { ask };
 }
 
-export { mountChat, refusalNote };
+export { mountChat, refusalNote, answerCard, UNKNOWN_TEXT };

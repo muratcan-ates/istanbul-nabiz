@@ -28,6 +28,7 @@ _spec.loader.exec_module(sprite)
 
 PAGE = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
 HEAD, _, BODY = PAGE.partition("</head>")
+CONSOLE_STATIC = REPO_ROOT / "src" / "nabiz" / "console" / "static"
 
 
 def generated(part: str) -> str:
@@ -66,6 +67,79 @@ def test_icons_js_sends_the_same_glyphs_inline_and_the_rest_to_icons_svg(tmp_pat
     inline, external = json.loads(proc.stdout)
     assert 'href="#i-bus"' in inline and 'aria-hidden="true"' in inline
     assert 'href="/icons.svg#i-car"' in external
+
+
+def test_provenance_exports_shared_translations_and_how_panel(tmp_path) -> None:
+    source = (CONSOLE_STATIC / "js" / "provenance.js").read_text(encoding="utf-8")
+    chat = (CONSOLE_STATIC / "js" / "chat.js").read_text(encoding="utf-8")
+    assert "AUTHOR_TR" in source and "TOOL_TR" in source
+    assert "metro_equipment_signals" in source and "check_alerts" in source
+    assert not re.search(r"const\s+(?:TOOL_TR|AUTHOR_TR)\s*=", chat)
+    assert "import { AUTHOR_TR, TOOL_TR" in chat
+
+    node = shutil.which("node")
+    if node is None:  # pragma: no cover - CI without node still checks the source contract above
+        pytest.skip("node is not installed")
+    module = json.dumps((CONSOLE_STATIC / "js" / "provenance.js").as_uri())
+    harness = tmp_path / "provenance_harness.mjs"
+    harness.write_text(
+        f"import {{ howPanel }} from {module};\n"
+        "console.log(howPanel({tool:'metro_equipment_signals',source_url:'https://example.test/source',"
+        "observed_at:'2026-09-25T09:00:00Z',rule_id:'R-03',signal_id:'sig-1',"
+        "uncertainty:['recorded_data'],latency_ms:12.8},'card-1'));\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    for expected in (
+        '<details id="card-1-how">', 'Bu nasıl bulundu?',
+        'Metro ekipman sinyalleri (metro_equipment_signals)', 'https://example.test/source',
+        'Kayıt zamanı:', 'R-03', 'recorded_data', 'Sistem gecikmesi: 12 ms',
+    ):
+        assert expected in proc.stdout
+
+    empty = tmp_path / "empty_how_harness.mjs"
+    empty.write_text(
+        f"import {{ howPanel }} from {module};\n"
+        "console.log(howPanel({tools:[],tool_calls:0,elapsed_s:0,latency_ms:1,"
+        "rule_id:null,uncertainty:[]},'quote-1'));\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run([node, str(empty)], capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    assert "Araç: bilinmiyor" in proc.stdout
+
+
+def test_answer_cards_keep_quotes_exact_and_hide_unknown_sources(tmp_path) -> None:
+    node = shutil.which("node")
+    if node is None:  # pragma: no cover - CI without node still checks the static tests
+        pytest.skip("node is not installed")
+    module = json.dumps((CONSOLE_STATIC / "js" / "chat.js").as_uri())
+    harness = tmp_path / "answer_card_harness.mjs"
+    harness.write_text(
+        "globalThis.window = { location: { search: '', origin: 'http://localhost' } };\n"
+        f"const {{ answerCard }} = await import({module});\n"
+        "const how = {tools:[],tool_calls:0,elapsed_s:0.2,latency_ms:2,rule_id:null,uncertainty:[]};\n"
+        "const quote = 'Kaynak cümlesi aynen korunur.';\n"
+        "const citations = [{institution:'İBB',title:'Örnek',url:'https://example.ibb.gov.tr/ornek',"
+        "quote,fetched_at:'2026-09-25T10:00:00Z',source_updated_at:null}];\n"
+        "const quoteHtml = answerCard({mode:'quote_only',answer_text:'Kısa yanıt.',author:'kural',"
+        "citations,steps:null,how},'quote-check');\n"
+        "const unknown = answerCard({mode:'unknown',answer_text:'ignored',author:'kural',"
+        "citations,steps:['ignored'],how},'unknown-check');\n"
+        "const emergency = answerCard({mode:'redirect',emergency:true,how},'emergency-check');\n"
+        "console.log(JSON.stringify({quoteHtml,unknown,emergency}));\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    result = json.loads(proc.stdout)
+    assert '<blockquote class="quote-exact">Kaynak cümlesi aynen korunur.</blockquote>' in result["quoteHtml"]
+    assert "Bu nasıl bulundu?" in result["quoteHtml"]  # the empty-tool provenance panel must render
+    assert 'href="tel:153"' in result["unknown"]
+    assert all(part not in result["unknown"] for part in ("KAYNAK", "NASIL YAPILIR", "Bu nasıl bulundu?", "chat-foot"))
+    assert 'href="tel:112"' in result["emergency"] and 'href="tel:153"' in result["emergency"]
+    assert "Bu nasıl bulundu?" not in result["emergency"]
 
 
 def test_the_favicon_wears_the_primary_button_colours_of_both_themes() -> None:

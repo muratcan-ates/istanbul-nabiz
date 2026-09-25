@@ -348,3 +348,11 @@ def test_the_arena_seats_spend_their_own_guard_and_abstain_at_its_ceiling(monkey
     assert len(calls) == 4
     with pytest.raises(llm.LlmUnavailable):
         seats.opinions(fault(), evidence())
+
+
+def test_a_reflex_card_reaches_the_citizen_brief(wired: Any) -> None:
+    client, _ = wired
+    assert client.get("/api/console/queue").status_code == 200
+    brief = client.get("/api/brief", params={"stations": "Kartal"}).json()
+    card = next(card for card in brief["cards"] if card["how"] and card["how"]["rule_id"] == "R-03")
+    assert card["how"]["signal_id"].startswith("sig-")

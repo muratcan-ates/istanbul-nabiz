@@ -41,6 +41,12 @@ class StepFreePort(Protocol):
         ...
 
 
+class PublishedPort(Protocol):
+    """Citizen cards that the decision ledger has already published."""
+
+    async def published(self, *, stations: Sequence[str]) -> list[dict[str, Any]]: ...
+
+
 class ConsolePort(Protocol):
     """The simulated operator's side of the decision core (``nexus_core``)."""
 
@@ -78,6 +84,13 @@ class UnwiredStepFree:
         }
 
 
+class UnwiredPublished:
+    """No decision engine bound: there are no published signal cards to show."""
+
+    async def published(self, *, stations: Sequence[str]) -> list[dict[str, Any]]:
+        return []
+
+
 class UnwiredConsole:
     """No decision core bound: every call is refused with 503."""
 
@@ -94,4 +107,5 @@ class UnwiredConsole:
 @dataclass
 class Ports:
     step_free: StepFreePort = field(default_factory=UnwiredStepFree)
+    published: PublishedPort = field(default_factory=UnwiredPublished)
     console: ConsolePort = field(default_factory=UnwiredConsole)

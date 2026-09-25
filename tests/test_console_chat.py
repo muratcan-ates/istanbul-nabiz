@@ -98,7 +98,9 @@ def ask(client: TestClient, message: str, *, needs: list[str] | None = None, his
     stream = events(response.text)
     final = stream[-1]
     assert final[0] == "final"
-    assert set(final[1]) == {"answer", "citations", "author", "memory_suggestion", "refused"}
+    assert set(final[1]) == {
+        "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
+    }
     tokens = "".join(data["text"] for kind, data in stream if kind == "token")
     assert tokens == final[1]["answer"], "the token events must add up to the final answer"
     return stream, final[1]
@@ -118,8 +120,9 @@ def test_a_model_turn_streams_tool_progress_then_the_checked_answer(
         stream, final = ask(client, METRO_QUESTION + " zebra42", needs=["step_free", "diagnosis:x"])
 
     kinds = [kind for kind, _ in stream]
-    assert stream[0] == ("tool", {"name": "metro_status", "status": "start"})
-    assert stream[1] == ("tool", {"name": "metro_status", "status": "end"})
+    assert stream[0] == ("session_started", {})
+    assert stream[1] == ("tool", {"name": "metro_status", "status": "start"})
+    assert stream[2] == ("tool", {"name": "metro_status", "status": "end"})
     assert kinds.index("tool") < kinds.index("token")
     assert final["author"] == "model" and final["refused"] is False and final["memory_suggestion"] is None
     assert final["answer"] == PLAIN_ANSWER
@@ -297,6 +300,26 @@ def test_without_a_model_the_rules_answer_and_say_so(nabiz: Nabiz) -> None:
         stream, final = ask(client, METRO_QUESTION)
     assert final["author"] == "kural" and final["refused"] is False
     assert [kind for kind, _ in stream].count("tool") == 2
+
+
+def test_the_final_event_counts_tool_calls_and_seconds(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(llm, "chat", FakeModel(reply(tool_calls=[tool_call("metro_status")]), reply(PLAIN_ANSWER)))
+    with client_for(nabiz, CLOUD) as client:
+        _, final = ask(client, METRO_QUESTION)
+    assert final["how"]["tool_calls"] == 1
+    assert final["how"]["tools"][0]["name"] == "metro_status"
+    assert final["how"]["tools"][0]["source"] == "metro_status"
+    assert final["how"]["elapsed_s"] >= 0 and final["how"]["latency_ms"] >= 0
+
+
+def test_an_emergency_redirect_never_calls_the_model_or_tools(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeModel()
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        stream, final = ask(client, "Yangın çıktı, ambulans lazım")
+    assert final["mode"] == "redirect" and final["emergency"] is True
+    assert final["how"]["tools"] == [] and final["how"]["tool_calls"] == 0
+    assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
 
 
 def test_a_broken_turn_still_ends_with_a_final_event(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:

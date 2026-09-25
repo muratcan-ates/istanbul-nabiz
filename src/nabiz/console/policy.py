@@ -98,6 +98,9 @@ _NOT_A_PRICE = ("sur", "uzak", "guncel", "dakika", "zaman", "bekle", "yogun", "d
 _FOLLOW_UP = ("ne kadar", "kac", "peki", "ya ", "onlar", "bunun", "bunlar", "o zaman", "what about", "how about")
 _PRICE = re.compile(r"₺|\b\d+(?:[.,]\d+)?\s*(?:tl|lira)\b", re.IGNORECASE)
 
+# Folded whole-word stems that must bypass both the model and ordinary policy refusals.
+EMERGENCY_TERMS = {"acil": ("yangin", "ambulans", "polis", "siddet", "kalp", "bayildi", "fire", "ambulance")}
+
 REFUSAL_TEXT = (
     "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: "
     "yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. "
