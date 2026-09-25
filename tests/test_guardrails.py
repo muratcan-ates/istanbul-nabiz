@@ -11,6 +11,7 @@ this file is itself scanned by the checks it tests, and a literal would trip the
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -18,6 +19,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import uuid
 
 import pytest
 from conftest import REPO_ROOT
@@ -500,3 +502,91 @@ def test_agent_rules_links_ignores_commands_placeholders_urls_and_gitignored_tre
     )
     result = guardrails.check_agent_rules_links(tmp_path)
     assert result.status == guardrails.SKIP, result.findings
+
+
+def test_agent_rules_links_fails_on_a_broken_link_in_any_markdown_file(tmp_path: pathlib.Path) -> None:
+    """A doc outside the rule files that links a moved file is caught; its link is read from its own folder."""
+    write(tmp_path, "Makefile", "test:\n\tpytest\n")
+    write(tmp_path, "AGENTS.md", "Run `make test`.\n")
+    write(tmp_path, "docs/SPRINT.md", "")
+    write(tmp_path, "docs/guide.md", "See [the plan](SPRINT.md) and [the old plan](plan-v1.md).\n")
+    result = guardrails.check_agent_rules_links(tmp_path)
+    assert result.status == guardrails.FAIL
+    assert [(f.location, f.message) for f in result.findings] == [("docs/guide.md", "names `plan-v1.md`, which does not exist")]
+
+
+def test_agent_rules_links_reads_only_links_outside_the_rule_files(tmp_path: pathlib.Path) -> None:
+    """Other docs name deleted paths and targets on purpose; only their links are checked."""
+    write(tmp_path, "Makefile", "test:\n\tpytest\n")
+    write(tmp_path, "AGENTS.md", "Run `make test`.\n")
+    write(tmp_path, "docs/history.md", "`scripts/removed.py` is gone and `make old-target` with it.\n")
+    result = guardrails.check_agent_rules_links(tmp_path)
+    assert result.status == guardrails.PASS, result.findings
+
+
+# --------------------------------------------------------------------------------------
+# fixture-freshness
+# --------------------------------------------------------------------------------------
+def capture_report(root: pathlib.Path, calls: list[dict]) -> pathlib.Path:
+    return write(root, "tests/fixtures/_capture_report.json", json.dumps(calls))
+
+
+def test_fixture_age_is_the_recorded_capture_time_not_the_checkout_time(tmp_path: pathlib.Path) -> None:
+    """A fresh clone stamps the report with the checkout time; the recorded time does not move."""
+    old = (dt.datetime.now(dt.UTC) - dt.timedelta(days=45)).isoformat()
+    capture_report(tmp_path, [{"name": "ispark_park", "captured_at_utc": old}, {"name": "gtfs_package"}])
+    result = guardrails.check_fixture_freshness(tmp_path)
+    assert result.status == guardrails.WARN
+    assert "45 days" in result.summary
+
+
+def test_recently_captured_fixtures_pass_and_an_undated_report_falls_back_to_its_file_time(tmp_path: pathlib.Path) -> None:
+    capture_report(tmp_path, [{"name": "ispark_park", "captured_at_utc": dt.datetime.now(dt.UTC).isoformat()}])
+    assert guardrails.check_fixture_freshness(tmp_path).status == guardrails.PASS
+    report = capture_report(tmp_path, [{"name": "ispark_park", "status": 200}])
+    a_year_ago = (dt.datetime.now(dt.UTC) - dt.timedelta(days=365)).timestamp()
+    os.utime(report, (a_year_ago, a_year_ago))
+    assert guardrails.check_fixture_freshness(tmp_path).status == guardrails.WARN
+
+
+# --------------------------------------------------------------------------------------
+# no-azure-ids
+# --------------------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "template",
+    [
+        "subscriptionId: {guid}",
+        'AZURE_TENANT_ID="{guid}"',
+        "| principalId | {guid} |",
+        "az role assignment create --assignee-object-id {guid}",
+        ".add database nabiz ingestors ('aadapp={guid};contoso.onmicrosoft.com')",
+    ],
+)
+def test_an_account_id_beside_an_azure_word_fails_without_being_echoed(tmp_path: pathlib.Path, template: str) -> None:
+    guid = str(uuid.uuid4())  # made at run time: this file is scanned by the check it tests
+    write(tmp_path, "docs/deploy.md", "Provisioned.\n" + template.format(guid=guid) + "\n")
+    result = guardrails.check_no_azure_ids(tmp_path)
+    assert result.status == guardrails.FAIL
+    assert [f.location for f in result.findings] == ["docs/deploy.md:2"]
+    assert guid not in json.dumps([f.message for f in result.findings]) + result.summary
+
+
+def test_public_role_ids_placeholders_and_ids_without_an_azure_word_pass(tmp_path: pathlib.Path) -> None:
+    role = next(iter(guardrails.PUBLIC_ROLE_DEFINITIONS))
+    write(tmp_path, "infra/modules/x.bicep", f"roleDefinitionId: subscriptionResourceId('x', '{role}') // for principalId\n")
+    write(tmp_path, "tests/test_x.py", "principal_command('11111111-2222-3333-4444-555555555555', 'tenant-id')\n")
+    write(tmp_path, "docs/x.md", f"subscription: {'0' * 8}-{'0' * 4}-{'0' * 4}-{'0' * 4}-{'0' * 12}\n")
+    write(tmp_path, "tests/fixtures/aq_stations.json", f'{{"Id": "{uuid.uuid4()}", "Name": "Kadıköy"}}\n')
+    result = guardrails.check_no_azure_ids(tmp_path)
+    assert result.status == guardrails.PASS, result.findings
+
+
+def test_every_allowed_role_id_is_one_the_infra_assigns() -> None:
+    """The allow-list cannot quietly grow: each value must still be in infra/modules/*.bicep."""
+    bicep = " ".join(path.read_text(encoding="utf-8") for path in (REPO_ROOT / "infra" / "modules").glob("*.bicep"))
+    assert [guid for guid in guardrails.PUBLIC_ROLE_DEFINITIONS if guid not in bicep] == []
+
+
+def test_the_committed_tree_carries_no_azure_account_id() -> None:
+    result = guardrails.check_no_azure_ids(REPO_ROOT)
+    assert result.status == guardrails.PASS, result.findings

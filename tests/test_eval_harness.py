@@ -45,3 +45,30 @@ def test_the_alert_scenario_is_never_put_to_the_agent() -> None:
     scenarios = run_eval.load_scenarios(run_eval.JOURNEYS)
     alerting = [s for s in scenarios if "check_alerts" in s["expected_tools"]]
     assert alerting and all(s.get("modes") == ["deterministic"] for s in alerting)
+
+
+def test_an_offline_run_leaves_latest_md_alone(tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """``latest.md`` is the most recent live run, which README Results quotes.
+
+    Before 2026-09-23 every offline run replaced it, so ``make eval`` as a verification step
+    rewrote a tracked file with recorded-data numbers.
+    """
+    latest = tmp_path / "latest.md"
+    latest.write_text("the live run\n", encoding="utf-8")
+
+    assert run_eval.main(["--offline", "--only", "j3-tr-1", "--results-dir", str(tmp_path)]) == 0
+
+    assert latest.read_text(encoding="utf-8") == "the live run\n"
+    kept = sorted(path.suffix for path in tmp_path.iterdir() if path != latest)
+    assert kept == [".json", ".md"], "the run's own record is still written"
+    assert "latest.md" not in capsys.readouterr().out.splitlines()[-1]
+
+
+def test_update_latest_points_latest_md_at_an_offline_run(tmp_path: pathlib.Path) -> None:
+    latest = tmp_path / "latest.md"
+    latest.write_text("the live run\n", encoding="utf-8")
+
+    assert run_eval.main(["--offline", "--only", "j3-tr-1", "--results-dir", str(tmp_path), "--update-latest"]) == 0
+
+    (record,) = tmp_path.glob("*-offline.md")
+    assert latest.read_text(encoding="utf-8") == record.read_text(encoding="utf-8")

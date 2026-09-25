@@ -205,7 +205,7 @@ RULE_THRESHOLD = {
 #: pyproject.toml's target-version; --isolated would otherwise parse 3.12 syntax as an error.
 TARGET_VERSION = "py312"
 #: What ``make lint`` and CI lint, so a finding here is a finding there.
-COMPLEXITY_PATHS = ("src", "scripts", "tests", ".github/scripts")
+COMPLEXITY_PATHS = ("src", "scripts", "tests", ".github/scripts", "eval")
 #: The only per-file ignores the complexity check honours: policy, not debt. Every other
 #: per-file ignore in pyproject.toml is debt, and debt is measured through it.
 POLICY_IGNORES: dict[str, tuple[str, ...]] = {

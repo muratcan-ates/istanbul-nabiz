@@ -3,7 +3,10 @@
 #
 # CI runs scripts/check_authorship.py on every push, but main has no branch protection, so
 # on a direct push CI only reports a commit that is already permanent public history. This
-# hook runs the same check on the same range first, and refuses the push if it fails.
+# hook runs the same check on the same range first, and refuses the push if it fails. It also
+# refuses any ref but main and tags: the remote is public, so a branch pushed as a backup is
+# published work (AGENTS.md §3). NABIZ_ALLOW_BRANCH_PUSH=1 lets one command through, for a
+# pull request branch.
 #
 # Enable once per clone (it is a git setting, so nothing turns it on for you):
 #     make hooks          # = git config core.hooksPath .githooks
@@ -22,11 +25,31 @@ python="$here/.venv/bin/python"
 }
 
 status=0
-while read -r _local_ref local_sha _remote_ref remote_sha; do
+main_sha=
+while read -r _local_ref local_sha remote_ref remote_sha; do
     case "$local_sha" in
         *[!0]*) ;;
         *) continue ;;  # deleting a remote branch publishes no commit
     esac
+    # The remote is public: only main and tags go there. Back up anything else privately.
+    case "$remote_ref" in
+        refs/heads/main | refs/tags/*) ;;
+        *)
+            if [ "${NABIZ_ALLOW_BRANCH_PUSH:-}" != 1 ]; then
+                echo "pre-push: $remote_ref: public remote, push main or a tag; back up work privately (AGENTS.md §3)" >&2
+                status=1
+                continue
+            fi
+            ;;
+    esac
+    [ "$remote_ref" = refs/heads/main ] && main_sha=$local_sha
     "$python" "$here/scripts/check_authorship.py" --repo "$repo" --push "$remote_sha" "$local_sha" || status=1
 done
+
+# The binding gate, off unless NABIZ_PREPUSH_CI=1 (the owner's choice between it and a pull request
+# flow is still open): every CI gate on the exact commit being pushed to main. It builds a clean
+# copy and its own venv, so it costs minutes and disk.
+if [ "${NABIZ_PREPUSH_CI:-}" = 1 ] && [ "$status" -eq 0 ] && [ -n "$main_sha" ]; then
+    CI_LOCAL_REF="$main_sha" bash "$here/.github/scripts/ci_local.sh" || status=1
+fi
 exit $status

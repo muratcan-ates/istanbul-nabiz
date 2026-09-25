@@ -294,6 +294,68 @@ def test_the_pre_push_hook_refuses_a_credited_commit_and_lets_a_clean_one_throug
     assert remote_tip == local_parent, "the refused commit reached the remote anyway"
 
 
+def push_refspec(repo: pathlib.Path, remote: pathlib.Path, refspec: str, **env: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo), "-c", f"core.hooksPath={HOOKS_DIR}", "push", "-q", str(remote), refspec],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=git_env(repo.parent) | env,
+        timeout=60,
+    )
+
+
+@pytest.fixture
+def remote(repo: pathlib.Path) -> pathlib.Path:
+    """A bare remote holding one clean commit on main, and a local tag."""
+    path = repo.parent / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(path)], check=True, env=git_env(repo.parent))
+    commit(repo, "Start")
+    subprocess.run(["git", "-C", str(repo), "tag", "v0.1.0"], check=True, env=git_env(repo.parent))
+    return path
+
+
+def remote_refs(remote: pathlib.Path) -> set[str]:
+    out = subprocess.run(
+        ["git", "-C", str(remote), "for-each-ref", "--format=%(refname)"],
+        capture_output=True, text=True, env=git_env(remote.parent), check=True,
+    )
+    return set(out.stdout.split())
+
+
+def test_the_pre_push_hook_sends_main_and_tags(repo: pathlib.Path, remote: pathlib.Path) -> None:
+    for refspec in ("main", "refs/tags/v0.1.0"):
+        result = push_refspec(repo, remote, refspec)
+        assert result.returncode == 0, result.stdout + result.stderr
+    assert remote_refs(remote) == {"refs/heads/main", "refs/tags/v0.1.0"}
+
+
+def test_the_pre_push_hook_refuses_a_branch_on_the_public_remote(repo: pathlib.Path, remote: pathlib.Path) -> None:
+    """A branch pushed as a backup is published work: the remote is public (AGENTS.md §3)."""
+    refused = push_refspec(repo, remote, "main:refs/heads/backup")
+    assert refused.returncode != 0, "the hook let a backup branch reach the public remote"
+    assert "refs/heads/backup: public remote" in refused.stderr
+    assert remote_refs(remote) == set()
+
+
+def test_one_command_may_push_a_branch_on_purpose(repo: pathlib.Path, remote: pathlib.Path) -> None:
+    """A pull request branch is pushed with NABIZ_ALLOW_BRANCH_PUSH=1 for that one command."""
+    result = push_refspec(repo, remote, "main:refs/heads/pr-branch", NABIZ_ALLOW_BRANCH_PUSH="1")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert remote_refs(remote) == {"refs/heads/pr-branch"}
+
+
+def test_deleting_a_stray_remote_branch_stays_possible(repo: pathlib.Path, remote: pathlib.Path) -> None:
+    """A deletion publishes no commit, so the branch rule must not stand in the way of cleaning up."""
+    push_refspec(repo, remote, "main:refs/heads/stray", NABIZ_ALLOW_BRANCH_PUSH="1")
+    assert "refs/heads/stray" in remote_refs(remote)
+
+    deleted = push_refspec(repo, remote, ":refs/heads/stray")
+
+    assert deleted.returncode == 0, deleted.stdout + deleted.stderr
+    assert remote_refs(remote) == set()
+
+
 # --------------------------------------------------------------------------------------
 # the pure rule, without git
 # --------------------------------------------------------------------------------------

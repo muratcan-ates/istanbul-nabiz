@@ -29,8 +29,8 @@ The incidents, in the order the checks appear::
                           project. One module reaching for ``httpx`` directly spends a
                           budget shared with every other consumer of this public data.
     csv-truncation        İBB's GTFS ``stop_times.csv`` was exported through Excel and
-                          stops dead at 1,048,575 data rows — 14% of trips missing, 500T
-                          absent entirely. It parses perfectly. The ZIP's
+                          stops dead at 1,048,575 data rows — only 14% of trips present, 86% missing,
+                          500T absent entirely. It parses perfectly. The ZIP's
                           ``stop_times.txt`` (6.16M rows) is the complete file.
     coordinate-sanity     GTFS coordinates arrive with thousands separators
                           (``410.191.700.005.564`` = ``41.0191700005564``).
@@ -54,7 +54,13 @@ The incidents, in the order the checks appear::
     agent-rules-links     The previous project's agent instructions pointed at a long-stale
                           branch, and agents followed them (docs/ENGINEERING.md AI-1).
                           Every repository path and ``make`` target that AGENTS.md,
-                          CLAUDE.md and CONTRIBUTING.md name must exist.
+                          CLAUDE.md and CONTRIBUTING.md name must exist, and every
+                          relative link in any tracked Markdown file must resolve.
+    no-azure-ids          A subscription, tenant or client id pasted from `az` or `azd` output
+                          into a tracked file is permanent public history. Fails on a GUID on the
+                          same line as subscription, tenant, clientId, principalId, objectId or
+                          aadapp; the public built-in role definitions in infra/ are listed with
+                          their reason.
 
 None of them needs the network or git history. The file list comes from the git index
 when there is one (``git ls-files``: what is tracked plus what ``git add`` would pick up)
@@ -120,7 +126,7 @@ WALK_SKIP_FILES = {".env", ".DS_Store"}
 
 #: Set by ``--files-from``: the exact list of repository-relative paths to check, instead of
 #: asking git or walking. ``make ci-local`` passes the list it copied, because its copy has no
-#: git index, and the walk skips a ``logs/`` directory that a still-tracked log lives in: CI
+#: git index, and the walk skips a ``logs/`` directory that a tracked log once lived in: CI
 #: checked one file more than ci-local did.
 FILES_FROM: list[str] | None = None
 
@@ -599,11 +605,11 @@ def check_no_raw_ibb_calls(repo: pathlib.Path) -> CheckResult:
 # 5. csv-truncation
 # ---------------------------------------------------------------------------------------
 def check_csv_truncation(repo: pathlib.Path) -> CheckResult:
-    """Catch the Excel row ceiling before it silently removes 14% of the timetable.
+    """Catch the Excel row ceiling before it silently drops 86% of the timetable's trips.
 
     İBB publishes GTFS both as CSVs and as a ZIP. ``stop_times.csv`` was exported through a
     spreadsheet and ends at exactly 1,048,575 data rows — Excel's limit minus the header.
-    It is valid CSV, it parses without a warning, and it is missing 14% of trips including
+    It is valid CSV, it parses without a warning, and it holds only 14% of trips and misses
     every 500T trip, so the arrival tool answered "no buses" for a line running past the
     user's window. Only the ZIP's ``stop_times.txt`` (6.16M rows) is complete.
 
@@ -949,17 +955,18 @@ def check_fixture_freshness(repo: pathlib.Path) -> CheckResult:
     changes a field name the fixtures keep the old one and every test stays green while
     the live product breaks — which is the failure this warns about.
 
-    It warns and never fails, for two reasons. Re-capturing spends the shared gateway
-    budget, so this must not be able to nag someone into running it on a deadline. And the
-    only available timestamp is the file's mtime — ``_capture_report.json`` records URL,
-    status, bytes and latency per call but no capture time — and a fresh ``git clone``
-    stamps every file with the checkout time, so the signal is directional, not exact.
+    It warns and never fails: re-capturing spends the shared gateway budget, so this must not
+    be able to nag someone into running it on a deadline. The age is the newest
+    ``captured_at_utc`` in ``_capture_report.json``, the same time offline answers are dated
+    by. A report without one (written before 2026-09-23) falls back to the file's mtime,
+    which a fresh ``git clone`` sets to the checkout time: directional, not exact.
     """
     report = repo / "tests" / "fixtures" / "_capture_report.json"
     if not report.is_file():
         return CheckResult("fixture-freshness", WARN, "tests/fixtures/_capture_report.json is missing; fixture age is unknown")
 
-    age_days = (dt.datetime.now(dt.UTC) - dt.datetime.fromtimestamp(report.stat().st_mtime, dt.UTC)).days
+    captured = _newest_capture(report) or dt.datetime.fromtimestamp(report.stat().st_mtime, dt.UTC)
+    age_days = (dt.datetime.now(dt.UTC) - captured).days
     if age_days > FIXTURE_MAX_AGE_DAYS:
         return CheckResult(
             "fixture-freshness",
@@ -968,6 +975,16 @@ def check_fixture_freshness(repo: pathlib.Path) -> CheckResult:
             [Finding(rel(repo, report), f"last modified {age_days} days ago")],
         )
     return CheckResult("fixture-freshness", PASS, f"fixtures last captured {age_days} day(s) ago")
+
+
+def _newest_capture(report: pathlib.Path) -> dt.datetime | None:
+    """The newest ``captured_at_utc`` in the capture report, or ``None`` when it records none."""
+    try:
+        calls = json.loads(report.read_text(encoding="utf-8"))
+        stamps = [dt.datetime.fromisoformat(call["captured_at_utc"]) for call in calls if "captured_at_utc" in call]
+    except (OSError, ValueError, TypeError):
+        return None
+    return max((s if s.tzinfo else s.replace(tzinfo=dt.UTC) for s in stamps), default=None)
 
 
 # ---------------------------------------------------------------------------------------
@@ -1118,7 +1135,12 @@ _MAKE_RULE = re.compile(r"^([a-z][a-z0-9-]*)\s*:", re.MULTILINE)
 
 
 def _named_paths(text: str) -> set[str]:
-    """Repository paths a rule file names, in backticks or as a relative Markdown link."""
+    """Repository paths a rule file names in backticks.
+
+    Only the rule files are read this way. Other documents name paths on purpose that must
+    not exist (a file that was deleted, a module that was renamed), so a repo-wide scan of
+    backticks would flag deliberate negatives.
+    """
     found: set[str] = set()
     for token in _BACKTICKED.findall(text):
         token = token.strip().split("::", 1)[0]
@@ -1126,39 +1148,131 @@ def _named_paths(text: str) -> set[str]:
             continue  # a command, a glob or a placeholder, not a path
         if token.startswith(REPO_TOP_LEVEL) or token in {"Makefile", "pyproject.toml", "README.md", "DECISIONS.md", "PLAN.md"}:
             found.add(token)
-    for target in _MARKDOWN_LINK.findall(text):
-        if "://" not in target and not target.startswith("mailto:"):
-            found.add(target)
     return found
 
 
-def check_agent_rules_links(repo: pathlib.Path) -> CheckResult:
-    """Every path and make target the agent rule files name exists (ENGINEERING.md AI-1)."""
-    makefile = read_text(repo / "Makefile") or ""
-    targets = set(_MAKE_RULE.findall(makefile))
+def _relative_links(text: str) -> set[str]:
+    """Relative Markdown link targets: a moved or deleted file breaks them in any document."""
+    return {t for t in _MARKDOWN_LINK.findall(text) if "://" not in t and not t.startswith("mailto:")}
+
+
+def _broken_references(
+    repo: pathlib.Path, source: pathlib.Path, text: str, targets: set[str] | None
+) -> tuple[int, list[Finding]]:
+    """Check one Markdown file: its links always, its backticked paths and make targets if it is a rule file.
+
+    ``targets`` is the Makefile's target set for a rule file and None for any other document.
+    Returns how many references were checked and the broken ones.
+    """
+    where = rel(repo, source)
+    named = _relative_links(text) | (_named_paths(text) if targets is not None else set())
     findings: list[Finding] = []
     checked = 0
-    for name in AGENT_RULE_FILES:
-        source = repo / name
-        text = read_text(source)
-        if text is None:
+    for ref in sorted(named):
+        normalised = ref.removeprefix("./")
+        if normalised.startswith(IGNORED_PREFIXES):
             continue
-        for named in sorted(_named_paths(text)):
-            normalised = named.removeprefix("./")
-            if normalised.startswith(IGNORED_PREFIXES):
-                continue
-            checked += 1
-            if not (source.parent / normalised).exists() and not (repo / normalised).exists():
-                findings.append(Finding(name, f"names `{named}`, which does not exist"))
+        checked += 1
+        if not (source.parent / normalised).exists() and not (repo / normalised).exists():
+            findings.append(Finding(where, f"names `{ref}`, which does not exist"))
+    if targets is not None:
         for target in sorted(set(_MAKE_TARGET.findall(text))):
             checked += 1
             if target not in targets:
-                findings.append(Finding(name, f"names `make {target}`, which the Makefile does not define"))
+                findings.append(Finding(where, f"names `make {target}`, which the Makefile does not define"))
+    return checked, findings
+
+
+def check_agent_rules_links(repo: pathlib.Path) -> CheckResult:
+    """The agent rule files name only paths and make targets that exist, and no Markdown link is broken.
+
+    ENGINEERING.md AI-1. Links are read in every tracked ``*.md``: a doc that links a moved file
+    sends its reader to a 404 as surely as a rule file sends an agent the wrong way.
+    """
+    makefile = read_text(repo / "Makefile") or ""
+    targets = set(_MAKE_RULE.findall(makefile))
+    rule_files = {repo / name for name in AGENT_RULE_FILES}
+    documents = {p for p in tracked_files(repo) if p.suffix == ".md"} | {p for p in rule_files if p.is_file()}
+    findings: list[Finding] = []
+    checked = 0
+    for source in sorted(documents):
+        text = read_text(source)
+        if text is None:
+            continue
+        count, found = _broken_references(repo, source, text, targets if source in rule_files else None)
+        checked += count
+        findings.extend(found)
     if findings:
-        return CheckResult("agent-rules-links", FAIL, f"{len(findings)} broken reference(s) in the agent rule files", findings)
+        summary = f"{len(findings)} broken reference(s) in the rule files or Markdown links"
+        return CheckResult("agent-rules-links", FAIL, summary, findings)
     if not checked:
-        return CheckResult("agent-rules-links", SKIP, "no agent rule file names a path or a make target")
-    return CheckResult("agent-rules-links", PASS, f"{checked} path(s) and make target(s) named in the agent rule files exist")
+        return CheckResult("agent-rules-links", SKIP, "no rule file names a path or a make target, no Markdown file links one")
+    return CheckResult(
+        "agent-rules-links", PASS, f"{checked} path(s), link(s) and make target(s) checked in {len(documents)} Markdown file(s)"
+    )
+
+
+# ---------------------------------------------------------------------------------------
+# 13. no-azure-ids
+# ---------------------------------------------------------------------------------------
+_GUID = re.compile(r"(?<![0-9A-Fa-f-])[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}(?![0-9A-Fa-f-])")
+#: The words `az` and `azd` print an account's ids under. A GUID alone is often public here
+#: (CKAN dataset ids, air-quality station ids, the lake's UUID namespace), so a blanket GUID
+#: ban would be wrong; a GUID beside one of these words is an identity or a scope.
+_AZURE_ID_WORDS = re.compile(r"subscription|tenant|client[_-]?id|principal[_-]?id|object[_-]?id|aadapp", re.I)
+#: Azure's built-in role definitions have the same id in every tenant and are published by
+#: Microsoft, so naming one identifies nobody. The values are the ones infra/modules/*.bicep
+#: assigns; ``tests/test_guardrails.py`` fails if one of them is no longer used there.
+PUBLIC_ROLE_DEFINITIONS = {
+    "7f951dda-4ed3-4680-a7ca-43fe172d538d": "AcrPull",
+    "423170ca-a8f6-4b0f-8487-9e4eb8f49bfa": "Azure Maps Data Reader",
+    "3913510d-42f4-4e42-8a64-420c390055eb": "Monitoring Metrics Publisher",
+    "ba92f5b4-2d11-453d-a403-e96b0029c9fe": "Storage Blob Data Contributor",
+    "b7e6dc6d-f1e8-4753-8033-0f276bb0955b": "Storage Blob Data Owner",
+    "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1": "Storage Blob Data Reader",
+    "974c5e8b-45b9-4653-ba55-5f855dd0fb88": "Storage Queue Data Contributor",
+    "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3": "Storage Table Data Contributor",
+}
+
+
+def _is_placeholder_guid(guid: str) -> bool:
+    """``00000000-0000-...`` or ``11111111-2222-3333-4444-555555555555``: one character per group.
+
+    No generated id looks like this, and the tests use such values to feed the code the
+    shape of a client id without committing one.
+    """
+    return all(len(set(group)) == 1 for group in guid.split("-"))
+
+
+def check_no_azure_ids(repo: pathlib.Path) -> CheckResult:
+    """No subscription, tenant or client id in anything a push publishes.
+
+    The first ``azd provision`` prints them, and a line pasted from that output into a doc or
+    a config is public forever. None of them is a secret on its own, but together they map
+    the owner's account for anyone. A finding never echoes the value: CI logs are public too.
+    """
+    findings: list[Finding] = []
+    scanned = 0
+    for path in tracked_files(repo):
+        source = read_text(path) if is_text_candidate(path) else None
+        if source is None:
+            continue
+        scanned += 1
+        if not _GUID.search(source):
+            continue
+        for lineno, line in enumerate(source.splitlines(), start=1):
+            if not _AZURE_ID_WORDS.search(line):
+                continue
+            for match in _GUID.finditer(line):
+                guid = match.group(0).lower()
+                if guid not in PUBLIC_ROLE_DEFINITIONS and not _is_placeholder_guid(guid):
+                    findings.append(Finding(f"{rel(repo, path)}:{lineno}", "a GUID beside an Azure account word; remove the id"))
+
+    if findings:
+        return CheckResult("no-azure-ids", FAIL, f"{len(findings)} Azure account id(s) in tracked files", findings)
+    return CheckResult(
+        "no-azure-ids", PASS, f"{scanned} text file(s): no account id; {len(PUBLIC_ROLE_DEFINITIONS)} public role ids allowed"
+    )
 
 
 # ---------------------------------------------------------------------------------------
@@ -1177,6 +1291,7 @@ CHECKS: tuple[tuple[str, Callable[[pathlib.Path], CheckResult]], ...] = (
     ("fixture-freshness", check_fixture_freshness),
     ("no-fabricated-metrics", check_no_fabricated_metrics),
     ("agent-rules-links", check_agent_rules_links),
+    ("no-azure-ids", check_no_azure_ids),
 )
 
 

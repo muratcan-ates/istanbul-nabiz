@@ -35,6 +35,12 @@ env:
   # with every other consumer of this public data. CI must never spend that budget.
   NABIZ_OFFLINE: "1"
 
+# An explicit shell makes GitHub run every step with `bash -eo pipefail`; the implicit default
+# is `bash -e`, where `a | b` passes whenever `b` does and a failing `a` goes unseen.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   python:
     name: Lint, test, guardrails and MCP smoke test
@@ -101,7 +107,7 @@ jobs:
           uv pip install --python .venv/bin/python -e ".[dev,web]"
 
       - name: Ruff lint (gate)
-        run: .venv/bin/ruff check src/ scripts/ tests/ .github/scripts/
+        run: .venv/bin/ruff check src/ scripts/ tests/ .github/scripts/ eval/
 
       - name: Ruff format check (advisory)
         # Deliberately non-blocking. The project sets line-length 130 and wraps long

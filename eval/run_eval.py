@@ -119,6 +119,15 @@ def load_scenarios(path: pathlib.Path) -> list[dict[str, Any]]:
     return scenarios
 
 
+def _split_mode(segment: str) -> tuple[str, str | None]:
+    """``key[]`` walks every element of a list, ``key[?]`` any element, ``key`` one child."""
+    if segment.endswith("[]"):
+        return segment[:-2], "all"
+    if segment.endswith("[?]"):
+        return segment[:-3], "any"
+    return segment, None
+
+
 def _probe(node: Any, segments: list[str], expected: Any) -> str:
     """Walk a JSON tree. Returns 'pass', 'fail', or 'empty' for a list with no elements."""
     if not segments:
@@ -127,12 +136,7 @@ def _probe(node: Any, segments: list[str], expected: Any) -> str:
         if expected is not _NO_VALUE:
             return "pass" if node == expected else "fail"
         return "pass"
-    head, rest = segments[0], segments[1:]
-    mode: str | None = None
-    if head.endswith("[]"):
-        head, mode = head[:-2], "all"
-    elif head.endswith("[?]"):
-        head, mode = head[:-3], "any"
+    (head, mode), rest = _split_mode(segments[0]), segments[1:]
     if not isinstance(node, dict) or head not in node:
         return "fail"
     child = node[head]
@@ -577,6 +581,32 @@ def _agent_call_record(call: Any, refusals: dict[str, dict[str, Any]]) -> tuple[
     return record, None
 
 
+def _answer_reasons(
+    text: str,
+    missing_tools: list[str],
+    bad_fields: list[str],
+    forbidden: list[str],
+    markers: list[str],
+    marker_ok: bool | None,
+    faith: dict[str, Any],
+) -> list[str]:
+    """Why an agent answer is not clean, in the order the report prints them."""
+    reasons = []
+    if not text:
+        reasons.append("empty answer")
+    if missing_tools:
+        reasons.append("tools not called: " + ", ".join(missing_tools))
+    if bad_fields:
+        reasons.append("missing fields: " + ", ".join(bad_fields))
+    if forbidden:
+        reasons.append("forbidden phrase: " + ", ".join(forbidden))
+    if marker_ok is False:
+        reasons.append("answer never states the refusal/limit: " + " | ".join(markers))
+    if faith["numbers_unsupported"]:
+        reasons.append(f"{faith['numbers_unsupported']} unsupported number(s): {faith['unsupported']}")
+    return reasons
+
+
 async def run_agent_scenario(agent: Any, scenario: dict[str, Any]) -> dict[str, Any]:
     """Ask one question and score the prose as well as the data behind it."""
     refusals = {c["tool"]: c for c in scenario["calls"] if c.get("expect") == "refusal"}
@@ -616,19 +646,7 @@ async def run_agent_scenario(agent: Any, scenario: dict[str, Any]) -> dict[str, 
     verdict = getattr(answer, "faithfulness", None)
 
     passed = bool(text) and not missing_tools and not bad_fields
-    reasons = []
-    if not text:
-        reasons.append("empty answer")
-    if missing_tools:
-        reasons.append("tools not called: " + ", ".join(missing_tools))
-    if bad_fields:
-        reasons.append("missing fields: " + ", ".join(bad_fields))
-    if forbidden:
-        reasons.append("forbidden phrase: " + ", ".join(forbidden))
-    if marker_ok is False:
-        reasons.append("answer never states the refusal/limit: " + " | ".join(markers))
-    if faith["numbers_unsupported"]:
-        reasons.append(f"{faith['numbers_unsupported']} unsupported number(s): {faith['unsupported']}")
+    reasons = _answer_reasons(text, missing_tools, bad_fields, forbidden, markers, marker_ok, faith)
 
     return record | {
         "calls": calls,
@@ -694,6 +712,21 @@ def _rate(numerator: int, denominator: int) -> float | None:
     return None if not denominator else round(numerator / denominator, 4)
 
 
+def _failure_kind(call: dict[str, Any]) -> str | None:
+    """The error-taxonomy bucket of one call, or ``None`` for a call that answered as it should."""
+    status = call["status"]
+    if status == "refused_as_expected":
+        return "refused_as_expected"
+    if status in {"missing_refusal", "wrong_refusal"}:
+        # A tool that answered where it should have refused carries no exception, so
+        # bucketing by `error_kind` would drop the most expensive failure we have from
+        # the table entirely. Bucket those two by status instead.
+        return status
+    if status not in OK_STATUS:
+        return call.get("error_kind") or status
+    return None
+
+
 def summarise(records: list[dict[str, Any]], mode: str, budget: UpstreamBudget) -> dict[str, Any]:
     """Aggregate the run. Every value here is counted, or ``None`` when it cannot be."""
     ran = [r for r in records if r.get("passed") is not None]
@@ -716,19 +749,7 @@ def summarise(records: list[dict[str, Any]], mode: str, budget: UpstreamBudget) 
 
     taxonomy: dict[str, int] = {}
     for call in calls:
-        status = call["status"]
-        if status == "refused_as_expected":
-            kind = "refused_as_expected"
-        elif status in {"missing_refusal", "wrong_refusal"}:
-            # A tool that answered where it should have refused carries no exception, so
-            # bucketing by `error_kind` would drop the most expensive failure we have from
-            # the table entirely. Bucket those two by status instead.
-            kind = status
-        elif status not in OK_STATUS:
-            kind = call.get("error_kind") or status
-        else:
-            kind = None
-        if kind:
+        if kind := _failure_kind(call):
             taxonomy[kind] = taxonomy.get(kind, 0) + 1
 
     per_tool: dict[str, dict[str, Any]] = {}
@@ -1148,6 +1169,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Ceiling on real requests to İBB (0 = no ceiling); the run skips the rest instead of exceeding it")
     parser.add_argument("--journeys", type=pathlib.Path, default=JOURNEYS)
     parser.add_argument("--results-dir", type=pathlib.Path, default=RESULTS)
+    parser.add_argument("--update-latest", action="store_true",
+                        help="Point latest.md at this run even though it is offline; a live run always does")
     parser.add_argument("--require-llm", action="store_true",
                         help="Agent mode: skip unless a model is configured, instead of measuring the no-model path")
     parser.add_argument("--selftest", action="store_true", help="Check the scenario file and metric helpers, then exit")
@@ -1244,9 +1267,14 @@ def main(argv: list[str] | None = None) -> int:
     # only readable record of, say, the one live run of the day.
     report_path = json_path.with_suffix(".md")
     report_path.write_text(report, encoding="utf-8")
-    (args.results_dir / "latest.md").write_text(report, encoding="utf-8")
+    written = [json_path, report_path]
+    # `latest.md` is the most recent live run. An offline run replacing it rewrote a tracked
+    # file on every verification, and put recorded data where the README expects live data.
+    if not args.offline or args.update_latest:
+        written.append(args.results_dir / "latest.md")
+        written[-1].write_text(report, encoding="utf-8")
     print(report)
-    print(f"written: {_display(json_path)} · {_display(report_path)} · {_display(args.results_dir / 'latest.md')}")
+    print("written: " + " · ".join(_display(path) for path in written))
     return 1 if any(r.get("passed") is False for r in records) else 0
 
 

@@ -9,7 +9,7 @@ public and has none.
 | Job | Step | Gate? |
 |---|---|---|
 | `python` | uv from `.github/requirements-uv.txt` (`pip --require-hashes`), then `uv pip install -e ".[dev,web]"` on Python 3.12 | yes: a tampered uv wheel or a broken `pyproject.toml` fails here |
-| | `ruff check src/ scripts/ tests/ .github/scripts/` | **yes** |
+| | `ruff check src/ scripts/ tests/ .github/scripts/ eval/` | **yes** |
 | | `ruff format --check --diff` | no, it only reports (see below) |
 | | `pytest -q --junitxml=reports/junit.xml` | yes; the XML is uploaded as the `pytest-junit` artifact (14 days) |
 | | MCP smoke test: `ibb-mcp --help`, then `.github/scripts/mcp_smoke.py` | yes |
@@ -55,7 +55,9 @@ project has already had:
 - `no-fabricated-metrics`: a number in README §Results that the `eval/results/` or `data/reference/`
   file named in its row does not hold.
 - `agent-rules-links`: a repository path or `make` target named in `AGENTS.md`, `CLAUDE.md` or
-  `CONTRIBUTING.md` that does not exist.
+  `CONTRIBUTING.md` that does not exist, or a relative link in any tracked Markdown file that does
+  not resolve.
+- `no-azure-ids`: a subscription, tenant or client id pasted into a tracked file.
 
 They need no network and no git history. Every exception is listed in the script with its
 reason. The smoke test and the guardrails also run when lint or tests have failed, so one
@@ -113,9 +115,11 @@ hand still can, and `make ci-local` is what catches that. The fixture keeps a re
 off-route case: 500T runs Şifa Sondurak ↔ 4.Levent Metro and never serves Kadıköy.
 
 The general lesson: a check that passes in the working tree proves nothing about CI.
-**`make ci-local`** copies exactly what a push would publish (tracked files plus new files
-`git add` would pick up, never ignored ones) into a scratch directory, installs it into a
-fresh venv the way CI does, and runs every gate. The venv is kept between runs only while
+**`make ci-local`** copies the working tree as `git add -A` would publish it (tracked files plus
+new files `git add` would pick up, never ignored ones) into a scratch directory, installs it into a
+fresh venv the way CI does, and runs every gate. **`make ci-commit`** does the same for `HEAD`
+exactly as committed (`git archive`), which is what a push publishes, whatever else in the tree is
+dirty. One run per scratch directory: a second run on the same `CI_LOCAL_DIR` refuses to start. The venv is kept between runs only while
 `pyproject.toml`, `ci.yml` and `.github/requirements-uv.txt` are unchanged, which is CI's own
 cache key, so a dropped dependency fails locally too. It uses the machine's uv and prints a
 note when that is not the release CI pins. The copy has no git index, so the guardrails read the same
@@ -125,7 +129,7 @@ published list (`--files-from`) instead of walking the copy. See `.github/script
 
 ```bash
 make install    # uv pip install -e ".[dev,web]"               — the extras CI installs
-make lint       # ruff check src/ scripts/ tests/ .github/scripts/ — the gate
+make lint       # ruff check src/ scripts/ tests/ .github/scripts/ eval/ — the gate
 make test       # pytest -q                                     — must be green
 make smoke      # the MCP smoke test CI runs
 make guardrails # scripts/guardrails.py
@@ -133,7 +137,8 @@ make architecture   # scripts/check_architecture.py — import layers and size r
 make web-budget     # scripts/check_web_budget.py — the page's byte, font, motion and token budget
 make perf-budgets   # tests/test_performance_budgets.py — already part of make test
 make authorship # scripts/check_authorship.py on @{upstream}..HEAD — run before pushing
-make ci-local   # all of the above on a clean copy (CI_LOCAL_DIR= to choose where)
+make ci-local   # all of the above on a clean copy of the working tree (CI_LOCAL_DIR= to choose where)
+make ci-commit  # the same on HEAD exactly as committed: what a push publishes
 make fmt        # ruff format (advisory; CI only reports it)
 ```
 
