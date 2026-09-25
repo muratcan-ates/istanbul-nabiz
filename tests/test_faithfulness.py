@@ -555,6 +555,8 @@ async def test_an_out_of_scope_question_is_refused_not_answered_with_freshness(a
     answer = await agent.ask("Havalimanına nasıl giderim?")
     assert answer.tool_calls == []
     assert "yanıtlayamıyorum" in answer.text
+    # It points to 153; the call-centre number is a phone line, not an invented reading.
+    assert "153 Çözüm Merkezi" in answer.text and answer.faithfulness.passed
 
 
 def test_a_freshness_question_routes_on_its_keywords_not_on_the_catch_all(agent: NabizAgent):

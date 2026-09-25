@@ -44,7 +44,7 @@ from nabiz.agent import llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
 from nabiz.agent.minutes import with_shown_minutes
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS, build_tool_schemas
-from nabiz.agent.templates import ATTRIBUTION_LINE, DETERMINISTIC_NOTE, NEED_PLACE, NO_DATA, OUT_OF_SCOPE, render_answer
+from nabiz.agent.templates import ATTRIBUTION_LINE, DETERMINISTIC_NOTE, HELP_NUMBERS, NO_DATA, UNROUTED, render_answer
 
 log = logging.getLogger("nabiz.agent")
 
@@ -516,10 +516,10 @@ class NabizAgent:
             # Routed nowhere on purpose: either the question needs a place and named none
             # (guessing one would answer about a district the user never mentioned), or no
             # tool covers it at all.
-            message = (OUT_OF_SCOPE if arguments.get("reason") == "scope" else NEED_PLACE)[lang]
+            message = UNROUTED["scope" if arguments.get("reason") == "scope" else "place"][lang]
             return AgentAnswer(
                 text=message,
-                faithfulness=check_faithfulness(message, None, question=question),
+                faithfulness=check_faithfulness(message, None, question=question, extra_sources=HELP_NUMBERS),
                 mode="deterministic", lang=lang,
                 warnings=[DETERMINISTIC_NOTE[lang]],
                 provider="none",

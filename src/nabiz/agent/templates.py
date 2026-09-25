@@ -43,10 +43,17 @@ NEED_PLACE = {
 }
 OUT_OF_SCOPE = {
     "tr": "Bu soruyu elimdeki verilerle yanıtlayamıyorum. Otopark, otobüs, metro, trafik, "
-    "hava kalitesi ve veri tazeliği sorabilirsin.",
+    "hava kalitesi ve veri tazeliği sorabilirsin. "
+    "153 Çözüm Merkezi'ne bağlanabilir ya da ilgili resmî sayfaya gidebilirsin.",
     "en": "I cannot answer that from the data I have. Ask about parking, buses, metro, "
-    "traffic, air quality or data freshness.",
+    "traffic, air quality or data freshness. "
+    "You can call İBB's 153 Solution Centre or go to the relevant official page.",
 }
+#: The two answers for a question routed to no tool, by :meth:`NabizAgent.route`'s reason.
+UNROUTED = {"place": NEED_PLACE, "scope": OUT_OF_SCOPE}
+#: İBB's call-centre number, which :data:`OUT_OF_SCOPE` names: a phone line, not a reading,
+#: so the numeric check takes it as a source rather than flag it as invented.
+HELP_NUMBERS = (153,)
 _YES_NO = {True: "var", False: "yok"}
 
 
