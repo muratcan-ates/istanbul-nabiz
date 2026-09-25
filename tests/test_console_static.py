@@ -96,9 +96,9 @@ def test_landmarks_headings_and_live_regions(name: str) -> None:
 def test_the_honesty_bands_are_on_both_pages() -> None:
     index, console = read("index.html"), read("console.html")
     assert "Resmî İBB hizmeti" in index and "Resmî İBB hizmeti" in console
-    # The AI notice text has one source, disclosure.js (G15); chat.js shows it by importing it.
+    # The AI notice text has one source, disclosure.js (G15); chat.js shows it by importing its markup.
     assert "Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum." in read("js/disclosure.js")
-    assert "import { AI_NOTICE } from './disclosure.js';" in read("js/chat.js")
+    assert "import { aiNoticeMarkup } from './disclosure.js';" in read("js/chat.js")
     assert "Simüle operatör" in console
     assert "İBB onaylı" not in index and "İBB onaylı" not in console
     for page in (index, console):
@@ -249,10 +249,15 @@ def test_unknown_text_is_verbatim() -> None:
 def test_ai_notice_appears_once_per_page_session() -> None:
     source = read("js/chat.js")
     # The text itself lives once, in disclosure.js (G15); chat.js only shows it once per session.
-    assert "const AI_NOTICE =" not in source
-    assert "import { AI_NOTICE } from './disclosure.js';" in source
+    assert "const AI_NOTICE =" not in source and "AI_NOTICE" not in source
+    assert "import { aiNoticeMarkup } from './disclosure.js';" in source
     assert "event === 'session_started'" in source
     assert "if (!sessionStarted)" in source
+    assert source.count("aiNoticeMarkup()") == 1
+    # The band at the top of the log is the one notice: the first answer does not repeat it.
+    disclosure = read("js/disclosure.js")
+    assert "chat-ai-notice" not in disclosure and "MutationObserver" not in disclosure
+    assert "chat-ai-notice" not in source
 
 
 def test_unknown_and_emergency_answers_do_not_show_provenance_panels() -> None:

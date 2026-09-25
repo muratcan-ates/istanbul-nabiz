@@ -10,39 +10,18 @@ function privacyBandMarkup() {
     + `${esc(PRIVACY_NOTICE)} ${esc(PII_WARNING)} <a href="/kvkk.html">Kişisel veriler ve gizlilik: tam metin</a></p></div>`;
 }
 
+/* The AI notice is shown once per page session, as the band chat.js puts at the top of the log when the
+ * first answer starts. The first answer does not repeat it: the notice reads once on screen. */
 function aiNoticeMarkup() {
-  return `<p class="chat-ai-notice">${esc(AI_NOTICE)}</p>`;
+  return `<div class="chat-band" role="note"><p>${esc(AI_NOTICE)}</p></div>`;
 }
 
 function mountDisclosure({ section, log }) {
   if (typeof document === 'undefined' || !section || !log) return;
-  if (!section.querySelector('#privacy-band')) {
-    const chatBand = section.querySelector('.chat-band');
-    if (chatBand) chatBand.insertAdjacentHTML('afterend', privacyBandMarkup());
-    else log.insertAdjacentHTML('beforebegin', privacyBandMarkup());
-  }
-
-  const discloseFirst = () => {
-    const message = log.querySelector('li.chat-msg.is-assistant');
-    if (!message) return false;
-    let notice = message.querySelector('.chat-ai-notice');
-    if (!notice) {
-      notice = document.createElement('p');
-      notice.className = 'chat-ai-notice';
-      const speaker = message.querySelector('.chat-who');
-      if (speaker) speaker.insertAdjacentElement('afterend', notice);
-      else message.insertAdjacentElement('afterbegin', notice);
-    }
-    notice.textContent = AI_NOTICE;
-    notice.hidden = false;
-    return true;
-  };
-
-  if (discloseFirst()) return;
-  const observer = new MutationObserver(() => {
-    if (discloseFirst()) observer.disconnect();
-  });
-  observer.observe(log, { childList: true, subtree: true });
+  if (section.querySelector('#privacy-band')) return;
+  const chatBand = section.querySelector('.chat-band');
+  if (chatBand) chatBand.insertAdjacentHTML('afterend', privacyBandMarkup());
+  else log.insertAdjacentHTML('beforebegin', privacyBandMarkup());
 }
 
 if (typeof document !== 'undefined') {

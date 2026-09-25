@@ -7,7 +7,7 @@
 
 import { stream } from './api.js';
 import { HISTORY_TURNS } from './config.js';
-import { AI_NOTICE } from './disclosure.js';
+import { aiNoticeMarkup } from './disclosure.js';
 import { dateTime, esc, has, int, num } from './format.js';
 import { icon } from './icons.js';
 import { AUTHOR_TR, TOOL_TR, ageText, howPanel, sourceLabel, sourceLink } from './provenance.js';
@@ -165,7 +165,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       if (event === 'session_started') {
         if (!sessionStarted) {
           sessionStarted = true;
-          log.prepend(message('is-notice', `<div class="chat-band" role="note"><p>${esc(AI_NOTICE)}</p></div>`));
+          log.prepend(message('is-notice', aiNoticeMarkup()));
         }
       } else if (event === 'token') {
         streamed += (data && data.text) || '';

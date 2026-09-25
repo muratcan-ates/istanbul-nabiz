@@ -144,7 +144,9 @@ def test_disclosure_texts_have_one_source_and_kvkk_repeats_the_short_notice(tmp_
     assert 'id="privacy-band"' in values["band"] and 'href="/kvkk.html"' in values["band"]
     for phrase in ("TC kimlik", "kart numarası", "sağlık belgesi", "Ses kaydı tutulmaz", "yurt dışı"):
         assert phrase.lower() in values["band"].lower()
-    assert 'class="chat-ai-notice"' in values["notice"]
+    # The AI notice is one band per page session (chat.js), never repeated inside the first answer.
+    assert values["notice"] == f'<div class="chat-band" role="note"><p>{expected_ai}</p></div>'
+    assert "chat-ai-notice" not in (STATIC / "js" / "disclosure.js").read_text(encoding="utf-8")
     pages = [*STATIC.rglob("*.js"), *STATIC.rglob("*.html")]
     matches = [path for path in pages if values["ai"] in path.read_text(encoding="utf-8")]
     assert matches == [STATIC / "js" / "disclosure.js"]
