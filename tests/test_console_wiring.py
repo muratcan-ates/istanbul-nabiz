@@ -347,6 +347,30 @@ def test_no_mission_rules_stops_the_app_and_the_folder_can_be_pointed_at(tmp_pat
     assert {r.id for m in required_missions(MISSIONS_DIR) for r in m.rules} >= {"R-01", "R-03", "R-07"}
 
 
+def test_the_card_carries_a_cost_line_and_an_answer_by_time(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """G16 wiring: rule-based seats make no model call, so the receipt's cost is 0 USD, a count and
+    not a price; a model seat's price is the owner's knob, and without it no cost is shown."""
+    from nabiz.console.wiring import arena_usd_per_call, build_engine
+
+    seats = object()
+    assert arena_usd_per_call(None, {}) == 0.0
+    assert arena_usd_per_call(seats, {"NABIZ_ARENA_USD_PER_CALL": "0.002"}) == 0.002
+    for raw in ("", "bedava", "-1", "nan", "inf"):
+        assert arena_usd_per_call(seats, {"NABIZ_ARENA_USD_PER_CALL": raw}) is None, raw
+
+    monkeypatch.setenv("NEXUS_MISSIONS_DIR", str(MISSIONS_DIR))
+    engine = build_engine(llm.LlmConfig(), unlimited(), path=tmp_path / "nexus.db")
+    assert engine.usd_per_call == 0.0
+    nabiz = facade(recordings(tmp_path))
+    ports, _ = wire_ports(nabiz, nabiz.settings, llm_config=llm.LlmConfig(), guard=unlimited(), engine=engine)
+    app = build_console_app(nabiz=nabiz, llm_config=llm.LlmConfig(), ports=ports, guard=unlimited())
+    with TestClient(app) as client:
+        signal_id = client.post("/api/console/simulate", json={"fixture": "metro_faulty_kartal"}).json()["signal_id"]
+        card = client.get(f"/api/console/decisions/{signal_id}").json()
+    assert card["receipt"]["llm_calls"] == 0 and card["receipt"]["usd"] == 0.0
+    assert card["expires_at"] and card["panel"]["verdict"] in {"publish", "hold", "tie", "no_quorum"}
+
+
 def test_the_arena_seats_spend_their_own_guard_and_abstain_at_its_ceiling(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[int] = []
 

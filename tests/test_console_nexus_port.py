@@ -99,6 +99,26 @@ def test_a_rejection_is_quiet_for_an_hour(tmp_path: pathlib.Path) -> None:
     assert len(port._process_all([incoming(parking(clock))])) == 1
 
 
+def test_a_queue_read_seals_a_card_nobody_answered_in_time(tmp_path: pathlib.Path) -> None:
+    """G16: the queue read runs the core's TTL first, so a card past it reads "expired", sealed by
+    system:timeout, and is never offered for a decision the core would refuse."""
+    clock = Clock()
+    engine = build_engine(tmp_path, clock)
+    port = console(engine, clock)
+
+    async def no_read() -> None:  # no source is read in these tests
+        return None
+
+    port.ingest = no_read  # type: ignore[method-assign]
+    (first,) = port._process_all([incoming(parking(clock))])
+    assert engine.ttl_hours > 0
+    clock.advance(hours=engine.ttl_hours - 1)
+    assert next(i for i in asyncio.run(port.queue())["items"] if i["signal_id"] == first)["status"] == "awaiting_approval"
+    clock.advance(hours=2)
+    row = next(i for i in asyncio.run(port.queue())["items"] if i["signal_id"] == first)
+    assert row["status"] == "expired" and engine.states()[first].status == "expired"
+
+
 def test_a_hub_without_an_outage_id_is_keyed_by_its_fault_list() -> None:
     one = make_signal("hub_faults", entity="metro-hub:yenikapi", hub="Yenikapı", fault_count=2, equipment_list="A; B")
     same = make_signal("hub_faults", entity="metro-hub:yenikapi", hub="Yenikapı", fault_count=2, equipment_list="A; B",

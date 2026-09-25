@@ -28,6 +28,8 @@ const STEP_TR = {
 const STANCE_TR = { support: 'destekliyor', oppose: 'karşı çıkıyor', conditional: 'şartlı destekliyor' };
 const STANCE_ICON = { support: 'circle-check', oppose: 'alert-triangle', conditional: 'clock-question' };
 const LEVEL_TR = { high: 'yüksek', medium: 'orta', low: 'düşük' };
+/* The three seats' vote: advice beside the card, never a decision in place of the operator's. */
+const PANEL_TR = { publish: 'yayımla', hold: 'beklet', tie: 'oylar eşit', no_quorum: 'yetersayı yok' };
 const ACTION_TR = {
   publish_card: 'vatandaş kartını güncelle',
   publish_alternative: 'onaylı alternatifi yayımla',
@@ -176,9 +178,12 @@ function decisionCard(d, options) {
   ].filter(Boolean) : [];
   const receiptLine = receipt.length ? `<p class="receipt">${receipt.map(esc).join(' · ')}</p>` : '';
   const expires = !done && d.expires_at ? `<p class="field-hint">Son karar: ${dateTime(d.expires_at)}</p>` : '';
-  const panel = d.panel && d.panel.verdict ? `<p class="field-hint">Panel: ${esc(d.panel.verdict)}</p>` : '';
+  const votes = d.panel && d.panel.votes;
+  const tally = votes ? ` (destek ${int(votes.support)}, karşı ${int(votes.oppose)}, şartlı ${int(votes.conditional)})` : '';
+  const panel = d.panel && d.panel.verdict
+    ? `<p class="field-hint">Panel önerisi: ${esc(word(PANEL_TR, d.panel.verdict))}${esc(tally)}</p>` : '';
   const requiredLevel = d.stakes && d.stakes.required_level
-    ? `<p class="field-hint">Gereken güven: ${esc(d.stakes.required_level)}</p>` : '';
+    ? `<p class="field-hint">Gereken güven: ${esc(word(LEVEL_TR, d.stakes.required_level))}</p>` : '';
   const reasonGroups = Object.entries(REASON_CODES).flatMap(([group, items]) => items.map((item) =>
     `<label class="reason-code" data-for="${group}"><input type="radio" name="reason-code" value="${item.code}"> <span>${item.label}</span></label>`
   )).join('');

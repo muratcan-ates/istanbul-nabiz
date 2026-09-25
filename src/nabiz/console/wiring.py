@@ -17,9 +17,11 @@ offline facade whatever the app's own mode, so a replay never reaches İBB.
 from __future__ import annotations
 
 import dataclasses
+import math
 import os
 import pathlib
 from collections.abc import Awaitable, Callable, Mapping
+from typing import Any
 
 from ibb_mcp.config import REPO_ROOT, Settings
 from ibb_mcp.sources.base import SourceContext
@@ -77,9 +79,30 @@ class RecordedFacade:
             self._own = None
 
 
+def arena_usd_per_call(seats: Any, env: Mapping[str, str] | None = None) -> float | None:
+    """What one Arena seat call costs, for the card's cost receipt.
+
+    Rule-based seats (``seats`` is ``None``) make no model call, so their cost is zero: a count,
+    not a price. A model seat's price is the owner's, ``NABIZ_ARENA_USD_PER_CALL`` in USD; unset or
+    invalid, the receipt shows no cost rather than one quoted from memory (the rule of
+    :mod:`nabiz.console.budget`).
+    """
+    if seats is None:
+        return 0.0
+    raw = (os.environ if env is None else env).get("NABIZ_ARENA_USD_PER_CALL", "").strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if math.isfinite(value) and value >= 0 else None
+
+
 def build_engine(llm_config: llm.LlmConfig | None, guard: SpendGuard, *, path: pathlib.Path | None = None) -> NexusEngine:
     """The engine over the ledger and the missions; ``guard`` is the Arena's own, not the chat's."""
-    return NexusEngine(Ledger(path or ledger_path()), required_missions(missions_dir()), arena=arena_port(llm_config, guard))
+    seats = arena_port(llm_config, guard)
+    return NexusEngine(
+        Ledger(path or ledger_path()), required_missions(missions_dir()), arena=seats, usd_per_call=arena_usd_per_call(seats)
+    )
 
 
 def wire_ports(

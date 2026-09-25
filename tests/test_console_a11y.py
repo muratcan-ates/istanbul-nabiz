@@ -126,7 +126,7 @@ def test_the_card_draws_the_lifecycle_fields_only_when_they_are_present() -> Non
             receipt: {reflex_ms: null, arena_ms: 80, wall_ms: 125.5, llm_calls: 0, usd: 0.0125},
             folded_repeats: 2,
             expires_at: '2026-09-25T10:45:00+03:00',
-            panel: {verdict: 'publish'},
+            panel: {verdict: 'publish', votes: {support: 2, oppose: 0, conditional: 1}},
             stakes: {required_level: 'high'},
           };
           return {
@@ -151,7 +151,8 @@ def test_the_card_draws_the_lifecycle_fields_only_when_they_are_present() -> Non
         assert "Neden emin değilim" in rendered
         assert "2 tekrar katlandı" in rendered
         assert "Süre:" in rendered and "model çağrısı: 0" in rendered and "USD" in rendered
-        assert "Panel: publish" in rendered and "Gereken güven: high" in rendered
+        assert "Panel önerisi: yayımla (destek 2, karşı 0, şartlı 1)" in rendered and "Gereken güven: yüksek" in rendered
+        assert "publish" not in rendered.replace('value="publish', "")
     assert "Süresi doldu" in result["expired"] and "Uygulandı (simülasyon)" in result["executed"]
     assert "Son karar:" in result["pending"]
     assert "Son karar:" not in result["expired"] and "Son karar:" not in result["executed"]

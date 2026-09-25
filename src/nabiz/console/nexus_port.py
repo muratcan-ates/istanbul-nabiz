@@ -269,6 +269,9 @@ class NexusConsole:
     # ------------------------------------------------------------------ the port
     async def queue(self) -> dict[str, Any]:
         reading = await self._read_in_background()
+        # A card nobody answered within the mission's TTL is sealed "expired" (actor system:timeout)
+        # before the queue is read, so the page never offers a decision the core would refuse.
+        await asyncio.to_thread(self.engine.expire)
         states = self.engine.states()
         payload = queue_payload(states.values())
         for item in payload["items"]:
