@@ -1,0 +1,92 @@
+# sources.seed.txt — Nabız bilgi katmanı tohum URL'leri
+# Kaynak: deep-research-report-38.md (GPT derin araştırma, erişim 25.09.2026). Yalnız raporda geçen URL'ler; uydurma yok.
+# Allowlist tanımı: rapor 39 ALLOWED_HOSTS (exact): ibb.gov.tr, www.ibb.gov.tr, iski.gov.tr, www.iski.gov.tr, iett.istanbul, metro.istanbul, www.metro.istanbul, ispark.istanbul, www.ispark.istanbul, data.ibb.gov.tr
+# Risk = yanlış/eski içeriğin zarar potansiyeli (ücret/hak/sağlık/acil) + erişim belirsizliği; benim etiketim, raporun soru-risk ve erişim sütunlarından türetildi.
+# 'ilk60 #N' = raporun 'İlk 60 kaynak sayfası' sırası. Robots/kullanım koşulları: rapor 38 hiçbir host için doğrulayamadı ('?'); rapor 39 altı allowlist hostunun robots.txt'sine de erişemedi.
+#
+# ===== BÖLÜM 1: ALLOWLIST İÇİ (exact host eşleşmesi) — 14 URL =====
+# url	kurum	kategori	icerik_turu	risk	not
+https://ispark.istanbul/	ISPARK	ispark	html	yuksek	ilk60 #20, C; ERİŞİLEMEDİ (timeout); statik ücret/borç kuralları için; canlı doluluk MCP'de
+https://iett.istanbul/	IETT	iett	html	orta	ilk60 #23, A; statik yolcu/başvuru/kayıp eşya; HTML + dinamik veri; canlı konum MCP'de
+https://www.metro.istanbul/	METRO_ISTANBUL	metro	html	orta	ilk60 #24, A; statik yolcu bilgisi
+https://www.metro.istanbul/icerik/faaliyet_raporlari	METRO_ISTANBUL	metro-faaliyet	html	dusuk	ilk60 #25, B; en yeni görünen rapor 2024 (İBB genelde 2025 var) — 'son rapor' otomatik varsayılmamalı
+https://data.ibb.gov.tr/	IBB_OPEN_DATA	acik-veri-portal	api	orta	ilk60 #51, C; ERİŞİLEMEDİ (portal/API); lisans ayrıca doğrulanmalı (rapor 39: data.ibb.gov.tr/license metni çekilemedi)
+https://data.ibb.gov.tr/datarequest	IBB_OPEN_DATA	acik-veri-talep	html	dusuk	ilk60 #52, C; veri talebi formu
+https://data.ibb.gov.tr/dataset/iski-ilce-ve-mahalle-bazli-gelen-ve-cevaplanan-su-ariza-sayisi	IBB_OPEN_DATA	veri-iski-ariza	api	orta	ilk60 #18, C; URL doğrulandı, içerik erişilemedi
+https://data.ibb.gov.tr/dataset/mevcut-otopark-sayilari-ve-kapasiteleri	IBB_OPEN_DATA	veri-otopark	api	dusuk	ilk60 #21, C; URL doğrulandı, içerik erişilemedi
+https://data.ibb.gov.tr/dataset/mahalle-bazli-bina-analiz-verisi	IBB_OPEN_DATA	veri-bina-analiz	api	yuksek	ilk60 #36, C; URL doğrulandı, içerik erişilemedi; Q118 yüksek risk
+https://data.ibb.gov.tr/dataset/deprem-senaryosu-analiz-sonuclari	IBB_OPEN_DATA	veri-deprem-senaryo	api	orta	ilk60 #37, C; URL doğrulandı, içerik erişilemedi
+https://data.ibb.gov.tr/dataset/genc-universiteli-egitim-yardimi-veri-seti/resource/69484e6b-3440-4a61-bf59-19e5fafd49a9	IBB_OPEN_DATA	veri-genc-universiteli	api	dusuk	ilk60 #53, C; geçmiş veri; erişilemedi
+https://data.ibb.gov.tr/dataset/mahalleleregore-sosyal-yardim-alan-hane-sayisi	IBB_OPEN_DATA	veri-sosyal-yardim-hane	api	dusuk	ilk60 #54, C; doğrulama verisi; erişilemedi
+https://data.ibb.gov.tr/dataset/parklar-ve-yesil-alanlar	IBB_OPEN_DATA	veri-parklar	api	dusuk	ilk60 #55, C; URL doğrulandı; erişilemedi
+http://www.ibb.gov.tr	IBB	ibb-eski-host	html	dusuk	ilk60 yok; e-Devlet kataloğunda kurum web sitesi bağlantısı hâlâ bu; rapor canonical olarak ibb.istanbul kullanıyor; allowlist'te (rapor 39) ama rapor 38'de içerik kaynağı değil
+#
+# ===== BÖLÜM 2: ALLOWLIST GENİŞLETME ADAYI — ibb.gov.tr alt alan adları (exact listede yok; aynı kurum) — 9 URL =====
+# Karar: allowlist'i 'ibb.gov.tr ve alt alan adları' olarak genişletmek mi, tek tek host eklemek mi? (Açık soru A-oncelik-ve-bosluklar.md'de)
+# url	kurum	kategori	icerik_turu	risk	not
+https://sosyalhizmetler.ibb.gov.tr/	IBB	sosyal-hizmetler	html	yuksek	ilk60 #5, A/B; düz HTML; haber tarihleri var; hak sorularında tarih kontrollü
+https://sosyalyardim.ibb.gov.tr/	IBB	sosyal-yardim-basvuru	js	yuksek	ilk60 #6, B; form/JS; tarih belirsiz
+https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142	IBB	duzenli-nakdi-destek	html	yuksek	ilk60 #7, A; 12.06.2025; düzenli nakdi destek + başvuru kanalları (153/İstanbul Senin/WhatsApp)
+https://sosyalhizmetler.ibb.gov.tr/engellimerkezleri.aspx	IBB	engelli-merkezleri	html	orta	ilk60 #8, A; merkez listeleri makinece okunabilir; tarih zayıf; ASP.NET eski görünüm
+https://sosyalhizmetler.ibb.gov.tr/mudurlukdetay.aspx?ID=9	IBB	engelli-hizmetleri-mudurlugu	html	yuksek	ilk60 #9, A; tarih belirsiz
+https://application2.ibb.gov.tr/tulasim/ucrethesaplama.aspx	IBB	okul-servis-ucret	html	yuksek	ilk60 #26, A; hesaplama formu; tarife sisteme bağlı; ücret sorusu
+https://ataturkkitapligi.ibb.gov.tr/	IBB	kutuphane	html	dusuk	ilk60 #30, A; çok iyi HTML; güncel
+https://itfaiye.ibb.gov.tr/	IBB	itfaiye	html	yuksek	ilk60 #34, C; ERİŞİLEMEDİ (timeout); acil yönlendirme dışında cevap yok
+https://zabita.ibb.gov.tr/faaliyet-raporlari/	IBB	zabita	html	dusuk	ilk60 #38, A/B; 2025 raporu listeli; kategori keşfi
+#
+# ===== BÖLÜM 3: ALLOWLIST GENİŞLETME ADAYI — tamamen dışarıdaki hostlar — 39 URL =====
+# Not: raporun ilk 60 kaynağının çoğunluğu buradadır (ibb.istanbul, *.ibb.istanbul, istanbulsenin.istanbul, istanbulkart.istanbul, sehirhatlari.istanbul, spor.istanbul, www.iski.istanbul, www.igdas.istanbul ...).
+# url	kurum	kategori	icerik_turu	risk	not
+https://istanbulsenin.istanbul/sikca-sorulan-sorular/	IBB	istanbul-senin-sss	html	orta	ilk60 #1, A; çok iyi düz metin; güncelleme tarihi yok; Wi-Fi kota (30 GB/2 Mbps, ilk 3 ay 60 GB) mağaza metniyle (sınırsız) çelişiyor; ~10.000 nokta ifadesi eski (2025 faaliyet: 13.350)
+https://istanbulsenin.istanbul/	IBB	istanbul-senin-ana	html	orta	ilk60 yok (envanter: Askıda Fatura mini app); HTML + uygulama; tarih kısmen
+https://istanbulsenin.istanbul/hakkimizda/	IBB	istanbul-senin-hakkinda	html	dusuk	ilk60 #56, A; süper uygulama mimarisi
+https://istanbulseninhaber.ibb.istanbul/haber-detay/2026da-da-istanbul-seninle	IBB	istanbul-senin-moduller	html	orta	ilk60 #4, A; 28.12.2025 tarihli resmî haber; 2026 mini app/hizmet envanteri; sosyal destek/sağlık/ulaşım/kütüphane modülleri
+https://istanbulseninhaber.ibb.istanbul/haber-detay/ibbden-30-bin-haneye-egitim-destegi	IBB	egitim-destegi	html	yuksek	ilk60 #14, A; 27.10.2025; Kızlar Okusun Diye (hak/tutar sorusu Q59-60)
+https://cozummerkezi.ibb.istanbul/	IBB	153-cozum-merkezi	js	orta	ilk60 #2, B; JS/form, çok sınırlı metin; robots/koşul ?; şikâyet/ihbar yönlendirmelerinin ana hedefi
+https://www.turkiye.gov.tr/istanbul-buyuksehir-belediyesi	DIGER	e-devlet-katalog	html	orta	ilk60 #3, A; 11 e-hizmet (resmî sayfa, rapor hesabı 1+2+2+2+2+1+1); Nikâh 0, Sosyal Yardım 0; HTML + JS kimlik; e-Devlet koşulları ayrıca incelenmeli
+https://gencuniversiteli.ibb.istanbul/	IBB	genc-universiteli	html	yuksek	ilk60 #10, A; dönemsel form/e-hizmet; hak/başvuru
+https://senokudiye.ibb.istanbul/	IBB	sen-oku-diye	html	yuksek	ilk60 #11, A; dönemsel form/e-hizmet
+https://enstitu.ibb.istanbul/	IBB	ismek	html	orta	ilk60 #12, A; dinamik katalog + başvuru; ücretsiz mi sorusu A/B
+https://yuvamiz.ibb.istanbul/	IBB	kres	js	yuksek	ilk60 #13, B/JS; JS ağırlıklı; ücret/yaş/şart soruları yüksek risk
+https://kariyer.ibb.istanbul	IBB	kariyer	html	dusuk	ilk60 #59, B; dinamik web app
+https://www.istanbulkart.istanbul/	DIGER	istanbulkart	html	yuksek	ilk60 #15, A; BELBİM; 01/15.09.2026 öğrenci kartı/abonman ve 29.06.2026 engelli kart duyuruları görünür; çok iyi HTML; kart hakları için birincil kaynak
+https://bireysel.istanbulkart.istanbul	DIGER	istanbulkart-basvuru	html	yuksek	ilk60 #16, A/form; dinamik e-hizmet formu (rapor: 'Form'); BELBİM
+https://www.iski.istanbul/	ISKI	iski	html	yuksek	ilk60 #17, C; ERİŞİLEMEDİ (timeout); tür saptanamadı; DİKKAT: rapor 39 allowlist'i iski.gov.tr diyor, rapor 38 www.iski.istanbul kullanıyor
+https://www.igdas.istanbul/	DIGER	igdas	html	yuksek	ilk60 #19, C; ERİŞİLEMEDİ (timeout); gaz kaçağı (Q42) tahmin yasak
+https://sehirhatlari.istanbul/	SEHIR_HATLARI	sehir-hatlari	html	orta	ilk60 #22, A; Eylül 2026 sefer düzenlemeleri/iptaller/tarife/SSS/engelli bağlantıları; footer 'Copyright 2025' (şablon eski, içerik güncel); ücret alt sayfası PDF olabilir
+https://spor.istanbul/	DIGER	spor-istanbul	html	orta	ilk60 #27, A; Spor İstanbul AŞ; 2026 etkinlik/tesis/indirim; çok iyi HTML; ücret soruları A/B
+https://online.spor.istanbul	DIGER	spor-online-kayit	html	dusuk	ilk60 #28, A/form; dinamik form
+https://event.spor.istanbul	DIGER	spor-etkinlik-kayit	html	dusuk	ilk60 #29, A/form; dinamik form
+https://kultur.istanbul/	DIGER	kultur-as	html	orta	ilk60 #31, C; ERİŞİLEMEDİ (timeout); Kültür AŞ
+https://www.ihe.istanbul/	DIGER	halk-ekmek	html	yuksek	ilk60 #32, C; ERİŞİLEMEDİ (timeout); fiyat model hafızasından cevaplanmamalı
+https://mezarliklar.ibb.istanbul/	IBB	mezarliklar	html	yuksek	ilk60 #33, C; ERİŞİLEMEDİ (timeout); yüksek öncelikli blokaj; defin/ücret/nakil
+https://depremzemin.ibb.istanbul/	IBB	deprem-risk	html	yuksek	ilk60 #35, A; HTML/harita; afet toplanma/barınma soruları çok yüksek risk
+https://tarim.ibb.istanbul/tr/birimlerimiz/12/harita.html	IBB	hayvan-tarim	html	orta	ilk60 #39, A; hayvan bakımevi/hastane/aşılama/bostan/arıcılık; tarih belirsiz
+https://tarim.ibb.istanbul/anadolu-yakasi-hal-mudurlugu/hizmet-standartlari.html	IBB	hal-hizmet-standardi	html	dusuk	ilk60 #40, A; hizmet standardı tablosu
+https://ibb.istanbul/ibb/faaliyet-raporlari/	IBB	faaliyet-raporlari	html	dusuk	ilk60 #41, A; 2025 raporu yayımlanmış olarak listeli
+https://ibb.istanbul/	IBB	ibb-ana	html	orta	ilk60 #60, B/C; son çare navigasyon; Q71/149/150 için 'özel sayfa doğrulanamadı'
+https://uploads.ibb.istanbul/uploads/2025_Faaliyet_Raporu_68f4b037e0.pdf	IBB	faaliyet-raporu-2025	pdf	orta	ilk60 #42, C; PDF çağrısı zaman aşımına uğradı, PARSE EDİLMEDİ; 153 toplamı + ilk 5 konu buradan çıkarılacak (KAPI 1)
+https://finansman.ibb.istanbul/wp-content/uploads/2025/12/2026PERFORMANSPROGRAMI-1.pdf	IBB	performans-programi-2026	pdf	dusuk	ilk60 #43, C/PDF; parse edilmedi
+https://uploads.ibb.istanbul/uploads/KHE_Saglik_Isleri_DB_2026_57e20badf0.pdf	IBB	khe-saglik	pdf	yuksek	ilk60 #44, C/PDF; 2026 sürümü; parse edilmedi; evde sağlık/tıp merkezi soruları çok yüksek risk
+https://uploads.ibb.istanbul/uploads/KHE_Afet_Isleri_ve_Risk_Yoenetimi_DB_2026_14b2fe4eec.pdf	IBB	khe-afet	pdf	yuksek	ilk60 #45, C/PDF; 2026; parse edilmedi
+https://uploads.ibb.istanbul/uploads/KHE_Deprem_Risk_Yoenetim_ve_Kentsel_Iyilestirme_DB_2026_d81882f9c3.pdf	IBB	khe-deprem	pdf	orta	ilk60 #46, C/PDF; parse edilmedi
+https://uploads.ibb.istanbul/uploads/KHE_Cevre_Koruma_DB_2024_3c4c2dd5d4.pdf	IBB	khe-cevre	pdf	dusuk	ilk60 #47, C/PDF; 2024 (eski); parse edilmedi
+https://uploads.ibb.istanbul/uploads/Park_Bahce_ve_Yesil_Alanlar_DB_Kamu_Hizmet_Envanteri_132c7c7419.pdf	IBB	khe-park-bahce	pdf	dusuk	ilk60 #48, C/PDF; sürüm adı görünmüyor; parse edilmedi
+https://uploads.ibb.istanbul/uploads/KHE_Kueltuer_DB_2025_25251c2f6d.pdf	IBB	khe-kultur	pdf	dusuk	ilk60 #49, C/PDF; 2025; parse edilmedi
+https://uploads.ibb.istanbul/uploads/Rayli_Sistem_DB_Kamu_Hizmet_Envanteri_c431b7ba7a.pdf	IBB	khe-rayli-sistem	pdf	dusuk	ilk60 #50, C/PDF; parse edilmedi
+https://apps.apple.com/us/app/i-stanbul-senin/id1534342254	DIGER	magaza-appstore	html	dusuk	ilk60 #57, A ikincil; modül metadata; cevap kaynağı değil (query-discovery); 'yaklaşık 100 mini uygulama' öz-bildirim
+https://play.google.com/store/apps/details?hl=en&id=com.tr.gov.ibb.istanbulsenin	DIGER	magaza-googleplay	html	dusuk	ilk60 #58, A ikincil; metadata 'updated May 6, 2025', 2026 yorumları sürüyor; cevap kaynağı değil
+#
+# ===== BÖLÜM 4: RAPOR 39 §HUKUK KONTROL URL'LERİ (crawl tohumu DEĞİL; Gün-1 kontrol/log kaydı) =====
+# url	kurum	kategori	icerik_turu	risk	not
+https://data.ibb.gov.tr/license	IBB_OPEN_DATA	lisans	html	orta	rapor 39: 'İBB Açık Veri Lisansı v1.0' adresi ikincil kaynaklarca teyitli; güncel metin çekilemedi; yalnız data.ibb.gov.tr veri setleri için geçerli sayılmalı, HTML sitelerin genel lisansı değil
+https://ibb.gov.tr/robots.txt	IBB	robots	html	orta	rapor 39: doğrulanamadı (araç açamadı); 'robots yok' anlamına gelmez; canonical host ibb.istanbul olabilir
+https://www.iski.gov.tr/robots.txt	ISKI	robots	html	orta	rapor 39: doğrulanamadı; rapor 38 İSKİ için www.iski.istanbul kullanıyor (host uyuşmazlığı)
+https://iett.istanbul/robots.txt	IETT	robots	html	orta	rapor 39: doğrulanamadı
+https://www.metro.istanbul/robots.txt	METRO_ISTANBUL	robots	html	orta	rapor 39: doğrulanamadı
+https://ispark.istanbul/robots.txt	ISPARK	robots	html	orta	rapor 39: doğrulanamadı
+https://data.ibb.gov.tr/robots.txt	IBB_OPEN_DATA	robots	html	orta	rapor 39: doğrulanamadı
+https://www.mevzuat.gov.tr/mevzuat?MevzuatNo=5846&MevzuatTur=1&MevzuatTertip=3	DIGER	mevzuat-fsek	html	yuksek	rapor 39: FSEK m.31/m.35; araçta makine-okunur açılmadı; yayına girmeden hukuk kontrolü
+https://www.mevzuat.gov.tr/mevzuat?MevzuatNo=4982&MevzuatTur=1&MevzuatTertip=5	DIGER	mevzuat-bilgi-edinme	html	orta	rapor 39: 4982 Bilgi Edinme; erişim hakkı = yeniden kullanım lisansı değil
+https://docs.ckan.org/en/latest/api/index.html	DIGER	ckan-api-doc	html	dusuk	rapor 39: package_search/package_show; UI kazımak yerine Action API
+https://www.rfc-editor.org/rfc/rfc9309	DIGER	robots-rfc	html	dusuk	rapor 39: Robots Exclusion Protocol normatif kaynak
