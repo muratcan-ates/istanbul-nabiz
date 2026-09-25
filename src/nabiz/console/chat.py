@@ -248,10 +248,6 @@ def system_prompt(needs: Sequence[str], base: str) -> str:
     return "\n\n".join(parts)
 
 
-def author_for(config: llm.LlmConfig) -> str:
-    return "yerel model" if config.provider == "foundry_local" else "model"
-
-
 class ChatService:
     """Runs chat turns over one shared facade, one model configuration and one spend guard."""
 
@@ -414,14 +410,21 @@ class ChatService:
     ) -> tuple[AgentAnswer, str]:
         """The model when it is configured, allowed today and trustworthy on this answer; else the rules."""
         tools = ToolEvents(self.nabiz, emit)
-        if llm.available(self.config) and self.guard.reserve(self.config.provider, TURN_CALLS):
+        # The first rung of the model ladder (cloud, then Foundry Local) that today's ceiling has room
+        # for: a spent cloud budget drops to the free local model before it drops to the rules. The
+        # generator stops at the first rung that reserved, so only one reservation is ever held.
+        rung = None
+        if llm.available(self.config):
+            rung = llm.first_rung(self.config, lambda provider: self.guard.reserve(provider, TURN_CALLS))
+        if rung is not None:
             try:
                 async with self._model_turns:
-                    answer = await self._ask_model(tools, question, prompt, context or [])
+                    answer = await self._ask_model(tools, question, prompt, context or [], rung)
             finally:
-                self.guard.release(self.config.provider, TURN_CALLS)
+                self.guard.release(rung.provider, TURN_CALLS)
             if answer is not None and answer.mode == "llm" and (answer.faithfulness is None or answer.faithfulness.passed):
-                return answer, author_for(self.config)
+                # Who wrote it: the rung that answered, which a failed call may have moved down the ladder.
+                return answer, llm.author_of(answer.provider or rung.provider)
             if answer is not None and answer.mode != "llm":
                 # The agent already fell back to its rules after a model error.
                 return answer, "kural"
@@ -429,16 +432,16 @@ class ChatService:
         return await rules.ask(question), "kural"
 
     async def _ask_model(
-        self, tools: ToolEvents, question: str, prompt: str, context: list[dict[str, str]]
+        self, tools: ToolEvents, question: str, prompt: str, context: list[dict[str, str]], rung: llm.LlmConfig
     ) -> AgentAnswer | None:
         answer: AgentAnswer | None = None
         try:
-            answer = await NabizAgent(tools, config=self.config, system_prompt=prompt).ask(question, context=context)
+            answer = await NabizAgent(tools, config=rung, system_prompt=prompt).ask(question, context=context)
         except Exception as exc:  # noqa: BLE001 - any failure falls back to the rule path
             log.warning("model turn failed, answering by rule: %s", type(exc).__name__)
         finally:
             usage = answer.usage if answer is not None else {}
             # The calls the agent counted, failed ones included; nothing counted is the worst case.
             calls = usage.get("model_calls") or (answer.steps if answer is not None and answer.mode == "llm" else TURN_CALLS)
-            self.guard.record(self.config.provider, usage, calls)
+            self.guard.record(rung.provider, usage, calls)
         return answer

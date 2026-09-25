@@ -7,6 +7,7 @@ the İBB tools run offline on the recorded fixtures (``conftest.offline_settings
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 from collections.abc import Iterator
@@ -237,6 +238,30 @@ def test_the_answer_reaches_the_page_without_dashes_or_the_abbreviation(nabiz: N
     assert final["author"] == "model"
     assert "—" not in final["answer"] and "ETA" not in final["answer"]
     assert "tahmini varış" in final["answer"]
+
+
+def test_a_spent_cloud_budget_drops_to_the_local_rung_before_the_rules(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    """G8: the ladder's first rung with room today answers, and the card names who wrote it."""
+    fake = FakeModel(reply(tool_calls=[tool_call("metro_status")]), reply(PLAIN_ANSWER))
+    monkeypatch.setattr(llm, "chat", fake)
+    guard = SpendGuard(BudgetConfig(daily_calls=3, state_path=None))
+    guard.record(CLOUD.provider, {}, 3)
+    with client_for(nabiz, dataclasses.replace(CLOUD, fallback=LOCAL), guard) as client:
+        _, final = ask(client, METRO_QUESTION)
+    assert final["author"] == "yerel model"
+    assert fake.calls and all(call["config"].provider == "foundry_local" for call in fake.calls), "the cloud is not asked"
+    assert guard.today()["calls"] == 3, "the free local rung adds nothing to the cloud's count"
+
+
+def test_an_answer_the_ladder_moved_to_the_local_model_is_labelled_local(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The cloud rung reserved the turn, a failed call dropped it to Foundry Local: the label follows
+    the rung that wrote the answer, not the one that was asked first."""
+    steps = (reply(tool_calls=[tool_call("metro_status")]), reply(PLAIN_ANSWER))
+    local = [{**step, "provider": "foundry_local"} for step in steps]
+    monkeypatch.setattr(llm, "chat", FakeModel(*local))
+    with client_for(nabiz, dataclasses.replace(CLOUD, fallback=LOCAL)) as client:
+        _, final = ask(client, METRO_QUESTION)
+    assert final["author"] == "yerel model"
 
 
 # --------------------------------------------------------------------------------------

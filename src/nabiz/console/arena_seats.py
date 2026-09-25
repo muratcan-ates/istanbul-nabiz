@@ -121,7 +121,7 @@ class ModelSeats:
     def __init__(self, config: llm.LlmConfig, guard: SpendGuard) -> None:
         self.config = config
         self.guard = guard
-        self.author = "yerel model" if config.provider == "foundry_local" else "model"
+        self.author = llm.author_of(config.provider)
 
     async def _seat(self, role: str, signal: Signal, evidence: Sequence[EvidenceItem]) -> Opinion | None:
         messages = [

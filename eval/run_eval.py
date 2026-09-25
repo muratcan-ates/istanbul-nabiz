@@ -654,6 +654,8 @@ async def run_agent_scenario(agent: Any, scenario: dict[str, Any]) -> dict[str, 
         "answer": text,
         "answer_mode": getattr(answer, "mode", None),
         "model": getattr(answer, "model", None),
+        # The rung that wrote the answer (cloud, Foundry Local or none): the ladder can drop a rung mid-run.
+        "provider": getattr(answer, "provider", None),
         "steps": getattr(answer, "steps", None),
         "repaired": bool(getattr(answer, "repaired", False)),
         "warnings": list(getattr(answer, "warnings", []) or []),
@@ -696,6 +698,7 @@ async def run_agent(
     models = {r["model"] for r in records if r.get("model")}
     provenance["answer_modes"] = sorted({r["answer_mode"] for r in records if r.get("answer_mode")})
     provenance["models_used"] = sorted(models)
+    provenance["providers_used"] = sorted({r["provider"] for r in records if r.get("provider")})
     return records, None, provenance
 
 
@@ -925,6 +928,7 @@ def answer_layer(summary: dict[str, Any], context: dict[str, Any]) -> list[str]:
     agent = context.get("agent") or {}
     modes = ", ".join(agent.get("answer_modes") or []) or "unknown"
     model = ", ".join(agent.get("models_used") or []) or (agent.get("model") or "none")
+    provider = ", ".join(agent.get("providers_used") or []) or (agent.get("provider") or "none")
     marker = (
         f"{summary['refusal_marker_respected'] * 100:.1f}% ({summary['refusal_marker_cases']} scenarios require a "
         "refusal or a limit to be stated in words)"
@@ -942,7 +946,7 @@ def answer_layer(summary: dict[str, Any], context: dict[str, Any]) -> list[str]:
         *_table(
             ["Metric", "Result"],
             [
-                ["Model", f"`{model}` · provider `{agent.get('provider') or 'none'}` · answer mode `{modes}`"],
+                ["Model", f"`{model}` · provider `{provider}` · answer mode `{modes}`"],
                 ["Answers produced", str(summary["answers_produced"])],
                 ["Expected tools all called", "n/a" if summary["tool_chain_coverage"] is None
                  else f"{summary['tool_chain_coverage'] * 100:.1f}%"],
