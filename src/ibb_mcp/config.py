@@ -32,6 +32,10 @@ IETT_ACTION_SCHEDULE = "GetPlanlananSeferSaati_json"
 METRO_BASE = f"{GATEWAY}/MetroIstanbul/api/MetroMobile/V2"
 METRO_SERVICE_STATUS = f"{METRO_BASE}/GetServiceStatuses"
 METRO_STATIONS = f"{METRO_BASE}/GetStations"
+# Faulty lifts, escalators and moving walkways: a GET summary of counts per equipment group,
+# and a POST detail list that needs {"EquipmentGroupName": ...} (both first read 2026-09-24).
+METRO_FAULTY_EQUIPMENTS = f"{METRO_BASE}/GetFaultyEquipments"
+METRO_FAULTY_EQUIPMENT_DETAILS = f"{METRO_BASE}/GetFaultyEquipmentDetails"
 
 # --- Traffic ----------------------------------------------------------------------
 # NOTE: returns XML unless Accept: application/json is sent.
@@ -207,6 +211,8 @@ SOURCE_URLS = {
     "iett_schedule": IETT_SCHEDULE_ASMX,
     "metro_status": METRO_SERVICE_STATUS,
     "metro_stations": METRO_STATIONS,
+    "metro_equipment_summary": METRO_FAULTY_EQUIPMENTS,
+    "metro_equipment": METRO_FAULTY_EQUIPMENT_DETAILS,
     "traffic": TRAFFIC_INDEX_HISTORY,
     "aq_stations": AQ_STATIONS,
     "aq_readings": AQ_READINGS,

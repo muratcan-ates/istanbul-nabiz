@@ -221,6 +221,30 @@ class PoliteClient:
         response = await self.request("GET", url, source=source, budget=budget, headers=headers, params=params)
         return _loads(response, source)
 
+    async def post_json(
+        self,
+        url: str,
+        *,
+        source: str,
+        body: dict[str, Any],
+        budget: str | None = None,
+    ) -> Any:
+        """POST a JSON body and parse the JSON answer.
+
+        Metro İstanbul's ``GetFaultyEquipmentDetails`` only answers a POST. The caller
+        validates ``body`` before calling: a malformed request there comes back as a server
+        error, which the retry policy would repeat, so it must never be sent at all. A
+        non-JSON answer is reported by status alone, never by its text, because that
+        endpoint's error page is a stack trace that has no place in a log or an answer.
+        """
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        content = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        response = await self.request("POST", url, source=source, budget=budget, headers=headers, content=content)
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise UpstreamUnavailable(f"{source}: yanıt JSON değil", source=source, status=response.status_code) from exc
+
     @traced("nabiz.http.soap")
     async def post_soap_json(
         self,
