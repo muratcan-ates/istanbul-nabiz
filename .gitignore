@@ -10,6 +10,8 @@
 .venv/
 __pycache__/
 data/lake/
+# The NEXUS decision ledger (SQLite): the operator's rulings and reasons, never committed.
+data/nexus/
 data/reference/gtfs/
 docs/screenshots/*.mov
 eval/results/*.json

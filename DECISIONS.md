@@ -26,6 +26,7 @@ the reasoning stays readable.
 | [18](#18-serve-the-arrival-estimator-with-the-better-held-out-score-the-untuned-rate) | Serve the arrival estimator with the better held-out score: the untuned rate | Accepted — supersedes the tool's use of the calibrated profile |
 | [19](#19-the-server-package-imports-nothing-from-the-apps-and-code-size-is-ratcheted) | The server package imports nothing from the apps, and code size is ratcheted | Accepted |
 | [20](#20-the-js-payload-target-is-raised-to-the-step-7-tree-for-the-3-day-product-sprint) | The JS payload target is raised to the step 7 tree for the 3-day product sprint | Accepted — temporary; the JS budget itself stays the owner's |
+| [21](#21-nexus_core-is-a-third-package-a-library-that-imports-nothing-from-the-other-two) | `nexus_core` is a third package: a library that imports nothing from the other two | Accepted |
 
 ---
 
@@ -972,3 +973,32 @@ owner has three days to ship a working product.
   its reason, here.
 - A phone fetches about 52 KB gzip of first-party JS in 27 module requests. Web Vitals for this tree: not run
   (Lighthouse is not installed; `eval/results/web-vitals.md`).
+
+---
+
+## 21. `nexus_core` is a third package: a library that imports nothing from the other two
+
+**Date:** 2026-09-25 · **Status:** Accepted
+
+### Context
+
+The İBB-employee face needs a decision layer (signals, if-then missions in TOML, reflex or Arena routing,
+escalation, human approval, a hash-chained ledger, rule drafts, stats). #8 allows two packages and #19's
+`scripts/check_architecture.py` fails any module in no layer or under no dependency set, so a new
+`src/nexus_core/` failed `layers` and `dependency-sets` until declared.
+
+### Decision
+
+- `src/nexus_core/` is a library: standard library and pydantic only. It never imports `ibb_mcp` or `nabiz`;
+  the console, as the composition root, feeds it signals and evidence and publishes what it returns.
+- `check_architecture.py`: a `nexus` layer between `transport` and `apps` (the server cannot import it, an
+  app can); `LIBRARY_IMPORTS` so the library imports nothing from the project beyond itself;
+  `DEPENDENCY_SETS["nexus_core"] = {pydantic}`; one `FIRST_PARTY` set used by `dependency-sets` and
+  `private-imports`. No existing fence was loosened. `tests/test_nexus_core_fence.py` shows each edge red.
+- The wheel ships `src/nexus_core`; missions live in `missions/*.toml`; the ledger defaults to
+  `data/nexus/nexus.db` (gitignored, `NEXUS_DB_PATH` overrides).
+
+### Consequences
+
+- `nabiz.console`, when it lands, still has to be declared in `INDEPENDENT_APPS` and `FACADE_ONLY`.
+- The container image does not copy `missions/` yet; a deployed console needs it added.
