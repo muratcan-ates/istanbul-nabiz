@@ -17,12 +17,17 @@ one produced a number:
     No usable stop order — unknown route, missing stop codes, or the bus is already past
     the target. Fall back to great-circle distance inflated by a road-winding factor and
     divided by an assumed city speed. It cannot see direction of travel, one-way streets
-    or the Bosphorus, so it never earns better than 'medium'.
+    or the Bosphorus, so its confidence is limited by the measured method ceiling.
 
 ``schedule``
-    No live bus is approaching at all. Fall back to the planned *departures* for today's
-    day type: "there is a 500T booked for 14:40", not "a bus reaches your stop at 14:40".
-    The gap between those is the run time from the terminus, which we do not know. 'low'.
+    No fresh live estimate exists. Prefer a GTFS terminal departure on a route that serves
+    the target stop, then fall back to İETT's planned departures. Both are low confidence.
+
+Fallback chain:
+fresh live position -> live estimate
+stale or unavailable live estimate -> matching GTFS terminal departure
+no matching GTFS trip -> İETT planned departure
+no usable source -> unknown
 
 Why no model: on day one there is no history to train on, and a wrong minute the user
 cannot interrogate is worse than a rough minute they can. Instead every estimate is
@@ -42,6 +47,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
+from ibb_mcp.eta_profile import confidence_basis_tr, confidence_ceiling
 from ibb_mcp.models import (
     ISTANBUL_TZ,
     BusArrival,
@@ -55,6 +61,11 @@ from ibb_mcp.models import (
 
 #: A scheduled row describes a departure, not a vehicle, so it carries no door number.
 NO_VEHICLE = ""
+MODE_LIVE = "live"
+MODE_SCHEDULE = "schedule"
+MODE_UNKNOWN = "unknown"
+SCHEDULE_GTFS = "gtfs_stop_times"
+SCHEDULE_IETT = "iett_planned"
 #: Fallback city speed when the fleet tells us nothing (see :func:`speed_profile_from_fleet`).
 DEFAULT_SPEED_KMH = 16.0
 _CONFIDENCE_ORDER = ("high", "medium", "low")
@@ -77,6 +88,13 @@ def _downgrade(confidence: str) -> str:
     return _CONFIDENCE_ORDER[min(position + 1, len(_CONFIDENCE_ORDER) - 1)]
 
 
+def _cap(confidence: str, ceiling: str) -> str:
+    """Keep a method's confidence at or below its measured ceiling."""
+    confidence_rank = _CONFIDENCE_ORDER.index(confidence) if confidence in _CONFIDENCE_ORDER else 1
+    ceiling_rank = _CONFIDENCE_ORDER.index(ceiling) if ceiling in _CONFIDENCE_ORDER else 2
+    return _CONFIDENCE_ORDER[max(confidence_rank, ceiling_rank)]
+
+
 @dataclass(frozen=True)
 class EtaParams:
     """Tunable constants. Every one is a guess until ``eta_log`` says otherwise.
@@ -90,8 +108,10 @@ class EtaParams:
     speed_kmh: float = DEFAULT_SPEED_KMH
     winding_factor: float = 1.35
     max_bus_age_s: float = 600.0
+    #: Match the arrival card's NABIZ_ARRIVAL_STALE_S default; callers own env resolution.
+    stale_after_s: float = 180.0
     max_results: int = 3
-    #: At or below this many stops the sequence method is trustworthy enough to say 'high'.
+    #: Heuristic confidence before the method's measured ceiling is applied.
     high_confidence_stops: int = 8
     #: Beyond this road distance the straight-line method is little better than a guess.
     low_confidence_km: float = 6.0
@@ -205,6 +225,9 @@ def estimate_arrivals(  # noqa: PLR0913 - debt, ratcheted in scripts/architectur
     sequences: Mapping[str, Any] | None = None,
     scheduled: list[PlannedDeparture] | None = None,
     speed_profile: Mapping[str, float] | None = None,
+    line_code: str | None = None,
+    timetable: Mapping[str, Sequence[Any]] | None = None,
+    service_days: Mapping[str, frozenset[str]] | None = None,
     params: EtaParams = DEFAULT_PARAMS,
     now: dt.datetime | None = None,
 ) -> tuple[list[BusArrival], dict[str, Any]]:
@@ -237,6 +260,21 @@ def estimate_arrivals(  # noqa: PLR0913 - debt, ratcheted in scripts/architectur
             "dropped_passed_target": 0,
             "unknown_age": 0,
             "methods": {"stop_sequence": 0, "distance": 0, "schedule": 0},
+            "mode": MODE_UNKNOWN,
+            "stale_after_s": params.stale_after_s,
+            "freshest_live_age_s": None,
+            "stale_live": [],
+            "schedule_source": None,
+            "schedule_day_filter": "none",
+            "scheduled_trips": [],
+            "confidence_ceiling": {
+                "stop_sequence": confidence_ceiling("stop_sequence"),
+                "distance": confidence_ceiling("distance"),
+                "schedule": "low",
+            },
+            "confidence_basis": {
+                method: confidence_basis_tr(method) for method in ("stop_sequence", "distance", "schedule")
+            },
             "sequence_routes": [],
             "notes": [],
             "params": asdict(params),
@@ -245,16 +283,37 @@ def estimate_arrivals(  # noqa: PLR0913 - debt, ratcheted in scripts/architectur
 
     fresh = _drop_stale(buses, ctx)
     arrivals = [a for bus in fresh if (a := _estimate_one(bus, ctx)) is not None]
-    if not arrivals:
+    arrivals = _split_fresh(arrivals, ctx)
+    if arrivals:
+        ctx.diagnostics["mode"] = MODE_LIVE
+    else:
         if fresh:
             ctx.note("live_buses_present_but_none_approaching")
-        arrivals = _from_schedule(scheduled, ctx)
+        resolved_line_code = line_code or next((bus.line_code for bus in buses if bus.line_code), None)
+        timetable_arrivals = (
+            _from_timetable(ctx, resolved_line_code, timetable, service_days)
+            if resolved_line_code
+            else []
+        )
+        if not resolved_line_code:
+            ctx.note("timetable_needs_line_code")
+        if timetable_arrivals:
+            arrivals = timetable_arrivals
+            ctx.diagnostics["mode"] = MODE_SCHEDULE
+            ctx.diagnostics["schedule_source"] = SCHEDULE_GTFS
+        else:
+            arrivals = _from_schedule(scheduled, ctx)
+            if arrivals:
+                ctx.diagnostics["mode"] = MODE_SCHEDULE
+                ctx.diagnostics["schedule_source"] = SCHEDULE_IETT
+            else:
+                ctx.diagnostics["mode"] = MODE_UNKNOWN
 
-    for arrival in arrivals:
-        ctx.diagnostics["methods"][arrival.method] = ctx.diagnostics["methods"].get(arrival.method, 0) + 1
     arrivals.sort(key=lambda a: (a.eta_minutes if a.eta_minutes is not None else 1e9, a.stops_away or 0))
 
     capped = arrivals[: max(1, params.max_results)]
+    for arrival in capped:
+        ctx.diagnostics["methods"][arrival.method] = ctx.diagnostics["methods"].get(arrival.method, 0) + 1
     ctx.diagnostics["estimated"] = len(arrivals)
     ctx.diagnostics["returned"] = len(capped)
     return capped, ctx.diagnostics
@@ -303,6 +362,39 @@ def _drop_stale(buses: list[BusPosition], ctx: _Ctx) -> list[BusPosition]:
     return kept
 
 
+def _split_fresh(arrivals: list[BusArrival], ctx: _Ctx) -> list[BusArrival]:
+    """Remove live estimates whose source age exceeds the rider-facing stale limit."""
+    fresh: list[BusArrival] = []
+    ages: list[float] = []
+    stale_live: list[dict[str, Any]] = []
+    for arrival in arrivals:
+        age = (
+            max(0.0, (ctx.moment - arrival.reported_at).total_seconds())
+            if arrival.reported_at is not None
+            else None
+        )
+        if age is None or age > ctx.params.stale_after_s:
+            stale_live.append(
+                {
+                    "door_no": arrival.door_no,
+                    "age_s": round(age, 1) if age is not None else None,
+                    "method": arrival.method,
+                    "eta_minutes": arrival.eta_minutes,
+                    "stops_away": arrival.stops_away,
+                }
+            )
+            continue
+        fresh.append(arrival)
+        ages.append(age)
+
+    ctx.diagnostics["stale_live"] = stale_live
+    if ages:
+        ctx.diagnostics["freshest_live_age_s"] = round(min(ages), 1)
+    if stale_live:
+        ctx.note("live_estimate_exceeded_stale_limit_or_had_unknown_age")
+    return fresh
+
+
 def _estimate_one(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     """One bus, one stop: sequence method when the route order allows it, else distance."""
     positions = _stop_positions(ctx.sequence_for(bus.route_code))
@@ -339,6 +431,7 @@ def _estimate_one(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     if straight_km and minutes > 0 and straight_km / (minutes / 60.0) > ctx.params.implausible_speed_kmh:
         confidence = _downgrade(confidence)
         ctx.note(f"seconds_per_stop_looks_low_for_{bus.route_code}")
+    confidence = _cap(confidence, confidence_ceiling("stop_sequence"))
     return _arrival(
         bus,
         ctx.target,
@@ -379,8 +472,8 @@ def _distance_arrival(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
     """Great-circle distance × winding factor ÷ assumed speed.
 
     Blind to direction of travel: a bus 2 km away driving the other way scores the same as
-    one about to arrive. Hence the 'medium' ceiling and the diagnostics note — the agent
-    should hedge the wording, not bend the number.
+    one about to arrive. The method's measured ceiling caps its confidence, and the
+    diagnostics note lets the agent hedge the wording without bending the number.
     """
     target, params = ctx.target, ctx.params
     lat, lon = bus.lat, bus.lon
@@ -407,6 +500,7 @@ def _distance_arrival(bus: BusPosition, ctx: _Ctx) -> BusArrival | None:
         confidence = _downgrade(confidence)
     if not bus.reported_at:
         confidence = _downgrade(confidence)
+    confidence = _cap(confidence, confidence_ceiling("distance"))
     return _arrival(
         bus,
         target,
@@ -434,6 +528,100 @@ def _straight_km(lat: float | None, lon: float | None, target: Stop) -> float | 
     if lat is None or lon is None or target.lat is None or target.lon is None:
         return None
     return round(haversine_km(lat, lon, target.lat, target.lon), 2)
+
+
+def _from_timetable(
+    ctx: _Ctx,
+    line_code: str,
+    timetable: Mapping[str, Sequence[Any]] | None,
+    service_days: Mapping[str, frozenset[str]] | None,
+) -> list[BusArrival]:
+    """Select upcoming terminal departures for the target's route and service day."""
+    calendar_available = bool(service_days)
+    ctx.diagnostics["schedule_day_filter"] = "calendar" if calendar_available else "none"
+    if not calendar_available:
+        ctx.note("schedule_day_filter_none_calendar_missing")
+    if not timetable:
+        ctx.note("no_gtfs_timetable_available")
+        return []
+
+    wanted_line = line_code.upper()
+    route_codes = [
+        code
+        for code in timetable
+        if code.upper().split("_", 1)[0] == wanted_line
+        and ctx.target.stop_code in _stop_positions(ctx.sequence_for(code))
+    ]
+    if not route_codes:
+        ctx.note("no_gtfs_timetable_for_line_and_target_stop")
+        return []
+
+    local_now = ctx.moment.astimezone(ISTANBUL_TZ)
+    today = day_type_for(local_now)
+    upcoming = _upcoming_timetable(ctx, route_codes, timetable, service_days, today, local_now)
+    if not upcoming:
+        tomorrow = (local_now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_type = day_type_for(tomorrow)
+        upcoming = _upcoming_timetable(ctx, route_codes, timetable, service_days, tomorrow_type, tomorrow)
+        ctx.note(
+            "service_finished_today_showing_first_gtfs_departures_of_next_day"
+            if upcoming
+            else "gtfs_timetable_exhausted_for_today_and_next_day"
+        )
+
+    arrivals: list[BusArrival] = []
+    scheduled_trips: list[dict[str, Any]] = []
+    for when, trip, stop_position in upcoming[: max(1, ctx.params.max_scheduled)]:
+        arrivals.append(
+            BusArrival(
+                line_code=line_code,
+                stop_code=ctx.target.stop_code,
+                stop_name=ctx.target.name,
+                door_no=NO_VEHICLE,
+                direction=trip.headsign,
+                eta_minutes=round((when - local_now).total_seconds() / 60.0, 1),
+                method="schedule",
+                confidence="low",
+            )
+        )
+        scheduled_trips.append(
+            {
+                "trip_id": trip.trip_id,
+                "route_code": trip.route_code,
+                "service_id": trip.service_id,
+                "headsign": trip.headsign,
+                "terminus_departure": trip.departure_time,
+                "terminus_arrival": trip.arrival_time,
+                "stop_position": stop_position,
+                "stop_count": trip.stop_count,
+            }
+        )
+    ctx.diagnostics["scheduled_trips"] = scheduled_trips
+    if arrivals:
+        ctx.note("eta_is_time_until_planned_terminal_departure_not_arrival_at_stop")
+    return arrivals
+
+
+def _upcoming_timetable(
+    ctx: _Ctx,
+    route_codes: Sequence[str],
+    timetable: Mapping[str, Sequence[Any]],
+    service_days: Mapping[str, frozenset[str]] | None,
+    day_code: str,
+    after: dt.datetime,
+) -> list[tuple[dt.datetime, Any, int]]:
+    """Resolve applicable timetable rows after a local clock moment."""
+    resolved: list[tuple[dt.datetime, Any, int]] = []
+    for route_code in route_codes:
+        stop_position = _stop_positions(ctx.sequence_for(route_code)).get(ctx.target.stop_code, 0)
+        for trip in timetable[route_code]:
+            if service_days and trip.service_id and day_code not in service_days.get(trip.service_id, frozenset()):
+                continue
+            when = _resolve_clock(trip.departure_time, after)
+            if when is not None and when >= after:
+                resolved.append((when, trip, stop_position))
+    resolved.sort(key=lambda item: (item[0], item[1].route_code, item[1].trip_id))
+    return resolved
 
 
 def _from_schedule(scheduled: list[PlannedDeparture] | None, ctx: _Ctx) -> list[BusArrival]:

@@ -79,6 +79,63 @@ from ibb_mcp.config import reference_path
 from ibb_mcp.models import ISTANBUL_TZ
 from ibb_mcp.reference import parse_once
 
+
+@dataclass(frozen=True)
+class MeasuredError:
+    """Accuracy measured for one arrival method in the committed report."""
+
+    method: str
+    samples: int
+    mae_minutes: float
+    within_5_min_share: float
+    measured_on: str
+    report: str
+
+
+MEASURED_ERROR = {
+    "stop_sequence": MeasuredError(
+        "stop_sequence", 1240, 12.74, 0.274, "2026-09-23", "eval/results/eta.md"
+    ),
+    "distance": MeasuredError(
+        "distance", 111, 15.16, 0.261, "2026-09-23", "eval/results/eta.md"
+    ),
+}
+HIGH_WITHIN_5_MIN_SHARE = 0.80
+MEDIUM_WITHIN_5_MIN_SHARE = 0.50
+MIN_MEASURED_SAMPLES = 100
+
+
+def confidence_ceiling(method: str) -> str:
+    """Cap confidence using measured five-minute accuracy, never extrapolation.
+
+    High requires at least 80% of measured results within five minutes; medium requires
+    at least 50%. The collector samples every three minutes, so even a perfect prediction
+    can show about 1.5 minutes of mean absolute error from observation timing alone. The
+    five-minute band leaves room for that measurement floor while still requiring a useful
+    share of predictions to be close. Methods with fewer than 100 samples remain low.
+    """
+    measured = MEASURED_ERROR.get(method)
+    if measured is None or measured.samples < MIN_MEASURED_SAMPLES:
+        return "low"
+    if measured.within_5_min_share >= HIGH_WITHIN_5_MIN_SHARE:
+        return "high"
+    if measured.within_5_min_share >= MEDIUM_WITHIN_5_MIN_SHARE:
+        return "medium"
+    return "low"
+
+
+def confidence_basis_tr(method: str) -> str:
+    """Short Turkish explanation tied to the measured method sample."""
+    measured = MEASURED_ERROR.get(method)
+    if measured is None:
+        return "Bu yöntem için ölçüm yok; güven düzeyi düşük."
+    mae = f"{measured.mae_minutes:.1f}".replace(".", ",")
+    share = round(measured.within_5_min_share * 100)
+    return (
+        f"Bu yöntemin ölçülen hatası: n={measured.samples} tahminde ortalama {mae} dk, "
+        f"%{share}'si 5 dk içinde ({measured.measured_on})"
+    )
+
 #: PLAN.md section 7's day-one guess. Still the answer when nothing has been measured.
 DEFAULT_SECONDS_PER_STOP = 120.0
 
