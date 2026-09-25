@@ -1,0 +1,91 @@
+{
+  "available": true,
+  "from": "Kadıköy",
+  "to": "Levent",
+  "needs": ["step_free"],
+  "steps": [
+    {
+      "kind": "walk",
+      "description": "Kadıköy istasyonuna yürüyüş",
+      "minutes": 4,
+      "map_links": {
+        "apple": "https://maps.apple.com/?daddr=40.990000%2C29.025000&dirflg=w&q=Kad%C4%B1k%C3%B6y",
+        "google": "https://www.google.com/maps/dir/?api=1&destination=40.990000%2C29.025000&travelmode=walking"
+      }
+    },
+    {
+      "kind": "ride",
+      "line": "M4",
+      "from_station": "Kadıköy",
+      "to_station": "Ayrılık Çeşmesi",
+      "minutes": 5,
+      "lift_status": "working",
+      "stations": [
+        {"name": "Kadıköy", "lift_status": "working", "text": "İBB kaydında Kadıköy istasyonu için asansör arızası yok."},
+        {"name": "Ayrılık Çeşmesi", "lift_status": "working", "text": "İBB kaydında Ayrılık Çeşmesi istasyonu için asansör arızası yok."}
+      ]
+    },
+    {
+      "kind": "transfer",
+      "at_station": "Ayrılık Çeşmesi",
+      "line": "Marmaray",
+      "minutes": 4,
+      "lift_status": "working",
+      "note": "İBB kaydında Ayrılık Çeşmesi istasyonu için asansör arızası yok."
+    },
+    {
+      "kind": "ride",
+      "line": "Marmaray",
+      "from_station": "Ayrılık Çeşmesi",
+      "to_station": "Yenikapı",
+      "minutes": 13,
+      "lift_status": "working",
+      "stations": [
+        {"name": "Ayrılık Çeşmesi", "lift_status": "working", "text": "İBB kaydında Ayrılık Çeşmesi istasyonu için asansör arızası yok."},
+        {"name": "Yenikapı", "lift_status": "working", "text": "İBB kaydında Yenikapı istasyonu için asansör arızası yok."}
+      ]
+    },
+    {
+      "kind": "transfer",
+      "at_station": "Yenikapı",
+      "line": "M2",
+      "minutes": 4,
+      "lift_status": "working",
+      "note": "İBB kaydında Yenikapı istasyonu için asansör arızası yok."
+    },
+    {
+      "kind": "ride",
+      "line": "M2",
+      "from_station": "Yenikapı",
+      "to_station": "Levent",
+      "minutes": 12,
+      "lift_status": "working",
+      "stations": [
+        {"name": "Yenikapı", "lift_status": "working", "text": "İBB kaydında Yenikapı istasyonu için asansör arızası yok."},
+        {"name": "Levent", "lift_status": "working", "text": "İBB kaydında Levent istasyonu için asansör arızası yok."}
+      ]
+    },
+    {
+      "kind": "walk",
+      "description": "Levent istasyonundan Levent noktasına yürüyüş",
+      "minutes": 2,
+      "map_links": {
+        "apple": "https://maps.apple.com/?daddr=41.078000%2C29.010000&dirflg=w&q=Levent",
+        "google": "https://www.google.com/maps/dir/?api=1&destination=41.078000%2C29.010000&travelmode=walking"
+      }
+    }
+  ],
+  "extra_minutes": 0,
+  "alternative_used": null,
+  "alternatives_used": [],
+  "operator_approved": false,
+  "provenance": {
+    "source": "metro_equipment",
+    "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails",
+    "observed_at": "2026-09-25T09:00:00+00:00",
+    "age_s": 720,
+    "mode": "recorded"
+  },
+  "uncertainty": [],
+  "disclaimer": "Bu bir tahmindir, adım adım yol tarifi değildir. Süreler istasyon mesafesi modeline dayanır ve tarife içermez. Asansör bilgisi İBB'nin arıza kaydına dayanır."
+}
