@@ -289,9 +289,12 @@ def test_new_tools_get_their_schemas_from_the_facade_signatures():
         "origin_lon",
         "destination_lat",
         "destination_lon",
+        "slow_walk",  # G2 personas: an optional slower-walker profile, off by default
     }
     assert journey["required"] == []  # a name or a coordinate pair per end, never both required
     assert journey["properties"]["origin_lat"]["type"] == "number"
+    assert journey["properties"]["slow_walk"]["type"] == "boolean"
+    assert journey["properties"]["slow_walk"]["default"] is False
     assert "yol tarifi DEĞİLDİR" in by_name["plan_journey"]["description"]
 
     reliability = by_name["line_reliability"]["parameters"]

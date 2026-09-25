@@ -248,8 +248,10 @@ def test_chat_lang_button_only_toggles_reply_language() -> None:
         'aria-pressed="false">English</button></p>'
     )
     assert language_row in page
-    for label in ("Profilim", "İhtiyaçlarım", "Kayıtlı yerlerim", "Gönder", "Profili sil"):
+    for label in ("Profilim", "İhtiyaçlarım", "Kayıtlı yerlerim", "Profili sil"):
         assert label in page
+    # G1 renamed the chat button from "Gönder" to "Sor" (citizen home, 46f701d).
+    assert 'id="chat-submit">Sor<' in page
     profile_js = (Path(__file__).resolve().parents[1] / "src/nabiz/console/static/js/profile.js").read_text(encoding="utf-8")
     assert "function setAnswerLanguage(profile, lang)" in profile_js
     assert "function answerLanguage(profile)" in profile_js

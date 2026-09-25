@@ -160,7 +160,8 @@ def recipe(makefile: str, target: str) -> str:
 def test_lane_gates_runs_the_sprint_list_and_the_full_gate_never_sees_the_flag() -> None:
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     lane = recipe(makefile, "lane-gates")
-    assert "NABIZ_OFFLINE=1 $(PY) -m pytest -q -x" in lane
+    # NABIZ_LLM_NO_PROBE=1 keeps the Foundry Local probe out of the lane gate too (G8, DECISIONS #28).
+    assert "NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) -m pytest -q -x" in lane
     assert "$(RUFF) check $(SRC)" in lane
     assert f"{FLAG}=1 $(MAKE) --no-print-directory architecture" in lane
     assert "$(MAKE) --no-print-directory guardrails" in lane
