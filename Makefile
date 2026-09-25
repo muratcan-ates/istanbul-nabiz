@@ -94,7 +94,7 @@ ci-commit:  ## run every CI gate on HEAD exactly as committed: what a push publi
 	CI_LOCAL_REF=HEAD bash .github/scripts/ci_local.sh
 
 lane-gates:  ## the sprint's gates for a lane branch (DECISIONS #26): tests, lint, architecture with ratchets as WARN, guardrails
-	NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) -m pytest -q -x
+	NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 NABIZ_SPRINT_MODE=1 $(PY) -m pytest -q -x
 	$(RUFF) check $(SRC)
 	NABIZ_SPRINT_MODE=1 $(MAKE) --no-print-directory architecture
 	$(MAKE) --no-print-directory guardrails

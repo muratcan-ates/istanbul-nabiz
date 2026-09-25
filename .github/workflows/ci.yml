@@ -120,6 +120,9 @@ jobs:
       - name: Pytest
         # GTFS comes from the committed tests/fixtures/gtfs_mini, not the gitignored
         # data/reference/gtfs that only exists on a laptop (see tests/conftest.py).
+        # Sprint (DECISIONS #29): the repository's own-fences test sees sprint mode too.
+        env:
+          NABIZ_SPRINT_MODE: "1"
         run: .venv/bin/python -m pytest -q --junitxml=reports/junit.xml
 
       - name: Upload the JUnit report
@@ -159,6 +162,9 @@ jobs:
         # module, class or function over its budget may shrink, never grow. Baseline:
         # scripts/architecture_baseline.json. Uses the ruff installed above; no network.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        # Sprint (DECISIONS #29, until 2026-10-01): the ratchets warn instead of failing.
+        env:
+          NABIZ_SPRINT_MODE: "1"
         run: .venv/bin/python scripts/check_architecture.py
 
       - name: Web budget
@@ -168,6 +174,9 @@ jobs:
         # count that grew, and on a target that was met but is still listed, so the table only
         # shrinks. It switches to --strict once TARGETS_BY_CHECK is empty.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        # Sprint (DECISIONS #29, until 2026-10-01): the payload budget warns instead of failing.
+        env:
+          NABIZ_SPRINT_MODE: "1"
         run: .venv/bin/python scripts/check_web_budget.py
 
   authorship:

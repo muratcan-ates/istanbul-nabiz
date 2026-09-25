@@ -105,12 +105,12 @@ gate "ruff check" .venv/bin/ruff check src/ scripts/ tests/ .github/scripts/ eva
 echo
 echo "=== ruff format --check (advisory, never fails)"
 .venv/bin/ruff format --check src/ scripts/ tests/ | tail -1
-gate "pytest" .venv/bin/python -m pytest -q --junitxml=reports/junit.xml
+gate "pytest" env NABIZ_SPRINT_MODE=1 .venv/bin/python -m pytest -q --junitxml=reports/junit.xml  # sprint, DECISIONS #29
 gate "ibb-mcp --help" sh -c '.venv/bin/ibb-mcp --help > /dev/null'
 gate "MCP smoke test" .venv/bin/python .github/scripts/mcp_smoke.py
 gate "guardrails" .venv/bin/python scripts/guardrails.py --files-from "$published"
-gate "architecture fences" .venv/bin/python scripts/check_architecture.py
-gate "web budget" .venv/bin/python scripts/check_web_budget.py
+gate "architecture fences" env NABIZ_SPRINT_MODE=1 .venv/bin/python scripts/check_architecture.py  # sprint, DECISIONS #29
+gate "web budget" env NABIZ_SPRINT_MODE=1 .venv/bin/python scripts/check_web_budget.py  # sprint, DECISIONS #29
 # The copy has no history, so the authorship gate reads the real repository.
 gate "authorship (@{upstream}..HEAD)" .venv/bin/python scripts/check_authorship.py --repo "$repo"
 

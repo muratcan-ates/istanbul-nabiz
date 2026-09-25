@@ -39,6 +39,8 @@ Short on purpose, and binding. Last verified: 2026-09-23.
   made by the owner, or by the Integrator session when the owner explicitly asks, always under the owner's
   identity. A lane hands over suggested commits: subject, body, and the exact file list, with every file it
   changed in exactly one commit.
+  **Sprint exception (DECISIONS #29, until 2026-10-01):** a lane agent may commit on its own `gun*/` branch,
+  by explicit path, under the owner's noreply identity and never with a trailer; it still never pushes.
 - Lane agents do not run `git add`, `commit`, `push`, `stash`, `checkout`, `switch`, `reset`, `restore`,
   `clean`, `rebase`, `merge`, `worktree`, or anything that moves HEAD, changes the index or rewrites history.
   Read-only `git` (`status`, `diff`, `log`, `show`, `blame`, `ls-files`) and read-only `gh` are fine.
@@ -75,6 +77,8 @@ Short on purpose, and binding. Last verified: 2026-09-23.
 - Logs, the data lake and raw eval JSON stay out of git (`.gitignore`). A tracked log once carried local paths.
 - Backups of unpublished work go to a private location outside synced folders, never to a branch on this
   public remote. The pre-push hook refuses any ref other than `main` and tags.
+  **Sprint exception (DECISIONS #29, until 2026-10-01):** `gun*/` and `bulut/` branches may be pushed, so
+  the cloud sessions can work from them; they are merged to `main` or deleted by 2026-10-01.
 - Never ask for, read, print or accept a secret value, and never write one into a command you show. Check keys
   only as set or empty. If a value appears in chat, a log or on screen, stop and tell the owner to rotate it
   ([`SECURITY.md`](SECURITY.md), "Handling keys").

@@ -34,6 +34,7 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
     # The remote is public: only main and tags go there. Back up anything else privately.
     case "$remote_ref" in
         refs/heads/main | refs/tags/*) ;;
+        refs/heads/gun*/* | refs/heads/bulut/*) ;;  # sprint until 2026-10-01 (DECISIONS #29): cloud sessions work from these
         *)
             if [ "${NABIZ_ALLOW_BRANCH_PUSH:-}" != 1 ]; then
                 echo "pre-push: $remote_ref: public remote, push main or a tag; back up work privately (AGENTS.md §3)" >&2

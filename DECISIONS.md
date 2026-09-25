@@ -1304,3 +1304,35 @@ in its report. This entry records how those notes were applied.
   (the button now says "Sor"); G25's reader duplicating G9's; the web budget after the new modules.
 - `policy.py`'s `startswith` matching (EMERGENCY_TERMS `polis`, `fire`; G7's `zam`, `kira`, `iade`) can match
   unrelated words; `make eval` after this merge is the check.
+
+## 29. Sprint, second notch: the ratchets warn on `main` too, and sprint branches may be pushed
+
+**Date:** 2026-09-25 · **Status:** Accepted, temporary; expires 2026-10-01 with #26
+
+### Context
+
+Owner's decision on the evening of 2026-09-25: three days remain to the AI Innovators deadline, and the
+engineering-excellence gates were costing lane time. The day-2 merge (#28) left `eta.py` at 494 and `gtfs.py`
+at 534 code lines against the 400 cap, and `estimate_arrivals` at 11 parameters — a strict CI failure on
+`main`. Cloud sessions need a branch on the public remote to work from, which `AGENTS.md` §3 forbade; and lane
+agents that could not commit left seventeen worktrees of uncommitted work for the integrator.
+
+### Decision
+
+Until 2026-10-01, in addition to #26:
+
+- CI's *Architecture fences* and *Web budget* steps run with `NABIZ_SPRINT_MODE=1`: a ratchet or the payload
+  budget WARNs instead of failing; `.github/scripts/ci_local.sh` does the same, so `make ci-commit` still mirrors
+  CI. Import layers, cycles, dependency sets and private-import fences still FAIL. Ruff, pytest, the MCP smoke
+  test, the guardrails (secrets, plates, personal paths, AI credit) and the authorship gate are unchanged.
+- The pre-push hook also accepts `refs/heads/gun*/*` and `refs/heads/bulut/*`; `main` and tags as before.
+- A lane agent may commit on its own `gun*/` branch by explicit path, under the owner's noreply identity, never
+  with a trailer; it still never pushes.
+
+### Consequences and open risks
+
+- Suspended is not forgotten: the architecture debt (#28) and every new WARN is listed in the dalga-2 plan; on
+  2026-10-01 the three changes above are reverted in one commit and the ratchets pass strictly before `main` moves.
+- Branches on the public remote are published work: no secrets, no personal data, no fixtures with plates; the
+  guardrails run on every push of every branch.
+- The owner still pushes `main` by hand and reviews every merge.
