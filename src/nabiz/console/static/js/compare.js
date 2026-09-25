@@ -11,6 +11,12 @@ const fromInput = document.getElementById('compare-from');
 const toInput = document.getElementById('compare-to');
 const needsInput = document.getElementById('compare-needs');
 
+/* One whole minute, never "41,5 dk": a citizen reads a clock in minutes, and a decimal suggests a
+ * precision the estimate does not have (the product's single-minute rule). */
+function wholeMinutes(value) {
+  return `${Math.round(Number(value))} dk`;
+}
+
 function foot(prov) {
   return `<p class="card-foot">${stamp(prov)}${sourceLink(prov)}</p>`;
 }
@@ -20,7 +26,7 @@ function optionBody(option) {
     return `<p class="card-body">${esc(option.reason || 'Bu seçenek hesaplanamadı.')}</p>`;
   }
   const minutes = option.minutes !== null && option.minutes !== undefined && Number.isFinite(Number(option.minutes))
-    ? `${num(option.minutes, 1)} dk` : 'süre doğrulanamadı';
+    ? wholeMinutes(option.minutes) : 'süre doğrulanamadı';
   const transfers = option.transfers !== null && option.transfers !== undefined && Number.isFinite(Number(option.transfers))
     ? `${num(option.transfers, 0)} aktarma`
     : 'aktarma bilgisi doğrulanamadı';
@@ -36,7 +42,7 @@ function optionBody(option) {
     if (reliability && reliability.available) {
       const headway = reliability.median_headway_min !== null && reliability.median_headway_min !== undefined
         && Number.isFinite(Number(reliability.median_headway_min))
-        ? `${num(reliability.median_headway_min, 1)} dk ortanca sefer aralığı`
+        ? `${wholeMinutes(reliability.median_headway_min)} ortanca sefer aralığı`
         : 'ortanca sefer aralığı bilinmiyor';
       note = `${headway}${reliability.bunching_label ? `, düzenlilik: ${reliability.bunching_label}` : ''}`;
     } else if (reliability && reliability.note) {

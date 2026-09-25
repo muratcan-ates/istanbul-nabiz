@@ -123,6 +123,18 @@ def test_no_dash_or_eta_in_scripts_styles_and_mocks() -> None:
         assert not re.search(r"\bETA\b", text), f"{path.name} says ETA"
 
 
+def test_no_decimal_minutes_in_scripts() -> None:
+    """Single-minute rule: a card says "42 dk", never "41,5 dk". A minute value is rounded to a whole number
+    before " dk" is appended, so no script formats it with a fractional digit."""
+    decimal_minutes = re.compile(r"num\([^;]*?,\s*[1-9]\)\}?[^;\n]{0,3}\bdk\b")
+    for path in sorted((STATIC / "js").glob("*.js")):
+        text = path.read_text(encoding="utf-8")
+        assert not decimal_minutes.search(text), f"{path.name} shows a decimal minute"
+    compare = read("js/compare.js")
+    assert "Math.round(Number(value))" in compare
+    assert "wholeMinutes(option.minutes)" in compare and "wholeMinutes(reliability.median_headway_min)" in compare
+
+
 def test_every_icon_reference_resolves() -> None:
     external = set(re.findall(r'<symbol id="i-([\w-]+)"', read("icons.svg")))
     assert len(external) >= 50
