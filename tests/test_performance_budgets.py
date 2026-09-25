@@ -58,7 +58,11 @@ UPSTREAM_COLD: dict[str, tuple[int, str]] = {
     "city_freshness": (0, "cache counters only"),
     "plan_journey": (5, "traffic, its history, metro stations, metro status, the İSPARK list; no İETT call offline"),
     "line_reliability": (0, "history this project measured; a local file"),
-    "check_alerts": (5, "the sample subscription watches metro, one car park, air quality (two reads) and traffic"),
+    "check_alerts": (
+        6,
+        "the sample subscription watches metro, one car park, air quality (two reads), traffic and Kartal's lifts "
+        "(the lift read; Metro's station list only when equipment records come back, which the fixtures have not)",
+    ),
     "ibb_services_search": (0, "the local knowledge index; offline, no embedding call"),
 }
 

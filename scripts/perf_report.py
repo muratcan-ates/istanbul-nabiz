@@ -80,6 +80,7 @@ SUBSCRIPTION: dict[str, Any] = {
         {"kind": "parking_filling", "park_ids": [3068], "threshold_pct": 85},
         {"kind": "air_quality", "place": "home", "aqi_threshold": 100},
         {"kind": "traffic", "threshold_index": 60},
+        {"kind": "lift_outage", "stations": ["Kartal"]},
     ],
 }
 

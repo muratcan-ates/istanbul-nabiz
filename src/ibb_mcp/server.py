@@ -222,7 +222,8 @@ def _error(exc: Exception) -> str:
 #: * ``ispark_find_parking``: the park list plus up to three ``ParkDetay`` tariffs (5).
 #: * ``iett_line_buses``: one SOAP line-positions call (5).
 #: * ``check_alerts``: metro, İSPARK, traffic, the station list and one reading per place,
-#:   up to five places: nine GETs (10).
+#:   up to five places: nine GETs; a ``lift_outage`` rule adds the equipment summary, one
+#:   detail POST per equipment group (three) and Metro's station list: fourteen (15).
 #: * ``plan_journey``: traffic, its history, metro stations, metro status and the park list
 #:   (five GETs) plus one İETT timetable call for the bus headway (10).
 #: * ``iett_next_arrivals``: line positions, fleet speeds and, when no bus reports, the
@@ -242,7 +243,7 @@ TOOL_COSTS: dict[str, int] = {
     "air_quality_forecast": 3,
     "ispark_find_parking": 5,
     "iett_line_buses": 5,
-    "check_alerts": 10,
+    "check_alerts": 15,
     "plan_journey": 10,
     "iett_next_arrivals": 13,
 }
@@ -895,7 +896,9 @@ def _register_derived(mcp: MCPServer, app: Nabiz) -> None:
         "Metro hattımda arıza, otoparkım doluyor, evimin havası kötü mü?" sorusunu tek çağrıda yanıtlar.
         Kural türleri: metro_disruption (hat duyurusu), parking_filling (doluluk % eşiği),
         air_quality (yere en yakın istasyonun AQI eşiği), traffic (1–99 şehir indeksi eşiği),
-        bus_bunching (ölçülmüş geçmiş kümelenme). Her uyarı alıntıladığı her sayının kaynağını ve
+        bus_bunching (ölçülmüş geçmiş kümelenme), lift_outage (istasyon/hat asansör kaydı: Metro
+        İstanbul'un kullanılamaz olarak kaydettiği asansör, yürüyen merdiven ve bant; "çalışıyor"
+        demez, kayıt yoksa "kayıt yok" der). Her uyarı alıntıladığı her sayının kaynağını ve
         bir `dedupe_key` + `cooldown_seconds` taşır; tekrar bastırmayı istemci yapar.
         Abonelik yalnızca bu istek için bellekte değerlendirilir; SUNUCUDA SAKLANMAZ, LOGLANMAZ,
         kullanıcı kimliği yoktur (KVKK tasarımı, docs/privacy.md). Koordinatlar yalnızca en yakın
