@@ -118,7 +118,7 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "ibb_mcp.traffic_profile",
         ),
     ),
-    ("services", ("ibb_mcp.routing", "ibb_mcp.analytics", "ibb_mcp.alerts")),
+    ("services", ("ibb_mcp.routing", "ibb_mcp.analytics", "ibb_mcp.alerts", "ibb_mcp.accessibility")),
     ("facade", ("ibb_mcp.tools",)),
     ("transport", ("ibb_mcp.server",)),
     ("apps", ("nabiz",)),

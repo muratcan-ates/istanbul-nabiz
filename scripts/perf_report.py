@@ -93,6 +93,7 @@ TOOL_CALLS: dict[str, dict[str, Any]] = {
     "iett_next_arrivals": {"line_code": "500T", "stop": "220641", "limit": 3},
     "metro_status": {"line": "M4"},
     "metro_station_info": {"name": "Kartal"},
+    "metro_equipment_status": {"station": "Kartal"},
     "traffic_index": {"window": "now"},
     "air_quality_now": {"place": "Beşiktaş"},
     "air_quality_forecast": {"place": "Kadıköy", "horizon_hours": 6},

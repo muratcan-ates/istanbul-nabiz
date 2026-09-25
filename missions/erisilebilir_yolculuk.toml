@@ -1,0 +1,91 @@
+# Erişilebilir yolculuk: Metro İstanbul'un asansör ve yürüyen merdiven kaydından doğan kurallar.
+#
+# Biçim ve alan adları: missions/README.md. Sinyal alanlarını ibb_mcp.accessibility üretir
+# (signal_candidates, stale_signal). Kurallar yalnız nexus_core eylem kataloğundaki eylemleri
+# adlandırır; ifade değerlendirilmez. Eksik alan hiçbir kuralı tetiklemez.
+#
+# Metin kuralları: kart hiçbir koşulda "çalışıyor" demez; en olumlu ifade "İBB kaydında arıza
+# yok"tur. İBB'nin Date alanı "İBB kaydındaki tarih"tir, dönüş tarihi değildir.
+
+[mission]
+id = "erisilebilir-yolculuk"
+title = "Erişilebilir yolculuk"
+intent = "Herkes için, her zaman, her yerde: asansörü kullanılamayan istasyon için adımsız alternatifi kaynağı ve veri yaşıyla hemen vermek; kritik durumu gerekçesiyle İBB çalışanına getirmek."
+reviewed_on = 2026-09-25
+
+[escalation]
+# Aynı ekipmanda 14 günde 3 ayrı arıza olayı insana gider (outage_id ile sayılır).
+window_hours = 336
+repeat_threshold = 3
+critical_kinds = ["hub_faults"]
+
+# R-01 EĞER bir asansör kullanılamıyor VE aynı hatta ya da bir aktarmada asansörü İBB kaydında
+# arızasız bir istasyon bulunduysa O ZAMAN vatandaş kartını alternatifle yayımla.
+[[rules]]
+id = "R-01"
+path = "reflex"
+expires_days = 30
+
+[rules.when]
+kind = "equipment_fault"
+conditions = [
+  { field = "equipment_type", op = "eq", value = "elevator" },
+  { field = "alternative_station", op = "present" },
+]
+
+[rules.then]
+action = "publish_alternative"
+card_kind = "alternative"
+title = "{station} istasyonunda asansör kullanılamıyor"
+card_template = "İBB kaydına göre {station} ({line}) istasyonunda bir asansör kullanılamıyor (İBB kaydındaki durum: {status_type}). Adımsız alternatif: {alternative_station} ({alternative_line}), tahmini ek süre {extra_minutes_text}. Ek süre mesafeye dayalı tahmindir; operatör onayı yok."
+
+# R-02 EĞER Metro ekipman verisi bayatsa O ZAMAN son bilinen durumu yaşıyla göster ve
+# "doğrulanamadı" yaz.
+[[rules]]
+id = "R-02"
+path = "reflex"
+expires_days = 30
+
+[rules.when]
+kind = "source_stale"
+conditions = [{ field = "source", op = "eq", value = "metro_equipment" }]
+
+[rules.then]
+action = "schedule_mode"
+card_kind = "metro_equipment"
+title = "Metro ekipman durumu doğrulanamadı"
+card_template = "Doğrulanamadı: Metro ekipman kaydı en son {age_text} okundu. Son bilinen durum: {last_known_text}"
+
+# R-03 EĞER aynı aktarma merkezinde en az 2 ekipman kullanılamıyorsa O ZAMAN Arena'ya gönder;
+# karar İBB çalışanında.
+[[rules]]
+id = "R-03"
+path = "arena"
+expires_days = 30
+
+[rules.when]
+kind = "hub_faults"
+conditions = [{ field = "fault_count", op = "gte", value = 2 }]
+
+[rules.then]
+action = "open_escalation"
+card_kind = "metro_equipment"
+title = "{hub} aktarma merkezinde {fault_count} ekipman kullanılamıyor"
+card_template = "İBB kaydına göre {hub} aktarma merkezinde {fault_count} ekipman kullanılamıyor: {equipment_list}. Karar İBB çalışanında (simüle operatör)."
+
+# R-04 EĞER İBB kaydındaki tarihten bu yana 24 saatten uzun geçtiyse O ZAMAN Arena'ya gönder.
+# Date alanının anlamı belgesiz: kart bunu söyler, arıza başlangıcı diye sunmaz.
+[[rules]]
+id = "R-04"
+path = "arena"
+expires_days = 30
+
+[rules.when]
+kind = "long_outage"
+conditions = [{ field = "outage_hours", op = "gt", value = 24 }]
+
+[rules.then]
+action = "open_escalation"
+card_kind = "metro_equipment"
+title = "{station} istasyonunda uzun süren kayıt"
+card_template = "{text} İBB kaydındaki tarihten bu yana {outage_hours} saat geçti. Tarih alanının anlamı belgelenmemiştir; arızanın başladığı an olduğu doğrulanmadı."

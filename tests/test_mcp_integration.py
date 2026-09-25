@@ -45,6 +45,7 @@ EXPECTED_TOOLS = {
     "iett_next_arrivals",
     "metro_status",
     "metro_station_info",
+    "metro_equipment_status",
     "traffic_index",
     "air_quality_now",
     "air_quality_forecast",

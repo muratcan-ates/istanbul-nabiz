@@ -51,6 +51,7 @@ UPSTREAM_COLD: dict[str, tuple[int, str]] = {
     "iett_next_arrivals": (2, "line positions and fleet speeds, both İETT; the timetable only when no bus reports"),
     "metro_status": (1, "service notices"),
     "metro_station_info": (1, "the station list, cached a day"),
+    "metro_equipment_status": (5, "the summary, a detail POST per equipment group (three) and the station list (cached a day)"),
     "traffic_index": (2, "the live index, plus the 28-day history behind 'usually at this hour' (memoised 6 h)"),
     "air_quality_now": (2, "the station list (a day) and the readings (30 min)"),
     "air_quality_forecast": (2, "the station list and the readings"),
