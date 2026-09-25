@@ -528,6 +528,17 @@ RAW_HTTP_ALLOWLIST = {
     "scripts/probe_day0.py": "one-off Day-0 reachability probe, run by hand once per environment, not on any request path",
 }
 
+#: Direct calls inside ``src/ibb_mcp/`` that go to the configured *model* endpoint, never to İBB,
+#: keyed ``file::function``. The package-wide rule below assumes every client in ``src/ibb_mcp/``
+#: is an İBB client; the knowledge layer's query embedding is the one that is not (G14: the rule
+#: read it as an İBB call). The exemption holds only while the file names no İBB host, and
+#: ``OpenAIEmbedder`` itself refuses an İBB host as its base URL, so it cannot become a side door.
+MODEL_ENDPOINT_CALLS = {
+    "src/ibb_mcp/knowledge/embed.py::embed_documents": (
+        "OpenAI-compatible embeddings at NABIZ_LLM_BASE_URL (the model provider), not an İBB service"
+    ),
+}
+
 #: ``httpx.AsyncClient``/``requests.get``/``urllib.request.urlopen`` and friends.
 _HTTP_MODULES = {"httpx", "requests", "aiohttp", "urllib", "urllib3"}
 _HTTP_CALLABLES = {
@@ -582,13 +593,16 @@ def check_no_raw_ibb_calls(repo: pathlib.Path) -> CheckResult:
         if source is None:
             continue
         try:
-            sites = [s for fn, s in _raw_http_call_sites(source, name) if f"{name}::{fn}" not in RAW_HTTP_ALLOWLIST]
+            calls = [(fn, s) for fn, s in _raw_http_call_sites(source, name) if f"{name}::{fn}" not in RAW_HTTP_ALLOWLIST]
         except SyntaxError as exc:
             findings.append(Finding(f"{name}:{exc.lineno or 0}", f"could not parse: {exc.msg}"))
             continue
+        names_host = next((h for h in IBB_HOSTS if h in source), None)
+        if not names_host:
+            calls = [(fn, s) for fn, s in calls if f"{name}::{fn}" not in MODEL_ENDPOINT_CALLS]
+        sites = [s for _, s in calls]
         if not sites:
             continue
-        names_host = next((h for h in IBB_HOSTS if h in source), None)
         in_ibb_package = name.startswith("src/ibb_mcp/")
         if not (names_host or in_ibb_package):
             continue
@@ -598,7 +612,10 @@ def check_no_raw_ibb_calls(repo: pathlib.Path) -> CheckResult:
     if findings:
         return CheckResult("no-raw-ibb-calls", FAIL, f"{len(findings)} call site(s) bypassing PoliteClient", findings)
     allowed = ", ".join(sorted(RAW_HTTP_ALLOWLIST))
-    return CheckResult("no-raw-ibb-calls", PASS, f"every İBB call goes through PoliteClient; allowlisted: {allowed}")
+    model = ", ".join(sorted(MODEL_ENDPOINT_CALLS))
+    return CheckResult(
+        "no-raw-ibb-calls", PASS, f"every İBB call goes through PoliteClient; allowlisted: {allowed}; model endpoint: {model}"
+    )
 
 
 # ---------------------------------------------------------------------------------------

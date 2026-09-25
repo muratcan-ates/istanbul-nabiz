@@ -8,6 +8,21 @@ import math
 import os
 from collections.abc import Sequence
 from typing import Protocol
+from urllib.parse import urlsplit
+
+#: Domains the embedding endpoint may never be: İBB's own and the ``.istanbul`` TLD its services
+#: use. The embedder is the one raw HTTP client in ``ibb_mcp`` that is not an İBB client (guardrail
+#: ``no-raw-ibb-calls``, MODEL_ENDPOINT_CALLS), and this keeps it that way whatever the environment says.
+_IBB_DOMAINS = ("ibb" + ".gov.tr", "istanbul")
+
+
+def is_ibb_host(url: str) -> bool:
+    """True when ``url`` points at an İBB domain; an unparsable or host-less URL is refused the same way."""
+    try:
+        host = (urlsplit(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return True
+    return not host or any(host == domain or host.endswith("." + domain) for domain in _IBB_DOMAINS)
 
 
 class Embedder(Protocol):
@@ -63,6 +78,8 @@ class OpenAIEmbedder:
     """OpenAI-compatible embedding REST client; Foundry Local support is unverified."""
 
     def __init__(self, base_url: str, api_key: str, model: str, *, store=None) -> None:
+        if is_ibb_host(base_url):
+            raise ValueError("The embedding endpoint must be a model provider, never an İBB host.")
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
@@ -120,4 +137,6 @@ def embedder_from_env(*, store=None) -> Embedder | None:
     if not base_url or not api_key:
         return None
     model = os.environ.get("NABIZ_EMBED_MODEL", "text-embedding-3-small").strip()
+    if is_ibb_host(base_url):
+        return None  # lexical search only; OpenAIEmbedder would refuse this base URL
     return OpenAIEmbedder(base_url, api_key, model, store=store)

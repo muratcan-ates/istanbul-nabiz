@@ -218,6 +218,20 @@ def test_the_gtfs_allowlist_covers_one_function_not_the_file(tmp_path: pathlib.P
     assert [f.location for f in result.findings] == ["src/ibb_mcp/gtfs.py:7"]
 
 
+def test_the_embedding_call_is_a_model_endpoint_only_in_its_own_function(tmp_path: pathlib.Path) -> None:
+    """G14: the knowledge layer's embedding POST goes to the model provider, not to İBB."""
+    embed = "import httpx\n\nasync def embed_documents():\n    async with httpx.AsyncClient() as c:\n        pass\n"
+    write(tmp_path, "src/ibb_mcp/knowledge/embed.py", embed)
+    assert guardrails.check_no_raw_ibb_calls(tmp_path).status == guardrails.PASS
+
+    write(tmp_path, "src/ibb_mcp/knowledge/embed.py", embed + "\ndef other():\n    httpx.get('x')\n")
+    result = guardrails.check_no_raw_ibb_calls(tmp_path)
+    assert [f.location for f in result.findings] == ["src/ibb_mcp/knowledge/embed.py:8"]
+
+    write(tmp_path, "src/ibb_mcp/knowledge/embed.py", embed + "\nURL = 'https://api.ibb.gov.tr/x'\n")
+    assert guardrails.check_no_raw_ibb_calls(tmp_path).status == guardrails.FAIL, "a file naming an İBB host loses the exemption"
+
+
 def test_a_raw_call_elsewhere_that_names_an_ibb_host_fails(tmp_path: pathlib.Path) -> None:
     write(tmp_path, "scripts/peek.py", "import requests\nrequests.get('https://api.ibb.gov.tr/x')\n")
     assert guardrails.check_no_raw_ibb_calls(tmp_path).status == guardrails.FAIL

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 import httpx
+import pytest
 
 from ibb_mcp.knowledge.embed import HashingEmbedder, OpenAIEmbedder
 
@@ -58,3 +59,18 @@ def test_openai_embedder_batches_and_caches(monkeypatch) -> None:
     assert [call[0] for call in calls] == [64, 6]
     assert calls[0][1] == "Bearer secret"
     assert embedder.dimension == 2
+
+
+def test_the_embedder_never_points_at_an_ibb_host(monkeypatch) -> None:
+    """The guardrail exempts the embedding call as a model endpoint; this keeps that true at runtime."""
+    from ibb_mcp.knowledge.embed import embedder_from_env, is_ibb_host
+
+    gov = "ibb" + ".gov.tr"
+    for url in (f"https://api.{gov}/v1", f"https://{gov}/v1", "https://iett.istanbul/v1", "not a url"):
+        assert is_ibb_host(url), url
+        with pytest.raises(ValueError):
+            OpenAIEmbedder(url, "secret", "test-model")
+    assert not is_ibb_host("https://model.invalid/v1")
+    monkeypatch.setenv("NABIZ_LLM_BASE_URL", f"https://api.{gov}/v1")
+    monkeypatch.setenv("NABIZ_LLM_API_KEY", "secret")
+    assert embedder_from_env() is None
