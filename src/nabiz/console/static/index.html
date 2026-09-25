@@ -22,10 +22,12 @@
 <link rel="modulepreload" href="/js/chat.js">
 <link rel="modulepreload" href="/js/profile.js">
 <link rel="modulepreload" href="/js/provenance.js">
+<link rel="modulepreload" href="/js/history.js">
 <link rel="modulepreload" href="/js/format.js">
 <link rel="modulepreload" href="/js/icons.js">
 <link rel="modulepreload" href="/js/theme.js">
 <script type="module" src="/js/citizen.js"></script>
+<script type="module" src="/js/history.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -110,6 +112,14 @@
           <span class="section-note">ilk kayıtlı istasyonunuz için</span>
         </div>
         <div id="alternative"></div>
+      </section>
+
+      <section id="equipment-history" aria-labelledby="equipment-history-title" hidden>
+        <div class="section-head">
+          <h2 id="equipment-history-title">Arıza geçmişi</h2>
+          <span class="section-note">ilk kayıtlı istasyonunuz için</span>
+        </div>
+        <div id="equipment-history-body"></div>
       </section>
     </div>
 

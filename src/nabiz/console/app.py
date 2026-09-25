@@ -50,6 +50,7 @@ from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.envfile import load_env_file
+from nabiz.console.history_api import history_routes
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
@@ -271,6 +272,7 @@ def build_console_app(
     app.middleware("http")(_request_log)
     app.add_exception_handler(RequestValidationError, _invalid_request)
     app.include_router(citizen_routes)
+    app.include_router(history_routes)
     app.include_router(operator_routes)
     # Last, so every /api route wins the match ahead of the page's files.
     if CONSOLE_STATIC_DIR.is_dir():
