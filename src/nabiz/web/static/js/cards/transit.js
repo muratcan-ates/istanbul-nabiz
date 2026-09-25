@@ -1,9 +1,10 @@
-/* Bus answers: arrival estimates with their method, the diagnostics when there is none, and live
- * vehicles by door number, never by plate. Pure. */
+/* Bus answers (spec 8.2): arrival estimates with their method, the diagnostics when there is none,
+ * and live vehicles by door number, never by plate. Pure. */
 
-import { esc, num, int, has, CONFIDENCE_TR } from '../format.js';
+import { UNKNOWN, esc, num, int, has, trName } from '../format.js';
 import { icon } from '../icons.js';
-import { cardShell, metaList } from './shell.js';
+import { ageAt } from '../provenance.js';
+import { nextCardId, callout, head, sheet, point, row, metric, facts, details, table, disclaimer, confidence } from './sheet.js';
 
 const METHOD_TR = { stop_sequence: 'durak sırası', distance: 'kuş uçuşu mesafe', schedule: 'ilan edilen sefer' };
 const METHOD_WHY = {
@@ -11,33 +12,29 @@ const METHOD_WHY = {
   distance: 'Durak sırası kurulamadı; kuş uçuşu mesafe kıvrımlılık katsayısıyla düzeltilerek kullanıldı.',
   schedule: 'Canlı araç bulunamadı; İETT’nin ilan ettiği sefer saati gösteriliyor.',
 };
+const BUS_ROWS = 12;
 
-function arrivalCard(arrival, prov, id) {
-  const method = arrival.method || '';
-  const conf = arrival.confidence || '';
-  const pills = `<div class="pills">
-    <span class="pill method" title="${esc(METHOD_WHY[method] || 'Tahmin yöntemi')}">${icon('route')}${esc(METHOD_TR[method] || method || 'yöntem bilinmiyor')}</span>
-    <span class="pill conf-${esc(conf)}">güven: ${esc(CONFIDENCE_TR[conf] || conf || '—')}</span>
-  </div>`;
-  const meta = [
-    has(arrival.stops_away) ? `${int(arrival.stops_away)} durak` : null,
-    has(arrival.distance_km) ? `${num(arrival.distance_km)} km` : null,
-    arrival.direction ? `yön: ${arrival.direction}` : null,
-    arrival.door_no ? `kapı no ${arrival.door_no}` : null,
-  ];
-  const body = `
-    <div class="metric"><b>${has(arrival.eta_minutes) ? num(arrival.eta_minutes, 0) : '—'}</b><span class="unit">dakika içinde</span></div>
-    ${pills}
-    ${metaList(meta)}`;
-  return cardShell({
-    id, kind: 'bus', icon: 'bus', prov, body,
-    title: `${arrival.line_code || ''} → ${arrival.stop_name || arrival.stop_code || ''}`,
-    sub: arrival.line_name || '',
+/** "500T, Şifa Sondurak" with the line as a badge; the arrow is an icon, the words are for screen readers. */
+function lineTitle(line, stop) {
+  return `<span class="badge badge-bus">${esc(line)}</span>`
+    + (stop ? `<span class="sr-only"> hattı, durak:</span> ${icon('arrow-narrow-right')} ${esc(trName(stop))}` : ' hattı');
+}
+
+function arrivalRow(a, prov, id, i) {
+  const method = METHOD_TR[a.method] || a.method || UNKNOWN;
+  const body = metric(has(a.eta_minutes) ? num(a.eta_minutes, 0) : null, 'dk', '', 'süre')
+    + facts([has(a.stops_away) ? `${int(a.stops_away)} durak ötede` : '', has(a.distance_km) ? `${num(a.distance_km)} km` : ''])
+    + `<p class="row-facts">Yöntem: ${esc(method)}. Güven: ${confidence(a.confidence)}</p>`
+    + (METHOD_WHY[a.method] ? details('Bu tahmin nasıl yapıldı?', `<p>${METHOD_WHY[a.method]}</p>`) : '');
+  return row({
+    id, kind: 'bus', glyph: 'bus', prov, body, i,
+    title: `Kapı no ${a.door_no || UNKNOWN}${a.direction ? `, ${trName(a.direction)} yönü` : ''}`,
+    extra: a.reported_at ? `konum ${ageAt(prov, a.reported_at)}` : '',
   });
 }
 
-/* When no estimate can be produced the diagnostics are the answer: they say which rule
- * rejected which bus, instead of leaving the user with an empty screen. */
+/* When no estimate can be produced the diagnostics are the answer: which rule dropped which bus,
+ * instead of an empty screen or an invented minute. */
 const DIAG_TR = {
   buses_received: 'İETT’den gelen araç',
   dropped_stale: 'konumu fazla eski olduğu için elenen',
@@ -56,35 +53,69 @@ function noteCodeTr(code) {
   return null;
 }
 
-function diagnosticsCard(diag, prov, id) {
+function diagnostics(diag) {
   if (!diag) return '';
-  const counts = Object.keys(DIAG_TR)
-    .filter((k) => has(diag[k]))
-    .map((k) => `<li><span>${esc(DIAG_TR[k])}</span><span>${int(diag[k])}</span></li>`)
-    .join('');
-  const notes = (diag.notes || []).map((code) => {
-    const tr = noteCodeTr(code);
-    return `<li><span>${tr ? esc(tr) : `<code>${esc(code)}</code>`}</span><span></span></li>`;
-  }).join('');
-  const body = `
-    <p class="hint">Tahmin üretilemediğinde sebebini gösteriyoruz — boş ekran da, uydurma dakika da yanıt değildir.</p>
-    <ul class="kv-list">${notes}</ul>
-    <details class="diag" ${counts ? '' : 'hidden'}><summary>Sayımlar</summary><ul class="kv-list">${counts}</ul></details>`;
-  return cardShell({ id, kind: 'bus', icon: 'alert', prov, body, title: 'Neden varış tahmini yok?' });
-}
-
-function busCard(bus, prov, id) {
-  const meta = [
-    bus.direction ? `yön: ${bus.direction}` : null,
-    bus.nearest_stop_code ? `yakın durak ${bus.nearest_stop_code}` : null,
-    bus.route_code,
-  ];
-  const body = `${metaList(meta)}`;
-  return cardShell({
-    id, kind: 'bus', icon: 'bus', prov, body,
-    title: `Kapı no ${bus.door_no || '—'}`,
-    sub: bus.line_name || bus.line_code || '',
+  // An unknown code keeps its raw value in data-code for whoever debugs it, not in the visible text.
+  const notes = (diag.notes || []).map((code) => (noteCodeTr(code)
+    ? `<li>${esc(noteCodeTr(code))}</li>` : `<li data-code="${esc(code)}">Açıklaması olmayan bir not var.</li>`)).join('');
+  const counts = Object.keys(DIAG_TR).filter((k) => has(diag[k]))
+    .map((k) => `<tr><td>${esc(DIAG_TR[k])}</td><td class="num">${int(diag[k])}</td></tr>`).join('');
+  return callout('Tahmin üretilemediğinde sebebini gösteriyoruz. Boş ekran da, uydurma dakika da yanıt değildir.', {
+    title: 'Neden varış tahmini yok?',
+    html: (notes ? `<ul>${notes}</ul>` : '') + (counts ? details('Sayımlar', `<table><tbody>${counts}</tbody></table>`) : ''),
   });
 }
 
-export { arrivalCard, diagnosticsCard, busCard };
+/** The stop has no row of its own, so its marker points at the head. */
+function arrivalsAnswer({ data, provenance: prov, note }, asked) {
+  const arrivals = data.arrivals || [];
+  const stop = data.stop || {};
+  const headId = nextCardId();
+  const first = arrivals.find((a) => has(a.eta_minutes));
+  return {
+    html: head({
+      id: headId, titleHtml: lineTitle(data.line_code, stop.name || asked), prov, note,
+      count: arrivals.length ? `${arrivals.length} yaklaşan araç` : 'yaklaşan araç yok',
+    })
+      + (arrivals.length ? sheet(arrivals.map((a, i) => arrivalRow(a, prov, nextCardId(), i)).join('')) : diagnostics(data.diagnostics))
+      + disclaimer(data.disclaimer),
+    points: [point(stop, 'station', headId, `Durak: ${trName(stop.name || asked)}`, prov, 'bus-stop')],
+    say: `${data.line_code}, ${trName(stop.name || asked)}: ${arrivals.length
+      ? `${arrivals.length} yaklaşan araç${first ? `, ilki ${num(first.eta_minutes, 0)} dk içinde` : ''}.` : 'yaklaşan araç yok.'}`,
+    prov,
+  };
+}
+
+/** Vehicles as a table grouped by direction: the first twelve, the rest behind one disclosure. */
+function busTable(buses, ids, prov) {
+  const groups = new Map();
+  buses.forEach((b, k) => groups.set(b.direction || '', [...(groups.get(b.direction || '') || []), [b, ids[k]]]));
+  const body = [...groups].map(([dir, list]) => `<tbody><tr><th scope="rowgroup" colspan="4">`
+    + `${dir ? `${esc(trName(dir))} yönü` : 'Yönü bilinmeyen'} (${list.length})</th></tr>`
+    + list.map(([b, id]) => `<tr class="card" id="${id}" tabindex="-1"><td>${esc(b.door_no || UNKNOWN)}</td>`
+      + `<td>${esc(b.nearest_stop_code || UNKNOWN)}</td><td>${esc(ageAt(prov, b.reported_at) || UNKNOWN)}</td>`
+      + `<td><button type="button" class="btn row-map" data-map="${id}">${icon('map')}<span class="sr-only">Haritada göster</span></button></td></tr>`)
+      .join('') + '</tbody>').join('');
+  return table([['Kapı no'], ['Yakın durak'], ['Konum yaşı'], ['Harita']], body);
+}
+
+function busAnswer({ data, provenance: prov, note }) {
+  const buses = [...(data.buses || [])].sort((a, b) => String(a.direction).localeCompare(String(b.direction), 'tr'));
+  const ids = buses.map(() => nextCardId());
+  const hint = 'Varış tahmini için durak adı ekleyin, örneğin: 500T Şifa Sondurak.';
+  const more = buses.length > BUS_ROWS
+    ? details(`Tümünü göster (${buses.length})`, busTable(buses.slice(BUS_ROWS), ids.slice(BUS_ROWS), prov)) : '';
+  return {
+    html: head({ titleHtml: `${lineTitle(data.line_code)}, canlı araçlar`, count: `${int(buses.length)} araç`, prov, note: note ? `${note} ${hint}` : hint, source: true })
+      + callout('Plaka hiçbir zaman saklanmaz ve gösterilmez; araçlar yalnızca kapı numarasıyla anılır (KVKK).', { icon: 'shield-lock' })
+      + (buses.length ? sheet(busTable(buses.slice(0, BUS_ROWS), ids, prov) + (more ? `<div class="sheet-more">${more}</div>` : '')) : ''),
+    points: buses.map((b, k) => ({
+      ...point(b, 'bus', ids[k], `Kapı no ${b.door_no}${b.direction ? `, ${trName(b.direction)} yönü` : ''}`, prov),
+      age: `konum ${ageAt(prov, b.reported_at) || 'yaşı bilinmiyor'}`,
+    })),
+    say: `${data.line_code} hattında ${buses.length} araç bulundu.`,
+    prov,
+  };
+}
+
+export { arrivalsAnswer, busAnswer };

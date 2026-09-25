@@ -1,15 +1,17 @@
 /* The three ways the page talks to its own server. A failure becomes an Error carrying the HTTP
- * status, so errors.js can title it instead of showing a stack trace. */
+ * status, so the error card (cards/sheet.js) can title it instead of showing a stack trace. */
 
-async function api(path, params) {
+/** `signal` aborts a superseded answer: a newer question wins, and its answer is the one shown. */
+async function api(path, params, signal) {
   const url = new URL(path, window.location.origin);
   Object.entries(params || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   });
   let response;
   try {
-    response = await fetch(url, { headers: { Accept: 'application/json' } });
+    response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
   } catch (err) {
+    if (signal && signal.aborted) throw err;
     const offline = new Error('Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.');
     offline.status = 0;
     throw offline;

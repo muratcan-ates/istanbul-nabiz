@@ -35,6 +35,10 @@ const STATES = {
     click: '.chip[data-journey="parking"]',
     view: { 1440: '.workspace', 390: '#map-panel' },
   },
+  // The pen line at answer size, drawn from the same module as the hero's.
+  traffic: { path: '/', click: '.chip[data-journey="traffic"]', view: { 1440: '.workspace', 390: '#results' } },
+  // The ruler with every source the app has read since it started: shot last, so it holds them all.
+  freshness: { path: '/', click: '.journey-tile[data-example="veri tazeliği"]', view: { 1440: '#freshness-strip' } },
 };
 
 function parseArgs(argv) {
@@ -126,7 +130,11 @@ async function connect(url) {
 async function shoot(cdp, opts, name, state, width, theme) {
   const height = HEIGHT[width] || Math.round(width * 0.625);
   await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 768 });
-  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
+  // A screenshot is a still: under reduced motion every drawing is in its final state, never
+  // caught halfway through the pen line's 1.4 s draw-on.
+  await cdp.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }],
+  });
   await cdp.send('Page.navigate', { url: new URL(state.path, opts.base).href });
   await waitFor(() => cdp.evaluate('document.readyState === "complete"'), 20000, 'the load event');
   await cdp.quiet();

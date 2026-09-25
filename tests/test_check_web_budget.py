@@ -169,9 +169,21 @@ def import_cycle(r: pathlib.Path) -> None:
     write(r, "js/zz-b.js", "import './zz-a.js';\n")
 
 
+CDNJS = "https://cdnjs.cloudflare.com/ajax/libs/"
+
+
+def unpin_map_loader(r: pathlib.Path) -> None:
+    """js/map.js keeps loading MapLibre from cdnjs, but its integrity hashes are gone."""
+    path = r / budget.STATIC / "js" / "map.js"
+    text, n = re.subn(r"'sha384-[A-Za-z0-9+/=]+'", "''", path.read_text(encoding="utf-8"))
+    assert n == 2, "js/map.js no longer pins two files: the test no longer matches the page"
+    path.write_text(text, encoding="utf-8")
+
+
 ENTRY = '<script type="module" src="/js/main.js">'
 UNKNOWN_ICON = "import { icon } from '../icons.js';\nexport const x = icon('no-such');\n"
 UNUSED_SYMBOL = '<!-- icons:start --><svg><symbol id="i-zz-unused"></symbol></svg><!-- icons:end -->'
+DRAWN_FAVICON = '<link rel="icon" href="data:image/svg+xml,%3Csvg%3E%3Cpath d=%27M0 0%27/%3E%3C/svg%3E">'
 
 BREAKAGES: dict[str, list[tuple[str, Breakage]]] = {
     "payload": [
@@ -185,6 +197,8 @@ BREAKAGES: dict[str, list[tuple[str, Breakage]]] = {
     "third-party": [
         ("a script from another CDN", in_head('<script defer src="https://cdn.example.com/x.js"></script>')),
         ("a remote url() in a stylesheet", new_file("css/zz.css", ".row-x { background: url(https://example.com/a.png); }\n")),
+        ("a loader for a library nobody pinned", new_file("js/zz.js", f"export const u = '{CDNJS}leaflet/1.9.4/leaflet.js';\n")),
+        ("the map loader without its hashes", unpin_map_loader),
     ],
     "fonts": [
         ("a ttf", new_file("fonts/x.ttf", "0")),
@@ -235,6 +249,7 @@ BREAKAGES: dict[str, list[tuple[str, Breakage]]] = {
     ],
     "icons": [
         ("a hand-drawn path in the page", in_body('<svg><path d="M0 0h24"/></svg>')),
+        ("a hand-drawn favicon", in_head(DRAWN_FAVICON)),
         ("an icon name no symbol defines", new_file("js/cards/zz.js", UNKNOWN_ICON)),
         ("a symbol nothing uses", in_body(UNUSED_SYMBOL)),
         ("a hand-drawn shape in a card", new_file("js/cards/zz.js", "export const s = '<circle r=\"3\"></circle>';\n")),
@@ -296,6 +311,17 @@ def test_generated_icon_blocks_and_chart_drawings_are_not_hand_drawn_icons(repo:
     edit(repo, "index.html", "</body>", f'{block}<svg><use href="#i-zz"></use></svg></body>')
     write(repo, "js/charts/zz.js", "export const dot = (x) => `<circle cx=\"${x}\" r=\"3\"></circle>`;\n")
     assert "icons" not in failed(repo)
+
+
+def test_the_generated_favicon_is_not_hand_drawn_but_a_copy_outside_its_block_is(repo: pathlib.Path) -> None:
+    def drawn() -> int:
+        return sum(f.count for f in results(repo)["icons"].findings if f.key == "icons:index.html")
+
+    before = drawn()
+    favicon = re.search(r'<link rel="icon"[^>]*>', (repo / budget.STATIC / "index.html").read_text(encoding="utf-8"))
+    assert favicon, "the page has a favicon link"
+    edit(repo, "index.html", "</head>", favicon.group(0) + "</head>")
+    assert drawn() == before + 2  # its rect and its path, now outside the generated block
 
 
 def test_colour_literals_are_allowed_in_tokens_css_and_ids_are_not_colours(repo: pathlib.Path) -> None:

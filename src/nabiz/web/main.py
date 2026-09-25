@@ -52,8 +52,10 @@ STATIC_DIR = pathlib.Path(__file__).resolve().parent / "static"
 #: script and one stylesheet from cdnjs) and the raster tiles (OpenStreetMap, or Azure Maps
 #: when NABIZ_MAPS_KEY is set). MapLibre fetches tiles with ``fetch`` and decodes them from
 #: ``blob:`` URLs, and runs its workers from ``blob:`` too, which is what its own CSP notes
-#: ask for. ``style-src 'unsafe-inline'`` stays because the page's card renderers write bar
-#: widths and gauge colours as inline ``style`` attributes; scripts get no such allowance.
+#: ask for; js/map.js loads both MapLibre files with integrity hashes. ``style-src
+#: 'unsafe-inline'`` stays because the answer renderers write custom properties as inline
+#: ``style`` attributes (an occupancy share, a scale tick's place, a line's colour token, the
+#: entry stagger); scripts get no such allowance.
 CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",

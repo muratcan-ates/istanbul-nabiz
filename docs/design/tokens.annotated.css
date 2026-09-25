@@ -1,0 +1,462 @@
+/* Nabız tokens: the project's own native-CSS token system (docs/design/DESIGN.md §3).
+ *
+ * Honest label: not Fluent, not Material, not Carbon, not an İBB asset. The page is vanilla
+ * HTML/CSS/JS with no build step, so the design system is these custom properties plus the
+ * scripts that generate and verify them (scripts/design/build_palette.py for every colour value,
+ * scripts/design/build_final_tokens.py for the aliases and non-colour tokens,
+ * scripts/design/verify_tokens.py for the contrast table).
+ *
+ * Colour theory, in five lines:
+ *  - Base hue 260 (OKLCH): every İBB web blue measured sits at 259-263 degrees. The palette is
+ *    inspired by İBB; the identity is Nabız's own: no logo, no emblem, no İBB red.
+ *  - Ramps step evenly in OKLab lightness (0.075 per step), so 400 -> 500 looks as far as 700 -> 800.
+ *  - Neutrals share hue 260 at low chroma: cool blue-ink greys, never warm.
+ *  - ONE accent, analogous cyan at 222 degrees. It means "now / live / focus" and nothing else.
+ *  - Lightness encodes quantity (the pulse line's pen pressure); hue encodes only categories a
+ *    source defines (Metro line colours, AQI bands). Warm hues are reserved for warn, bad and AQI.
+ *
+ * Rules for whoever uses this file:
+ *  - This is the ONLY file in static/ allowed to contain a colour literal (check_web_budget.py tokens).
+ *  - Every value is sRGB hex, the value that was contrast-checked; its OKLCH source is in the
+ *    annotated copy. This file is generated: edit the scripts, never this file by hand. It is
+ *    exempt from the 350-line CSS cap and capped by bytes instead (check_web_budget.py).
+ *  - Light is the default. Dark = deep navy, never black. No #000000 and no #ffffff anywhere.
+ *  - Role aliases below point at ramp steps; they add no new colour.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ---- ramps (theme-independent) ---- */
+  /* primary: İBB-blue family, h 260 */
+  --primary-50: #eef4fd; /* oklch(0.965 0.014 260) */
+  --primary-100: #d9e5f9; /* oklch(0.920 0.030 260) */
+  --primary-200: #b8cdf1; /* oklch(0.845 0.055 260) */
+  --primary-300: #95b5eb; /* oklch(0.770 0.085 260) */
+  --primary-400: #729de4; /* oklch(0.695 0.115 260) */
+  --primary-500: #5285d9; /* oklch(0.620 0.140 260) */
+  --primary-600: #386dc6; /* oklch(0.545 0.150 260) */
+  --primary-700: #2457aa; /* oklch(0.470 0.145 260) */
+  --primary-800: #16428b; /* oklch(0.395 0.130 260) */
+  --primary-900: #0b2f6a; /* oklch(0.320 0.110 260) */
+  --primary-950: #051e48; /* oklch(0.245 0.085 260) */
+
+  /* accent: analogous cyan, h 222 */
+  --accent-50: #e7f7fc; /* oklch(0.965 0.018 222) */
+  --accent-100: #cceaf6; /* oklch(0.920 0.035 222) */
+  --accent-200: #a1d6e8; /* oklch(0.845 0.060 222) */
+  --accent-300: #74c1db; /* oklch(0.770 0.085 222) */
+  --accent-400: #4aabc9; /* oklch(0.695 0.100 222) */
+  --accent-500: #2e93b1; /* oklch(0.620 0.100 222) */
+  --accent-600: #227b96; /* oklch(0.545 0.090 222) */
+  --accent-700: #1c6479; /* oklch(0.470 0.076 222) */
+  --accent-800: #114e60; /* oklch(0.395 0.066 222) */
+  --accent-900: #053947; /* oklch(0.320 0.056 222) */
+  --accent-950: #002530; /* oklch(0.245 0.045 222) (gamut-clipped) */
+
+  /* neutral: cool slate, h 260, low chroma */
+  --neutral-0: #fbfcfe; /* oklch(0.992 0.003 260) */
+  --neutral-50: #f4f7fc; /* oklch(0.975 0.007 260) */
+  --neutral-100: #ebeff5; /* oklch(0.950 0.010 260) */
+  --neutral-200: #dce2eb; /* oklch(0.910 0.014 260) */
+  --neutral-300: #c7ceda; /* oklch(0.850 0.018 260) */
+  --neutral-400: #9fa8b7; /* oklch(0.730 0.024 260) */
+  --neutral-500: #7c8797; /* oklch(0.620 0.028 260) */
+  --neutral-600: #606b7d; /* oklch(0.525 0.031 260) */
+  --neutral-700: #495467; /* oklch(0.445 0.034 260) */
+  --neutral-800: #323e50; /* oklch(0.360 0.036 260) */
+  --neutral-900: #1e293c; /* oklch(0.280 0.038 260) */
+  --neutral-950: #131e31; /* oklch(0.235 0.040 260) */
+  --neutral-975: #0b1628; /* oklch(0.200 0.040 260) */
+  --neutral-1000: #060f20; /* oklch(0.170 0.038 260) */
+
+  /* Metro İstanbul line colours, official values from metro.istanbul (read 2026-09-23).
+     Fixed meaning: never tuned. -ink is the label colour with the higher contrast; lines whose
+     best ink is under 4.5:1 must use the large-text badge (>= 18.66px bold) or the outline badge. */
+  --line-M1A: #ee3124;
+  --line-M1A-ink: #060f20; /* 4.65:1 */
+  --line-M1B: #ee3124;
+  --line-M1B-ink: #060f20; /* 4.65:1 */
+  --line-M2: #009944;
+  --line-M2-ink: #060f20; /* 5.14:1 */
+  --line-M3: #00a8e1;
+  --line-M3-ink: #060f20; /* 7.01:1 */
+  --line-M4: #e91e76;
+  --line-M4-ink: #060f20; /* 4.48:1; large-text or outline badge only */
+  --line-M5: #683064;
+  --line-M5-ink: #fbfcfe; /* 9.32:1 */
+  --line-M6: #caa977;
+  --line-M6-ink: #060f20; /* 8.62:1 */
+  --line-M7: #f89aba;
+  --line-M7-ink: #060f20; /* 9.41:1 */
+  --line-M8: #447abe;
+  --line-M8-ink: #060f20; /* 4.35:1; large-text or outline badge only */
+  --line-M9: #f0e514;
+  --line-M9-ink: #060f20; /* 14.52:1 */
+  --line-T1: #004f7d;
+  --line-T1-ink: #fbfcfe; /* 8.47:1 */
+  --line-T3: #a86528;
+  --line-T3-ink: #fbfcfe; /* 4.49:1; large-text or outline badge only */
+  --line-T4: #f47e46;
+  --line-T4-ink: #060f20; /* 7.22:1 */
+  --line-T5: #7c72b3;
+  --line-T5-ink: #060f20; /* 4.48:1; large-text or outline badge only */
+  --line-TF1: #68bcb0;
+  --line-TF1-ink: #060f20; /* 8.58:1 */
+  --line-TF2: #68bcb0;
+  --line-TF2-ink: #060f20; /* 8.58:1 */
+  --line-F1: #7c7358;
+  --line-F1-ink: #fbfcfe; /* 4.60:1 */
+  --line-F4: #7c7358;
+  --line-F4-ink: #fbfcfe; /* 4.60:1 */
+  --line-M11: #a1609b; /* approximate: community value (Wikipedia), not published by Metro İstanbul */
+  --line-M11-ink: #fbfcfe; /* 4.39:1; large-text or outline badge only */
+  --line-unknown: #606b7d;
+  --line-unknown-ink: #fbfcfe;
+
+  /* ---- semantic tokens: light theme (default) ---- */
+  /* surfaces */
+  --surface: var(--neutral-50);
+  --surface-raised: var(--neutral-0);
+  --surface-sunken: var(--neutral-100);
+  --surface-inverse: var(--neutral-950);
+  --border: var(--neutral-200);
+  --border-strong: var(--neutral-500);
+
+  /* text */
+  --text: var(--neutral-950);
+  --text-muted: var(--neutral-700);
+  --text-subtle: var(--neutral-600);
+  --text-inverse: var(--neutral-50);
+
+  /* primary (actions, links, selected state) */
+  --primary: var(--primary-700);
+  --primary-hover: var(--primary-800);
+  --primary-active: var(--primary-900);
+  --on-primary: var(--neutral-0);
+  --primary-subtle: var(--primary-50);
+  --primary-subtle-hover: var(--primary-100);
+  --on-primary-subtle: var(--primary-800);
+  --link: var(--primary-700);
+  --link-hover: var(--primary-800);
+
+  /* accent: the one accent. live pulse, focus, highlight stroke. Never body text; use accent-strong */
+  --accent: var(--accent-500);
+  --accent-strong: var(--accent-700);
+  --accent-subtle: var(--accent-50);
+  --on-accent: var(--neutral-1000);
+  --focus-ring: var(--accent-600);
+
+  /* status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone */
+  --ok: #007650; /* oklch(0.500 0.109 162.3) */
+  --ok-wash: #dff7ea; /* oklch(0.955 0.030 162.2) */
+  --warn: #955e00; /* oklch(0.530 0.115 70.3) */
+  --warn-wash: #ffefdd; /* oklch(0.960 0.029 70.7) */
+  --bad: #921a1f; /* oklch(0.430 0.155 25.0) */
+  --bad-wash: #ffebe9; /* oklch(0.955 0.022 24.4) */
+  --info: var(--primary-700);
+  --info-wash: var(--primary-50);
+
+  /* air quality: standard band meaning (green > yellow > orange > red > purple > maroon),
+     lightness tuned for contrast and colour-blind separation. aqi-X = fill (chip, gauge arc,
+     marker); -ink = label on the fill; -text = the band as text, and the 1px edge a fill needs
+     when it is under 3:1 against the surface. */
+  --aqi-good: #54b08d; /* İyi, oklch(0.691 0.103 166.1) */
+  --aqi-good-ink: #060f20;
+  --aqi-good-text: #127b5b;
+  --aqi-moderate: #f3dc50; /* Orta, oklch(0.889 0.157 99.8) */
+  --aqi-moderate-ink: #060f20;
+  --aqi-moderate-text: #7b6c00;
+  --aqi-unhealthy_sensitive: #e47534; /* Hassas gruplar için sağlıksız, oklch(0.680 0.158 47.8) */
+  --aqi-unhealthy_sensitive-ink: #060f20;
+  --aqi-unhealthy_sensitive-text: #b24e00;
+  --aqi-unhealthy: #ac2728; /* Sağlıksız, oklch(0.490 0.169 25.8) */
+  --aqi-unhealthy-ink: #fbfcfe;
+  --aqi-unhealthy-text: #ac2728;
+  --aqi-very_unhealthy: #78308c; /* Kötü, oklch(0.451 0.157 318.2) */
+  --aqi-very_unhealthy-ink: #fbfcfe;
+  --aqi-very_unhealthy-text: #78308c;
+  --aqi-hazardous: #591020; /* Tehlikeli, oklch(0.309 0.104 13.7) */
+  --aqi-hazardous-ink: #fbfcfe;
+  --aqi-hazardous-text: #591020;
+
+  /* map marker kinds: a glyph carries the kind; colour is a second cue, not the only one.
+     Theme-independent (markers sit on map tiles); the ring keeps them off any tile colour. */
+  --kind-park: var(--primary-400);
+  --kind-bus: var(--primary-800);
+  --kind-station: var(--neutral-500);
+  --kind-place: var(--neutral-950);
+  --kind-air: var(--neutral-300);
+  --kind-selected: var(--focus-ring);
+  --marker-ring: var(--neutral-0);
+
+  /* elevation: shadows tinted with the navy ink, never pure black */
+  --shadow-1: 0 1px 2px rgb(19 30 49 / .06);
+  --shadow-2: 0 1px 2px rgb(19 30 49 / .06), 0 8px 24px -12px rgb(19 30 49 / .20);
+  --shadow-3: 0 2px 6px rgb(19 30 49 / .08), 0 24px 48px -20px rgb(19 30 49 / .30);
+
+  /* ==== Final spec additions: non-colour tokens (theme-independent) ==== */
+  /* type: Source Sans 3, self-hosted subset (OFL-1.1); 8 sizes, 3 weights */
+  --font-sans: "Nabız Sans", "Nabız Sans Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --text-xs: .75rem;     /* 12: chart axis labels and legends only, never sentences */
+  --text-sm: .875rem;    /* 14: stamps, meta, helper, table cells; the smallest size a data age may use */
+  --text-md: 1rem;       /* 16: body, input text (16 avoids iOS zoom) */
+  --text-lg: 1.1875rem;  /* 19: row titles, hero subtext, line badges at 700 (WCAG large text >= 18.66px bold) */
+  --text-xl: 1.375rem;   /* 22: h2 result heads, band word */
+  --text-2xl: 1.75rem;   /* 28: the one metric per row */
+  --text-3xl: 2.25rem;   /* 36: hero readout under 768 px */
+  --text-4xl: 3rem;      /* 48: hero readout, h1 upper bound */
+  --text-display: clamp(2rem, 1.2rem + 2.6vw, 3rem); /* h1 only: 32 px at 390, 48 px at 1440 */
+  --weight-regular: 400; --weight-semibold: 600; --weight-bold: 700;
+  --leading-tight: 1.08; --leading-snug: 1.3; --leading-body: 1.5;
+  --measure: 65ch;
+
+  /* space: 4 px base, 8 steps */
+  --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem;
+  --space-5: 1.5rem; --space-6: 2rem; --space-7: 3rem; --space-8: 4rem;
+
+  /* shape lock: surfaces 12, controls and labels 8, round only for dots,
+     markers, roundels and the live dot. Nothing else is rounded. */
+  --radius-control: 8px; --radius-surface: 12px; --radius-round: 999px;
+
+  /* layout; breakpoints (not expressible as custom properties): 640, 768, 1024, 1280 */
+  --maxw: 80rem; --gutter: var(--space-5); --topbar-h: 64px; --tap: 44px;
+
+  /* motion: transform, opacity and stroke-dashoffset only; everything gated by reduced motion */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --dur-press: 120ms; --dur-ui: 200ms; --dur-enter: 320ms; --dur-advance: 600ms;
+  --dur-draw: 1400ms; --dur-breathe: 2400ms; --stagger: 40ms;
+
+  /* drawing: one pen for icons and data ("tek kalem") */
+  --stroke-pen: 1.75px; --stroke-guide: 1px; --stroke-occupancy: 4px;
+  --icon-size: 20px; --icon-size-sm: 16px; --icon-stroke: 2; /* 2 of 24 units = 1.67 px at 20 px */
+
+  /* layers: the whole z-index scale */
+  --z-map-marker: 3; --z-sticky: 10; --z-topbar: 40; --z-popover: 50; --z-skip: 60;
+
+  /* ==== Final spec additions: role aliases (light; no new hex) ==== */
+  --pulse-ink-low: var(--primary-600); /* pen ink at index 1 */
+  --pulse-ink-high: var(--primary-900); /* pen ink at index 99 (pressure ramp) */
+  --pulse-ink-archive: var(--neutral-500); /* line older than 24 h, model inputs */
+  --chart-guide: var(--border); /* threshold hairlines; decorative, words carry meaning */
+  --chart-ref: var(--border-strong); /* yesterday rule, age gap, scale hairline, ruler axis */
+  --chart-now: var(--accent); /* the one "latest current reading" mark per drawing */
+  --chart-halo: var(--surface); /* knockout ring; components on a sheet set it to --surface-raised */
+  --chart-best: var(--primary); /* best forecast hour ring */
+  --live-dot: var(--accent); /* status pill dot, rings once per successful poll */
+  --occupancy-ink: var(--primary); /* 4 px occupancy stroke over a 1 px scale hairline */
+  --route-foot: var(--neutral-500); /* walk, wait, transfer, park legs */
+  --route-transit: var(--primary-600); /* rail and bus legs */
+  --route-drive: var(--primary-800); /* drive and delay legs */
+  --badge-bus: var(--primary-800); /* bus line badge fill (500T) */
+  --badge-bus-ink: var(--neutral-0); /* bus line badge code */
+  --line-casing: var(--border-strong); /* 1 px casing on every line-colour fill */
+  --kind-park-ink: var(--neutral-1000); /* glyph on --kind-park */
+  --kind-bus-ink: var(--neutral-0); /* glyph on --kind-bus */
+  --kind-station-ink: var(--neutral-1000); /* glyph on --kind-station */
+  --kind-place-ink: var(--neutral-0); /* glyph on --kind-place */
+  --kind-air-ink: var(--neutral-1000); /* glyph on --kind-air (fallback when no AQI band) */
+  --marker-edge: var(--primary-900); /* 1 px outer edge outside the 2 px --marker-ring */
+  --map-wash: var(--neutral-100); /* MapLibre background layer under calmed tiles */
+  --sheet-bg: var(--surface-raised); /* the one raised answer sheet */
+  --skeleton: var(--surface-sunken); /* loading blocks (opacity pulse only) */
+  --selected-row: var(--accent-subtle); /* row focused from a map marker (fades out) */
+  --topbar-bg: var(--surface); /* opaque topbar, 1 px --border bottom edge, no blur */
+}
+
+/* Dark theme, reachable two ways that must agree: the OS setting (unless the user forced light)
+   and the manual toggle, which sets data-theme on <html>. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    /* surfaces */
+    --surface: var(--neutral-975);
+    --surface-raised: var(--neutral-950);
+    --surface-sunken: var(--neutral-1000);
+    --surface-inverse: var(--neutral-50);
+    --border: var(--neutral-800);
+    --border-strong: var(--neutral-500);
+
+    /* text */
+    --text: var(--neutral-50);
+    --text-muted: var(--neutral-300);
+    --text-subtle: var(--neutral-400);
+    --text-inverse: var(--neutral-950);
+
+    /* primary (actions, links, selected state) */
+    --primary: var(--primary-500);
+    --primary-hover: var(--primary-400);
+    --primary-active: var(--primary-300);
+    --on-primary: var(--neutral-1000);
+    --primary-subtle: var(--primary-950);
+    --primary-subtle-hover: var(--primary-900);
+    --on-primary-subtle: var(--primary-200);
+    --link: var(--primary-300);
+    --link-hover: var(--primary-200);
+
+    /* accent: the one accent. live pulse, focus, highlight stroke. Never body text; use accent-strong */
+    --accent: var(--accent-400);
+    --accent-strong: var(--accent-300);
+    --accent-subtle: var(--accent-950);
+    --on-accent: var(--neutral-1000);
+    --focus-ring: var(--accent-300);
+
+    /* status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone */
+    --ok: #7deabd; /* oklch(0.860 0.120 164.9) */
+    --ok-wash: #0b2c20; /* oklch(0.265 0.045 165.8) */
+    --warn: #f9ba5f; /* oklch(0.830 0.130 74.3) */
+    --warn-wash: #33230a; /* oklch(0.270 0.045 75.7) */
+    --bad: #ed756e; /* oklch(0.700 0.150 25.0) */
+    --bad-wash: #3c1917; /* oklch(0.265 0.056 24.9) */
+    --info: var(--primary-300);
+    --info-wash: var(--primary-950);
+
+    /* air quality: standard band meaning (green > yellow > orange > red > purple > maroon),
+       lightness tuned for contrast and colour-blind separation. aqi-X = fill (chip, gauge arc,
+       marker); -ink = label on the fill; -text = the band as text, and the 1px edge a fill needs
+       when it is under 3:1 against the surface. */
+    --aqi-good: #48d18e; /* İyi, oklch(0.770 0.153 158.0) */
+    --aqi-good-ink: #060f20;
+    --aqi-good-text: #48d18e;
+    --aqi-moderate: #f4e653; /* Orta, oklch(0.910 0.163 103.9) */
+    --aqi-moderate-ink: #060f20;
+    --aqi-moderate-text: #f4e653;
+    --aqi-unhealthy_sensitive: #ef8439; /* Hassas gruplar için sağlıksız, oklch(0.719 0.157 52.1) */
+    --aqi-unhealthy_sensitive-ink: #060f20;
+    --aqi-unhealthy_sensitive-text: #ef8439;
+    --aqi-unhealthy: #d33b39; /* Sağlıksız, oklch(0.580 0.189 26.0) */
+    --aqi-unhealthy-ink: #fbfcfe;
+    --aqi-unhealthy-text: #e9504b;
+    --aqi-very_unhealthy: #a145bb; /* Kötü, oklch(0.560 0.191 318.1) */
+    --aqi-very_unhealthy-ink: #fbfcfe;
+    --aqi-very_unhealthy-text: #ba5fd5;
+    --aqi-hazardous: #92304a; /* Tehlikeli, oklch(0.460 0.133 7.9) */
+    --aqi-hazardous-ink: #fbfcfe;
+    --aqi-hazardous-text: #cd657b;
+
+    /* map marker kinds: a glyph carries the kind; colour is a second cue, not the only one.
+       Theme-independent (markers sit on map tiles); the ring keeps them off any tile colour. */
+    --kind-park: var(--primary-400);
+    --kind-bus: var(--primary-800);
+    --kind-station: var(--neutral-500);
+    --kind-place: var(--neutral-950);
+    --kind-air: var(--neutral-300);
+    --kind-selected: var(--focus-ring);
+    --marker-ring: var(--neutral-0);
+
+    /* elevation: shadows tinted with the navy ink, never pure black */
+    --shadow-1: 0 1px 2px rgb(2 5 17 / .55);
+    --shadow-2: 0 1px 2px rgb(2 5 17 / .55), 0 10px 26px -12px rgb(2 5 17 / .75);
+    --shadow-3: 0 2px 8px rgb(2 5 17 / .60), 0 24px 50px -22px rgb(2 5 17 / .85);
+
+    /* ==== Final spec additions: dark role aliases (same list for both dark blocks) ==== */
+    --pulse-ink-low: var(--primary-300); /* pen ink at index 1 */
+    --pulse-ink-high: var(--primary-100); /* pen ink at index 99 (pressure ramp) */
+    --pulse-ink-archive: var(--neutral-400); /* line older than 24 h, model inputs */
+    --route-foot: var(--neutral-400); /* walk, wait, transfer, park legs */
+    --route-transit: var(--primary-400); /* rail and bus legs */
+    --route-drive: var(--primary-200); /* drive and delay legs */
+    --badge-bus: var(--primary-400); /* bus line badge fill (500T) */
+    --badge-bus-ink: var(--neutral-1000); /* bus line badge code */
+    --map-wash: var(--neutral-975); /* MapLibre background layer under calmed tiles */
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* surfaces */
+  --surface: var(--neutral-975);
+  --surface-raised: var(--neutral-950);
+  --surface-sunken: var(--neutral-1000);
+  --surface-inverse: var(--neutral-50);
+  --border: var(--neutral-800);
+  --border-strong: var(--neutral-500);
+
+  /* text */
+  --text: var(--neutral-50);
+  --text-muted: var(--neutral-300);
+  --text-subtle: var(--neutral-400);
+  --text-inverse: var(--neutral-950);
+
+  /* primary (actions, links, selected state) */
+  --primary: var(--primary-500);
+  --primary-hover: var(--primary-400);
+  --primary-active: var(--primary-300);
+  --on-primary: var(--neutral-1000);
+  --primary-subtle: var(--primary-950);
+  --primary-subtle-hover: var(--primary-900);
+  --on-primary-subtle: var(--primary-200);
+  --link: var(--primary-300);
+  --link-hover: var(--primary-200);
+
+  /* accent: the one accent. live pulse, focus, highlight stroke. Never body text; use accent-strong */
+  --accent: var(--accent-400);
+  --accent-strong: var(--accent-300);
+  --accent-subtle: var(--accent-950);
+  --on-accent: var(--neutral-1000);
+  --focus-ring: var(--accent-300);
+
+  /* status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone */
+  --ok: #7deabd; /* oklch(0.860 0.120 164.9) */
+  --ok-wash: #0b2c20; /* oklch(0.265 0.045 165.8) */
+  --warn: #f9ba5f; /* oklch(0.830 0.130 74.3) */
+  --warn-wash: #33230a; /* oklch(0.270 0.045 75.7) */
+  --bad: #ed756e; /* oklch(0.700 0.150 25.0) */
+  --bad-wash: #3c1917; /* oklch(0.265 0.056 24.9) */
+  --info: var(--primary-300);
+  --info-wash: var(--primary-950);
+
+  /* air quality: standard band meaning (green > yellow > orange > red > purple > maroon),
+     lightness tuned for contrast and colour-blind separation. aqi-X = fill (chip, gauge arc,
+     marker); -ink = label on the fill; -text = the band as text, and the 1px edge a fill needs
+     when it is under 3:1 against the surface. */
+  --aqi-good: #48d18e; /* İyi, oklch(0.770 0.153 158.0) */
+  --aqi-good-ink: #060f20;
+  --aqi-good-text: #48d18e;
+  --aqi-moderate: #f4e653; /* Orta, oklch(0.910 0.163 103.9) */
+  --aqi-moderate-ink: #060f20;
+  --aqi-moderate-text: #f4e653;
+  --aqi-unhealthy_sensitive: #ef8439; /* Hassas gruplar için sağlıksız, oklch(0.719 0.157 52.1) */
+  --aqi-unhealthy_sensitive-ink: #060f20;
+  --aqi-unhealthy_sensitive-text: #ef8439;
+  --aqi-unhealthy: #d33b39; /* Sağlıksız, oklch(0.580 0.189 26.0) */
+  --aqi-unhealthy-ink: #fbfcfe;
+  --aqi-unhealthy-text: #e9504b;
+  --aqi-very_unhealthy: #a145bb; /* Kötü, oklch(0.560 0.191 318.1) */
+  --aqi-very_unhealthy-ink: #fbfcfe;
+  --aqi-very_unhealthy-text: #ba5fd5;
+  --aqi-hazardous: #92304a; /* Tehlikeli, oklch(0.460 0.133 7.9) */
+  --aqi-hazardous-ink: #fbfcfe;
+  --aqi-hazardous-text: #cd657b;
+
+  /* map marker kinds: a glyph carries the kind; colour is a second cue, not the only one.
+     Theme-independent (markers sit on map tiles); the ring keeps them off any tile colour. */
+  --kind-park: var(--primary-400);
+  --kind-bus: var(--primary-800);
+  --kind-station: var(--neutral-500);
+  --kind-place: var(--neutral-950);
+  --kind-air: var(--neutral-300);
+  --kind-selected: var(--focus-ring);
+  --marker-ring: var(--neutral-0);
+
+  /* elevation: shadows tinted with the navy ink, never pure black */
+  --shadow-1: 0 1px 2px rgb(2 5 17 / .55);
+  --shadow-2: 0 1px 2px rgb(2 5 17 / .55), 0 10px 26px -12px rgb(2 5 17 / .75);
+  --shadow-3: 0 2px 8px rgb(2 5 17 / .60), 0 24px 50px -22px rgb(2 5 17 / .85);
+
+  /* ==== Final spec additions: dark role aliases (same list for both dark blocks) ==== */
+  --pulse-ink-low: var(--primary-300); /* pen ink at index 1 */
+  --pulse-ink-high: var(--primary-100); /* pen ink at index 99 (pressure ramp) */
+  --pulse-ink-archive: var(--neutral-400); /* line older than 24 h, model inputs */
+  --route-foot: var(--neutral-400); /* walk, wait, transfer, park legs */
+  --route-transit: var(--primary-400); /* rail and bus legs */
+  --route-drive: var(--primary-200); /* drive and delay legs */
+  --badge-bus: var(--primary-400); /* bus line badge fill (500T) */
+  --badge-bus-ink: var(--neutral-1000); /* bus line badge code */
+  --map-wash: var(--neutral-975); /* MapLibre background layer under calmed tiles */
+}
+
+@media (max-width: 767px) {
+  :root { --gutter: var(--space-4); --topbar-h: 56px; }
+}

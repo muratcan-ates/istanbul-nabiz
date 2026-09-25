@@ -10,7 +10,9 @@ an edit and what a phone downloads. The rules are the frontend half of the desig
                      vendored library dropped into static/, not targets.
     render-blocking  First paint on a phone is round trips, not bytes: no third-party stylesheet, no
                      classic script without defer in <head>, at most 4 first-party stylesheets.
-    third-party      Only the pinned MapLibre build from cdnjs, and only with an integrity hash.
+    third-party      Only the pinned MapLibre build from cdnjs, and only with an integrity hash: in the
+                     page, and in a script that loads it later (js/map.js), which must then hold a
+                     hash per file and set crossOrigin, or the browser skips the integrity check.
     fonts            Self-hosted woff2 only, font-display swap or optional, preloaded, at most 4 files
                      and 60 KB, or text is invisible while a font downloads.
     motion           Transitions and keyframes never animate layout (width, height, top, margin...),
@@ -36,8 +38,9 @@ an edit and what a phone downloads. The rules are the frontend half of the desig
     listeners        No addEventListener in cards/ or charts/: one delegated listener per region,
                      wired where the region's teardown lives.
     icons            Icons come from the vendored Tabler sprite (inside <!-- icons:start --> and
-                     <!-- icons:end -->, or static/icons.svg). Every referenced name exists, every
-                     symbol is used, and no SVG shape is hand-drawn outside those blocks or js/charts/.
+                     <!-- icons:end -->, or static/icons.svg; the favicon too). Every referenced name
+                     exists, every symbol is used, and no SVG shape is hand-drawn outside those blocks
+                     or js/charts/.
     contract-ids     The ids, elements and API calls the scripts and tests depend on (spec section 17)
                      exist, and every id a script looks up is in the page or written by a script.
     dashes           No em or en dash (U+2014, U+2013) in visible text: HTML text and attributes (a
@@ -94,6 +97,9 @@ MAX_FONT_FILES = 4
 ALLOWED_THIRD_PARTY = (
     re.compile(r"^https://cdnjs\.cloudflare\.com/ajax/libs/maplibre-gl/\d+\.\d+\.\d+/maplibre-gl\.min\.(js|css)$"),
 )
+#: A script string naming a CDN file is a loader (js/map.js builds "<base>.css" and "<base>.js").
+CDN_URL = re.compile(r"^https://cdnjs\.cloudflare\.com/")
+SRI_HASH = re.compile(r"^sha(?:256|384|512)-[A-Za-z0-9+/]{43,86}={0,2}$")
 ENTRY_MODULE = "/js/main.js"
 CONFIG_SCRIPT = "/config.js"
 #: FE-MOD-2. Node imports these in tests, so they get their time and data as arguments.
@@ -199,11 +205,8 @@ class Target:
     limit: int = 1
 
 
-MAPLIBRE = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min"
-STEP3 = "step 3: the Tabler sprite and favicon"
-STEP4 = "step 4: tokens.css and three stylesheets replace style.css"
-STEP5 = "step 5: markup"
 STEP7 = "step 7: answers"
+STEP8 = "step 8: map"
 
 #: Measured on the tree these gates landed on (2026-09-23, after the ES module split); steps are the
 #: design spec's section 18. Grouped by check; each step deletes the entries it meets, and a met
@@ -215,30 +218,25 @@ TARGETS_BY_CHECK: dict[str, dict[str, Target]] = {
     # renderers (data age in the freshness strip and pill, focus kept on "Sor", Turkish map names
     # and marker labels, an hourly table for the traffic bars, badge ink, js/motion.js): 26,801 B
     # to 28,164 B. Step 7 replaces those renderers; eval/results/web-vitals.md has the numbers.
-    "payload": {"js": Target("owner: JS gzip budget for native modules", 3_164)},
-    "render-blocking": {f"{MAPLIBRE}.css": Target(f"{STEP5}; step 8 loads MapLibre on the first map")},
-    "third-party": {
-        f"sri:{MAPLIBRE}.css": Target(f"{STEP5}; step 8 adds the SRI hashes"),
-        f"sri:{MAPLIBRE}.js": Target(f"{STEP5}; step 8 adds the SRI hashes"),
-    },
-    "motion": {"style.css:transition:width": Target(STEP4)},
-    "tokens": {
-        "style.css": Target(STEP4, 99),
-        "js/cards/metro.js": Target(f"{STEP7}: the line colour comes from --line-*", 1),
-    },
-    "file-size": {"style.css": Target(STEP4, 665), f"{TOKENS_CSS}:missing": Target(STEP4)},
-    "icons": {
-        "index.html": Target(f"{STEP3}; {STEP5} drops the hand-drawn brand mark", 55),
-        "js/cards/environment.js": Target(f"{STEP7}: the gauge and the AQI dial go", 5),
-    },
-    "contract-ids": {f"#{i}": Target(STEP5) for i in ("hero-pulse", "hero-readout", "answer-status", "hakkinda", "ruler-table")},
-    "dashes": {
-        "index.html": Target(f"{STEP5} and the copy deck (spec 14.2)", 4),
-        **{
-            f"js/{path}": Target(f"{STEP7}: missing values read 'bilinmiyor' (spec 14.2)", n)
-            for path, n in (("cards/environment.js", 8), ("cards/metro.js", 2), ("cards/parking.js", 1),
-                            ("cards/transit.js", 4), ("format.js", 5), ("reliability.js", 1))
-        },
+    # Raised again to 3,376 the same day for step 3 (+212 B): js/icons.js now knows which Tabler
+    # glyphs are inline in the page and sends the rest to /icons.svg, and the call sites use
+    # Tabler's names. Added "total" with steps 3 and 4: that JS overage, plus icons.svg (1,941 B
+    # gzip, new), puts the page past 40 KB while HTML (5,056 of 6,000 B) and CSS (9,810 of
+    # 10,000 B) stay inside their own budgets. 160 B of the CSS are base.css's rules for the old
+    # renderers' two gauges, which step 7 deletes with them (unstyled, each drew as a black shape).
+    # The type budgets add up to more than the total, so the total holds only once step 7 brings
+    # the JS down.
+    # Raised to 14,974 and 17,162 the same day for steps 5 and 6, in the open (JS 28,376 B to
+    # 39,974 B gzip, +11,598 B): the pen line (charts/pulse-geometry.js 2,997 B, pulse-view.js
+    # 2,658 B), the age ruler (charts/age-ruler.js 2,395 B) and hero.js (1,713 B) are 9,763 B;
+    # the other 1,835 B are the lazy MapLibre loader with its hashes (map.js), the ruler's host
+    # (freshness.js), the empty-question message and delegated listeners (main.js), the answer
+    # announcement and the shared traffic payload (journeys.js), the theme button's label and
+    # icon, and the stamp's verb and icon (provenance.js). The total adds the new markup (HTML
+    # +328 B) and the ruler's rows (CSS +53 B). The raw JS is past 80 KB too (91,773 B).
+    "payload": {
+        "js": Target("owner: JS gzip budget for native modules", 14_974),
+        "total": Target(f"owner: the JS budget above; {STEP7} replaces the renderers", 17_162),
     },
 }
 TARGETS: dict[str, Target] = {
@@ -428,6 +426,7 @@ class Document(HTMLParser):
         self.symbols: list[tuple[str, bool]] = []  # (id, inside a generated block)
         self.uses: list[str] = []
         self.colour_attributes: list[str] = []  # fill="..." and friends, outside the generated blocks
+        self.drawn_favicons: list[str] = []  # SVG data-URI favicons written by hand, outside the generated blocks
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = {name: value or "" for name, value in attrs}
@@ -439,6 +438,8 @@ class Document(HTMLParser):
             self.symbols.append((attributes.get("id", ""), self.generated))
         if SHAPE.fullmatch(f"<{tag}") and not self.generated:
             self.shapes_outside += 1
+        if tag == "link" and "icon" in attributes.get("rel", "").split() and not self.generated:
+            self.drawn_favicons.append(attributes.get("href", ""))
         if tag == "use":
             self.uses.append(attributes.get("href") or attributes.get("xlink:href", ""))
         line = self.getpos()[0]
@@ -573,7 +574,25 @@ def check_third_party(page: Page) -> CheckResult:
     for path, css in page.styles.items():
         for url in re.findall(r"url\(\s*['\"]?((?:https?:)?//[^'\")\s]+)", css):
             findings.append(Finding(f"third-party:{url}", f"{path} loads {url}"))
-    return CheckResult("third-party", f"{seen} third-party asset(s) in the page", findings)
+    loaded, found = loader_findings(page)
+    return CheckResult("third-party", f"{seen} third-party asset(s) in the page, {loaded} in scripts", findings + found)
+
+
+def loader_findings(page: Page) -> tuple[int, list[Finding]]:
+    """A script that loads a CDN file later (js/map.js builds "<base>.css" and "<base>.js"): the base is
+    allowlisted, and the script holds an integrity hash per file and sets crossOrigin."""
+    loaded, findings = 0, []
+    for path, script in sorted(page.scripts.items()):
+        urls = [text for _, text in script.strings if CDN_URL.match(text)]
+        loaded += len(urls)
+        for url in urls:
+            if not any(pattern.match(url) or pattern.match(f"{url}.js") for pattern in ALLOWED_THIRD_PARTY):
+                findings.append(Finding(f"third-party:{path}:{url}", f"{path} loads {url}, which is not allowlisted"))
+        hashes = sum(1 for _, text in script.strings if SRI_HASH.match(text))
+        if urls and (hashes < 2 or "crossOrigin" not in script.code):
+            message = f"{path} loads a CDN file without an integrity hash per file ({hashes}) and crossOrigin"
+            findings.append(Finding(f"third-party:sri:{path}", message))
+    return loaded, findings
 
 
 def check_fonts(page: Page) -> CheckResult:
@@ -908,9 +927,7 @@ def check_icons(page: Page) -> CheckResult:
     findings = [Finding(f"icons:unknown:{n}", f"icon {n} is referenced, no symbol defines it") for n in sorted(names - symbols)]
     findings += [Finding(f"icons:unused:{n}", f"symbol {n} is never referenced") for n in sorted(symbols - names)]
     drawn = page.doc.shapes_outside + sum(
-        len(SHAPE.findall(urllib.parse.unquote(a.get("href", ""))))
-        for a in page.doc.tags("link")
-        if "icon" in a.get("rel", "").split() and a.get("href", "").startswith("data:image/svg")
+        len(SHAPE.findall(urllib.parse.unquote(href))) for href in page.doc.drawn_favicons if href.startswith("data:image/svg")
     )
     if drawn:
         findings.append(Finding("icons:index.html", f"index.html: {drawn} SVG shape(s) outside the generated icon blocks", drawn))

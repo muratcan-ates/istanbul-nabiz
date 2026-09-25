@@ -5,11 +5,16 @@
 
 import { apiPost } from './api.js';
 import { esc } from './format.js';
-import { icon } from './icons.js';
 import { stamp } from './provenance.js';
+import { callout } from './cards/sheet.js';
 
 const $ = (sel) => document.querySelector(sel);
 
+const SEVERITY = {
+  critical: { tone: 'error', icon: 'alert-triangle', title: 'Kritik' },
+  warning: { tone: 'warn', icon: 'alert-triangle', title: 'Uyarı' },
+  info: { tone: '', icon: 'info-circle', title: 'Bilgi' },
+};
 const ALERT_SUBSCRIPTION_KEY = 'nabiz.alerts.subscription.v1';
 const ALERT_COOLDOWNS_KEY = 'nabiz.alerts.cooldowns.v1';
 
@@ -58,20 +63,20 @@ async function loadAlerts() {
   try {
     res = await apiPost('/api/alerts/check', { ...subscription, muted_keys: mutedKeys(cooldowns, now) });
   } catch (err) {
-    body.innerHTML = `<p class="note">Uyarılar kontrol edilemedi: ${esc(err.message)}</p>`;
+    body.innerHTML = callout(err.message, { tone: 'warn', icon: 'alert-triangle', title: 'Uyarılar kontrol edilemedi.' });
     panel.hidden = false;
     return;
   }
   const alerts = (res.data && res.data.alerts) || [];
   alerts.forEach((alert) => { cooldowns[alert.dedupe_key] = { at: now, cooldown_seconds: alert.cooldown_seconds }; });
   writeStored(ALERT_COOLDOWNS_KEY, cooldowns);
-  body.innerHTML = alerts.slice(0, 5).map((alert) => `<div class="alert-card">
-    ${icon('alert')}
-    <div><p>${esc(alert.message_tr)}</p>${stamp(res.provenance)}</div>
-  </div>`).join('')
-    + (res.note ? `<p class="note">${esc(res.note)}</p>` : '')
-    + '<p class="hint">Aboneliğiniz yalnızca bu tarayıcıda saklanır; sunucu değerlendirir ve unutur. '
-    + '<button type="button" class="link-button" id="alerts-reset">Uyarıları sıfırla</button></p>';
+  // Severity is a word and an icon in its status colour, never the colour alone.
+  body.innerHTML = alerts.slice(0, 5).map((alert) => callout(alert.message_tr, {
+    ...SEVERITY[alert.severity] || SEVERITY.warning, html: `<p>${stamp(res.provenance)}</p>`,
+  })).join('')
+    + (res.note ? `<p class="panel-note">${esc(res.note)}</p>` : '')
+    + '<p class="panel-note">Aboneliğiniz yalnızca bu tarayıcıda saklanır; sunucu değerlendirir ve unutur. '
+    + '<button type="button" class="link-btn" id="alerts-reset">Uyarıları sıfırla</button></p>';
   const reset = $('#alerts-reset');
   if (reset) reset.addEventListener('click', resetAlerts);
   panel.hidden = false;

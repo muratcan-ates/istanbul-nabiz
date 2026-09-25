@@ -1,139 +1,98 @@
-/* Air quality now and over the next hours, and the city-wide traffic index. Pure. */
+/* Air quality now and over the next hours, and the city-wide traffic index (spec 8.2). Pure: the
+ * drawings that need a measured width are returned as functions the host calls with it. */
 
-import { esc, num, int, has, clock, CONFIDENCE_TR } from '../format.js';
+import { UNKNOWN, esc, num, int, has, clock } from '../format.js';
 import { icon } from '../icons.js';
-import { cardShell, metaList } from './shell.js';
+import { ageAt, secondsAt } from '../provenance.js';
+import { aqiChip, aqiScale, forecastSvg } from '../charts/scale.js';
+import { pulseView } from '../charts/pulse-view.js';
+import { nextCardId, callout, head, sheet, point, row, facts, details, table, disclaimer, confidence } from './sheet.js';
 
-const BAND_KEYS = ['good', 'moderate', 'unhealthy_sensitive', 'unhealthy', 'very_unhealthy', 'hazardous'];
+const POLLUTANTS = [['pm10', 'PM10'], ['no2', 'NO₂'], ['o3', 'O₃'], ['so2', 'SO₂']];
+const FORMULA = { PM10: 'PM10', NO2: 'NO₂', O3: 'O₃', SO2: 'SO₂', CO: 'CO' };
+const METHOD_TR = { seasonal_naive_24h: 'mevsimsel-naif (24 sa)' };
+const LIVE_SECONDS = 7200; // an hourly reading is current for two hours, as on the pen line
 
-function airCard(payload, prov, id) {
-  const reading = payload.reading || {};
-  const band = payload.band || {};
-  const key = BAND_KEYS.includes(band.key) ? band.key : null;
-  const colour = reading.color || (key ? `var(--band-${key})` : 'var(--ink-soft)');
-  const aqi = has(reading.aqi_index) ? Number(reading.aqi_index) : null;
-  const frac = aqi === null ? 0 : Math.max(0, Math.min(1, aqi / 200));
-  const circ = 163.4; // 2πr, r = 26
-  const stats = [
-    ['PM10', has(reading.pm10) ? `${num(reading.pm10)} <small>µg/m³</small>` : '—'],
-    ['NO₂', has(reading.no2) ? num(reading.no2) : '—'],
-    ['O₃', has(reading.o3) ? num(reading.o3) : '—'],
-    ['SO₂', has(reading.so2) ? num(reading.so2) : '—'],
-  ];
-  const body = `
-    <div class="aqi">
-      <div class="aqi-dial">
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <circle class="track" cx="32" cy="32" r="26"></circle>
-          <circle class="val" cx="32" cy="32" r="26" style="stroke:${esc(colour)};stroke-dasharray:${(frac * circ).toFixed(1)} ${circ}"></circle>
-        </svg>
-        <div class="num">${aqi === null ? '—' : num(aqi, 0)}</div>
-      </div>
-      <div>
-        <div class="aqi-band" style="border-color:${esc(colour)}">${esc(band.label || 'Bilinmiyor')}</div>
-        <div class="aqi-label">AQI · İBB ölçeği (0–200 gösterildi)</div>
-        ${reading.dominant ? `<div class="aqi-label">baskın kirletici: ${esc(reading.dominant)}</div>` : ''}
-      </div>
-    </div>
-    <div class="stat-grid">${stats.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
-    ${reading.state ? `<p class="hint">${esc(reading.state)}</p>` : ''}
-    <p class="hint">İBB’nin yayımladığı AQI, PM10 için <strong>24 saatlik hareketli ortalamadır</strong> ve saatlik değişimi geç
-      yansıtır; şu anki hava için saatlik PM10 derişimine bakın. Bu serviste PM2.5 yayımlanmıyor.</p>
-    <p class="hint">${esc(payload.disclaimer || 'Sağlık tavsiyesi değildir.')}</p>`;
-  return cardShell({
-    id, kind: 'air', icon: 'air', prov, body,
-    title: payload.place || 'Hava kalitesi',
-    sub: payload.station ? `${payload.station.name} istasyonu${has(payload.station.distance_km) ? ` · ${num(payload.station.distance_km)} km` : ''}` : '',
+function airRow(data, prov, id) {
+  const r = data.reading || {};
+  const band = data.band || {};
+  const aqi = has(r.aqi_index) ? int(r.aqi_index) : null;
+  const dl = POLLUTANTS.map(([key, label]) => `<div><dt>${label}</dt><dd>${has(r[key]) ? `${num(r[key])} µg/m³` : UNKNOWN}</dd></div>`);
+  const body = `<p class="row-metric"><span>${aqi ? `<span class="row-unit">AQI</span> <span class="row-value">${aqi}</span>`
+    : `<span class="row-unit">AQI ${UNKNOWN}</span>`}</span>${band.label ? aqiChip(band.key, band.label) : ''}</p>`
+    + aqiScale(r.aqi_index, band.label || UNKNOWN)
+    + facts(['AQI, İBB ölçeği (0-500)', r.dominant ? `baskın kirletici ${FORMULA[r.dominant] || r.dominant}` : ''])
+    + `<dl class="row-grid">${dl.join('')}</dl>`
+    + (r.state ? `<p class="row-sub">${esc(r.state)}</p>` : '')
+    + details('AQI nasıl okunur?', '<p>İBB’nin yayımladığı AQI, PM10 için 24 saatlik hareketli ortalamadır ve saatlik değişimi geç '
+      + 'yansıtır; şu anki hava için saatlik PM10 derişimine bakın. Bu serviste PM2.5 yayımlanmıyor.</p>');
+  const st = data.station || {};
+  return row({
+    id, kind: 'air', glyph: 'wind', prov, body, map: true,
+    title: st.name ? `${st.name} ölçüm istasyonu` : 'Hava kalitesi', sub: has(st.distance_km) ? `${num(st.distance_km)} km uzakta` : '',
   });
 }
 
-function forecastCard(payload, prov, id) {
-  const rows = payload.forecast || [];
-  if (!rows.length) {
-    return cardShell({
-      id, kind: 'air', icon: 'clock', prov, title: 'Saatlik tahmin',
-      body: `<p class="hint">${esc(payload.note || 'Tahmin üretilemedi.')}</p>`,
-    });
-  }
-  const max = rows.reduce((m, f) => Math.max(m, Number(f.pm10) || 0), 1);
-  const best = payload.best_window || payload.best || {};
-  const bars = rows.map((f) => {
-    const height = Math.max(4, Math.round(((Number(f.pm10) || 0) / max) * 100));
-    const isBest = best.at && f.at === best.at;
-    return `<div class="col${isBest ? ' best' : ''}" title="${esc(clock(f.at))} · PM10 ${num(f.pm10)} µg/m³">
-      <span class="v">${num(f.pm10)}</span><i style="height:${height}%"></i></div>`;
-  }).join('');
-  const axis = rows.map((f) => `<span>${esc(clock(f.at))}</span>`).join('');
-  const method = rows[0].method || '';
-  const conf = rows[0].confidence || '';
-  const body = `
-    <div class="chart">${bars}</div>
-    <div class="chart-axis">${axis}</div>
-    <div class="pills">
-      <span class="pill method">${icon('gauge')}${esc(method === 'seasonal_naive_24h' ? 'mevsimsel-naif (24 sa)' : method || 'yöntem bilinmiyor')}</span>
-      <span class="pill conf-${esc(conf)}">güven: ${esc(CONFIDENCE_TR[conf] || conf || '—')}</span>
-    </div>
-    ${best.at ? `<p class="status-ok">${icon('check')}En temiz saat: ${esc(clock(best.at))} · PM10 ${num(best.pm10)}</p>` : ''}
-    ${payload.baseline_only ? '<p class="hint">Bu yalnızca temel (baseline) modeldir; eğitilmiş model devreye girdiğinde iki sonuç da raporlanacak.</p>' : ''}`;
-  return cardShell({
-    id, kind: 'air', icon: 'clock', prov, body,
-    title: `Sonraki ${int(payload.horizon_hours || rows.length)} saat`,
-    sub: 'PM10 tahmini',
-  });
+/** The forecast row; its line is drawn by `draw` once the host knows its width. */
+function forecastRow(res, error, id) {
+  const base = { id, kind: 'air', glyph: 'clock', title: 'Sonraki saatler', sub: 'PM10 tahmini', i: 1 };
+  if (!res) return { html: row({ ...base, body: callout(`Tahmin alınamadı: ${error && error.message ? error.message : UNKNOWN}`) }) };
+  const { data, provenance: prov } = res;
+  const rows = data.forecast || [];
+  if (!data.available || !rows.length) return { html: row({ ...base, prov, body: `<p class="row-sub">${esc(data.note || 'Tahmin üretilemedi.')}</p>` }) };
+  const best = data.best_window;
+  const input = data.latest && data.latest.at;
+  const body = `<figure class="pulse pulse-short"><div class="pulse-plot" data-draw="${id}"></div></figure>`
+    + `<p class="row-facts">Yöntem: ${esc(METHOD_TR[rows[0].method] || rows[0].method || UNKNOWN)}. Güven: ${confidence(rows[0].confidence)}</p>`
+    + (best ? `<p class="row-ok">${icon('circle-check')} En temiz saat ${esc(clock(best.at))}, PM10 ${num(best.pm10)} µg/m³</p>` : '')
+    + (data.note ? `<p class="row-sub">${esc(data.note)}</p>` : '')
+    + details('Saatlik tahmin', table([['Saat'], ['PM10, µg/m³', true]],
+      `<tbody>${rows.map((f) => `<tr><td>${esc(clock(f.at))}</td><td class="num">${num(f.pm10)}</td></tr>`).join('')}</tbody>`));
+  return {
+    html: row({ ...base, title: `Sonraki ${int(data.horizon_hours || rows.length)} saat`, prov, body, extra: input ? `girdi ölçümü ${ageAt(prov, input)}` : '' }),
+    draw: (width, height) => forecastSvg(data, { width, height, uid: `np-${id}`, current: secondsAt(prov, input) < LIVE_SECONDS }),
+  };
 }
 
-/** A real gauge, because "60" means nothing without the scale it sits on. */
-function trafficGauge(index) {
-  const idx = has(index) ? Math.max(0, Math.min(100, Number(index))) : null;
-  const arc = 144.5; // π × 46
-  const frac = idx === null ? 0 : idx / 100;
-  const colour = idx === null ? 'var(--ink-faint)' : idx >= 80 ? 'var(--bad)' : idx >= 50 ? 'var(--warn)' : 'var(--ok)';
-  const angle = Math.PI * (1 - frac);
-  const nx = 60 + 34 * Math.cos(angle);
-  const ny = 54 - 34 * Math.sin(angle);
-  return `<svg viewBox="0 0 120 64" role="img" aria-label="Trafik indeksi ${idx === null ? 'bilinmiyor' : idx}">
-    <path class="g-track" d="M14 54 A46 46 0 0 1 106 54"></path>
-    <path class="g-val" d="M14 54 A46 46 0 0 1 106 54" style="stroke:${colour};stroke-dasharray:${(frac * arc).toFixed(1)} ${arc}"></path>
-    ${idx === null ? '' : `<line class="g-needle" x1="60" y1="54" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"></line>`}
-  </svg>`;
+/** Air now and the forecast, fetched in parallel; the forecast may fail without the reading. */
+function airAnswer({ data, provenance: prov, note }, forecast, error) {
+  const airId = nextCardId();
+  const fcId = nextCardId();
+  const fc = forecastRow(forecast, error, fcId);
+  const st = data.station || {};
+  const band = data.band || {};
+  const aqi = data.reading && data.reading.aqi_index;
+  return {
+    html: head({ title: `${data.place} hava kalitesi`, prov, note }) + sheet(airRow(data, prov, airId) + fc.html)
+      + disclaimer(data.disclaimer || 'Sağlık tavsiyesi değildir.'),
+    points: [point(st, 'air', airId, `${st.name} ölçüm istasyonu: AQI ${has(aqi) ? int(aqi) : UNKNOWN}`, prov)],
+    draw: fc.draw ? { [fcId]: fc.draw } : {},
+    say: `${data.place} için AQI ${has(aqi) ? `${int(aqi)}, ${band.label || 'bant bilinmiyor'}` : UNKNOWN}.`,
+    prov,
+  };
 }
 
-function trafficCard(payload, prov, id) {
-  const idx = payload.index;
-  const history = payload.history || [];
-  const max = history.reduce((m, p) => Math.max(m, Number(p.index) || 0), 1);
-  const bars = history.map((p, i) => {
-    const height = Math.max(3, Math.round(((Number(p.index) || 0) / max) * 100));
-    const isNow = i === history.length - 1;
-    return `<div class="col${isNow ? ' now' : ''}" title="${esc(clock(p.at))} · ${esc(p.index)}"><i style="height:${height}%"></i></div>`;
-  }).join('');
-  const axisEvery = Math.max(1, Math.ceil(history.length / 6));
-  const axis = history.map((p, i) => `<span>${i % axisEvery === 0 ? esc(clock(p.at)) : ''}</span>`).join('');
-  // The bars are a picture; this table is the same 24 numbers for a screen reader.
-  const table = `<table class="sr-only"><caption>Saatlik trafik indeksi</caption><tr><th scope="col">Saat</th><th scope="col">İndeks</th></tr>${
-    history.map((p) => `<tr><td>${esc(clock(p.at))}</td><td>${esc(p.index)}</td></tr>`).join('')}</table>`;
-  const yday = payload.same_hour_yesterday;
-  const delta = has(payload.delta) ? Number(payload.delta) : (yday && has(idx) ? Number(idx) - Number(yday.index) : null);
-  const deltaCls = delta === null ? 'flat' : delta > 2 ? 'up' : delta < -2 ? 'down' : 'flat';
-  const deltaTxt = delta === null ? '' : `${delta > 0 ? '▲' : delta < 0 ? '▼' : '■'} dün aynı saate göre ${int(Math.abs(delta))} puan ${delta > 0 ? 'daha yoğun' : delta < 0 ? 'daha akıcı' : 'aynı'}`;
-  const body = `
-    <div class="gauge">
-      ${trafficGauge(idx)}
-      <div class="gauge-read">
-        <b>${has(idx) ? int(idx) : '—'}</b>
-        <span>${esc(payload.description || payload.label || '')}</span>
-        ${deltaTxt ? `<div class="delta ${deltaCls}">${esc(deltaTxt)}</div>` : ''}
-      </div>
-    </div>
-    ${history.length ? `<div class="chart dense" aria-hidden="true">${bars}</div><div class="chart-axis" aria-hidden="true">${axis}</div>${table}` : ''}
-    ${metaList([
-    '1 akıcı, 99 kilitli',
-    // Against the median of the same weekday and hour; says so when there is no norm yet.
-    payload.typical && payload.typical.description ? payload.typical.description : null,
-    yday ? `dün aynı saat: ${int(yday.index)} (${yday.label || ''})` : null,
-    has(payload.at) ? `ölçüm saati ${clock(payload.at)}` : null,
-  ])}`;
-  return cardShell({ id, kind: 'traffic', icon: 'traffic', prov, body, title: 'İstanbul trafik indeksi', sub: 'tüm şehir ortalaması' });
+/**
+ * The traffic answer: the pen line at card size, the same module as the hero, over the 24-hour
+ * payload (the hero's own when it is under a minute old). Without it, the "now" reading alone,
+ * which the view states as too few readings for a line. `clock` is the time of the render.
+ */
+function trafficAnswer(now, day, clockMs) {
+  const id = nextCardId();
+  const res = day || { data: { history: [], now: { index: now.data.index, at: now.data.at } }, provenance: now.provenance };
+  const view = pulseView(res, { width: 0, height: 0, uid: `np-${id}`, clock: clockMs });
+  const typical = now.data.typical && now.data.typical.description;
+  return {
+    html: head({ title: 'Trafik', count: '24 saatlik kayıt', prov: now.provenance, note: now.note })
+      + sheet(`<article class="card" id="${id}" tabindex="-1"><figure class="pulse pulse-card is-${view.state}">`
+        + `<figcaption class="pulse-readout">${view.readout}</figcaption><div class="pulse-plot" data-draw="${id}"></div>`
+        + `${details('Saatlik değerler', `<div class="sheet-table">${view.table}</div>`)}</figure>`
+        + `${facts(['1 akıcı, 99 kilitli'])}${typical ? `<p class="row-sub">${esc(typical)}</p>` : ''}</article>`),
+    points: [],
+    draw: { [id]: (width, height, t) => pulseView(res, { width, height, uid: `np-${id}`, clock: t }).svg },
+    say: `Trafik indeksi ${[has(now.data.index) ? int(now.data.index) : UNKNOWN, now.data.description].filter(Boolean).join(', ')}.`,
+    prov: now.provenance,
+  };
 }
 
-export { airCard, forecastCard, trafficCard };
+export { airAnswer, trafficAnswer };

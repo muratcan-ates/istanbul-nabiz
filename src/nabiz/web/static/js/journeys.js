@@ -1,264 +1,149 @@
-/* Question to endpoint to renderer. Each journey fetches, builds its answer as one string and
- * writes the results region once, then hands the points to the map. */
+/* Question to endpoint to answer. Each journey fetches; a pure renderer in cards/ builds the whole
+ * answer as one string with its map points and its sentence; run() writes #results once, hands
+ * the points to the map and says the sentence in #answer-status. A newer question aborts the one
+ * in flight, so a slow answer can never overwrite a later one. */
 
 import { api } from './api.js';
-import { esc, num, int, has, shortAge } from './format.js';
-import { icon } from './icons.js';
-import { sourceLabel } from './provenance.js';
-import { nextCardId, resultHead, cards, simpleCard } from './cards/shell.js';
-import { parkingCard } from './cards/parking.js';
-import { arrivalCard, diagnosticsCard, busCard } from './cards/transit.js';
-import { metroCard, metroClearCard, stationCard } from './cards/metro.js';
-import { airCard, forecastCard, trafficCard } from './cards/environment.js';
-import { routeCard } from './cards/route.js';
-import { showError } from './errors.js';
-import { showOnMap, highlightMarker } from './map.js';
+import { ageSentence } from './provenance.js';
+import { parkingAnswer } from './cards/parking.js';
+import { arrivalsAnswer, busAnswer } from './cards/transit.js';
+import { metroAnswer, stationAnswer } from './cards/metro.js';
+import { airAnswer, trafficAnswer } from './cards/environment.js';
+import { routeAnswer } from './cards/route.js';
+import { stopsAnswer, placesAnswer, freshnessAnswer } from './cards/places.js';
+import { callout, errorCard, errorTitle } from './cards/sheet.js';
+import { showOnMap, highlightMarker, showMarker } from './map.js';
 import { loadReliability } from './reliability.js';
 import { refreshFreshness } from './freshness.js';
+import { recentTraffic } from './hero.js';
+import { announce, loading } from './status.js';
+import { scrollToElement } from './motion.js';
 
-const $ = (sel) => document.querySelector(sel);
-const results = $('#results');
+const results = document.querySelector('#results');
+let controller = null;
+let last = null;
+let observer = null;
 
-/* A cold İSPARK answer costs several detail calls at the gateway's six-second spacing, so
- * "nothing happened" is a real user experience here. Say we are working, and say why.
- * aria-disabled, not disabled: a disabled "Sor" drops keyboard focus to <body>. */
-function setBusy(on) {
-  results.setAttribute('aria-busy', on ? 'true' : 'false');
-  const submit = $('#ask-submit');
-  if (submit) submit.setAttribute('aria-disabled', on ? 'true' : 'false');
-  if (on) {
-    results.innerHTML = `<p class="loading-label">${icon('refresh')} İBB uçlarından okunuyor. İlk sorgu birkaç saniye sürebilir.</p>
-      <div class="skeleton"><div class="sk-card"></div><div class="sk-card"></div></div>`;
-  }
-}
-
-function render(html, points) {
-  results.innerHTML = html;
-  showOnMap(points || []);
-  bindCards();
-}
-
-function bindCards() {
-  document.querySelectorAll('#results .card').forEach((el) => {
-    el.addEventListener('click', () => highlightMarker(el.id));
-  });
-}
-
+/* `get` is api() bound to this run's abort signal. */
 const JOURNEYS = {
-  async parking({ place }) {
-    const res = await api('/api/parking', { place, radius_km: 1.5, min_free: 1 });
-    const parks = res.data.parks || [];
-    const ids = parks.map(() => nextCardId());
-    render(
-      resultHead(`${res.data.near} çevresinde otopark`, `${res.data.count} sonuç · ${num(res.data.radius_km)} km`, res.provenance, res.note)
-      + (parks.length
-        ? cards(parks.map((p, i) => parkingCard(p, res.provenance, ids[i])).join(''), true)
-        : `<p class="callout">Bu yarıçapta boş yeri olan açık otopark bulunamadı.</p>`),
-      parks.map((p, i) => ({ lat: p.lat, lon: p.lon, kind: 'park', card: ids[i], label: `${p.name} · ${has(p.empty) ? `${p.empty} boş` : 'boş yer bilinmiyor'}` })),
-    );
-  },
+  parking: async ({ place }, get) => parkingAnswer(await get('/api/parking', { place, radius_km: 1.5, min_free: 1 })),
 
-  async bus({ line }) {
-    const res = await api('/api/buses', { line });
-    const buses = res.data.buses || [];
-    const shown = buses.slice(0, 12);
-    const ids = shown.map(() => nextCardId());
-    const hint = 'Varış tahmini için durak adı ekleyin, örneğin: “500T Şifa Sondurak”.';
-    render(
-      resultHead(`${res.data.line_code} hattı canlı araçlar`, `${res.data.count} araç`, res.provenance, res.note ? `${res.note} ${hint}` : hint)
-      + `<p class="callout">Plaka hiçbir zaman saklanmaz ve gösterilmez; araçlar yalnızca kapı numarasıyla anılır (KVKK).</p>`
-      + cards(shown.map((b, i) => busCard(b, res.provenance, ids[i])).join(''), true),
-      shown.map((b, i) => ({ lat: b.lat, lon: b.lon, kind: 'bus', card: ids[i], label: `${b.door_no} → ${b.direction || ''}` })),
-    );
+  async bus({ line }, get) {
+    const res = await get('/api/buses', { line });
     loadReliability(res.data.line_code);
+    return busAnswer(res);
   },
 
-  async arrivals({ line, stop }) {
-    const res = await api('/api/arrivals', { line, stop, limit: 3 });
-    const arrivals = res.data.arrivals || [];
-    const stopInfo = res.data.stop || {};
-    const ids = arrivals.map(() => nextCardId());
-    const stopId = nextCardId();
-    const body = arrivals.length
-      ? cards(arrivals.map((a, i) => arrivalCard(a, res.provenance, ids[i])).join(''), true)
-      : cards(diagnosticsCard(res.data.diagnostics, res.provenance, nextCardId()));
-    render(
-      resultHead(`${res.data.line_code} · ${stopInfo.name || stop}`, arrivals.length ? `${arrivals.length} yaklaşan araç` : 'yaklaşan araç yok', res.provenance, res.note)
-      + body
-      + (res.data.disclaimer ? `<p class="hint">${esc(res.data.disclaimer)}</p>` : ''),
-      [{ lat: stopInfo.lat, lon: stopInfo.lon, kind: 'station', card: stopId, label: stopInfo.name || stop }],
-    );
+  async arrivals({ line, stop }, get) {
+    const res = await get('/api/arrivals', { line, stop, limit: 3 });
     loadReliability(res.data.line_code);
+    return arrivalsAnswer(res, stop);
   },
 
-  async metro({ line }) {
-    const res = await api('/api/metro', { line });
-    const all = res.data.lines || [];
-    const wanted = line ? all.filter((l) => (l.line_name || '').toLocaleUpperCase('tr') === line.toLocaleUpperCase('tr')) : all;
-    const list = line ? wanted : all;
-    render(
-      resultHead(line ? `${line} servis durumu` : 'Metro servis duyuruları', `${list.length} duyuru`, res.provenance, res.note)
-      + (list.length
-        ? cards(list.map((l) => metroCard(l, res.provenance, nextCardId())).join(''))
-        : cards(metroClearCard(line, res.provenance, nextCardId())))
-      + (line && !wanted.length && all.length
-        ? `<p class="callout">Şu anda duyurusu olan hatlar: ${esc(all.map((l) => l.line_name).join(', '))}.</p>` : ''),
-      [],
-    );
+  metro: async ({ line }, get) => metroAnswer(await get('/api/metro', { line }), line),
+  station: async ({ name }, get) => stationAnswer(await get('/api/metro/station', { name })),
+
+  async air({ place }, get) {
+    // Both calls at once (FE-OPT-4); a failed forecast leaves the reading standing.
+    const [now, forecast] = await Promise.allSettled([get('/api/air', { place }), get('/api/air/forecast', { place, hours: 6 })]);
+    if (now.status === 'rejected') throw now.reason;
+    return airAnswer(now.value, forecast.value || null, forecast.reason);
   },
 
-  async station({ name }) {
-    const res = await api('/api/metro/station', { name });
-    const stations = res.data.stations || [];
-    const ids = stations.map(() => nextCardId());
-    render(
-      resultHead(`${res.data.query} istasyonu`, `${res.data.count} eşleşme`, res.provenance, res.note)
-      + (stations.length
-        ? cards(stations.map((s, i) => stationCard(s, res.provenance, ids[i])).join(''), true)
-        : '<p class="callout">Bu adla bir metro istasyonu bulunamadı.</p>'),
-      stations.map((s, i) => ({ lat: s.lat, lon: s.lon, kind: 'station', card: ids[i], label: `${s.name} (${s.line_name})` })),
-    );
+  async traffic(_, get) {
+    // Both halves at once; the 24-hour half is the hero's own payload when it is under a minute old.
+    const [now, day] = await Promise.all([
+      get('/api/traffic', { window: 'now' }),
+      recentTraffic() || get('/api/traffic', { window: '24h' }).catch(() => null),
+    ]);
+    return trafficAnswer(now, day, Date.now());
   },
 
-  async air({ place }) {
-    const now = await api('/api/air', { place });
-    const airId = nextCardId();
-    let forecastHtml = '';
-    try {
-      const fc = await api('/api/air/forecast', { place, hours: 6 });
-      forecastHtml = forecastCard(fc.data, fc.provenance, nextCardId());
-    } catch (err) {
-      forecastHtml = `<p class="note">Tahmin alınamadı: ${esc(err.message)}</p>`;
-    }
-    const st = now.data.station || {};
-    render(
-      resultHead(`${now.data.place} hava kalitesi`, st.name ? `${st.name} istasyonu` : '', now.provenance, now.note)
-      + cards(airCard(now.data, now.provenance, airId) + forecastHtml, true),
-      [{ lat: st.lat, lon: st.lon, kind: 'air', card: airId, label: `${st.name} ölçüm istasyonu` }],
-    );
-  },
+  stops: async ({ q }, get) => stopsAnswer(await get('/api/stops', { q })),
+  places: async ({ q }, get) => placesAnswer(await get('/api/places', { q })),
+  freshness: async (_, get) => freshnessAnswer(await get('/api/freshness')),
 
-  async traffic() {
-    const res = await api('/api/traffic', { window: 'now' });
-    let extra = {};
-    try {
-      const hist = await api('/api/traffic', { window: '24h' });
-      extra = {
-        history: hist.data.history || [],
-        same_hour_yesterday: hist.data.same_hour_yesterday,
-        delta: hist.data.delta,
-        description: res.data.description || hist.data.description,
-      };
-    } catch (err) {
-      extra = {};
-    }
-    render(
-      resultHead('Trafik', '24 saatlik kayıt', res.provenance, res.note)
-      + cards(trafficCard({ ...res.data, ...extra }, res.provenance, nextCardId())),
-      [],
-    );
-  },
-
-  async stops({ q }) {
-    const res = await api('/api/stops', { q });
-    const stops = res.data.stops || [];
-    const ids = stops.map(() => nextCardId());
-    render(
-      resultHead(`“${res.data.query}” durakları`, `${res.data.count} durak`, res.provenance, res.note)
-      + (stops.length
-        ? cards(stops.map((s, i) => simpleCard({
-          id: ids[i], kind: 'station', icon: 'stop', prov: res.provenance,
-          title: s.name || s.stop_code, sub: s.description || '',
-          meta: [`durak kodu ${s.stop_code}`, s.stop_id ? `stop_id ${s.stop_id}` : null],
-        })).join(''), true)
-        : '<p class="callout">Bu adla bir durak bulunamadı.</p>')
-      + '<p class="hint">Varış tahmini için hat kodu ekleyin, örneğin: <em>500T Şifa Sondurak</em>.</p>',
-      stops.map((s, i) => ({ lat: s.lat, lon: s.lon, kind: 'station', card: ids[i], label: s.name || s.stop_code })),
-    );
-  },
-
-  async places({ q }) {
-    const res = await api('/api/places', { q });
-    const matches = res.data.matches || [];
-    const ids = matches.map(() => nextCardId());
-    render(
-      resultHead(`“${res.data.query}” için yerler`, `${matches.length} eşleşme`, res.provenance,
-        res.note || 'Otopark, otobüs, metro veya hava kalitesi sormak için soruya bir anahtar kelime ekleyin.')
-      + (matches.length
-        ? cards(matches.map((p, i) => simpleCard({
-          id: ids[i], kind: 'place', icon: 'pin', prov: res.provenance,
-          title: p.label || p.name, sub: p.district || '', meta: [p.kind],
-        })).join(''), true)
-        : '<p class="callout">Bu adla bir yer bulunamadı. Semt, meydan ya da istasyon adı deneyin.</p>'),
-      matches.map((p, i) => ({ lat: p.lat, lon: p.lon, kind: 'place', card: ids[i], label: p.label || p.name })),
-    );
-  },
-
-  async freshness() {
-    const res = await api('/api/freshness');
-    const sources = res.data.sources || {};
-    const items = Object.entries(sources).map(([name, s]) => simpleCard({
-      id: nextCardId(), kind: '', icon: 'clock', prov: res.provenance,
-      title: sourceLabel(name), sub: s.healthy ? 'sağlıklı' : 'sorunlu',
-      meta: [
-        `veri yaşı: ${shortAge(s.data_age_seconds)}`,
-        `son okuma: ${shortAge(s.age_seconds)} önce`,
-        `önbellek isabeti: ${int(s.hits)}`,
-        `ıskalama: ${int(s.misses)}`,
-        `bayat servis: ${int(s.stale_served)}`,
-        `hata: ${int(s.errors)}`,
-        s.last_error ? `son hata: ${s.last_error}` : null,
-      ],
-    }));
-    const budget = res.data.request_budget_remaining || {};
-    render(
-      resultHead('Veri tazeliği', `${items.length} kaynak`, res.provenance, res.note)
-      + (Object.keys(budget).length
-        ? `<p class="callout">Kalan istek bütçesi: ${esc(Object.entries(budget).map(([k, v]) => `${k} ${v}`).join(', '))}. İETT’nin saatlik 100 sınırının altında, 80’de duruyoruz.</p>`
-        : '')
-      + (items.length ? cards(items.join(''), true) : '<p class="callout">Henüz hiçbir kaynak sorgulanmadı.</p>'),
-      [],
-    );
-  },
-
-  /* A comparison of modes, never navigation — the server's disclaimer is shown verbatim. */
-  async route({ from, to }) {
+  /* A comparison of modes, never navigation; the server's disclaimer is shown verbatim. */
+  async route({ from, to }, get) {
     if (!from || !to) {
-      render('<p class="callout">Başlangıcı ve varışı şöyle yazın: <em>Kadıköy’den Taksim’e nasıl giderim</em>. '
-        + 'Semt, meydan ya da istasyon adı kullanın.</p>', []);
-      return;
+      const text = 'Başlangıcı ve varışı şöyle yazın: Kadıköy’den Taksim’e nasıl giderim. Semt, meydan ya da istasyon adı kullanın.';
+      return { html: callout(text), say: text };
     }
-    const res = await api('/api/route', { from, to });
-    const d = res.data;
-    const options = d.options || [];
-    const ids = options.map(() => nextCardId());
-    const ends = [
-      { lat: d.origin.lat, lon: d.origin.lon, kind: 'place', card: ids[0], label: d.origin.name },
-      { lat: d.destination.lat, lon: d.destination.lon, kind: 'place', card: ids[0], label: d.destination.name },
-    ];
-    render(
-      resultHead(`${d.origin.name} → ${d.destination.name}`, `${options.length} seçenek`, res.provenance, res.note)
-      + (options.length
-        ? cards(options.map((o, i) => routeCard(o, d, res.provenance, ids[i])).join(''), true)
-        : '<p class="callout">Bu iki nokta arasında hiçbir seçenek hesaplanamadı.</p>')
-      + (d.disclaimer ? `<p class="hint">${esc(d.disclaimer)}</p>` : ''),
-      ends,
-    );
+    return routeAnswer(await get('/api/route', { from, to }));
   },
 };
 
-async function run(journey, args) {
-  const handler = JOURNEYS[journey];
-  if (!handler) { await showError(new Error('Bu soruyu nasıl yanıtlayacağımı bilmiyorum.')); return; }
-  setBusy(true);
-  try {
-    await handler(args || {});
-  } catch (err) {
-    await showError(err);
-  } finally {
-    setBusy(false);
-    refreshFreshness(null); // the answer read a source; show it now, not at the next poll
+/** A failure is an answer too. When İBB or the network is the one failing, the card lists how old
+ * the last thing we knew is, from /api/freshness (cache statistics, never İBB). */
+async function errorAnswer(err) {
+  let sources = null;
+  if ([0, 429, 503].includes(err.status || 0)) {
+    try {
+      sources = (await api('/api/freshness')).data.sources;
+    } catch (ignored) {
+      sources = null; // the server itself is unreachable: the card says so without the list
+    }
   }
+  return { html: errorCard(err, sources), say: `${errorTitle(err)}.` };
 }
 
-export { run };
+/* A drawing needs its measured width (drawn before layout it sits at x 0), so an answer leaves an
+ * empty [data-draw] host that this fills, and fills again after a resize, until the next answer. */
+function observe(draw) {
+  const hosts = [...results.querySelectorAll('[data-draw]')].filter((el) => draw[el.dataset.draw]);
+  if (!hosts.length) return;
+  const widths = new WeakMap();
+  observer = new ResizeObserver((entries) => entries.forEach(({ target, contentRect }) => {
+    const width = Math.round(contentRect.width);
+    if (!width || widths.get(target) === width) return;
+    widths.set(target, width);
+    target.innerHTML = draw[target.dataset.draw](width, Math.round(contentRect.height), Date.now());
+  }));
+  hosts.forEach((el) => observer.observe(el));
+}
+
+function render({ html, points = [], draw = {}, say, prov }) {
+  if (observer) observer.disconnect();
+  observer = null;
+  loading(null);
+  results.innerHTML = `<div>${html}</div>`;
+  showOnMap(points);
+  observe(draw);
+  announce(prov ? `${say} ${ageSentence(prov)}` : say);
+  // On a phone the answer can land below the fold; bring its head up, without moving focus.
+  const top = results.firstElementChild;
+  if (top.getBoundingClientRect().top > window.innerHeight) scrollToElement(top, 'start');
+}
+
+async function run(journey, args) {
+  if (controller) controller.abort();
+  const ctl = new AbortController();
+  controller = ctl;
+  last = [journey, args];
+  loadReliability(null);
+  loading(journey);
+  let answer;
+  try {
+    if (!JOURNEYS[journey]) throw new Error('Bu soruyu nasıl yanıtlayacağımı bilmiyorum.');
+    answer = await JOURNEYS[journey](args || {}, (path, params) => api(path, params, ctl.signal));
+  } catch (err) {
+    if (ctl.signal.aborted) return;
+    answer = await errorAnswer(err);
+  }
+  if (ctl.signal.aborted) return;
+  render(answer);
+  refreshFreshness(null); // the answer read a source; show it now, not at the next poll
+}
+
+/** The one delegated listener of the answer region (main.js): retry, "Haritada göster", and a
+ * press anywhere on a row lifts its marker. */
+function onResultsClick(event) {
+  const target = event.target;
+  if (target.closest('[data-retry]')) { if (last) run(...last); return; }
+  const mapButton = target.closest('[data-map]');
+  if (mapButton) { showMarker(mapButton.dataset.map); return; }
+  const card = target.closest('.card');
+  if (card) highlightMarker(card.id);
+}
+
+export { run, onResultsClick };

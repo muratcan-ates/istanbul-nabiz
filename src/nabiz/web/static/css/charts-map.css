@@ -1,0 +1,103 @@
+/* Drawings and the map. Why: docs/design/README.md, "Stylesheets". */
+
+.pulse-readout { display: grid; gap: var(--space-2); align-content: start; }
+.pulse-label, .pulse-note { color: var(--text-muted); font-size: var(--text-sm); }
+.pulse-reading { display: flex; align-items: baseline; gap: var(--space-3); min-height: 3rem; }
+.pulse-value { font-size: var(--text-4xl); font-weight: var(--weight-bold); line-height: 1; }
+.pulse-band { font-size: var(--text-xl); font-weight: var(--weight-semibold); }
+.pulse-plot { height: clamp(128px, 22vh, 200px); }
+.pulse-card .pulse-plot { height: 180px; }
+.pulse-short .pulse-plot { height: 120px; }
+.pulse-plot > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+@media (max-width: 767px) {
+  .pulse-value { font-size: var(--text-3xl); }
+  .pulse-plot { height: 120px; }
+}
+.pulse-guide, .pulse-tick, .pulse-ref, .pulse-gap { stroke: var(--chart-guide); stroke-width: var(--stroke-guide); stroke-dasharray: 2 4; }
+.pulse-tick { stroke-dasharray: none; }
+.pulse-ref, .pulse-gap { stroke: var(--chart-ref); stroke-dasharray: 4 4; }
+.pulse-gap { stroke-dasharray: 1 3; }
+.pulse-axis { fill: var(--text-subtle); font-size: var(--text-xs); }
+.pulse-axis.is-current { fill: var(--text-muted); font-weight: var(--weight-semibold); }
+.pulse-line, .pulse-forecast, .pulse-best { fill: none; stroke-width: var(--stroke-pen); stroke-linecap: round; stroke-linejoin: round; }
+.pulse-forecast { stroke: var(--primary); stroke-dasharray: 4 4; }
+.pulse-best { stroke: var(--chart-best); }
+.pulse-ink-low { stop-color: var(--pulse-ink-low); }
+.pulse-ink-high { stop-color: var(--pulse-ink-high); }
+.pulse.is-archive .pulse-ink-low, .pulse.is-archive .pulse-ink-high { stop-color: var(--pulse-ink-archive); }
+.pulse-halo { fill: var(--chart-halo); }
+.pulse-dot { fill: var(--chart-now); }
+.pulse.is-archive .pulse-dot, .pulse-dot.is-old { fill: var(--pulse-ink-archive); }
+.pulse-now, .pulse-ring { transform-box: fill-box; transform-origin: center; }
+.pulse-ring { fill: none; stroke: var(--chart-now); stroke-width: 1.5px; opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .pulse.is-drawing .pulse-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pulse-draw var(--dur-draw) var(--ease-out) forwards; }
+  .pulse.is-drawing:not(.is-archive) .pulse-now { animation: pulse-arrive var(--dur-enter) var(--ease-out) var(--dur-draw) both; }
+  .pulse.is-live .pulse-ring { animation: pulse-breathe var(--dur-breathe) var(--ease-out) infinite; }
+  .pulse.is-paused .pulse-ring { animation-play-state: paused; }
+  .pulse-paper { transition: transform var(--dur-advance) var(--ease-in-out); }
+}
+@keyframes pulse-draw { to { stroke-dashoffset: 0; } }
+@keyframes pulse-arrive { from { opacity: 0; transform: scale(.6); } }
+@keyframes pulse-breathe { from { opacity: .55; } to { opacity: 0; transform: scale(2.6); } }
+
+.ruler { display: grid; gap: var(--space-3); }
+.ruler-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.ruler-meta { margin-inline-end: auto; color: var(--text-muted); font-size: var(--text-sm); }
+.ruler-track { position: relative; min-height: 88px; container-type: inline-size; }
+.ruler-axis { display: block; width: 100%; height: 40px; overflow: visible; }
+.ruler-line { stroke: var(--chart-ref); stroke-width: var(--stroke-guide); }
+.ruler-label { fill: var(--text-subtle); font-size: var(--text-xs); }
+.ruler-marks { padding: 0; list-style: none; }
+.ruler-mark { --icon-size: var(--icon-size-sm); position: absolute; top: 24px; left: 0; display: grid; justify-items: center; color: var(--text-muted); font-size: var(--text-xs); white-space: nowrap; translate: calc(var(--x, 0) * 100cqi - 50%); }
+.ruler-mark.is-end { translate: calc(var(--x, 0) * 100cqi - 100%); justify-items: end; }
+.ruler-mark.is-start { translate: calc(var(--x, 0) * 100cqi); justify-items: start; }
+.ruler-mark.is-unhealthy { color: var(--warn); }
+.ruler-pin { width: 2px; height: calc(16px + var(--row, 0) * 16px); background: var(--text-muted); }
+.ruler-mark.is-now .ruler-pin { background: var(--chart-now); }
+.ruler-mark.is-unhealthy .ruler-pin { width: 0; border-inline-start: 2px dashed var(--warn); }
+@media (prefers-reduced-motion: no-preference) { .ruler-mark { transition: translate var(--dur-advance) var(--ease-in-out); } }
+@media (max-width: 767px) {
+  .ruler-track { min-height: 72px; }
+  .ruler-mark, .ruler-mark.is-end, .ruler-mark.is-start { position: static; display: block; translate: none; font-size: var(--text-sm); white-space: normal; }
+  .ruler-pin { position: absolute; top: 16px; left: 0; translate: calc(var(--x, 0) * 100cqi); }
+}
+
+.scale { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); height: 8px; margin-block: var(--space-2); }
+.scale-seg { background: var(--band); box-shadow: inset 0 0 0 1px var(--band-text); }
+.scale-tick { position: absolute; inset-block: -4px; left: calc(var(--x, 0) * 100%); width: 2px; background: var(--text); }
+.scale-marks { display: flex; justify-content: space-between; color: var(--text-subtle); font-size: var(--text-xs); }
+.scale-occ { position: relative; height: 10px; margin-block: var(--space-2); border-inline-end: 1px solid var(--chart-ref); }
+.scale-occ::before, .scale-occ::after { content: ""; position: absolute; inset: 4px 0 5px; background: var(--chart-ref); }
+.scale-occ::after { inset-block: 3px; background: var(--occupancy-ink); transform: scaleX(var(--share, 0)); transform-origin: left; }
+
+.ribbon-leg { fill: none; stroke-width: 6px; stroke-linecap: round; }
+.ribbon-foot { stroke: var(--route-foot); stroke-dasharray: 1 6; }
+.ribbon-transit { stroke: var(--route-transit); }
+.ribbon-drive { stroke: var(--route-drive); stroke-dasharray: 8 5; }
+
+.map-panel { display: grid; gap: var(--space-3); }
+.map-frame { position: relative; height: 360px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--map-wash); }
+@media (min-width: 1024px) {
+  .map-panel { position: sticky; top: calc(var(--topbar-h) + var(--space-4)); }
+  .map-frame { height: clamp(420px, calc(100dvh - var(--topbar-h) - 32px), 720px); }
+}
+#map, .map-fallback { position: absolute; inset: 0; }
+.map-fallback { overflow: auto; padding: var(--space-4); }
+.map-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); padding: 0; list-style: none; color: var(--text-muted); font-size: var(--text-sm); }
+.map-swatch { display: inline-block; width: 12px; height: 12px; border-radius: var(--radius-round); background: var(--kind); box-shadow: 0 0 0 1px var(--marker-edge); }
+
+[data-kind] { --kind: var(--kind-place); --kind-ink: var(--kind-place-ink); }
+[data-kind="park"] { --kind: var(--kind-park); --kind-ink: var(--kind-park-ink); }
+[data-kind="bus"] { --kind: var(--kind-bus); --kind-ink: var(--kind-bus-ink); }
+[data-kind="station"] { --kind: var(--kind-station); --kind-ink: var(--kind-station-ink); }
+[data-kind="air"] { --kind: var(--kind-air); --kind-ink: var(--kind-air-ink); }
+.marker { --icon-size: var(--icon-size-sm); display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 0; background: none; color: var(--kind-ink, var(--kind-place-ink)); }
+.marker::before, .marker > * { grid-area: 1 / 1; }
+.marker::before { content: ""; width: 28px; height: 28px; border-radius: var(--radius-round); background: var(--kind, var(--kind-place)); box-shadow: 0 0 0 2px var(--marker-ring), 0 0 0 3px var(--marker-edge); transition: transform var(--dur-ui); }
+.marker.is-active::before { box-shadow: 0 0 0 2px var(--marker-ring), 0 0 0 4px var(--kind-selected); transform: scale(1.12); }
+
+@media (forced-colors: active) {
+  .pulse-line, .pulse-forecast, .pulse-ref, .ribbon-leg, .ruler-line { stroke: CanvasText; }
+  .scale-occ::after, .ruler-pin, .marker::before { background: CanvasText; }
+}

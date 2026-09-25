@@ -104,10 +104,22 @@ def test_single_page_and_assets_are_served(client: TestClient) -> None:
         assert chip in page.text
     assert "CC BY 4.0" in page.text
     assert client.get("/js/main.js").status_code == 200
-    assert client.get("/style.css").status_code == 200
-    # The single script was split into ES modules; a stale copy served beside them would hide a
-    # module that failed to load.
+    assert client.get("/css/tokens.css").status_code == 200
+    # The single script was split into ES modules and the single stylesheet into four; a stale copy
+    # served beside them would hide a file that failed to load.
     assert client.get("/app.js").status_code == 404
+    assert client.get("/style.css").status_code == 404
+
+
+def test_the_font_and_the_icon_sprite_are_served_with_their_types(client: TestClient) -> None:
+    """A font or sprite served under the wrong type is refused by the browser, and nothing says so."""
+    font = client.get("/fonts/nabiz-sans-tr-v1.woff2")
+    assert font.status_code == 200 and font.headers["content-type"] == "font/woff2"
+    assert font.content[:4] == b"wOF2"
+    sprite = client.get("/icons.svg")
+    assert sprite.status_code == 200 and sprite.headers["content-type"].startswith("image/svg+xml")
+    for licence in ("/fonts/OFL.txt", "/icons.LICENSE.txt"):
+        assert client.get(licence).status_code == 200, licence
 
 
 def test_every_asset_the_page_references_is_served(client: TestClient) -> None:
@@ -143,7 +155,7 @@ def test_every_module_the_page_imports_is_served_as_javascript(client: TestClien
         static_or_lazy = r"""^\s*(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)"""
         for spec in (a or b for a, b in re.findall(static_or_lazy, response.text, flags=re.M)):
             pending.append(posixpath.normpath(posixpath.join(posixpath.dirname(path), spec)))
-    assert {"/js/router.js", "/js/journeys.js", "/js/cards/shell.js"} <= seen
+    assert {"/js/router.js", "/js/journeys.js", "/js/cards/sheet.js"} <= seen
     on_disk = {"/" + p.relative_to(STATIC_DIR).as_posix() for p in (STATIC_DIR / "js").rglob("*.js")}
     assert seen == on_disk, "a module on disk that nothing imports is dead code; one imported but absent is a broken page"
 
@@ -166,7 +178,7 @@ def test_the_pages_own_files_are_revalidated_on_every_load(client: TestClient) -
     Without an explicit freshness a response with Last-Modified may be reused heuristically
     (RFC 9111 §4.2.2): a new journeys.js beside a stale format.js fails to link and nothing boots.
     """
-    for path in ("/", "/js/main.js", "/js/cards/shell.js", "/style.css", "/config.js"):
+    for path in ("/", "/js/main.js", "/js/cards/sheet.js", "/css/tokens.css", "/icons.svg", "/config.js"):
         response = client.get(path)
         assert response.headers.get("cache-control") == "no-cache", path
     etag = client.get("/js/main.js").headers["etag"]
@@ -182,6 +194,34 @@ def test_the_page_has_no_inline_script_the_policy_would_block() -> None:
     page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     assert not re.search(r"\son[a-z]+\s*=", page), "inline event handler in index.html"
     assert all("src=" in tag for tag in re.findall(r"<script\b[^>]*>", page)), "inline <script> in index.html"
+
+
+def test_the_map_library_loads_with_the_first_map_not_with_the_page() -> None:
+    """No third-party request before a map is needed; when it is, the pinned files, by hash."""
+    import re
+
+    head = (STATIC_DIR / "index.html").read_text(encoding="utf-8").partition("</head>")[0]
+    assert not re.search(r"""\s(?:src|href)=["']https?://""", head), "a third-party asset in <head>"
+    loader = (STATIC_DIR / "js" / "map.js").read_text(encoding="utf-8")
+    assert "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min" in loader
+    assert len(re.findall(r"'sha384-[A-Za-z0-9+/]{64}'", loader)) == 2  # the CSS and the JS, each pinned
+    assert "NABIZ_MAP_BLOCKED = true" in loader  # a blocked or changed file leaves the list
+
+
+def test_answers_are_announced_by_one_status_line_not_by_the_results_region() -> None:
+    """A live #results re-read whole answers aloud; #answer-status says one sentence instead."""
+    import re
+
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    results = re.search(r"<section id=\"results\"[^>]*>", page)
+    assert results and "aria-live" not in results.group(0)
+    assert 'tabindex="-1"' in results.group(0) and "aria-busy" in results.group(0)
+    assert '<p class="sr-only" id="answer-status" role="status"></p>' in page
+    # The pen line is a figure whose caption is its readout, and the "resmî değildir" link leads to
+    # the full statement.
+    figure = r'<figure class="pulse hero-pulse" id="hero-pulse">\s*<figcaption class="pulse-readout" id="hero-readout">'
+    assert re.search(figure, page)
+    assert '<a class="topbar-unofficial" href="#hakkinda">' in page and 'id="hakkinda"' in page
 
 
 def test_cross_origin_is_closed_by_default(client: TestClient) -> None:
