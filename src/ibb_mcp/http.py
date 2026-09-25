@@ -156,6 +156,20 @@ class PoliteClient:
         content: bytes | None = None,
         params: dict[str, Any] | None = None,
     ) -> httpx.Response:
+        sent = {"headers": headers, "content": content, "params": params, "follow_redirects": True}
+        return await self._send(method, url, source=source, budget=budget, sent=sent)
+
+    async def get_hop(self, url: str, *, source: str, headers: dict[str, str] | None = None) -> httpx.Response:
+        """One polite GET that does not follow a redirect: a 3xx answer comes back to the caller.
+
+        For a caller that must vet each hop before anything is fetched from it (the knowledge
+        ingest's exact-host allowlist, G14). An automatic follow would request the ``Location``
+        first and leave the check to run on a response that had already arrived.
+        """
+        sent = {"headers": headers, "follow_redirects": False}
+        return await self._send("GET", url, source=source, budget=None, sent=sent)
+
+    async def _send(self, method: str, url: str, *, source: str, budget: str | None, sent: dict[str, Any]) -> httpx.Response:
         parts = urlsplit(url)
         # Host and path only. The query string is not attached and never should be: it
         # carries ids and dates today, but it is one refactor away from carrying a place
@@ -179,14 +193,14 @@ class PoliteClient:
                 upstream.set(**{"nabiz.http.attempts": attempt})
                 await gate.wait()
                 try:
-                    response = await self._client.request(method, url, headers=headers, content=content, params=params)
+                    response = await self._client.request(method, url, **sent)
                 except httpx.HTTPError as exc:
                     last_error = exc
                     upstream.set(**{"nabiz.http.error_kind": type(exc).__name__})
                     log.warning("%s: transport error on attempt %d: %r", source, attempt, exc)
                 else:
                     upstream.set(**{"nabiz.http.status": response.status_code})
-                    if response.status_code == 200:
+                    if response.status_code == 200 or (not sent["follow_redirects"] and response.is_redirect):
                         return response
                     last_error = UpstreamUnavailable(
                         f"{source}: HTTP {response.status_code}", source=source, status=response.status_code

@@ -7,6 +7,7 @@ import asyncio
 import datetime as dt
 import hashlib
 import json
+import logging
 import pathlib
 import time
 from dataclasses import dataclass
@@ -36,6 +37,15 @@ ALLOWLIST = frozenset(
     }
 )
 TERMS_CATEGORIES = frozenset({"lisans", "terms", "kullanim-kosullari"})
+#: Hops followed for one page. Each is vetted before it is requested (``is_allowed_redirect``);
+#: the HTTP client never follows a redirect on its own here.
+MAX_REDIRECTS = 3
+
+log = logging.getLogger(__name__)
+
+
+class RedirectRefused(Exception):
+    """A redirect pointed off the reviewed hosts, or a page redirected more than ``MAX_REDIRECTS`` times."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +88,18 @@ def is_allowed_url(url: str, allowlist: frozenset[str] = ALLOWLIST) -> bool:
     if port is not None and port != (443 if parts.scheme == "https" else 80):
         return False
     return host in allowlist or (host.endswith("." + _GOV_HOST) and _GOV_HOST in allowlist)
+
+
+def is_allowed_redirect(url: str, allowlist: frozenset[str] = ALLOWLIST) -> bool:
+    """A redirect target must be a safe URL on an *exact* reviewed host.
+
+    Stricter than :func:`is_allowed_url`, which also admits any subdomain of the municipality's
+    domain for seed rows a person reviewed: a ``Location`` header is chosen by the server, so a
+    hop may only land on a host that is itself in the list.
+    """
+    if not is_allowed_url(url, allowlist):
+        return False
+    return (urlsplit(url).hostname or "").lower().rstrip(".") in allowlist
 
 
 def canonical_url(url: str) -> str:
@@ -142,12 +164,37 @@ class _FetchSession:
         self.robots: dict[str, RobotFileParser] = {}
         self.snapshots: dict[str, dict] = {}
 
-    async def request(self, url: str, host: str, headers: dict[str, str] | None = None):
+    async def _pace(self, host: str) -> None:
         delay = self.interval - (time.monotonic() - self.host_last.get(host, -1e9))
         if host in self.host_last and delay > 0:
             await asyncio.sleep(delay)
         self.host_last[host] = time.monotonic()
-        return await self.client.request("GET", url, source="knowledge", headers=headers)
+
+    async def request(self, url: str, host: str, headers: dict[str, str] | None = None):
+        """GET ``url``, following at most ``MAX_REDIRECTS`` hops, each vetted before it is requested.
+
+        The client is told not to follow redirects: an automatic follow would fetch the target
+        first and leave the allowlist check to run on a response that already arrived (G14's
+        SSRF note). A hop off the exact reviewed hosts, or one a known robots file disallows, is
+        refused and logged by host only.
+        """
+        current, current_host = url, host
+        for hop in range(MAX_REDIRECTS + 1):
+            await self._pace(current_host)
+            response = await self.client.get_hop(current, source="knowledge", headers=headers)
+            if not response.is_redirect:
+                return response
+            target = urljoin(current, response.headers.get("location", ""))
+            target_host = (urlsplit(target).hostname or "").lower().rstrip(".")
+            if hop == MAX_REDIRECTS:
+                log.warning("knowledge: more than %d redirects from %s; refused", MAX_REDIRECTS, host)
+                raise RedirectRefused(f"more than {MAX_REDIRECTS} redirects")
+            robots = self.robots.get(target_host)
+            if not is_allowed_redirect(target) or (robots is not None and not robots.can_fetch(self.user_agent, target)):
+                log.warning("knowledge: refused redirect from %s to %s", current_host, target_host or "?")
+                raise RedirectRefused(f"redirect to {target_host or '?'} is not allowed")
+            current, current_host = target, target_host
+        raise RedirectRefused("unreachable")  # pragma: no cover - the loop returns or raises
 
     async def _robots(self, host: str, scheme: str) -> RobotFileParser | None:
         digest = hashlib.sha256(host.encode()).hexdigest()
@@ -309,6 +356,8 @@ class _FetchSession:
         headers, cached = self._conditional_headers(source)
         try:
             response = await self.request(source.url, host, headers)
+        except RedirectRefused:
+            return FetchResult(source, "redirect-refused")
         except Exception as exc:
             return self._failure(source, host, exc, cached)
         return self._accept_response(source, response)

@@ -8,13 +8,15 @@ import pathlib
 import httpx
 import pytest
 
-from ibb_mcp.http import UpstreamUnavailable
+from ibb_mcp.http import PoliteClient, UpstreamUnavailable
 from ibb_mcp.knowledge.ingest import (
+    MAX_REDIRECTS,
     KnowledgeUnavailable,
     Source,
     _write_cache,
     fetch_all,
     html_to_blocks,
+    is_allowed_redirect,
     pdf_to_blocks,
 )
 
@@ -35,6 +37,10 @@ class FakeClient:
             text=ALLOW_ROBOTS if url.endswith("robots.txt") else "<p>Su aboneliği başvurusu.</p>",
             request=httpx.Request(method, url),
         )
+
+    async def get_hop(self, url, *, source, headers=None):
+        """The ingest's only entry: a GET whose redirect comes back unfollowed (PoliteClient.get_hop)."""
+        return await self.request("GET", url, source=source, headers=headers)
 
 
 def source(url: str, *, category="abonelik", crawlable=True) -> Source:
@@ -183,3 +189,66 @@ def test_no_ibb_host_literal_in_knowledge_python() -> None:
     root = pathlib.Path(__file__).parents[1] / "src/ibb_mcp/knowledge"
     sources = "\n".join(path.read_text(encoding="utf-8") for path in root.glob("*.py"))
     assert "api." + "ibb.gov.tr" not in sources
+
+
+# -- redirects: every hop is vetted before it is requested (G14 SSRF note) ---------------------
+def _redirecting(routes: dict[str, str]):
+    """A handler that answers 302 -> ``routes[path]`` for listed paths, robots and pages otherwise."""
+
+    async def handler(method, url, _headers):
+        path = httpx.URL(url).path
+        if path in routes:
+            return httpx.Response(302, headers={"location": routes[path]}, request=httpx.Request(method, url))
+        text = ALLOW_ROBOTS if url.endswith("robots.txt") else "<p>Su aboneliği başvurusu.</p>"
+        return httpx.Response(200, text=text, request=httpx.Request(method, url))
+
+    return handler
+
+
+def test_redirect_off_the_allowlist_is_refused_before_it_is_requested(tmp_path, caplog) -> None:
+    client = FakeClient(_redirecting({"/a": "https://example.org/steal"}))
+    with caplog.at_level("WARNING", logger="ibb_mcp.knowledge.ingest"):
+        rows = asyncio.run(fetch_all([source("https://www.iski.istanbul/a")], client, tmp_path / "cache", 0))
+    assert rows[0].status == "redirect-refused" and rows[0].body is None
+    assert not any("example.org" in url for url, _ in client.calls)
+    assert "refused redirect" in caplog.text and "example.org" in caplog.text
+
+
+def test_redirect_inside_the_allowlist_is_followed(tmp_path) -> None:
+    client = FakeClient(_redirecting({"/a": "/b"}))
+    rows = asyncio.run(fetch_all([source("https://www.iski.istanbul/a")], client, tmp_path / "cache", 0))
+    assert rows[0].status == "ok" and b"abonel" in rows[0].body
+    assert [url for url, _ in client.calls][-2:] == ["https://www.iski.istanbul/a", "https://www.iski.istanbul/b"]
+
+
+def test_redirect_to_an_unlisted_subdomain_is_refused() -> None:
+    gov = "ibb" + ".gov.tr"
+    assert is_allowed_redirect(f"https://data.{gov}/x")
+    assert not is_allowed_redirect(f"https://intranet.{gov}/x"), "a hop must land on an exact reviewed host"
+    assert not is_allowed_redirect("http://127.0.0.1/admin")
+    assert not is_allowed_redirect(f"https://data.{gov}:8443/x")
+
+
+def test_more_than_the_redirect_limit_is_refused(tmp_path) -> None:
+    hops = {f"/h{i}": f"/h{i + 1}" for i in range(MAX_REDIRECTS + 1)}
+    client = FakeClient(_redirecting(hops))
+    rows = asyncio.run(fetch_all([source("https://www.iski.istanbul/h0")], client, tmp_path / "cache", 0))
+    assert rows[0].status == "redirect-refused"
+    pages = [url for url, _ in client.calls if not url.endswith("robots.txt")]
+    assert len(pages) == MAX_REDIRECTS + 1
+
+
+async def test_polite_client_get_hop_returns_the_redirect_unfollowed() -> None:
+    seen: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(302, headers={"location": "https://example.org/next"})
+
+    client = PoliteClient(transport=httpx.MockTransport(answer))
+    try:
+        response = await client.get_hop("https://www.iski.istanbul/a", source="knowledge")
+    finally:
+        await client.aclose()
+    assert response.status_code == 302 and response.headers["location"] == "https://example.org/next"
+    assert seen == ["https://www.iski.istanbul/a"]
