@@ -520,3 +520,22 @@ def _resolve_clock(clock: str | None, reference: dt.datetime) -> dt.datetime | N
     return reference.replace(hour=0, minute=0, second=0, microsecond=0) + dt.timedelta(
         days=day_offset, hours=hour, minutes=minute
     )
+
+
+def planned_summary(departures: Sequence[PlannedDeparture], day_type: str) -> dict[str, Any]:
+    """Summarise the first and last published departures for one İETT service day."""
+    reference = dt.datetime(2000, 1, 1, tzinfo=ISTANBUL_TZ)
+    ordered = [
+        (when, departure)
+        for departure in departures
+        if departure.day_type == day_type
+        and departure.departure_time
+        and (when := _resolve_clock(departure.departure_time, reference)) is not None
+    ]
+    ordered.sort(key=lambda pair: pair[0])
+    return {
+        "day_type": day_type,
+        "first_departure": ordered[0][1].departure_time if ordered else None,
+        "last_departure": ordered[-1][1].departure_time if ordered else None,
+        "count": len(ordered),
+    }

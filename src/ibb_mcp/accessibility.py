@@ -33,6 +33,7 @@ from ibb_mcp.config import METRO_FAULTY_EQUIPMENT_DETAILS
 from ibb_mcp.http import UpstreamUnavailable
 from ibb_mcp.metro_graph import MetroGraph
 from ibb_mcp.models import MetroStation, Provenance, ToolResult, haversine_km
+from ibb_mcp.routing import rail_params, slow_walk_params
 from ibb_mcp.sources.base import make_provenance
 from ibb_mcp.sources.metro import MetroSource
 from ibb_mcp.sources.metro_equipment import (
@@ -52,7 +53,7 @@ from ibb_mcp.sources.metro_equipment import (
 from ibb_mcp.text import fold_tr, rank_match_loose, squash_punctuation
 
 #: The only functional needs understood today. Anything else is refused, not ignored.
-SUPPORTED_NEEDS: tuple[str, ...] = ("step_free",)
+SUPPORTED_NEEDS: tuple[str, ...] = ("step_free", "slow_walk")
 #: "Aynı hatta ya da aktarmada": the same line, or one change.
 MAX_TRANSFERS = 1
 #: Straight-line nearest candidates whose rail path is actually measured.
@@ -79,7 +80,9 @@ def platform_key(station: MetroStation) -> PlatformKey:
 
 def check_needs(needs: Sequence[str] | None) -> tuple[str, ...]:
     """The needs asked for, each one supported; an empty list means ``step_free``."""
-    asked = tuple(dict.fromkeys(n.strip() for n in (needs or ()) if n and n.strip())) or SUPPORTED_NEEDS
+    asked = tuple(dict.fromkeys(n.strip() for n in (needs or ()) if n and n.strip()))
+    if not asked:
+        asked = ("step_free",)
     unknown = [n for n in asked if n not in SUPPORTED_NEEDS]
     if unknown:
         raise ValueError(f"Desteklenmeyen ihtiyaç: {', '.join(unknown)}. Desteklenen: {', '.join(SUPPORTED_NEEDS)}.")
@@ -246,7 +249,14 @@ def accessible_alternative(
     codes = list(state.codes)
     alternative = None
     if state.lift_status != "working":
-        alternative = find_alternative(name, platforms, stations, faults, graph or MetroGraph.from_stations(stations))
+        if graph is None:
+            params = rail_params(slow_walk_params()) if "slow_walk" in asked else None
+            graph = (
+                MetroGraph.from_stations(stations, params=params)
+                if params is not None
+                else MetroGraph.from_stations(stations)
+            )
+        alternative = find_alternative(name, platforms, stations, faults, graph)
         if alternative is None:
             codes.append(NO_ALTERNATIVE)
     # Which outages the answer is about: an approval given for one outage covers that one only.
@@ -424,4 +434,3 @@ async def alternative_answer(
         data["uncertainty"].append(STALE_DATA)
     data.update(mode="recorded" if offline else "live", stale=stale)
     return ToolResult(data=data, provenance=provenance, note=ALTERNATIVE_NOTE_TR if data["alternative"] else None)
-

@@ -422,6 +422,7 @@ class Nabiz:
         origin_lon: float | None = None,
         destination_lat: float | None = None,
         destination_lon: float | None = None,
+        slow_walk: bool = False,
     ) -> ToolResult:
         """Compare driving, metro, a single bus line and walking between two places.
 
@@ -435,7 +436,7 @@ class Nabiz:
         still answers, and the withdrawn bus option says why. The traffic baseline is
         optional in the same way: without it the ``traffic_typical`` reading is simply absent.
         """
-        from ibb_mcp.routing import compare_options
+        from ibb_mcp.routing import DEFAULT_PARAMS, compare_options, slow_walk_params
 
         start = self._endpoint(origin, origin_lat, origin_lon, role="origin")
         end = self._endpoint(destination, destination_lat, destination_lon, role="destination")
@@ -458,6 +459,7 @@ class Nabiz:
             line_index=line_index,
             traffic_baseline=baseline,
             traffic_baseline_provenance=baseline_prov,
+            params=slow_walk_params() if slow_walk else DEFAULT_PARAMS,
         )
         payload = advice.to_dict()
 
@@ -622,7 +624,7 @@ class Nabiz:
                 "Liste, yeni açılmış bir hattı henüz içermiyor olabilir."
             )
 
-    async def iett_next_arrivals(self, line_code: str, stop: str, limit: int = 3) -> ToolResult:
+    async def iett_next_arrivals(self, line_code: str, stop: str, limit: int = 3, planned: bool = False) -> ToolResult:
         """Estimated arrivals of a line at a stop.
 
         These are estimates, not a published timetable guarantee; the method used for each
@@ -633,7 +635,7 @@ class Nabiz:
         when none does. Taking the best name match alone sent "500T to Şifa" to a Şifa stop
         in Sarıyer and refused it, although the 500T's own terminus is ŞİFA SONDURAK.
         """
-        from ibb_mcp.eta import EtaParams, estimate_arrivals, speed_profile_from_fleet
+        from ibb_mcp.eta import EtaParams, estimate_arrivals, planned_summary, speed_profile_from_fleet
         from ibb_mcp.eta_profile import served_rate
 
         index = await self.gtfs()
@@ -652,9 +654,12 @@ class Nabiz:
         await self._refuse_unknown_line(line_code)
         source = self._source("iett")
         buses, prov = await source.line_positions(line_code)
-        scheduled = None
-        if not buses:
-            scheduled, _ = await source.schedule(line_code, day_type=day_type_for())
+        planned_day_type = day_type_for() if planned else None
+        if not buses or planned:
+            planned_departures, _ = await source.schedule(line_code, day_type=planned_day_type or day_type_for())
+        else:
+            planned_departures = []
+        scheduled = planned_departures if not buses else None
 
         params = EtaParams(max_results=limit)
         try:
@@ -714,15 +719,17 @@ class Nabiz:
         diagnostics["seconds_per_stop"] = rate.seconds_per_stop
         # How the target stop was chosen, so an answer about "Şifa" can say which Şifa.
         diagnostics["stop_resolution"] = resolution
+        data = {
+            "line_code": line_code.upper().strip(),
+            "stop": _dump(target),
+            "arrivals": _dump(arrivals),
+            "diagnostics": diagnostics,
+            "disclaimer": "Varış saatleri tahminidir; resmi İETT bilgisi değildir. " + rate.sentence_tr(),
+        }
+        if planned:
+            data["planned"] = planned_summary(planned_departures or [], planned_day_type or day_type_for())
         return ToolResult(
-            data={
-                "line_code": line_code.upper().strip(),
-                "stop": _dump(target),
-                "arrivals": _dump(arrivals),
-                "diagnostics": diagnostics,
-                "disclaimer": "Varış saatleri tahminidir; resmi İETT bilgisi değildir. "
-                + rate.sentence_tr(),
-            },
+            data=data,
             provenance=prov,
             note=None if arrivals else "Yaklaşan araç bulunamadı.",
         )
