@@ -37,6 +37,7 @@ from ibb_mcp.models import (
 )
 from ibb_mcp.sources.base import SourceContext, make_provenance
 from ibb_mcp.sources.places import Place, get_place_index
+from ibb_mcp.timetables import ScheduleTables
 
 log = logging.getLogger("ibb_mcp.tools")
 
@@ -130,6 +131,7 @@ class Nabiz:
         self._sequences: dict[str, Any] | None = None
         self._stop_routes: Any = None  # ibb_mcp.lines.StopRouteIndex, built on first use
         self._sequences_lock = asyncio.Lock()
+        self._schedule_tables = ScheduleTables()  # GTFS departures + service days, for the arrival fallback
         # (monotonic expiry, baseline or None, the history read's provenance or None): see
         # traffic_baseline_with_provenance().
         self._traffic_baseline: tuple[float, Any, Provenance | None] | None = None
@@ -624,7 +626,9 @@ class Nabiz:
                 "Liste, yeni açılmış bir hattı henüz içermiyor olabilir."
             )
 
-    async def iett_next_arrivals(self, line_code: str, stop: str, limit: int = 3, planned: bool = False) -> ToolResult:
+    async def iett_next_arrivals(
+        self, line_code: str, stop: str, limit: int = 3, planned: bool = False, stale_after_s: float | None = None
+    ) -> ToolResult:
         """Estimated arrivals of a line at a stop.
 
         These are estimates, not a published timetable guarantee; the method used for each
@@ -634,6 +638,10 @@ class Nabiz:
         the first one the line actually calls at wins, and the best name match is used only
         when none does. Taking the best name match alone sent "500T to Şifa" to a Şifa stop
         in Sarıyer and refused it, although the 500T's own terminus is ŞİFA SONDURAK.
+
+        ``stale_after_s`` is the caller's limit on a live position's age (the arrival card's
+        ``NABIZ_ARRIVAL_STALE_S``); past it the estimate falls back to the GTFS timetable, then
+        to İETT's planned departures, and ``diagnostics["mode"]`` says which one answered.
         """
         from ibb_mcp.eta import EtaParams, estimate_arrivals, planned_summary, speed_profile_from_fleet
         from ibb_mcp.eta_profile import served_rate
@@ -661,10 +669,10 @@ class Nabiz:
             planned_departures = []
         scheduled = planned_departures if not buses else None
 
-        params = EtaParams(max_results=limit)
+        params = EtaParams(max_results=limit, **({} if stale_after_s is None else {"stale_after_s": float(stale_after_s)}))
         try:
             fleet, _ = await source.fleet_positions()
-            params = EtaParams(max_results=limit, speed_kmh=speed_profile_from_fleet(fleet))
+            params = dataclasses.replace(params, speed_kmh=speed_profile_from_fleet(fleet))
         except Exception as exc:  # noqa: BLE001 - the fleet call is optional
             log.info("fleet speed profile unavailable, using default: %r", exc)
 
@@ -677,6 +685,7 @@ class Nabiz:
         rate = await asyncio.to_thread(served_rate, line_code, utcnow(), self.settings)
 
         sequences = await self.stop_sequences()
+        timetable, service_days = await self._schedule_tables.get(self.settings)
 
         # Refuse to estimate for a stop the line does not serve. Without this guard the
         # distance method happily returns a three-hour "arrival" for a bus that will never
@@ -703,13 +712,9 @@ class Nabiz:
                 )
 
         arrivals, diagnostics = estimate_arrivals(
-            buses=buses,
-            target=target,
-            index=index,
-            sequences=sequences,
-            scheduled=scheduled,
-            speed_profile=rate.as_speed_profile(),
-            params=params,
+            buses=buses, target=target, index=index, sequences=sequences, scheduled=scheduled,
+            speed_profile=rate.as_speed_profile(), line_code=line_code.upper().strip(),
+            timetable=timetable, service_days=service_days, params=params,
         )
         # Which rate, from where, and why: "120 s/stop because nothing was measured" and
         # "120 s/stop because the measurement did not transfer" are different answers.
@@ -741,11 +746,7 @@ class Nabiz:
         if line:
             wanted = line.strip().casefold()
             statuses = [s for s in statuses if (s.line_name or "").casefold() == wanted]
-            note = (
-                f"{line.upper()} için bildirilmiş bir arıza/çalışma duyurusu yok."
-                if not statuses
-                else None
-            )
+            note = f"{line.upper()} için bildirilmiş bir arıza/çalışma duyurusu yok." if not statuses else None
         else:
             note = "Bildirilmiş arıza/çalışma duyurusu yok." if not statuses else None
         return ToolResult(

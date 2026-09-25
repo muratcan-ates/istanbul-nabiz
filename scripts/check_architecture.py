@@ -127,6 +127,7 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "ibb_mcp.metro_graph",
             "ibb_mcp.occupancy",
             "ibb_mcp.reliability",
+            "ibb_mcp.timetables",
             "ibb_mcp.traffic_profile",
         ),
     ),

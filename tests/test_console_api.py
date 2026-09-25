@@ -96,11 +96,23 @@ def test_a_recorded_estimate_is_never_called_live() -> None:
 class StubArrivals:
     """Just the one tool ``/api/arrival`` calls, returning a crafted result or raising."""
 
-    def __init__(self, *, arrivals: Sequence[dict[str, Any]] = (), dropped_stale: int = 0, error: Exception | None = None):
+    def __init__(
+        self,
+        *,
+        arrivals: Sequence[dict[str, Any]] = (),
+        dropped_stale: int = 0,
+        stale_live: Sequence[dict[str, Any]] = (),
+        error: Exception | None = None,
+    ):
         self.settings = Settings(offline=False)
         self.arrivals, self.dropped_stale, self.error = list(arrivals), dropped_stale, error
+        self.stale_live = list(stale_live)
+        self.stale_after_s: float | None = None
 
-    async def iett_next_arrivals(self, line_code: str, stop: str, limit: int = 3) -> ToolResult:
+    async def iett_next_arrivals(
+        self, line_code: str, stop: str, limit: int = 3, stale_after_s: float | None = None
+    ) -> ToolResult:
+        self.stale_after_s = stale_after_s
         if self.error is not None:
             raise self.error
         now = utcnow()
@@ -109,7 +121,7 @@ class StubArrivals:
                 "line_code": line_code.upper(),
                 "stop": {"stop_code": "401351", "name": "ŞİFA SONDURAK"},
                 "arrivals": self.arrivals,
-                "diagnostics": {"dropped_stale": self.dropped_stale},
+                "diagnostics": {"dropped_stale": self.dropped_stale, "stale_live": self.stale_live},
             },
             provenance=Provenance(source="iett_line", source_url="https://x.invalid", observed_at=now, reported_at=now),
         )
@@ -155,6 +167,28 @@ def test_arrival_staleness_threshold_is_a_knob(monkeypatch: pytest.MonkeyPatch) 
 def test_arrival_with_only_old_positions_is_by_timetable() -> None:
     body = arrival(StubArrivals(dropped_stale=12))
     assert (body["minutes"], body["display"]) == (None, "tarifeye göre")
+
+
+def test_arrival_passes_its_stale_limit_to_the_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    """G12: the tool falls back to the timetable past the same age the card withdraws a number at."""
+    stub = StubArrivals(arrivals=[bus(6.6, age_s=40)])
+    arrival(stub)
+    assert stub.stale_after_s == 180
+    monkeypatch.setenv("NABIZ_ARRIVAL_STALE_S", "600")
+    arrival(stub)
+    assert stub.stale_after_s == 600
+
+
+def test_arrival_past_the_stale_limit_without_a_timetable_is_by_timetable() -> None:
+    """The tool dropped every live estimate as older than the card's limit and found no timetable to
+    fall back on: the stale case again, so the card says "tarifeye göre", never a number."""
+    body = arrival(StubArrivals(stale_live=[{"door_no": "", "age_s": 240.0, "method": "stop_sequence", "eta_minutes": 6.6}]))
+    assert (body["minutes"], body["display"], body["provenance"]["mode"]) == (None, "tarifeye göre", "schedule")
+
+
+def test_arrival_from_the_gtfs_timetable_has_no_number() -> None:
+    body = arrival(StubArrivals(arrivals=[bus(10.0, age_s=0, method="schedule")]))
+    assert (body["minutes"], body["display"], body["provenance"]["mode"]) == (None, "tarifeye göre", "schedule")
 
 
 def test_arrival_with_nothing_is_unverified() -> None:

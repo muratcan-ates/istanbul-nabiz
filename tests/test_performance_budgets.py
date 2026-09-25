@@ -170,6 +170,7 @@ def test_one_hot_line_fits_the_hourly_iett_budget() -> None:
 PARSERS = (
     (gtfs.GtfsIndex, "load"),
     (gtfs, "build_stop_sequences"),
+    (gtfs, "build_route_timetables"),
     (PlaceIndex, "load"),
     (occupancy.OccupancyProfile, "from_dict"),
     (reliability.ReliabilityTable, "from_dict"),

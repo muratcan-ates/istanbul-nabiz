@@ -174,3 +174,31 @@ def test_post_midnight_departures_roll_to_the_next_day() -> None:
     )
 
     assert arrivals[0].eta_minutes == 10.0
+
+
+async def test_the_arrival_tool_hands_the_estimator_the_timetable_and_the_callers_stale_limit(ctx, monkeypatch) -> None:
+    """G12 wiring: ``iett_next_arrivals`` passes the GTFS timetable, the service days, the line code
+    and the caller's stale limit to the estimator, and loads the tables once per facade."""
+    import ibb_mcp.eta as eta_module
+    from ibb_mcp.tools import Nabiz
+
+    seen: list[dict] = []
+
+    def spy(**kwargs):
+        seen.append(kwargs)
+        return estimate_arrivals(**kwargs)
+
+    monkeypatch.setattr(eta_module, "estimate_arrivals", spy)
+    app = Nabiz(ctx)
+    served = await app.iett_next_arrivals(line_code="500t", stop="220641", limit=3, stale_after_s=240)
+    await app.iett_next_arrivals(line_code="500T", stop="220641", limit=3)
+
+    first, second = seen
+    assert first["line_code"] == "500T"
+    assert first["params"].stale_after_s == 240.0 and served.data["diagnostics"]["stale_after_s"] == 240.0
+    assert second["params"].stale_after_s == EtaParams().stale_after_s
+    # The mini GTFS has trips and stop times but no calendar.csv: timetables, and no day filter.
+    assert any(code.startswith("500T_") for code in first["timetable"])
+    assert first["service_days"] == {}
+    assert first["timetable"] is second["timetable"], "the tables are read once per facade"
+    assert served.data["diagnostics"]["mode"] in {"live", "schedule", "unknown"}

@@ -10,7 +10,7 @@ const METHOD_TR = { stop_sequence: 'durak sırası', distance: 'kuş uçuşu mes
 const METHOD_WHY = {
   stop_sequence: 'Aracın bildirdiği yakın durak, hattın GTFS durak sırasında hedefe göre konumlandırıldı.',
   distance: 'Durak sırası kurulamadı; kuş uçuşu mesafe kıvrımlılık katsayısıyla düzeltilerek kullanıldı.',
-  schedule: 'Canlı araç bulunamadı; İETT’nin ilan ettiği sefer saati gösteriliyor.',
+  schedule: 'Tarifedeki ilk durak kalkışı; bu durağa varış değil.',
 };
 const BUS_ROWS = 12;
 
@@ -22,7 +22,8 @@ function lineTitle(line, stop) {
 
 function arrivalRow(a, prov, id, i) {
   const method = METHOD_TR[a.method] || a.method || UNKNOWN;
-  const body = metric(has(a.eta_minutes) ? num(a.eta_minutes, 0) : null, 'dk', '', 'süre')
+  const plan = a.method === 'schedule';
+  const body = metric(plan ? 'tarifeye göre' : has(a.eta_minutes) ? num(a.eta_minutes, 0) : null, plan ? '' : 'dk', '', 'süre')
     + facts([has(a.stops_away) ? `${int(a.stops_away)} durak ötede` : '', has(a.distance_km) ? `${num(a.distance_km)} km` : ''])
     + `<p class="row-facts">Yöntem: ${esc(method)}. Güven: ${confidence(a.confidence)}</p>`
     + (METHOD_WHY[a.method] ? details('Bu tahmin nasıl yapıldı?', `<p>${METHOD_WHY[a.method]}</p>`) : '');
@@ -33,8 +34,7 @@ function arrivalRow(a, prov, id, i) {
   });
 }
 
-/* When no estimate can be produced the diagnostics are the answer: which rule dropped which bus,
- * instead of an empty screen or an invented minute. */
+/* No estimate: the diagnostics (which rule dropped which bus) are the answer. */
 const DIAG_TR = {
   buses_received: 'İETT’den gelen araç',
   dropped_stale: 'konumu fazla eski olduğu için elenen',
@@ -66,12 +66,12 @@ function diagnostics(diag) {
   });
 }
 
-/** The stop has no row of its own, so its marker points at the head. */
+/** The stop has no row; its marker aims at the head. */
 function arrivalsAnswer({ data, provenance: prov, note }, asked) {
   const arrivals = data.arrivals || [];
   const stop = data.stop || {};
   const headId = nextCardId();
-  const first = arrivals.find((a) => has(a.eta_minutes));
+  const first = arrivals.find((a) => has(a.eta_minutes) && a.method !== 'schedule');
   return {
     html: head({
       id: headId, titleHtml: lineTitle(data.line_code, stop.name || asked), prov, note,

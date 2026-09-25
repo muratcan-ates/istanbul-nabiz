@@ -246,14 +246,30 @@ def test_arrivals_say_how_each_estimate_was_made_and_how_old_the_position_is(ren
     assert answers["arrivals"]["data"]["disclaimer"] in html  # verbatim
 
 
-def test_no_estimate_shows_the_reasons_and_keeps_unknown_codes_out_of_the_text(tmp_path, rendered, answers) -> None:
-    html = rendered["no_arrivals"]["html"]
+def test_no_estimate_shows_the_reasons_and_keeps_unknown_codes_out_of_the_text(tmp_path, answers) -> None:
+    # Every recorded position is too old at SERVER_NOW; the tool then falls back to the GTFS timetable
+    # (G12). Without a timetable row either, the diagnostics are the answer.
+    empty = copy.deepcopy(answers["no_arrivals"])
+    assert empty["data"]["diagnostics"]["dropped_stale"] == 31
+    empty["data"]["arrivals"] = []
+    html = node(tmp_path, "console.log(JSON.stringify(T.arrivalsAnswer(X, 'Şifa Sondurak').html));", X=empty)
     assert "Neden varış tahmini yok?" in html and "Boş ekran da, uydurma dakika da yanıt değildir." in html
     assert "31 aracın konumu 600 sn’den eskiydi" in html and "Sayımlar" in html
-    odd = copy.deepcopy(answers["no_arrivals"])
-    odd["data"]["diagnostics"]["notes"] = ["some_new_code"]
-    html = node(tmp_path, "console.log(JSON.stringify(T.arrivalsAnswer(X, 'Şifa Sondurak').html));", X=odd)
+    empty["data"]["diagnostics"]["notes"] = ["some_new_code"]
+    html = node(tmp_path, "console.log(JSON.stringify(T.arrivalsAnswer(X, 'Şifa Sondurak').html));", X=empty)
     assert '<li data-code="some_new_code">Açıklaması olmayan bir not var.</li>' in html
+
+
+def test_a_timetable_row_shows_no_minute(rendered, answers) -> None:
+    """A GTFS timetable estimate counts to the planned departure from the first stop, not to this stop:
+    the row says "tarifeye göre" and never a minute, and the spoken line names no minute either."""
+    arrivals = answers["no_arrivals"]["data"]["arrivals"]
+    assert arrivals and {a["method"] for a in arrivals} == {"schedule"}
+    assert answers["no_arrivals"]["data"]["diagnostics"]["mode"] == "schedule"
+    html, say = rendered["no_arrivals"]["html"], rendered["no_arrivals"]["say"]
+    assert html.count('<span class="row-value">tarifeye göre</span>') == len(arrivals)
+    assert not re.search(r'class="row-value">\d', html) and 'class="row-unit">dk<' not in html
+    assert " dk" not in say and "ilki" not in say
 
 
 def test_bus_positions_are_a_table_by_direction_with_the_rest_behind_one_disclosure(rendered, answers) -> None:

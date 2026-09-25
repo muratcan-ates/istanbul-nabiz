@@ -83,7 +83,7 @@ async def arrival_view(nabiz: Any, line: str, stop: str, *, stale_after_s: float
     tool's own Turkish sentence). An İBB outage is an answer, not an error: "doğrulanamadı".
     """
     try:
-        result = await nabiz.iett_next_arrivals(line_code=line, stop=stop, limit=1)
+        result = await nabiz.iett_next_arrivals(line_code=line, stop=stop, limit=1, stale_after_s=stale_after_s)
     except (RateLimitExceeded, UpstreamUnavailable):
         return {
             "line": line.upper().strip(),
@@ -97,8 +97,10 @@ async def arrival_view(nabiz: Any, line: str, stop: str, *, stale_after_s: float
     first = arrivals[0] if arrivals else {}
     taken = position_time(first, result.provenance) if first else None
     age_s = max(0.0, (utcnow() - taken).total_seconds()) if taken else None
-    if not first and (data.get("diagnostics") or {}).get("dropped_stale"):
-        # Buses reported, every position too old to estimate from: the stale case, not the empty one.
+    diagnostics = data.get("diagnostics") or {}
+    if not first and (diagnostics.get("dropped_stale") or diagnostics.get("stale_live")):
+        # Buses reported, every position too old to estimate from (past the tool's age cap, or past
+        # this card's stale limit with no timetable to fall back on): the stale case, not the empty one.
         shown = ArrivalDisplay(None, BY_TIMETABLE, "schedule")
     else:
         shown = single_minute(
