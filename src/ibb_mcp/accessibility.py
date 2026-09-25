@@ -249,7 +249,9 @@ def accessible_alternative(
         alternative = find_alternative(name, platforms, stations, faults, graph or MetroGraph.from_stations(stations))
         if alternative is None:
             codes.append(NO_ALTERNATIVE)
-    return _answer(name, lines, asked, state, alternative, tuple(codes))
+    # Which outages the answer is about: an approval given for one outage covers that one only.
+    outages = [r.outage_id for p in platforms for r in faults.get(platform_key(p), []) if r.equipment_type == "elevator"]
+    return _answer(name, lines, asked, state, alternative, tuple(codes), tuple(outages))
 
 
 def _answer(
@@ -259,6 +261,7 @@ def _answer(
     state: LiftState,
     alternative: StepFreeAlternative | None,
     codes: tuple[str, ...],
+    outage_ids: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     return {
         "station": name,
@@ -270,6 +273,7 @@ def _answer(
         "alternative": alternative.as_dict() if alternative else None,
         "text": state.text,
         "uncertainty": list(codes),
+        "outage_ids": list(outage_ids),
     }
 
 
@@ -296,7 +300,8 @@ def _record_row(record: EquipmentRecord) -> dict[str, Any]:
         "status_class": record.status_class,
         "ibb_date": record.ibb_date.isoformat() if record.ibb_date else None,
         "ibb_date_raw": record.ibb_date_raw,
-        "description": record.description,
+        # İBB's free-text Description is left out until a live sample shows what it can hold:
+        # a tool answer reaches the chat model and MCP clients. describe() is the card's text.
         "text": record.describe(),
     }
 

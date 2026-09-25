@@ -117,6 +117,13 @@ def matches(when: When, signal: Signal) -> bool:
     return all(check(condition, values) for condition in when.conditions)
 
 
+def _text(value: Any) -> str:
+    """A value as a Turkish card writes it: 119.6 is "119,6", 24.0 is "24"."""
+    if isinstance(value, float):
+        return str(int(value)) if value.is_integer() else f"{value:.1f}".replace(".", ",")
+    return str(value)
+
+
 def render(template: str, values: Mapping[str, Any]) -> str:
     """Fill ``{name}`` placeholders; a missing or empty value raises :class:`MissingField`."""
     filled: dict[str, str] = {}
@@ -124,7 +131,7 @@ def render(template: str, values: Mapping[str, Any]) -> str:
         value = values.get(name)
         if value is None or value == "":
             raise MissingField(name)
-        filled[name] = str(value)
+        filled[name] = _text(value)
     return template.format_map(filled)
 
 

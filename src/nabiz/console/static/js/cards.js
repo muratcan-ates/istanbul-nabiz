@@ -72,14 +72,16 @@ function arrivalCard(data) {
   const isWord = !/^\d+ dk$/.test(display);
   const mode = modeOf(data.provenance);
   const status = display === 'doğrulanamadı' ? 'unverified' : mode === 'unknown' || mode === 'old' ? 'stale' : 'ok';
+  // "tarifeye göre" is both the value and the mode's word: say it once, keep the icon.
+  const unit = MODE_TR[mode] === display ? icon(MODE_ICON[mode]) : `${icon(MODE_ICON[mode])} ${MODE_TR[mode]}`;
   return `<article class="card card-in is-${status}" id="arrival-card" aria-labelledby="arrival-t">`
     + `<span class="card-kind">${icon('bus')}</span>`
-    + `<h3 class="card-title" id="arrival-t">${lineBadge(data.line)}<span class="sr-only">hattı, durak:</span> `
+    + `<h3 class="card-title" id="arrival-t">${lineBadge(data.line)}<span class="sr-only"> hattı, durak:</span> `
     + `${icon('arrow-narrow-right')} <span>${esc(trName(data.stop))}</span></h3>`
     + '<p class="card-body">Tahmini varış</p>'
     + `<p class="card-metric"><span class="card-value${isWord ? ' is-word' : ''}">${esc(display)}</span>`
-    + `<span class="card-unit">${icon(MODE_ICON[mode])} ${MODE_TR[mode]}</span></p>`
-    + `<p class="card-foot">${ageStamp(data.provenance)}${sourceLink(data.provenance)}</p>`
+    + `<span class="card-unit">${unit}</span></p>`
+    + `<p class="card-foot">${ageStamp(data.provenance)}${sourceLink(data.provenance)}${authorLine('kural')}</p>`
     + '</article>';
 }
 
@@ -87,10 +89,14 @@ function arrivalCard(data) {
 function alternativeCard(data) {
   const lift = LIFT_TR[data.lift_status] ? data.lift_status : 'unknown';
   const alt = data.alternative;
-  let body = `<p class="card-body"><b>${esc(trName(data.station))}</b>: ${LIFT_TR[lift]}.</p>`;
-  let status = LIFT_STATUS[lift];
+  // A record served stale is the last known state, said as such, never a current one.
+  const known = data.stale ? 'son bilinen durum: ' : '';
+  let body = `<p class="card-body"><b>${esc(trName(data.station))}</b>: ${known}${LIFT_TR[lift]}.</p>`;
+  let status = data.stale ? 'stale' : LIFT_STATUS[lift];
   if (alt) {
-    const extra = has(alt.extra_minutes) ? `+${Number(alt.extra_minutes)} dk` : 'ek süre bilinmiyor';
+    const extra = has(alt.extra_minutes)
+      ? `istasyonlar arası tahminen ${Number(alt.extra_minutes)} dk (dönüş dahil değil)`
+      : 'süre bilinmiyor';
     const approval = data.operator_approved
       ? `<span class="tag is-ok">${icon('circle-check')}Operatör onaylı (simüle)</span>`
       : `<span class="tag is-warn">${icon('clock-question')}Operatör onayı yok</span>`;
@@ -98,16 +104,16 @@ function alternativeCard(data) {
       + `${lineBadge(alt.line)}<span class="card-unit">${esc(extra)}</span></p>`
       + `<p class="card-body">${esc(alt.reason || '')}</p><p>${approval}</p>`;
   } else if (lift === 'out_of_service') {
-    body += '<p class="card-body">Aynı hatta asansörü çalışan yakın bir istasyon kaydı bulunamadı. '
+    body += '<p class="card-body">İBB kaydında asansör arızası görünmeyen yakın bir istasyon bulunamadı. '
       + '<a href="tel:153">153</a> ile teyit edin.</p>';
-    status = 'warning';
+    status = data.stale ? 'stale' : 'warning';
   }
   return `<article class="card card-in is-${status}" id="alternative-card" aria-labelledby="alternative-t">`
     + `<span class="card-kind">${icon('elevator')}</span>`
     + '<h3 class="card-title" id="alternative-t">Asansör ve adımsız yol</h3>'
     + body
     + statusLine(status)
-    + foot(data.provenance)
+    + foot(data.provenance, data.operator_approved ? 'kural, simüle operatör onayladı' : 'kural')
     + '</article>';
 }
 
@@ -128,7 +134,12 @@ function cardsSentence(cards) {
   const ages = cards.map((c) => c.provenance && c.provenance.age_s).filter(Number.isFinite);
   const newest = ages.length ? Math.min(...ages) : null;
   const provNewest = cards.find((c) => c.provenance && c.provenance.age_s === newest);
-  return `${cards.length} şehir kartı güncellendi. ${provNewest ? ageSentence(provNewest.provenance) : 'Veri yaşı bilinmiyor.'}`;
+  const stale = cards.filter((c) => c.status === 'stale').length;
+  const unverified = cards.filter((c) => c.status === 'unverified').length;
+  const caveats = [stale ? `${stale} kart bayat veri, son bilinen durum` : '', unverified ? `${unverified} kart doğrulanamadı` : '']
+    .filter(Boolean).join('; ');
+  return `${cards.length} şehir kartı gösteriliyor${caveats ? ` (${caveats})` : ''}. `
+    + `${provNewest ? ageSentence(provNewest.provenance) : 'Veri yaşı bilinmiyor.'}`;
 }
 
 export { KIND_ICON, STATUS_TR, LIFT_TR, lineBadge, cityCard, arrivalDisplay, arrivalCard, alternativeCard, errorCard, skeleton, cardsSentence };

@@ -12,6 +12,14 @@ import { icon } from './icons.js';
 import { citations } from './provenance.js';
 
 const AUTHOR_TR = { model: 'model', 'yerel model': 'yerel model', kural: 'kural' };
+/* What each İBB tool is, in the words a visitor reads; an internal name never reaches the page. */
+const TOOL_TR = {
+  places_resolve: 'yer arama', ispark_find_parking: 'otopark arama', ispark_typical_occupancy: 'otopark doluluk geçmişi',
+  iett_stops_search: 'durak arama', iett_line_buses: 'hattaki otobüsler', iett_next_arrivals: 'varış tahmini',
+  metro_status: 'Metro duyuruları', metro_station_info: 'istasyon bilgisi', metro_equipment_status: 'Metro arıza kaydı',
+  traffic_index: 'trafik indeksi', air_quality_now: 'hava kalitesi', air_quality_forecast: 'hava kalitesi tahmini',
+  plan_journey: 'yolculuk karşılaştırması', line_reliability: 'hat güvenilirliği', city_freshness: 'veri tazeliği',
+};
 
 function refusalNote() {
   return `<div class="callout callout-warn">${icon('info-circle')}<div>`
@@ -62,16 +70,18 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     html += citations(data.citations);
     html += `<p class="chat-foot"><span>cevabı yazan: <b>${esc(AUTHOR_TR[data.author] || data.author || 'bilinmiyor')}</b></span></p>`;
     finalEl.innerHTML = html;
-    history.push({ role: 'user', content: question }, { role: 'assistant', content: answer });
+    // The refusal text is not context. The refused question stays so the server can refuse a
+    // follow-up to it ("peki öğrenciler için?"); the server never hands it to the model.
+    history.push({ role: 'user', content: question });
+    if (!data.refused) history.push({ role: 'assistant', content: answer });
     if (data.memory_suggestion && onMemorySuggestion) {
       const box = suggestionBox(data.memory_suggestion);
       box.addEventListener('click', (evt) => {
         const btn = evt.target.closest('button[data-act]');
         if (!btn) return;
         const added = btn.dataset.act === 'add' && onMemorySuggestion(data.memory_suggestion);
-        box.innerHTML = added
-          ? '<p>Eklendi. Hafızam bölümünde görünür; istediğin an silebilirsin.</p>'
-          : '<p>Eklenmedi.</p>';
+        const said = typeof added === 'string' ? added : 'Eklendi. Hafızam bölümünde görünür; istediğin an silebilirsin.';
+        box.innerHTML = added ? `<p>${esc(said)}</p>` : '<p>Eklenmedi.</p>';
       });
       finalEl.appendChild(box);
     }
@@ -106,7 +116,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
         toolEl.hidden = false;
         toolEl.className = `chat-tool ${running ? 'is-running' : 'is-done'}`;
         toolEl.innerHTML = `${icon(running ? 'refresh' : 'circle-check')}<span>${running ? 'Araç çalışıyor' : 'Araç tamamlandı'}: `
-          + `${esc((data && data.name) || 'araç')}</span>`;
+          + `${esc(TOOL_TR[data && data.name] || 'İBB aracı')}</span>`;
       } else if (event === 'final') {
         finalData = data;
       } else if (event === 'error') {

@@ -3,17 +3,20 @@
 The learning loop, in three steps, each one a human act or a count of human acts:
 
 1. **Draft.** When the same pattern (signal kind, equipment type, proposed action) has been
-   approved at least ``min_approvals`` times within ``window_days`` and rejected not once in
-   that window, the machine writes a TOML draft of a reflex rule from the proposal's template.
-   One event never makes a rule (the anti-overfitting principle): two approvals are a
-   coincidence, three in thirty days are a pattern worth a person's look. An edited approval
+   approved for at least ``min_approvals`` separate events within ``window_days`` and rejected
+   not once in that window, the machine writes a TOML draft of a reflex rule from the
+   proposal's template. One event never makes a rule (the anti-overfitting principle): the
+   count is of events (an outage, an alert), not of snapshots, so the same fault approved
+   three times is still one event. Two events are a coincidence, three in thirty days are a
+   pattern worth a person's look. An edited approval
    counts, but the draft keeps the rule's own template: the edits are one-off texts, and the
    decisions listed with the draft show them to the person deciding whether to adopt it.
 2. **Adopt.** A person adopts the draft with a written reason. The rule gets an id
    (``R-101``, ``R-102``, ...), starts now and expires after ``expires_days``; the adoption is
    sealed in the ledger with the decisions it came from. Nothing adopts automatically.
 3. **Revoke.** A person can withdraw an adopted rule at any time, with a reason. An expired or
-   revoked rule does not come back by itself; the pattern must earn a new draft.
+   revoked rule does not come back by itself; the pattern must earn a new draft, from
+   approvals given after the rule ended.
 
 Adopted rules are read back from the ledger on every route (:meth:`RuleDrafts.active_rules`),
 so the rule the router uses is always the one the ledger says a person adopted.
@@ -137,6 +140,24 @@ def parse_rule_toml(text: str) -> MissionRule:
     return rule
 
 
+def event_key(state: SignalState) -> str:
+    """What makes two approvals the same event: the outage, else the alert, else the signal."""
+    payload = state.signal.payload
+    for name in ("outage_id", "dedupe_key"):
+        value = payload.get(name)
+        if isinstance(value, str) and value:
+            return f"{name}:{value}"
+    return f"signal:{state.signal.signal_id}"
+
+
+def _events(decided: Sequence[SignalState]) -> list[SignalState]:
+    """One approved state per event, the latest ruling kept."""
+    latest: dict[str, SignalState] = {}
+    for state in sorted(decided, key=lambda s: s.rulings[-1].at):
+        latest[event_key(state)] = state
+    return list(latest.values())
+
+
 def _draft_id(pattern: Pattern, template: str) -> str:
     return "draft-" + hashlib.sha256(f"{pattern.text}|{template}".encode()).hexdigest()[:10]
 
@@ -163,15 +184,22 @@ class RuleDrafts:
         """Patterns approved often enough, never rejected in the window, with no active rule yet."""
         now = self._clock()
         states = list(states) if states is not None else list(replay(self.ledger.entries()).values())
-        covered = {r.draft_id for r in self.adopted() if r.is_active(now)}
+        adopted = self.adopted()
+        covered = {r.draft_id for r in adopted if r.is_active(now)}
+        ended = self._ended(adopted, now)
         approved, rejected = self._rulings_in_window(states, now - self.window)
         drafts = []
         for pattern, decided in approved.items():
-            if pattern in rejected or len(decided) < self.min_approvals:
+            if pattern in rejected:
                 continue
             template = Counter(s.decision.proposed_action.template for s in decided if s.decision).most_common(1)[0][0]
             draft_id = _draft_id(pattern, template)
             if draft_id in covered:
+                continue
+            if draft_id in ended:
+                decided = [s for s in decided if s.rulings[-1].at > ended[draft_id]]
+            decided = _events(decided)
+            if len(decided) < self.min_approvals:
                 continue
             evidence = tuple(s.signal.signal_id for s in decided)
             toml_text = rule_toml(draft_id, pattern, template, self.expires_days)
@@ -186,6 +214,17 @@ class RuleDrafts:
                 )
             )
         return drafts
+
+    @staticmethod
+    def _ended(adopted: Sequence[AdoptedRule], now: dt.datetime) -> dict[str, dt.datetime]:
+        """Draft id to when its latest inactive rule ended (revoked, or expired)."""
+        ended: dict[str, dt.datetime] = {}
+        for rule in adopted:
+            if rule.is_active(now):
+                continue
+            at = rule.revoked_at or rule.expires_at
+            ended[rule.draft_id] = max(at, ended.get(rule.draft_id, at))
+        return ended
 
     @staticmethod
     def _rulings_in_window(

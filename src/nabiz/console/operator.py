@@ -18,9 +18,10 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Path, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from nabiz.console.ports import OPERATOR, ConsolePort, PortConflict, PortNotWired
+from nexus_core.decisions import PROPOSAL_MAX, REASON_MAX
 
 log = logging.getLogger("nabiz.console.operator")
 
@@ -30,14 +31,15 @@ operator_routes = APIRouter(prefix="/api/console")
 ID_PATTERN = r"^[A-Za-z0-9_.:-]{1,80}$"
 
 
+#: The route's limits are the core's own, so a request the route accepts the core accepts too.
 class DecisionBody(BaseModel):
     action: Literal["approve", "edit", "reject", "defer"]
-    reason: str = Field(default="", max_length=1000)
-    edited_text: str | None = Field(default=None, max_length=2000)
+    reason: str = Field(default="", max_length=REASON_MAX)
+    edited_text: str | None = Field(default=None, max_length=PROPOSAL_MAX)
 
 
 class AdoptBody(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: str = Field(min_length=1, max_length=REASON_MAX)
 
 
 class SimulateBody(BaseModel):
@@ -59,6 +61,9 @@ async def port_answer(call: Awaitable[dict[str, Any]]) -> Any:
         return port_problem(409, "conflict", str(exc))
     except LookupError:
         return port_problem(404, "not_found", "Bu kayıt bulunamadı.")
+    except ValidationError:
+        # pydantic's own text is English and names internal models: the page gets a sentence.
+        return port_problem(400, "bad_request", "İstek geçersiz: metin çok uzun ya da eksik.")
     except ValueError as exc:
         return port_problem(400, "bad_request", str(exc))
 

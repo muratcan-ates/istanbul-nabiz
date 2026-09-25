@@ -126,3 +126,54 @@ def test_rule_toml_escapes_text_and_round_trips() -> None:
     tomllib.loads(text)
     rule = parse_rule_toml(text)
     assert rule.then.card_template == template and rule.valid_from == start and rule.expires_at == start + dt.timedelta(days=30)
+
+
+def long_outage(outage_id: str, when: dt.datetime, n: int = 0) -> Signal:
+    return make_signal(
+        "long_outage",
+        entity=f"M4-KARTAL-ASN-{n:02d}",
+        observed_at=when,
+        station="Kartal",
+        outage_id=outage_id,
+        outage_hours=48.0,
+        text="Kartal (M4): asansör kullanılamıyor.",
+    )
+
+
+def test_one_event_approved_three_times_is_still_one_event(tmp_path: pathlib.Path) -> None:
+    """Three snapshots of one outage, each approved, must not make a rule (one event never does)."""
+    clock = Clock()
+    engine = build_engine(tmp_path, clock)
+    for _ in range(3):
+        engine.decide(approve(engine.process(long_outage("ASN-9@2026-09-20", clock.now)).signal_id))
+        clock.advance(hours=6)
+    assert engine.drafts.drafts() == []
+    for n in (1, 2):
+        engine.decide(approve(engine.process(long_outage(f"ASN-{n}@2026-09-2{n}", clock.now, n)).signal_id))
+        clock.advance(hours=6)
+    (draft,) = engine.drafts.drafts()
+    assert len(draft.evidence_decisions) == 3, "three separate outages, one decision each"
+
+
+def test_one_alert_approved_three_times_makes_no_draft(tmp_path: pathlib.Path) -> None:
+    clock = Clock()
+    engine = build_engine(tmp_path, clock)
+    for _ in range(3):
+        alert = make_signal("parking_full", entity="alert:p1", observed_at=clock.now, text="Otopark dolu.", dedupe_key="p1")
+        engine.decide(approve(engine.process(alert).signal_id))
+        clock.advance(hours=2)
+    assert engine.drafts.drafts() == []
+
+
+def test_a_revoked_rule_needs_new_approvals_for_a_new_draft(tmp_path: pathlib.Path) -> None:
+    clock = Clock()
+    engine = build_engine(tmp_path, clock)
+    spread(engine, clock, 3)
+    (draft,) = engine.drafts.drafts()
+    adopted = engine.drafts.adopt(draft.draft_id, "Üç onay", OPERATOR)
+    engine.drafts.revoke(adopted.rule_id, "Yanlış benimsendi", OPERATOR)
+    clock.advance(minutes=1)
+    assert engine.drafts.drafts() == [], "the same evidence must not bring the revoked rule straight back"
+    spread(engine, clock, 3, start=10)
+    (again,) = engine.drafts.drafts()
+    assert again.draft_id == draft.draft_id and not set(again.evidence_decisions) & set(draft.evidence_decisions)

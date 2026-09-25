@@ -6,7 +6,13 @@ Three rules, all decided before any model is asked, all deterministic:
 generated answer, from a model or a template: a wrong fare or a wrong entitlement costs the
 person money or a right, and a wrong health line costs more. The answer points to 153 (İBB's
 call centre) and the relevant institution's official page, and to 112 in an emergency. No
-official URL is printed because none has been verified for this repository yet.
+official URL is printed because none has been verified for this repository yet. Three lines
+hold it: this keyword test (Turkish and English, the way riders actually ask: "bedava mı",
+"akbil parası", "hastasıyım", "How much is a ticket?"), a short follow-up to a refused
+question ("Peki öğrenciler için ne kadar?"), and the model's own prompt
+(``system_prompt.md`` §4a). A last filter drops a model answer that names a price
+(:func:`names_a_price`) unless the person asked about car parks, whose tariff is İSPARK's
+own data.
 
 **Needs are functional constraints, nothing else.** The page may send a few profile keys
 ("step_free", "stroller" …). Only the keys in :data:`NEEDS` pass, as one line of constraint
@@ -20,6 +26,7 @@ their own messages and the profile does not hold it yet, the answer carries a
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from typing import Any
 
@@ -61,19 +68,35 @@ MEMORY_REPEAT_THRESHOLD = 2
 _REFUSE_WORDS = frozenset(
     {
         "hak", "hakki", "hakkim", "hakkimiz", "hakkimi", "hakkina", "haklar", "haklari", "haklarim",
-        "haklarimiz", "haklarimi", "lira", "tl", "hasta", "hastayim", "yasal", "yasa", "astim",
-        "astimim", "alerji", "alerjim", "abonman", "vize",
+        "haklarimiz", "haklarimi", "lira", "tl", "yasal", "yasa", "alerji", "alerjim", "abonman", "vize",
+        "para", "parasi", "parasini", "parali", "parasiz", "paraya", "kalp", "koah",
+        # English, for the tourist persona
+        "fare", "fares", "ticket", "tickets", "price", "prices", "cost", "costs", "fine", "fines", "fined",
+        "discount", "discounts", "penalty", "penalties", "rights", "entitled", "asthma", "pregnant", "medicine",
     }
-)
-#: Word prefixes, for Turkish case endings ("cezası", "ücretsiz", "ilacımı").
+)  # fmt: skip
+#: Word prefixes, for Turkish case endings ("cezası", "ücretsiz", "ilacımı", "hastasıyım").
 _REFUSE_PREFIXES = (
     "ucret", "fiyat", "indirim", "tazminat", "ceza", "saglig", "hastalik", "hastalig", "ilac",
-    "doktor", "hekim", "tedavi", "teshis", "mevzuat", "kanun", "yonetmelik",
-)
+    "doktor", "hekim", "tedavi", "teshis", "mevzuat", "kanun", "yonetmelik", "bedava", "bedel",
+    "kurus", "refakat", "bilet", "astim", "hamile", "gebe", "health",
+)  # fmt: skip
+#: "hasta..." is a person's health ("hastasıyım"); "hastane..." is a place to travel to.
+_ILL, _HOSPITAL = "hasta", "hastane"
 #: Phrases, for the questions whose words are innocent alone.
-_REFUSE_PHRASES = ("kac para", "ne kadar tutar", "zararli mi", "maske tak", "saglik", "engelli kart")
+_REFUSE_PHRASES = (
+    "kac para", "ne kadar tutar", "zararli mi", "zarar ver", "maske tak", "saglik", "engelli kart",
+    "how much is", "for free", "free ride", "free of charge", "is it free", "disability card",
+)  # fmt: skip
 #: Travel questions that name a health place: "sağlık ocağına nasıl giderim" is a route.
 _TRAVEL_TO_HEALTH = ("saglik ocag", "saglik merkez", "hastane")
+#: "ne kadar" asks a price when it is about a ticket, a card or a transfer, and a duration or a
+#: distance otherwise ("ne kadar sürer", "veri ne kadar güncel").
+_FARE_OBJECTS = ("kart", "bilet", "abonman", "aktarma", "binis", "akbil", "istanbulkart")
+_NOT_A_PRICE = ("sur", "uzak", "guncel", "dakika", "zaman", "bekle", "yogun", "dolu")
+#: A short question that leans on the one before it ("Peki öğrenciler için ne kadar?").
+_FOLLOW_UP = ("ne kadar", "kac", "peki", "ya ", "onlar", "bunun", "bunlar", "o zaman", "what about", "how about")
+_PRICE = re.compile(r"₺|\b\d+(?:[.,]\d+)?\s*(?:tl|lira)\b", re.IGNORECASE)
 
 REFUSAL_TEXT = (
     "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: "
@@ -81,6 +104,12 @@ REFUSAL_TEXT = (
     "Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak. "
     "Acil bir durumdaysan 112'yi ara."
 )
+
+
+def _asks_a_price(text: str, words: Sequence[str]) -> bool:
+    if "ne kadar" not in text or any(word.startswith(_NOT_A_PRICE) for word in words):
+        return False
+    return any(word.startswith(_FARE_OBJECTS) for word in words)
 
 
 def refuses(question: str) -> bool:
@@ -91,10 +120,29 @@ def refuses(question: str) -> bool:
         return True
     if any(word.startswith(_REFUSE_PREFIXES) for word in words):
         return True
+    if any(word.startswith(_ILL) and not word.startswith(_HOSPITAL) for word in words):
+        return True
+    if _asks_a_price(text, words):
+        return True
     phrases = [p for p in _REFUSE_PHRASES if p in text]
     if phrases == ["saglik"] and any(place in text for place in _TRAVEL_TO_HEALTH):
         return False
     return bool(phrases)
+
+
+def refuses_in_context(question: str, earlier_user_messages: Sequence[str]) -> bool:
+    """R-06 for this question, or for a short follow-up to a question it refused."""
+    if refuses(question):
+        return True
+    if not earlier_user_messages or not refuses(earlier_user_messages[-1]):
+        return False
+    text = f"{normalize_tr(question)} "
+    return len(text.split()) <= 8 and any(cue in text for cue in _FOLLOW_UP)
+
+
+def names_a_price(text: str) -> bool:
+    """Does an answer state an amount of money? A model answer that does is not shown (R-06)."""
+    return bool(_PRICE.search(text))
 
 
 def functional_needs(raw: Iterable[Any]) -> list[str]:

@@ -15,7 +15,15 @@ const STATUS_TR = {
 };
 const KIND_TR = {
   metro_equipment: 'Metro ekipmanı', metro_status: 'Metro hattı', arrival: 'varış', traffic: 'trafik', air: 'hava kalitesi',
-  parking: 'otopark', alternative: 'adımsız alternatif',
+  parking: 'otopark', alternative: 'adımsız alternatif', equipment_fault: 'ekipman arızası', long_outage: 'uzun süren arıza',
+  hub_faults: 'aktarma merkezinde arızalar', source_stale: 'bayat kaynak', parking_full: 'otopark doluluğu',
+  air_quality: 'hava kalitesi', bus_bunching: 'otobüs yığılması',
+};
+/* Settled: nothing left to decide. A deferred card is not settled: it can still be decided. */
+const SETTLED = ['approved', 'rejected', 'closed_by_reflex'];
+const STEP_TR = {
+  signal_received: 'sinyal', routed: 'yönlendirme', reflex_closed: 'refleks', reflex_failed: 'refleks çalışamadı',
+  arena_drafted: 'Arena kartı', approval: 'karar', rule_adopted: 'kural benimsendi', rule_revoked: 'kural geri alındı',
 };
 const STANCE_TR = { support: 'destekliyor', oppose: 'karşı çıkıyor', conditional: 'şartlı destekliyor' };
 const STANCE_ICON = { support: 'circle-check', oppose: 'alert-triangle', conditional: 'clock-question' };
@@ -45,11 +53,17 @@ function statsStrip(stats) {
   const latency = seconds(stats.citizen_update_latency_s);
   const rate = Number.isFinite(stats.approval_rate) ? { text: `%${num(stats.approval_rate * 100, 0)}`, isWord: false }
     : { text: 'henüz yok', isWord: true };
+  const stamp = stats.rubber_stamp_warning
+    ? `<li class="stat"><span class="tag is-warn">${icon('alert-triangle')}göstermelik onay uyarısı</span>`
+      + '<span class="stat-label">son kararların neredeyse hepsi onay: kanıt gerçekten okunuyor mu?</span></li>'
+    : '';
   return tile(int(stats.reflex_closed_today), 'bugün refleksle kapanan', 'bolt')
     + tile(int(stats.awaiting_approval), 'onay bekleyen', 'clock-pause')
+    + tile(int(stats.deferred), 'ertelenen (karar bekliyor)', 'clock-question')
     + tile(median.text, 'medyan karar süresi', 'gauge', median.isWord)
-    + tile(latency.text, 'vatandaşa yansıma süresi', 'trending-up', latency.isWord)
-    + tile(rate.text, 'onay oranı', 'circle-check', rate.isWord);
+    + tile(latency.text, 'vatandaş sayfasına yansıma süresi', 'trending-up', latency.isWord)
+    + tile(rate.text, 'onay oranı', 'circle-check', rate.isWord)
+    + stamp;
 }
 
 /* ---- queue ------------------------------------------------------------------------------- */
@@ -73,7 +87,7 @@ function queueLists(items, currentId) {
     reflex: reflex.length ? reflex.map((i) => queueItem(i, i.signal_id === currentId)).join('') : '',
     arenaCount: arena.length,
     reflexCount: reflex.length,
-    awaiting: arena.filter((i) => i.status === 'awaiting_approval').length,
+    awaiting: arena.filter((i) => i.status === 'awaiting_approval' || i.status === 'deferred').length,
   };
 }
 
@@ -108,7 +122,7 @@ function decisionCard(d, options) {
   const warnS = (options && options.freshnessWarnS) || 900;
   const s = d.signal || {};
   const sev = SEVERITY_TR[s.severity] ? s.severity : 'info';
-  const done = ['approved', 'rejected', 'deferred'].includes(s.status);
+  const done = SETTLED.includes(s.status);
   const conf = d.confidence || {};
   const level = LEVEL_TR[conf.level] ? conf.level : 'low';
   const action = d.proposed_action || {};
@@ -154,7 +168,8 @@ ${d.dissent_summary ? `<div class="decision-part"><div class="callout callout-wa
     <span class="field-hint" id="reason-hint">Ret ve erteleme için zorunlu, en fazla 280 karakter. Kişi adı yazmayın.</span>
     <span class="field-error" id="reason-error" hidden>Ret ve erteleme için gerekçe yazın.</span></div>
   <div class="field" id="edit-field" hidden><label for="decision-edit">Düzenlenmiş metin</label>
-    <textarea id="decision-edit" rows="4">${esc(action.text || '')}</textarea></div>
+    <textarea id="decision-edit" rows="4" maxlength="600" aria-describedby="edit-hint">${esc(action.text || '')}</textarea>
+    <span class="field-hint" id="edit-hint">En fazla 600 karakter.</span></div>
   <div class="btn-row">
     <button type="button" class="btn btn-primary" data-act="approve" aria-disabled="true" aria-describedby="evidence-gate">${icon('circle-check')}Onayla</button>
     <button type="button" class="btn" data-act="edit">Düzenle</button>
@@ -180,7 +195,7 @@ function traceList(trace) {
   const steps = trace.steps || [];
   return `<div class="decision-head"><h4>Adımlar (${steps.length})</h4>${hashBadge(trace.hash_ok === true)}</div>`
     + (steps.length ? `<ol class="trace">${steps.map((st) => `<li class="trace-step"><span class="trace-at">${dateTime(st.at)}</span>`
-      + `<span><span class="trace-actor">${esc(st.actor)}</span> <span class="trace-kind">${esc(st.kind)}</span></span>`
+      + `<span><span class="trace-actor">${esc(st.actor)}</span> <span class="trace-kind">${esc(word(STEP_TR, st.kind))}</span></span>`
       + `<span>${esc(st.detail || '')}</span></li>`).join('')}</ol>` : '<p class="section-note">Defterde bu sinyal için kayıt yok.</p>');
 }
 
@@ -207,5 +222,5 @@ function draftItem(d) {
 }
 
 export {
-  SEVERITY_TR, STATUS_TR, STANCE_TR, LEVEL_TR, ACTION_TR, statsStrip, queueItem, queueLists, decisionCard, traceList, verifyBadge, draftItem,
+  SETTLED, SEVERITY_TR, STATUS_TR, STANCE_TR, LEVEL_TR, ACTION_TR, statsStrip, queueItem, queueLists, decisionCard, traceList, verifyBadge, draftItem,
 };

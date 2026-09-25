@@ -30,6 +30,7 @@ the reasoning stays readable.
 | [22](#22-metro-equipment-status-joins-the-facade-and-the-size-baseline-is-raised-for-it) | Metro equipment status joins the facade, and the size baseline is raised for it | Accepted, temporary; needs the owner's review |
 | [23](#23-the-product-app-is-a-composition-root-that-may-import-the-agent) | The product app is a composition root that may import the agent | Accepted |
 | [24](#24-the-console-feeds-nexus_core-from-the-facade-and-the-size-baseline-is-raised-once-more) | The console feeds `nexus_core` from the facade, and the size baseline is raised once more | Accepted, temporary; needs the owner's review |
+| [25](#25-the-operator-console-is-shut-without-a-key-and-the-arena-spends-its-own-ceiling) | The operator console is shut without a key, and the Arena spends its own ceiling | Accepted; the ceilings and the key need the owner |
 
 ---
 
@@ -1117,3 +1118,44 @@ lived in `ibb_mcp.accessibility`, which the facade did not expose.
   values.
 - Until the owner records the Metro equipment answers (`scripts/capture_metro_equipment.py --live`), the
   console's Metro signals exist only live, and the replay button answers 409.
+
+---
+
+## 25. The operator console is shut without a key, and the Arena spends its own ceiling
+
+**Date:** 2026-09-25 · **Status:** Accepted; the Arena's ceiling and the console key need the owner
+
+### Context
+
+The integration review of `gun1/entegrasyon` found that `/api/console/*` had no door: anyone reaching the
+port could approve a card whose text the citizen page then shows as "Simüle operatör onayladı", or edit
+600 characters into it. Safe only while the app listens on 127.0.0.1, and not even then against a page that
+rebinds its own name to 127.0.0.1. It also found that the Arena's model seats and the citizens' chat spent
+one daily ceiling, checked once before three calls, so a burst of signals could leave the chat without its
+model for the day, and that concurrent chat turns could each pass the ceiling check before any of them
+recorded its calls.
+
+### Decision
+
+- `nabiz.console.access`: with `NABIZ_CONSOLE_TOKEN` set, `/console` and `/api/console/*` need the key (an
+  `X-Nabiz-Operator` header, or the `HttpOnly`, `SameSite=Strict` cookie the sign-in form sets, holding an
+  HMAC of the key). Without it they answer only while the app is bound to loopback and the `Host` header
+  names this machine; bound elsewhere without a key they answer 503. The check runs on the normalised path,
+  so the static files cannot serve the page around it.
+- The Arena gets its own `SpendGuard` (`BudgetConfig.for_arena`, its own file), and each seat reserves its
+  call before making it. Chat turns reserve their worst case (six calls) under a lock, at most three model
+  turns run at once, and one client address gets ten turns a minute.
+- A queue read waits at most eight seconds for the sources and the Arena, then answers with what is sealed.
+- This narrows #24: only an approved step-free alternative comes back at the next snapshot (for its
+  binding check). Any other approval published a one-off text, and its outage or alert is asked about
+  again after a day, not at every read. A deferred card stays in the queue and can still be decided.
+
+### Consequences
+
+- A deploy without `NABIZ_CONSOLE_TOKEN` has a citizen face and a shut console. That is the intended failure.
+- The Arena's defaults (0.25 USD, 30 calls a day) and the chat's ten turns a minute are placeholders, not
+  measured; the owner sets them. The turn limit keys on the client address the server sees; behind a proxy
+  that is the proxy's, so it then acts as one shared limit.
+- No fence, baseline or budget was loosened for this. `nabiz/agent/agent.py` shrank below its baseline by
+  moving the deterministic templates to `nabiz/agent/templates.py`.
+

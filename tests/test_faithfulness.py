@@ -20,8 +20,7 @@ import respx
 
 from ibb_mcp.models import Provenance, ToolResult
 from ibb_mcp.tools import Nabiz
-from nabiz.agent import LlmConfig, NabizAgent, build_tool_schemas, check_faithfulness, detect_language
-from nabiz.agent import agent as agent_module
+from nabiz.agent import LlmConfig, NabizAgent, build_tool_schemas, check_faithfulness, detect_language, templates
 from nabiz.agent.llm import LlmUnavailable, available, detect_provider, require
 from nabiz.agent.schemas import NOT_OFFERED, TOOL_DESCRIPTIONS
 
@@ -322,7 +321,9 @@ def test_tool_schema_types_and_required_fields_come_from_the_signature():
     [
         ("Taksim'de hangi otoparkta yer var?", "ispark_find_parking"),
         ("M4'te arıza var mı?", "metro_status"),
-        ("Kartal istasyonunda asansör var mı?", "metro_station_info"),
+        ("Kartal istasyonunda asansör var mı?", "metro_equipment_status"),
+        ("Kartal istasyonunda asansör çalışıyor mu?", "metro_equipment_status"),
+        ("Kartal istasyonunda WC var mı?", "metro_station_info"),
         ("Beşiktaş'ta hava kalitesi nasıl?", "air_quality_now"),
         ("Beşiktaş'ta koşu için hava ne zaman uygun?", "air_quality_forecast"),
         ("Şu an trafik nasıl?", "traffic_index"),
@@ -356,7 +357,7 @@ def test_detect_language():
 
 
 async def test_deterministic_mode_answers_and_cites_without_a_model(agent: NabizAgent):
-    answer = await agent.ask("Kartal istasyonunda asansör var mı?")
+    answer = await agent.ask("Kartal istasyonunda WC var mı?")
     assert answer.mode == "deterministic"
     assert answer.tool_names == ["metro_station_info"]
     assert "asansör" in answer.text
@@ -592,7 +593,37 @@ def test_the_attribution_line_never_counts_as_an_invented_number():
 async def test_a_failed_check_is_warned_about_in_deterministic_mode_too(agent: NabizAgent, monkeypatch):
     """A hand-written template can grow a numeric constant. When it does, the failure must
     surface as a warning here exactly as it does on the model path."""
-    monkeypatch.setitem(agent_module._RENDERERS, "traffic_index", lambda data: ["Sabit 777 sayısı."])
+    monkeypatch.setitem(templates.RENDERERS, "traffic_index", lambda data: ["Sabit 777 sayısı."])
     answer = await agent.ask("Şu an trafik nasıl?")
     assert answer.faithfulness.passed is False
     assert any("sadakat" in warning for warning in answer.warnings)
+
+
+async def test_a_lift_question_reads_the_fault_record_and_never_says_it_works(agent: NabizAgent):
+    """The home page's lift card reads İBB's fault record; the chat must read the same one."""
+    answer = await agent.ask("Kartal'da asansör var mı?")
+    assert answer.tool_names == ["metro_equipment_status"]
+    assert "çalışıyor" not in answer.text and "asansör: " not in answer.text
+    assert answer.faithfulness.passed, answer.faithfulness.explanation
+
+
+def test_an_arrival_is_one_whole_minute_in_turkish_words():
+    from nabiz.agent.minutes import shown_minutes, with_shown_minutes
+
+    assert shown_minutes(7.4, "stop_sequence", stale=False) == (7, "7 dk")
+    assert shown_minutes(7.9, "distance", stale=False) == (7, "7 dk"), "rounded down: missing the bus costs more"
+    assert shown_minutes(0.4, "distance", stale=False) == (1, "1 dk")
+    assert shown_minutes(12.0, "schedule", stale=False) == (None, "tarifeye göre")
+    assert shown_minutes(5.0, "stop_sequence", stale=True) == (None, "tarifeye göre")
+    assert shown_minutes(None, None, stale=False) == (None, "doğrulanamadı")
+    data = {"line_code": "500T", "stop": {"name": "Şifa"}, "arrivals": [
+        {"eta_minutes": 7.4, "stops_away": 3, "method": "stop_sequence", "confidence": "medium"},
+        {"eta_minutes": 12.0, "method": "schedule", "confidence": "low"},
+        {"eta_minutes": 0.4, "method": "distance", "confidence": "low"}]}  # fmt: skip
+    text = "\n".join(templates.RENDERERS["iett_next_arrivals"](with_shown_minutes(data, stale=False)))
+    assert "• 7 dk · 3 durak uzakta · durak sırasına göre · güven: orta" in text
+    assert "• tarifeye göre · güven: düşük" in text and "• 1 dk · mesafeye göre · güven: düşük" in text
+    for leak in ("7,4", "0,4", "12 dakika", "stop_sequence", "medium", "yöntem:"):
+        assert leak not in text, leak
+    check = check_faithfulness(text, [{"data": with_shown_minutes(data, stale=False)}])
+    assert check.passed, check.explanation

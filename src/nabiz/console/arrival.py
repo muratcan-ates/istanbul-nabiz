@@ -22,17 +22,15 @@ estimate and is still to be measured.
 from __future__ import annotations
 
 import datetime as dt
-import math
 from dataclasses import dataclass
 from typing import Any
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from ibb_mcp.models import Provenance, utcnow
+from nabiz.agent.minutes import BY_TIMETABLE, UNVERIFIED, shown_minutes
 from nabiz.console.cards import Mode, env_seconds, mode_for, provenance_view, unknown_provenance
 
 ARRIVAL_STALE_DEFAULT_S = 180
-UNVERIFIED = "doğrulanamadı"
-BY_TIMETABLE = "tarifeye göre"
 
 
 @dataclass(frozen=True)
@@ -54,13 +52,11 @@ def single_minute(
     stale_after_s: float,
     offline: bool,
 ) -> ArrivalDisplay:
-    """Apply the rule above to one estimate."""
-    if eta_minutes is None or not method:
-        return ArrivalDisplay(None, UNVERIFIED, "unknown")
-    if method == "schedule" or age_s is None or age_s > stale_after_s:
-        return ArrivalDisplay(None, BY_TIMETABLE, "schedule")
-    minutes = max(1, math.floor(eta_minutes))
-    return ArrivalDisplay(minutes, f"{minutes} dk", mode_for(offline))
+    """Apply the rule above to one estimate (the rule itself is :func:`nabiz.agent.minutes.shown_minutes`)."""
+    minutes, text = shown_minutes(eta_minutes, method, stale=age_s is None or age_s > stale_after_s)
+    if text == UNVERIFIED:
+        return ArrivalDisplay(None, text, "unknown")
+    return ArrivalDisplay(minutes, text, "schedule" if minutes is None else mode_for(offline))
 
 
 def _as_datetime(value: Any) -> dt.datetime | None:

@@ -42,7 +42,9 @@ from ibb_mcp.text import normalize_tr
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
+from nabiz.agent.minutes import with_shown_minutes
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS, build_tool_schemas
+from nabiz.agent.templates import ATTRIBUTION_LINE, DETERMINISTIC_NOTE, NEED_PLACE, NO_DATA, OUT_OF_SCOPE, render_answer
 
 log = logging.getLogger("nabiz.agent")
 
@@ -97,7 +99,9 @@ def _payload(result: ToolResult) -> dict[str, Any]:
     """
     provenance = result.provenance
     return {
-        "data": result.data,
+        # An arrival carries the single-minute text the card shows ("7 dk"), so the model and
+        # the templates say what the card says (nabiz.agent.minutes).
+        "data": with_shown_minutes(result.data, stale=provenance.cached),
         "provenance": {
             "source": provenance.source,
             "source_url": provenance.source_url,
@@ -207,11 +211,41 @@ def _is_line_or_filler(word: str) -> bool:
     )
 
 
-def _num(value: Any, digits: int = 1) -> str:
-    """Format a number the Turkish way. Only ever called on values from a tool payload."""
-    if isinstance(value, float) and not value.is_integer():
-        return f"{value:.{digits}f}".replace(".", ",")
-    return str(int(value)) if isinstance(value, float) else str(value)
+def _bus_line(question: str) -> str | None:
+    match = _BUS_LINE_RE.search(question.upper())
+    if match and not _METRO_LINE_RE.fullmatch(match.group(1)):
+        return match.group(1)
+    numeric = _BUS_NUMBER_RE.search(question)
+    return numeric.group(1) if numeric else None
+
+
+def _stop_name(question: str) -> str | None:
+    """The stop named before "durağı", with the line that precedes it stripped off.
+
+    "500T otobüsü 4. Levent durağı" names *one* stop. The lazy capture reaches back to
+    the start of the sentence, so without this the line code and the word introducing
+    it are handed to the stop search, which then finds nothing at all — the question
+    fails for a reason that has nothing to do with the data.
+    """
+    match = _STOP_RE.search(question)
+    if not match:
+        return None
+    words = match.group(1).strip().split()
+    while words and _is_line_or_filler(words[0]):
+        words.pop(0)
+    return " ".join(words[-3:]) if words else None
+
+
+#: Words that ask about a station's lifts or escalators: İBB's fault record answers those, not
+#: the station list (whose lift count says nothing about whether one is out of service).
+_EQUIPMENT_WORDS = ("asansor", "yuruyen merdiven", "yuruyen bant", "lift", "elevator", "escalator")
+
+
+def _station_route(text: str, place: str) -> tuple[str, dict[str, Any]]:
+    """A station question: its fault record when it names a lift or an escalator, else its facilities."""
+    if any(word in text for word in _EQUIPMENT_WORDS):
+        return "metro_equipment_status", {"station": place}
+    return "metro_station_info", {"name": place}
 
 
 class NabizAgent:
@@ -240,10 +274,19 @@ class NabizAgent:
         await self.nabiz.aclose()
 
     # -- public entry point -------------------------------------------------------
-    async def ask(self, question: str, lang: str | None = None, max_steps: int = 4) -> AgentAnswer:
-        """Answer one question, then verify every number in the answer against the tools."""
+    async def ask(
+        self, question: str, lang: str | None = None, max_steps: int = 4, *, context: list[dict[str, str]] | None = None
+    ) -> AgentAnswer:
+        """Answer one question, then verify every number in the answer against the tools.
+
+        ``context`` is earlier conversation as its own ``user`` messages, before the question:
+        never in the system prompt, where a visitor's text would speak with the system's voice.
+        When the model fails mid-run, the rule answer carries the tokens spent before it
+        failed, so a spend ceiling can count them.
+        """
         lang = lang or detect_language(question)
         warnings: list[str] = []
+        spent: dict[str, Any] = {}
         # The question is not an attribute of this span and never will be: it is the
         # user's own words, and a span is shipped to a cloud log (docs/NABIZ.md §1.3).
         with span(
@@ -256,22 +299,25 @@ class NabizAgent:
         ) as turn:
             if llm.available(self.config):
                 try:
-                    return _describe_turn(turn, await self._ask_model(question, lang, max_steps))
+                    return _describe_turn(turn, await self._ask_model(question, lang, max_steps, spent, context or []))
                 except llm.LlmError as exc:
-                    log.warning("model unavailable mid-run, falling back to deterministic mode: %r", exc)
-                    warnings.append(f"Model çağrısı başarısız ({exc}); deterministic moda düşüldü.")
+                    # The kind only: an SDK's message can quote a response body or a masked key.
+                    log.warning("model unavailable mid-run, falling back to deterministic mode: %s", type(exc).__name__)
+                    warnings.append(f"Model çağrısı başarısız ({type(exc).__name__}); deterministic moda düşüldü.")
             answer = await self._ask_deterministic(question, lang)
-            answer.warnings = warnings + answer.warnings
+            answer.warnings, answer.usage = warnings + answer.warnings, spent
             return _describe_turn(turn, answer)
 
     # -- model path ---------------------------------------------------------------
-    async def _ask_model(self, question: str, lang: str, max_steps: int) -> AgentAnswer:
+    async def _ask_model(
+        self, question: str, lang: str, max_steps: int, usage: dict[str, Any], context: list[dict[str, str]]
+    ) -> AgentAnswer:
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": self.system_prompt},
+            *context,
             {"role": "user", "content": question},
         ]
         calls: list[ToolCallRecord] = []
-        usage: dict[str, Any] = {}
         text, model_name, steps = "", None, 0
         #: True while the model is still mid-chain. A reply that asks for tools may also
         #: carry prose ("Trafiğe bakıyorum…") — that prose was written *before* the tool
@@ -281,8 +327,7 @@ class NabizAgent:
         for _ in range(max(1, max_steps)):
             steps += 1
             with span("nabiz.llm.chat", **{"nabiz.agent.step": steps}):
-                response = await llm.chat(self.config, messages, tools=self.schemas)
-            _merge_usage(usage, response.get("usage"))
+                response = await _chat(self.config, usage, messages, tools=self.schemas)
             model_name = response.get("model") or model_name
             text = (response.get("content") or "").strip()
             requested = response.get("tool_calls") or []
@@ -308,9 +353,8 @@ class NabizAgent:
         if pending_tools or not text:
             # Step budget spent while still calling tools: ask once more for prose only.
             with span("nabiz.llm.chat", **{"nabiz.agent.step": steps + 1, "nabiz.agent.forced": True}):
-                response = await llm.chat(self.config, [*messages, {"role": "user", "content": _FORCE_PROSE[lang]}])
+                response = await _chat(self.config, usage, [*messages, {"role": "user", "content": _FORCE_PROSE[lang]}])
             steps += 1
-            _merge_usage(usage, response.get("usage"))
             text = (response.get("content") or "").strip() or text
 
         evidence = [call.payload for call in calls if call.payload]
@@ -328,9 +372,8 @@ class NabizAgent:
                 {"role": "user", "content": report.repair_instruction(lang)},
             ]
             with span("nabiz.llm.chat", **{"nabiz.agent.step": steps + 1, "nabiz.agent.repair": True}):
-                response = await llm.chat(self.config, messages)
+                response = await _chat(self.config, usage, messages)
             steps += 1
-            _merge_usage(usage, response.get("usage"))
             retry = (response.get("content") or "").strip()
             if retry:
                 repaired, text = True, retry
@@ -415,12 +458,12 @@ class NabizAgent:
                 return "", _NEEDS_PLACE_REASON
             return ("air_quality_forecast" if _has(text, "window") else "air_quality_now"), {"place": place}
         if _has(text, "station") and place and not _has(text, "stop"):
-            return "metro_station_info", {"name": place}
+            return _station_route(text, place)
         # A bus line code outranks the word "metro": "500T 4. Levent metroya ne zaman
         # gelir" is a bus question whose destination happens to be a metro station.
-        line_code = self._bus_line(question)
+        line_code = _bus_line(question)
         if line_code and (_has(text, "arrival") or _has(text, "stop")):
-            stop = self._stop_name(question) or place or ""
+            stop = _stop_name(question) or place or ""
             if stop:
                 return "iett_next_arrivals", {"line_code": line_code, "stop": stop}
         if _has(text, "metro") or _METRO_LINE_RE.search(question):
@@ -433,7 +476,7 @@ class NabizAgent:
         if line_code:
             return "iett_line_buses", {"line_code": line_code}
         if _has(text, "stop"):
-            return "iett_stops_search", {"query": self._stop_name(question) or place or question}
+            return "iett_stops_search", {"query": _stop_name(question) or place or question}
         if _has(text, "traffic"):
             return "traffic_index", {"window": "24h" if "dun" in text or "yesterday" in text else "now"}
         if _has(text, "fresh"):
@@ -462,31 +505,6 @@ class NabizAgent:
                 best = (len(needle), place.name)
         return best[1] if best else None
 
-    @staticmethod
-    def _bus_line(question: str) -> str | None:
-        match = _BUS_LINE_RE.search(question.upper())
-        if match and not _METRO_LINE_RE.fullmatch(match.group(1)):
-            return match.group(1)
-        numeric = _BUS_NUMBER_RE.search(question)
-        return numeric.group(1) if numeric else None
-
-    @staticmethod
-    def _stop_name(question: str) -> str | None:
-        """The stop named before "durağı", with the line that precedes it stripped off.
-
-        "500T otobüsü 4. Levent durağı" names *one* stop. The lazy capture reaches back to
-        the start of the sentence, so without this the line code and the word introducing
-        it are handed to the stop search, which then finds nothing at all — the question
-        fails for a reason that has nothing to do with the data.
-        """
-        match = _STOP_RE.search(question)
-        if not match:
-            return None
-        words = match.group(1).strip().split()
-        while words and _is_line_or_filler(words[0]):
-            words.pop(0)
-        return " ".join(words[-3:]) if words else None
-
     async def _ask_deterministic(self, question: str, lang: str) -> AgentAnswer:
         """Route to one tool and render a template. No model, no free-form generation."""
         tool, arguments = self.route(question)
@@ -494,24 +512,24 @@ class NabizAgent:
             # Routed nowhere on purpose: either the question needs a place and named none
             # (guessing one would answer about a district the user never mentioned), or no
             # tool covers it at all.
-            message = (_OUT_OF_SCOPE if arguments.get("reason") == "scope" else _NEED_PLACE)[lang]
+            message = (OUT_OF_SCOPE if arguments.get("reason") == "scope" else NEED_PLACE)[lang]
             return AgentAnswer(
                 text=message,
                 faithfulness=check_faithfulness(message, None, question=question),
                 mode="deterministic",
                 lang=lang,
-                warnings=[_DETERMINISTIC_NOTE[lang]],
+                warnings=[DETERMINISTIC_NOTE[lang]],
             )
         with span("nabiz.agent.deterministic", **{"nabiz.tool.name": tool}):
             record = await self._call_tool(tool, arguments)
         if record.ok and record.payload is not None:
-            text = _render(tool, record.payload, lang)
+            text = render_answer(tool, record.payload, lang)
         else:
-            text = f"{record.error}\n\n{ATTRIBUTION_LINE}" if record.error else _NO_DATA[lang]
+            text = f"{record.error}\n\n{ATTRIBUTION_LINE}" if record.error else NO_DATA[lang]
         # The error is relayed verbatim, so its own numbers ("bu durağa uğrayan hatlar:
         # 153, 154 …") came from the tool and are not this agent's invention.
         report = check_faithfulness(text, [record.payload], question=question, extra_sources=record.error)
-        warnings = [_DETERMINISTIC_NOTE[lang]]
+        warnings = [DETERMINISTIC_NOTE[lang]]
         if not report.passed:
             # A template is hand-written Turkish, so a numeric constant can creep into one
             # and then no number in it came from the payload. The model path warns when the
@@ -569,6 +587,15 @@ def _assistant_message(content: str | None, calls: list[dict[str, Any]]) -> dict
     }
 
 
+async def _chat(config: llm.LlmConfig, usage: dict[str, Any], messages: list[dict[str, Any]], **kwargs: Any) -> dict[str, Any]:
+    """One model call: counted in ``usage["model_calls"]`` before it is made (a failed call is
+    still a paid attempt) and its tokens added after."""
+    usage["model_calls"] = usage.get("model_calls", 0) + 1
+    response = await llm.chat(config, messages, **kwargs)
+    _merge_usage(usage, response.get("usage"))
+    return response
+
+
 def _merge_usage(total: dict[str, Any], usage: Any) -> None:
     for key, value in (usage or {}).items():
         if isinstance(value, (int, float)):
@@ -602,32 +629,6 @@ def _citations(calls: list[ToolCallRecord]) -> list[dict[str, Any]]:
     return out
 
 
-# --------------------------------------------------------------------------------------
-# Deterministic templates. Turkish only, by design: this is the no-quota fallback for a
-# Turkish city demo, and a hand-written English branch for every phrase would double the
-# surface without adding a single fact. An English question gets one English line saying
-# the templated fallback answers in Turkish, so the language rule is broken openly rather
-# than silently. Every number printed below is read straight out of the tool payload —
-# nothing is derived — so a rendered answer passes the same faithfulness check the model's
-# prose has to pass.
-# --------------------------------------------------------------------------------------
-ATTRIBUTION_LINE = "Kaynak: İBB Açık Veri (CC BY 4.0) · resmî bir servis değildir."
-_EN_PREFACE = "(No language model is configured, so this fallback answers in Turkish.)"
-_DETERMINISTIC_NOTE = {
-    "tr": "LLM yapılandırılmadığı için deterministic mod kullanıldı: soru anahtar kelimeyle tek bir araca yönlendirildi.",
-    "en": "No LLM configured, so deterministic mode answered: the question was keyword-routed to a single tool.",
-}
-_NO_DATA = {"tr": "Bu soruya verecek veri bulunamadı.", "en": "No data available for this question."}
-_NEED_PLACE = {
-    "tr": "Hangi semt ya da ilçe için bakayım? (örnek: Taksim, Kadıköy, Beşiktaş)",
-    "en": "Which district should I look at? (for example Taksim, Kadıköy, Beşiktaş)",
-}
-_OUT_OF_SCOPE = {
-    "tr": "Bu soruyu elimdeki verilerle yanıtlayamıyorum. Otopark, otobüs, metro, trafik, "
-    "hava kalitesi ve veri tazeliği sorabilirsin.",
-    "en": "I cannot answer that from the data I have. Ask about parking, buses, metro, "
-    "traffic, air quality or data freshness.",
-}
 #: Why :meth:`NabizAgent.route` declined to pick a tool. Carried in the (unused) argument
 #: slot so the caller can say which of the two refusals it is without a second signature.
 _NEEDS_PLACE_REASON = {"reason": "place"}
@@ -636,184 +637,3 @@ _FORCE_PROSE = {
     "tr": "Adım bütçesi doldu. Elindeki araç sonuçlarıyla, yeni araç çağırmadan cevabı şimdi yaz.",
     "en": "The step budget is spent. Write the answer now from the tool results you already have.",
 }
-_YES_NO = {True: "var", False: "yok"}
-
-
-def _r_parking(d: dict[str, Any]) -> list[str]:
-    parks = d.get("parks") or []
-    if not parks:
-        return [f"{d.get('near')} çevresinde boş yeri olan otopark bulunamadı."]
-    lines = [f"{d.get('near')} çevresinde {_num(d.get('radius_km'))} km içinde {d.get('count')} otopark bulundu:"]
-    for park in parks[:3]:
-        bits = [str(park.get("name", ""))]
-        if park.get("empty") is not None:
-            bits.append(f"{park['empty']} boş yer")
-        if park.get("capacity"):
-            bits.append(f"{park['capacity']} kapasite")
-        if park.get("distance_km") is not None:
-            bits.append(f"{_num(park['distance_km'])} km")
-        if park.get("tariff"):
-            bits.append(str(park["tariff"]))
-        lines.append("• " + " · ".join(bits))
-    return lines
-
-
-def _r_arrivals(d: dict[str, Any]) -> list[str]:
-    stop = (d.get("stop") or {}).get("name") or (d.get("stop") or {}).get("stop_code", "")
-    line_code = d.get("line_code", "")
-    arrivals = d.get("arrivals") or []
-    if not arrivals:
-        return [f"{line_code} hattında {stop} durağına yaklaşan araç görünmüyor."]
-    lines = [f"{line_code} hattının {stop} durağına tahmini varışı (TAHMİNDİR, resmî İETT bilgisi değildir):"]
-    for arrival in arrivals:
-        bits = []
-        if arrival.get("eta_minutes") is not None:
-            bits.append(f"~{_num(arrival['eta_minutes'])} dakika")
-        if arrival.get("stops_away") is not None:
-            bits.append(f"{arrival['stops_away']} durak uzakta")
-        bits += [f"yöntem: {arrival.get('method')}", f"güven: {arrival.get('confidence')}"]
-        lines.append("• " + " · ".join(bits))
-    return lines
-
-
-def _r_metro_status(d: dict[str, Any]) -> list[str]:
-    statuses = d.get("lines") or []
-    if not statuses:
-        return ["Metro hatlarında bildirilmiş bir arıza veya çalışma duyurusu yok."]
-    return [f"{d.get('count')} hat için duyuru var:"] + [
-        f"• {status.get('line_name') or ''}: {status.get('description') or ''}".strip() for status in statuses[:5]
-    ]
-
-
-def _r_station(d: dict[str, Any]) -> list[str]:
-    lines: list[str] = []
-    for station in (d.get("stations") or [])[:3]:
-        head = f"{station.get('name')} ({station.get('line_name')})"
-        if station.get("order") is not None:
-            head += f", hat sırası {station['order']}"
-        lines.append(head)
-        facts = []
-        if station.get("lifts") is not None:
-            facts.append(f"asansör: {station['lifts']}")
-        if station.get("escalators") is not None:
-            facts.append(f"yürüyen merdiven: {station['escalators']}")
-        for key, label in (("wc", "WC"), ("baby_room", "bebek bakım odası"), ("masjid", "mescit")):
-            if station.get(key) is not None:
-                facts.append(f"{label}: {_YES_NO[bool(station[key])]}")
-        if facts:
-            lines.append("• " + " · ".join(facts))
-    return lines
-
-
-def _r_air_now(d: dict[str, Any]) -> list[str]:
-    station, reading = d.get("station") or {}, d.get("reading") or {}
-    lines = [f"{d.get('place')} için en yakın ölçüm istasyonu: {station.get('name')}."]
-    facts = []
-    if reading.get("aqi_index") is not None:
-        band = (d.get("band") or {}).get("label")
-        facts.append(f"AQI {_num(reading['aqi_index'])}" + (f" ({band})" if band else ""))
-    for key in ("pm10", "so2", "o3", "no2"):
-        if reading.get(key) is not None:
-            facts.append(f"{key.upper()} {_num(reading[key])} µg/m³")
-    if reading.get("dominant"):
-        facts.append(f"baskın kirletici: {reading['dominant']}")
-    if facts:
-        lines.append("• " + " · ".join(facts))
-    lines.append(
-        "Sağlık tavsiyesi değildir; sağlık kararları için hekiminize ve resmî sağlık otoritelerine başvurun. "
-        "İBB API'sinde PM2.5 ölçümü yoktur."
-    )
-    return lines
-
-
-def _r_air_forecast(d: dict[str, Any]) -> list[str]:
-    if not d.get("available"):
-        return [f"{d.get('place')} için saatlik PM10 tahmini üretilemedi."]
-    station = (d.get("station") or {}).get("name")
-    lines = [f"{d.get('place')} · {station} istasyonu, {d.get('horizon_hours')} saatlik PM10 görünümü:"]
-    lines += [f"• {item.get('at')} — PM10 {_num(item.get('pm10'))} µg/m³" for item in (d.get("forecast") or [])[:6]]
-    if best := d.get("best_window"):
-        lines.append(f"En temiz saat: {best.get('at')} (PM10 {_num(best.get('pm10'))} µg/m³).")
-    lines.append("Sağlık tavsiyesi değildir.")
-    return lines
-
-
-def _r_traffic(d: dict[str, Any]) -> list[str]:
-    if d.get("index") is not None:
-        return [f"İstanbul trafik yoğunluk indeksi: {_num(d['index'])} ({d.get('description')})."]
-    lines = [str(d.get("description") or "")]
-    if d.get("now") is not None:
-        lines.append(f"Şu an: {_num(d['now'])}")
-    if d.get("same_hour_yesterday") is not None:
-        lines.append(f"Dün aynı saat: {_num(d['same_hour_yesterday'])}")
-    return lines
-
-
-def _r_line_buses(d: dict[str, Any]) -> list[str]:
-    directions = ", ".join(d.get("directions") or [])
-    head = f"{d.get('line_code')} hattında konum bildiren {d.get('count')} araç var"
-    return [
-        head + (f" (yönler: {directions})." if directions else "."),
-        "Araç plakası paylaşılmaz; araçlar kapı numarasıyla anılır.",
-    ]
-
-
-def _r_stops(d: dict[str, Any]) -> list[str]:
-    stops = d.get("stops") or []
-    if not stops:
-        return [f"'{d.get('query')}' için durak bulunamadı."]
-    return [f"'{d.get('query')}' için {d.get('count')} durak:"] + [
-        f"• {stop.get('name')} ({stop.get('stop_code')})" for stop in stops[:5]
-    ]
-
-
-def _r_places(d: dict[str, Any]) -> list[str]:
-    matches = d.get("matches") or []
-    if not matches:
-        return [f"'{d.get('query')}' için yer bulunamadı."]
-    return [f"• {m.get('label')} — {_num(m.get('lat'), 4)}, {_num(m.get('lon'), 4)}" for m in matches[:3]]
-
-
-def _r_freshness(d: dict[str, Any]) -> list[str]:
-    sources = d.get("sources") or {}
-    if not sources:
-        return ["Henüz hiçbir kaynak sorgulanmadı."]
-    lines = ["Kaynak tazeliği:"]
-    for name, entry in list(sources.items())[:8]:
-        age = entry.get("data_age_seconds", entry.get("age_seconds")) if isinstance(entry, dict) else None
-        detail = entry.get("detail") if isinstance(entry, dict) else entry
-        lines.append(f"• {name}: " + (f"veri {_num(age)} saniye önce ölçüldü" if age is not None else str(detail or "")))
-    return lines
-
-
-def _r_generic(d: dict[str, Any]) -> list[str]:
-    """Fallback: state availability and let the tool's own note carry the detail."""
-    if isinstance(d, dict) and d.get("available") is False:
-        return ["Bu bilgi için yeterli veri yok."]
-    return ["Araç sonucu aşağıdadır."]
-
-
-_RENDERERS = {
-    "ispark_find_parking": _r_parking,
-    "iett_next_arrivals": _r_arrivals,
-    "metro_status": _r_metro_status,
-    "metro_station_info": _r_station,
-    "air_quality_now": _r_air_now,
-    "air_quality_forecast": _r_air_forecast,
-    "traffic_index": _r_traffic,
-    "iett_line_buses": _r_line_buses,
-    "iett_stops_search": _r_stops,
-    "places_resolve": _r_places,
-    "city_freshness": _r_freshness,
-}
-
-
-def _render(tool: str, payload: dict[str, Any], lang: str) -> str:
-    """Turn one tool payload into a templated answer carrying its age and attribution."""
-    lines = [_EN_PREFACE] if lang == "en" else []
-    lines += _RENDERERS.get(tool, _r_generic)(payload.get("data") or {})
-    if payload.get("note"):
-        lines.append(str(payload["note"]))
-    lines.append(f"Verinin yaşı: {payload['provenance']['age']}.")
-    lines.append(ATTRIBUTION_LINE)
-    return "\n".join(line for line in lines if line)

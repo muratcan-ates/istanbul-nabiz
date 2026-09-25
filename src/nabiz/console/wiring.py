@@ -2,8 +2,11 @@
 
 :func:`wire_ports` is the one place the product app meets ``nexus_core``. It opens the
 ledger (``NEXUS_DB_PATH``, default ``data/nexus/nexus.db``, gitignored), loads every
-``missions/*.toml``, chooses the Arena's seats (the model when ``NABIZ_LLM_*`` configures one,
-the core's rule-based seats otherwise) and returns the two ports the routes call. It runs
+``missions/*.toml`` (``NEXUS_MISSIONS_DIR`` overrides the folder: an installed package has no
+repository around it), chooses the Arena's seats (the model when ``NABIZ_LLM_*`` configures one,
+the core's rule-based seats otherwise, on the Arena's own spend guard) and returns the two ports
+the routes call. No rule loaded is a refusal to start, not an engine that sends everything to a
+person and closes nothing. It runs
 inside the app's lifespan, after the shared facade exists, and only when the app is built with
 ``wire_nexus=True`` (``python -m nabiz.console`` does; the tests pass their own ports).
 
@@ -23,12 +26,12 @@ from ibb_mcp.sources.base import SourceContext
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import llm
 from nabiz.console.arena_seats import arena_port
-from nabiz.console.budget import SpendGuard
+from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import env_seconds
 from nabiz.console.nexus_port import DEFAULT_INGEST_EVERY_S, NexusConsole
 from nabiz.console.ports import Ports
 from nabiz.console.step_free import StepFreeService
-from nexus_core import Ledger, NexusEngine, load_missions
+from nexus_core import Ledger, Mission, NexusEngine, load_missions
 
 MISSIONS_DIR = REPO_ROOT / "missions"
 DEFAULT_LEDGER = REPO_ROOT / "data" / "nexus" / "nexus.db"
@@ -37,6 +40,19 @@ DEFAULT_LEDGER = REPO_ROOT / "data" / "nexus" / "nexus.db"
 def ledger_path(env: Mapping[str, str] | None = None) -> pathlib.Path:
     raw = (os.environ if env is None else env).get("NEXUS_DB_PATH", "").strip()
     return pathlib.Path(raw) if raw else DEFAULT_LEDGER
+
+
+def missions_dir(env: Mapping[str, str] | None = None) -> pathlib.Path:
+    raw = (os.environ if env is None else env).get("NEXUS_MISSIONS_DIR", "").strip()
+    return pathlib.Path(raw) if raw else MISSIONS_DIR
+
+
+def required_missions(directory: pathlib.Path) -> list[Mission]:
+    """The missions in ``directory``; none, or none with a rule, stops the app from starting."""
+    missions = load_missions(directory)
+    if not any(m.rules for m in missions):
+        raise RuntimeError(f"no mission rules in {directory.name!r}: set NEXUS_MISSIONS_DIR to the missions folder")
+    return missions
 
 
 class RecordedFacade:
@@ -61,7 +77,8 @@ class RecordedFacade:
 
 
 def build_engine(llm_config: llm.LlmConfig | None, guard: SpendGuard, *, path: pathlib.Path | None = None) -> NexusEngine:
-    return NexusEngine(Ledger(path or ledger_path()), load_missions(MISSIONS_DIR), arena=arena_port(llm_config, guard))
+    """The engine over the ledger and the missions; ``guard`` is the Arena's own, not the chat's."""
+    return NexusEngine(Ledger(path or ledger_path()), required_missions(missions_dir()), arena=arena_port(llm_config, guard))
 
 
 def wire_ports(
@@ -69,11 +86,15 @@ def wire_ports(
     settings: Settings,
     *,
     llm_config: llm.LlmConfig | None,
-    guard: SpendGuard,
+    guard: SpendGuard | None = None,
     engine: NexusEngine | None = None,
 ) -> tuple[Ports, Callable[[], Awaitable[None]]]:
-    """The bound ports and the coroutine function that releases what they opened."""
-    engine = engine or build_engine(llm_config, guard)
+    """The bound ports and the coroutine function that releases what they opened.
+
+    ``guard`` is the Arena's spend guard; by default its own (``BudgetConfig.for_arena``), so the
+    seats never spend the chat's ceiling.
+    """
+    engine = engine or build_engine(llm_config, guard or SpendGuard(BudgetConfig.for_arena()))
     recorded = RecordedFacade(nabiz, settings)
     console = NexusConsole(
         engine,

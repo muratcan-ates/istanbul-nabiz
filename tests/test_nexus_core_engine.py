@@ -14,7 +14,7 @@ from nexus_helpers import T0, Clock, approve, build_engine, elevator, escalator,
 from pydantic import ValidationError
 
 from nexus_core.arena import EvidenceItem, Opinion
-from nexus_core.decisions import Alternative, Approval, DecisionConflict
+from nexus_core.decisions import PROPOSAL_MAX, Alternative, Approval, DecisionConflict
 from nexus_core.engine import DecisionNotFound
 from nexus_core.ledger import EntryKind
 from nexus_core.signals import Signal
@@ -100,12 +100,27 @@ def test_a_second_ruling_is_a_conflict_but_a_deferral_can_be_decided(tmp_path: p
 
 
 def test_a_reflex_closed_signal_has_no_card_to_decide(tmp_path: pathlib.Path) -> None:
+    """It is settled, not missing: a ruling on it is the console's 409, and an unknown id its 404."""
     engine = build_engine(tmp_path, Clock())
     closed = engine.process(escalator()).signal_id
-    with pytest.raises(DecisionNotFound):
+    with pytest.raises(DecisionConflict):
         engine.decide(approve(closed))
     with pytest.raises(DecisionNotFound):
+        engine.decision(closed)
+    with pytest.raises(DecisionNotFound):
+        engine.decide(approve("sig-unknown"))
+    with pytest.raises(DecisionNotFound):
         engine.decision("sig-unknown")
+
+
+def test_a_proposal_longer_than_a_card_is_clipped_not_a_crash(tmp_path: pathlib.Path) -> None:
+    engine = build_engine(tmp_path, Clock())
+    listing = "; ".join(f"M{i} Kadıköy-Tavşantepe hattı ASANSÖR: Arızalı" for i in range(20))
+    hub = make_signal("hub_faults", entity="metro-hub:yenikapi", hub="Yenikapı", fault_count=20, equipment_list=listing)
+    result = engine.process(hub)
+    assert result.status == "awaiting_approval"
+    text = result.decision.proposed_action.text
+    assert len(text) == PROPOSAL_MAX and text.endswith("…")
 
 
 # ---------------------------------------------------------------------------- the model cannot approve

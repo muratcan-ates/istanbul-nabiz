@@ -35,6 +35,8 @@ ApprovalAction = Literal["approve", "edit", "reject", "defer"]
 #: Settled: no further ruling. A deferred card goes back to the queue and can still be decided.
 FINAL_STATUSES = frozenset({"closed_by_reflex", "approved", "rejected"})
 REASON_MAX = 280
+#: The longest text a card publishes (a proposal or a person's edit).
+PROPOSAL_MAX = 600
 OPERATOR_ROLE = "Simüle operatör"
 STATUS_BY_ACTION: dict[str, Status] = {"approve": "approved", "edit": "approved", "reject": "rejected", "defer": "deferred"}
 #: Every card offers doing nothing, so approving is never the only way to clear the queue.
@@ -58,7 +60,7 @@ class ProposedAction(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     kind: str
-    text: str = Field(min_length=1, max_length=600)
+    text: str = Field(min_length=1, max_length=PROPOSAL_MAX)
     expires_at: dt.datetime | None = None
     #: The rule template the text came from; ``None`` for a fallback text. Rule drafts need it.
     template: str | None = None
@@ -120,7 +122,7 @@ class Approval(BaseModel):
     signal_id: str = Field(min_length=1)
     action: ApprovalAction
     reason: str = Field(default="", max_length=REASON_MAX)
-    edited_text: str | None = Field(default=None, max_length=600)
+    edited_text: str | None = Field(default=None, max_length=PROPOSAL_MAX)
     actor: Operator
 
     @model_validator(mode="after")

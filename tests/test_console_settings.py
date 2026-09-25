@@ -147,3 +147,40 @@ def test_an_unreadable_spend_file_starts_the_day_at_zero(tmp_path: pathlib.Path)
     path.write_text("{not json", encoding="utf-8")
     guard = SpendGuard(BudgetConfig(daily_calls=1, state_path=path), clock=Clock(MORNING))
     assert guard.allows("azure_openai") and guard.today()["calls"] == 0
+
+
+def test_a_reservation_holds_room_so_concurrent_turns_cannot_pass_the_ceiling() -> None:
+    guard = SpendGuard(BudgetConfig(daily_calls=6, state_path=None), clock=Clock(MORNING))
+    assert guard.reserve("openai", 6) is True
+    assert guard.reserve("openai", 1) is False and guard.allows("openai") is False, "the room is held"
+    guard.record("openai", {}, 2)
+    guard.release("openai", 6)
+    assert guard.reserve("openai", 4) is True and guard.reserve("openai", 1) is False
+    assert guard.reserve("foundry_local", 100) is True
+
+
+def test_the_arena_has_its_own_ceiling_and_file(tmp_path: pathlib.Path) -> None:
+    env = {"NABIZ_LLM_SPEND_FILE": str(tmp_path / "llm_spend.json"), "NABIZ_LLM_PRICE_IN_PER_MTOK": "1",
+           "NABIZ_LLM_PRICE_OUT_PER_MTOK": "2", "NABIZ_ARENA_DAILY_CALLS": "9"}  # fmt: skip
+    arena = BudgetConfig.for_arena(env)
+    assert arena.state_path == tmp_path / "arena_llm_spend.json" and arena.daily_calls == 9
+    assert arena.price_in_per_mtok == 1.0 and arena.daily_usd == 0.25
+    chat = SpendGuard(BudgetConfig.from_env(env), clock=Clock(MORNING))
+    seats = SpendGuard(arena, clock=Clock(MORNING))
+    seats.record("openai", {"prompt_tokens": 10**6, "completion_tokens": 0}, 30)
+    assert chat.allows("openai") is True, "the Arena spending its ceiling leaves the chat's alone"
+
+
+def test_many_threads_recording_at_once_lose_no_call(tmp_path: pathlib.Path) -> None:
+    import threading
+
+    guard = SpendGuard(BudgetConfig(daily_calls=10_000, state_path=tmp_path / "spend.json"), clock=Clock(MORNING))
+    workers = [threading.Thread(target=lambda: [guard.record("openai", {}, 1) for _ in range(50)]) for _ in range(8)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join()
+    assert guard.today()["calls"] == 400
+    restarted = SpendGuard(BudgetConfig(daily_calls=10_000, state_path=tmp_path / "spend.json"), clock=Clock(MORNING))
+    assert restarted.today()["calls"] == 400
+    assert not list(tmp_path.glob("*.tmp")), "no scratch file is left behind"

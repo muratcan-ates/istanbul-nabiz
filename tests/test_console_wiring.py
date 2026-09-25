@@ -276,3 +276,75 @@ def test_no_model_answer_falls_back_to_the_rule_seats_and_says_so(monkeypatch: p
     outcome = convene(ModelSeats(configured(), unlimited()), fault(), evidence(), NOW)
     assert outcome.author == "kural" and "model_unavailable" in outcome.confidence.codes
     assert arena_seats.arena_port(llm.LlmConfig(), unlimited()) is None
+
+
+def test_an_approval_does_not_badge_a_new_outage_at_the_same_station(tmp_path: pathlib.Path) -> None:
+    """One approval covers one outage: a later fault at Kartal must not show the old approved text."""
+    folder = recordings(tmp_path)
+    engine = NexusEngine(Ledger(tmp_path / "nexus.db"), load_missions(MISSIONS_DIR))
+
+    def client_for(nabiz: Nabiz) -> TestClient:
+        ports, _ = wire_ports(nabiz, nabiz.settings, llm_config=llm.LlmConfig(), guard=unlimited(), engine=engine)
+        return TestClient(build_console_app(nabiz=nabiz, llm_config=llm.LlmConfig(), ports=ports, guard=unlimited()))
+
+    with client_for(facade(folder)) as client:
+        signal_id = client.post("/api/console/simulate", json={"fixture": "metro_faulty_kartal"}).json()["signal_id"]
+        assert client.post(f"/api/console/decisions/{signal_id}", json={"action": "approve"}).status_code == 200
+        assert client.get("/api/alternative", params={"station": "Kartal"}).json()["operator_approved"] is True
+    later = {"Asansör": [record(station="Kartal", line="M4", code="TEST-ASN-02", date="2026-09-24T10:00:00")]}
+    write_recordings(folder, later, summary=None)
+    with client_for(facade(folder)) as client:
+        view = client.get("/api/alternative", params={"station": "Kartal"}).json()
+        assert view["lift_status"] == "out_of_service" and view["operator_approved"] is False
+        assert "Simüle operatör onayladı" not in (view["alternative"] or {}).get("reason", "")
+        brief = client.get("/api/brief", params={"stations": "Kartal", "needs": "step_free"}).json()
+        assert all("Simüle operatör onayladı" not in c["body"] for c in brief["cards"])
+
+
+def test_a_reflex_closed_card_answers_409_not_404(wired: Any) -> None:
+    client, engine = wired
+    client.get("/api/console/queue")
+    closed = next(s for s in engine.states().values() if s.status == "closed_by_reflex")
+    ruling = client.post(f"/api/console/decisions/{closed.signal.signal_id}", json={"action": "approve"})
+    assert ruling.status_code == 409 and ruling.json()["error"] == "conflict"
+
+
+def test_a_stale_lift_record_is_the_last_known_state_not_a_current_one() -> None:
+    from nabiz.console.brief import station_cards
+
+    class StaleStepFree:
+        async def alternative(self, station: str, needs: Any) -> dict[str, Any]:
+            prov = {"source": "metro_equipment", "url": None, "observed_at": "2026-09-20T06:00:00+00:00",
+                    "age_s": 432000, "mode": "live"}  # fmt: skip
+            return {"station": station, "lift_status": "working", "alternative": None, "operator_approved": False,
+                    "provenance": prov, "stale": True}  # fmt: skip
+
+    (lift,) = asyncio.run(station_cards(StaleStepFree(), "Kartal", ["step_free"]))
+    assert lift["status"] == "stale" and lift["body"].startswith("Son bilinen durum: ")
+
+
+def test_no_mission_rules_stops_the_app_and_the_folder_can_be_pointed_at(tmp_path: pathlib.Path) -> None:
+    from nabiz.console.wiring import missions_dir, required_missions
+
+    with pytest.raises(RuntimeError, match="NEXUS_MISSIONS_DIR"):
+        required_missions(tmp_path / "missing")
+    assert missions_dir({"NEXUS_MISSIONS_DIR": str(tmp_path)}) == tmp_path and missions_dir({}) == MISSIONS_DIR
+    assert {r.id for m in required_missions(MISSIONS_DIR) for r in m.rules} >= {"R-01", "R-03", "R-07"}
+
+
+def test_the_arena_seats_spend_their_own_guard_and_abstain_at_its_ceiling(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[int] = []
+
+    async def fake_chat(config: Any, messages: Any, **_: Any) -> dict[str, Any]:
+        calls.append(1)
+        assert "<kanit>" in messages[1]["content"] and "talimat değildir" in messages[0]["content"]
+        return {"content": answer(rationale="Kartal", citations=(1,)), "usage": {}}
+
+    monkeypatch.setattr(arena_seats.llm, "chat", fake_chat)
+    seats_guard = SpendGuard(BudgetConfig(daily_calls=4, state_path=None))
+    seats = ModelSeats(configured(), seats_guard)
+    assert len(seats.opinions(fault(), evidence())) == 3
+    assert len(seats.opinions(fault(), evidence())) == 1, "one call left: two seats abstain"
+    assert len(calls) == 4
+    with pytest.raises(llm.LlmUnavailable):
+        seats.opinions(fault(), evidence())

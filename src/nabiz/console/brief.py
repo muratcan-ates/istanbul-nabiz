@@ -59,6 +59,12 @@ def split_csv(raw: str | None, limit: int = MAX_ITEMS) -> list[str]:
     return seen[:limit]
 
 
+def last_known(body: str, status: Status) -> str:
+    """A stale card's sentence starts by saying it is the last known state, not the present one."""
+    # The sentence keeps its own first letter: it may be a place name ("İstanbul", "Kartal").
+    return f"Son bilinen durum: {body}" if status == "stale" and body else body
+
+
 def _unverified(kind: str, key: str, title: str, source: str) -> dict[str, Any]:
     body = "Veri alınamadı; doğrulanamadı."
     return card(kind, key, title=title, body=body, status="unverified", provenance=unknown_provenance(source))
@@ -79,7 +85,7 @@ async def metro_status_card(nabiz: Any, lines: Sequence[str], fresh: Freshness) 
         body, content = "Bildirilmiş arıza ya da çalışma duyurusu yok.", "ok"
     status = freshness_status(result.provenance, stale_after_s=fresh.card_stale_after_s, content=content)
     provenance = provenance_view(result.provenance, offline=fresh.offline)
-    return card("metro_status", "metro", title=title, body=body, status=status, provenance=provenance)
+    return card("metro_status", "metro", title=title, body=last_known(body, status), status=status, provenance=provenance)
 
 
 async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> list[dict[str, Any]]:
@@ -91,19 +97,27 @@ async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> l
         view = {}
     lift = view.get("lift_status")
     body, status = _LIFT_BODY.get(lift, ("Asansör durumu doğrulanamadı.", "unverified"))
+    if view.get("stale") and lift in _LIFT_BODY:
+        # Served from cache after an error, or older than the threshold: the last known record,
+        # said as such, never a current "no fault".
+        status = "stale"
+        body = last_known(body, status)
     provenance = view.get("provenance") or unknown_provenance("metro_equipment")
     cards = [card("metro_equipment", station, title=f"{station} asansör", body=body, status=status, provenance=provenance)]
     alternative = view.get("alternative")
     if "step_free" in needs and lift == "out_of_service" and alternative:
         extra = alternative.get("extra_minutes")
-        detail = f" Yaklaşık {extra} dk ek süre." if isinstance(extra, int) else ""
+        detail = ""
+        if isinstance(extra, int):
+            detail = f" {station} ile arası tahminen {extra} dk (mesafeye dayalı; dönüş yolu dahil değil)."
         where = f"{alternative.get('station')} ({alternative.get('line')})"
         body = f"İBB kaydında asansör arızası olmayan en yakın istasyon: {where}.{detail} Operatör onayı yok."
         if view.get("operator_approved") and view.get("approved_text"):
             # The text the simulated operator approved for this outage replaces the suggestion.
             body = f"{view['approved_text']} (Simüle operatör onayladı.)"
         title = f"{station} için adımsız seçenek"
-        cards.append(card("alternative", station, title=title, body=body, status="warning", provenance=provenance))
+        shown: Status = "stale" if view.get("stale") else "warning"
+        cards.append(card("alternative", station, title=title, body=body, status=shown, provenance=provenance))
     return cards
 
 
@@ -135,7 +149,7 @@ async def traffic_card(nabiz: Any, fresh: Freshness) -> dict[str, Any]:
         return card("traffic", "city", title=title, body=body, status="unverified", provenance=provenance)
     body = f"İstanbul trafik yoğunluk indeksi {number_tr(data['index'])} ({data.get('description') or ''})."
     status = freshness_status(result.provenance, stale_after_s=fresh.card_stale_after_s)
-    return card("traffic", "city", title=title, body=body, status=status, provenance=provenance)
+    return card("traffic", "city", title=title, body=last_known(body, status), status=status, provenance=provenance)
 
 
 async def air_card(nabiz: Any, place: str, fresh: Freshness) -> dict[str, Any] | None:
@@ -158,7 +172,7 @@ async def air_card(nabiz: Any, place: str, fresh: Freshness) -> dict[str, Any] |
     status = freshness_status(result.provenance, stale_after_s=fresh.card_stale_after_s, content=content)
     title = f"Hava kalitesi: {data.get('place') or place}"
     provenance = provenance_view(result.provenance, offline=fresh.offline)
-    return card("air", place, title=title, body=body, status=status, provenance=provenance)
+    return card("air", place, title=title, body=last_known(body, status), status=status, provenance=provenance)
 
 
 async def build_brief(

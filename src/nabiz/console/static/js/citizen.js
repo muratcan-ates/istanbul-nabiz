@@ -20,10 +20,29 @@ const needs = () => effectiveNeeds(profile, memory);
 const places = () => savedPlaces(profile, memory);
 
 /* ---- cards ------------------------------------------------------------------------------ */
-async function loadBrief() {
+/* Write new markup without losing a keyboard user's place: the element that had focus (by its
+ * card and its tag) gets it back. An automatic refresh that changed nothing touches nothing. */
+const rendered = new WeakMap();
+
+function keepFocus(host, html) {
+  if (rendered.get(host) === html) return;
+  const active = document.activeElement;
+  const inside = host.contains(active) && active !== host;
+  const card = inside ? active.closest('[id]') : null;
+  const tag = inside ? active.tagName.toLowerCase() : null;
+  rendered.set(host, html);
+  host.innerHTML = html;
+  const again = card && card.id ? document.getElementById(card.id) : null;
+  if (!again) return;
+  const target = (tag && again.querySelector(tag)) || again;
+  if (target === again && !again.hasAttribute('tabindex')) again.setAttribute('tabindex', '-1');
+  target.focus({ preventScroll: true });
+}
+
+async function loadBrief(announce) {
   const grid = $('#cards');
   const meta = $('#cards-meta');
-  grid.innerHTML = skeleton(3);
+  if (announce || !rendered.has(grid)) { grid.innerHTML = skeleton(3); rendered.delete(grid); }
   const saved = places();
   const params = {
     stations: (saved.stations.length ? saved.stations : DEFAULT_STATIONS).join(','),
@@ -33,9 +52,11 @@ async function loadBrief() {
   try {
     const res = await get('/api/brief', params);
     const cards = res.cards || [];
-    grid.innerHTML = cards.length ? cards.map(cityCard).join('') : '<p class="card-empty">Gösterilecek kart yok.</p>';
+    keepFocus(grid, cards.length ? cards.map(cityCard).join('') : '<p class="card-empty">Gösterilecek kart yok.</p>');
     meta.textContent = `${cards.length} kart, ${res.generated_at ? dateTime(res.generated_at) : 'zaman bilinmiyor'}`;
-    $('#cards-status').textContent = cardsSentence(cards);
+    // The live region speaks when the visitor asked or the sentence changed; a quiet minute stays quiet.
+    const sentence = cardsSentence(cards);
+    if (announce || $('#cards-status').textContent !== sentence) $('#cards-status').textContent = sentence;
   } catch (err) {
     grid.innerHTML = errorCard('Şehir kartları alınamadı', err.message);
     meta.textContent = 'okunamadı';
@@ -43,34 +64,36 @@ async function loadBrief() {
   }
 }
 
-async function loadArrival(line, stop) {
+async function loadArrival(line, stop, announce = true) {
   const host = $('#arrival');
-  host.innerHTML = skeleton(1);
+  if (announce || !rendered.has(host)) { host.innerHTML = skeleton(1); rendered.delete(host); }
   try {
     const res = await get('/api/arrival', { line, stop });
-    host.innerHTML = arrivalCard(res);
+    keepFocus(host, arrivalCard(res));
   } catch (err) {
-    host.innerHTML = errorCard('Varış bilgisi alınamadı', err.message);
+    keepFocus(host, errorCard('Varış bilgisi alınamadı', err.message));
   }
 }
 
-async function loadAlternative() {
+async function loadAlternative(announce) {
   const host = $('#alternative');
-  host.innerHTML = skeleton(1);
+  if (announce || !rendered.has(host)) { host.innerHTML = skeleton(1); rendered.delete(host); }
   const station = places().stations[0] || DEFAULT_STATIONS[0];
   try {
+    // The same fixed question for every visitor (step-free access), so it says nothing about who asks.
     const res = await get('/api/alternative', { station, needs: 'step_free' });
-    host.innerHTML = alternativeCard(res);
+    keepFocus(host, alternativeCard(res));
   } catch (err) {
-    host.innerHTML = errorCard('Asansör bilgisi alınamadı', err.message);
+    keepFocus(host, errorCard('Asansör bilgisi alınamadı', err.message));
   }
 }
 
-function refreshAll() {
-  loadBrief();
+/** ``announce``: a visitor asked (the button, a saved change), so the regions speak and skeletons show. */
+function refreshAll(announce = true) {
+  loadBrief(announce);
   const form = $('#arrival-form');
-  loadArrival(form.line.value.trim() || DEFAULT_ARRIVAL.line, form.stop.value.trim() || DEFAULT_ARRIVAL.stop);
-  loadAlternative();
+  loadArrival(form.line.value.trim() || DEFAULT_ARRIVAL.line, form.stop.value.trim() || DEFAULT_ARRIVAL.stop, announce);
+  loadAlternative(announce);
 }
 
 /* ---- Profilim ---------------------------------------------------------------------------- */
@@ -95,9 +118,11 @@ function renderProfileState() {
   const consent = $('#profile-consent');
   consent.checked = profile.consent;
   const sent = needs();
-  $('#profile-sent').textContent = profile.consent
+  const places = ' Kayıtlı durak ve hat adları yalnız kartları istemek için gider, sunucuda saklanmaz;'
+    + ' asansör kartı her ziyaretçi için aynı sabit soruyu (adımsız erişim) sorar.';
+  $('#profile-sent').textContent = (profile.consent
     ? (sent.length ? `Sunucuya giden kısıt listesi: ${sent.join(', ')}.` : 'Sunucuya giden kısıt listesi boş.')
-    : 'Onay verilmedi: sunucuya hiçbir kısıt gitmiyor.';
+    : 'Onay verilmedi: sunucuya hiçbir kısıt gitmiyor.') + places;
 }
 
 function mountProfile() {
@@ -193,7 +218,9 @@ function acceptSuggestion(suggestion) {
   renderMemory();
   renderProfileState();
   refreshAll();
-  return true;
+  return profile.consent
+    ? 'Eklendi. Hafızam bölümünde görünür; istediğin an silebilirsin.'
+    : 'Bu tarayıcıda Hafızam\'a eklendi. Sunucuya gönderilmesi için Profilim\'de onay kutusunu işaretle.';
 }
 
 /* ---- boot -------------------------------------------------------------------------------- */
@@ -209,7 +236,7 @@ function boot() {
     evt.preventDefault();
     loadArrival(arrivalForm.line.value.trim() || DEFAULT_ARRIVAL.line, arrivalForm.stop.value.trim() || DEFAULT_ARRIVAL.stop);
   });
-  $('#cards-refresh').addEventListener('click', refreshAll);
+  $('#cards-refresh').addEventListener('click', () => refreshAll(true));
   mountChat({
     log: $('#chat-log'), form: $('#chat-form'), input: $('#chat-input'), submit: $('#chat-submit'), status: $('#chat-status'),
     getNeeds: needs, onMemorySuggestion: acceptSuggestion,
@@ -218,10 +245,11 @@ function boot() {
     chip.addEventListener('click', () => { $('#chat-input').value = chip.dataset.ask; $('#chat-form').requestSubmit(); });
   });
   refreshAll();
-  let timer = setInterval(refreshAll, REFRESH_MS);
+  const quietly = () => refreshAll(false);
+  let timer = setInterval(quietly, REFRESH_MS);
   document.addEventListener('visibilitychange', () => {
     clearInterval(timer);
-    if (document.visibilityState === 'visible') { refreshAll(); timer = setInterval(refreshAll, REFRESH_MS); }
+    if (document.visibilityState === 'visible') { quietly(); timer = setInterval(quietly, REFRESH_MS); }
   });
 }
 

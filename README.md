@@ -248,7 +248,9 @@ The product app (`python -m nabiz.console`) reads `.env`, binds the decision cor
 `data/nexus/nexus.db`, rules in `missions/*.toml`) and feeds it the Metro equipment snapshot and a small city
 watch (car parks, air quality, one bus line) when the console's queue is read, at most every 300 s. Without a
 model the Arena's three seats are rule-based and say so; with `NABIZ_LLM_*` set, each seat is one model call
-over the card's evidence. `POST /api/console/simulate` replays a recorded signal, never live data.
+over the card's evidence, on the Arena's own daily ceiling. `POST /api/console/simulate` replays a recorded
+signal, never live data. The console answers only on this machine unless `NABIZ_CONSOLE_TOKEN` is set; then
+`/console` asks for that key (DECISIONS #25).
 
 | Tool | What it answers |
 |---|---|

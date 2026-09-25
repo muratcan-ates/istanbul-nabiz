@@ -3,13 +3,16 @@
 
 import { MOCK, get, post } from './api.js';
 import { FRESHNESS_WARN_S, REFRESH_MS } from './config.js';
-import { decisionCard, draftItem, queueLists, statsStrip, traceList, verifyBadge } from './console-cards.js';
+import { STATUS_TR, decisionCard, draftItem, queueLists, statsStrip, traceList, verifyBadge } from './console-cards.js';
 import { errorCard, skeleton } from './cards.js';
 import { esc } from './format.js';
 import { mountToggles } from './theme.js';
 
 const $ = (sel) => document.querySelector(sel);
 let currentId = null;
+let queueRetry = null;
+/* How soon the queue is read again while the server is still reading its sources. */
+const SOURCES_RETRY_MS = 5_000;
 
 /* ---- strip, ledger badge, queue, drafts -------------------------------------------------- */
 async function loadStats() {
@@ -28,15 +31,34 @@ async function loadVerify() {
   }
 }
 
-async function loadQueue() {
+/* Re-render only when the rows changed, and put focus back on the row that had it: a refresh must
+ * not throw a keyboard user back to the top of the page. */
+function renderList(host, html) {
+  if (host.innerHTML === html) return;
+  const focused = host.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+  host.innerHTML = html;
+  if (focused) {
+    const again = [...host.querySelectorAll('.queue-item')].find((b) => b.dataset.id === focused);
+    if (again) again.focus({ preventScroll: true });
+  }
+}
+
+async function loadQueue({ announce = false } = {}) {
+  clearTimeout(queueRetry);
   try {
     const res = await get('/api/console/queue');
     const lists = queueLists(res.items || [], currentId);
-    $('#queue-arena').innerHTML = lists.arena || '<li class="queue-empty">Onay bekleyen sinyal yok.</li>';
-    $('#queue-reflex').innerHTML = lists.reflex || '<li class="queue-empty">Bugün refleksle kapanan sinyal yok.</li>';
-    $('#queue-arena-count').textContent = `(${lists.arenaCount}, ${lists.awaiting} onay bekliyor)`;
+    renderList($('#queue-arena'), lists.arena || '<li class="queue-empty">Onay bekleyen sinyal yok.</li>');
+    renderList($('#queue-reflex'), lists.reflex || '<li class="queue-empty">Bugün refleksle kapanan sinyal yok.</li>');
+    $('#queue-arena-count').textContent = `(${lists.arenaCount}, ${lists.awaiting} karar bekliyor)`;
     $('#queue-reflex-count').textContent = `(${lists.reflexCount})`;
-    $('#queue-status').textContent = `${lists.awaiting} sinyal onay bekliyor, ${lists.reflexCount} sinyal refleksle kapandı.`;
+    const reading = res.reading_sources === true;
+    const sentence = `${lists.awaiting} sinyal karar bekliyor, ${lists.reflexCount} sinyal refleksle kapandı.`
+      + (reading ? ' Kaynaklar okunuyor; yeni sinyaller birazdan gelir.' : '');
+    const status = $('#queue-status');
+    // The live region speaks when a person asked, or when something changed; a quiet refresh stays quiet.
+    if (announce || status.textContent !== sentence) status.textContent = sentence;
+    if (reading) queueRetry = setTimeout(() => { loadQueue(); loadStats(); loadVerify(); }, SOURCES_RETRY_MS);
   } catch (err) {
     $('#queue-arena').innerHTML = `<li>${errorCard('Sinyal kutusu alınamadı', err.message)}</li>`;
   }
@@ -54,7 +76,7 @@ async function loadDrafts() {
 }
 
 /* ---- the decision card ------------------------------------------------------------------- */
-async function loadDecision(id) {
+async function loadDecision(id, { focus = true } = {}) {
   currentId = id;
   const host = $('#decision-body');
   host.innerHTML = skeleton(2);
@@ -69,7 +91,7 @@ async function loadDecision(id) {
         if (evidence.open) { approve.removeAttribute('aria-disabled'); $('#evidence-gate').hidden = true; }
       });
     }
-    $('#decision').focus({ preventScroll: false });
+    if (focus) $('#decision').focus({ preventScroll: false });
   } catch (err) {
     host.innerHTML = errorCard('Karar kartı alınamadı', err.message);
   }
@@ -91,9 +113,14 @@ async function decide(action) {
   status.textContent = 'Deftere yazılıyor.';
   try {
     const res = await post(`/api/console/decisions/${encodeURIComponent(currentId)}`, { action, reason: text, edited_text: edited });
-    status.className = 'status-line is-ok';
-    status.textContent = `Karar deftere yazıldı: ${res.status || action}, kayıt ${res.ledger_entry_id || 'bilinmiyor'}.`;
-    $('#decision-actions').hidden = true;
+    const said = `Karar deftere yazıldı: ${STATUS_TR[res.status] || 'kaydedildi'}, kayıt ${res.ledger_entry_id || 'bilinmiyor'}.`;
+    // Redraw the card so its status label is the new one, then say the result where the focus lands.
+    await loadDecision(currentId, { focus: false });
+    const after = $('#decision-status');
+    after.className = 'status-line is-ok';
+    after.setAttribute('tabindex', '-1');
+    after.textContent = said;
+    after.focus();
     loadQueue();
     loadStats();
     loadVerify();
@@ -136,15 +163,20 @@ function onDecisionClick(evt) {
 /* ---- simulate and adopt ------------------------------------------------------------------ */
 async function simulate() {
   const btn = $('#simulate');
-  const status = $('#queue-status');
+  const status = $('#simulate-status');
   btn.setAttribute('aria-disabled', 'true');
   try {
     const res = await post('/api/console/simulate', { fixture: btn.dataset.fixture || 'metro_faulty_kartal' });
     await loadQueue();
     loadStats();
+    loadVerify();
     if (res.signal_id) loadDecision(res.signal_id);
-    status.textContent = `Kayıtlı sinyal oynatıldı: ${res.signal_id || 'kimlik bilinmiyor'}.`;
+    status.className = 'status-line is-ok';
+    status.textContent = res.duplicate
+      ? 'Bu kayıtlı sinyal daha önce oynatılmış; kartı açıldı.'
+      : 'Kayıtlı sinyal oynatıldı; kartı açıldı.';
   } catch (err) {
+    status.className = 'status-line is-bad';
     status.textContent = `Sinyal oynatılamadı: ${err.message}`;
   } finally {
     btn.removeAttribute('aria-disabled');
@@ -184,14 +216,15 @@ function boot() {
     evt.preventDefault();
     adopt(form);
   });
-  loadStats();
-  loadVerify();
-  loadQueue();
+  // The queue read is what feeds the core from the sources: the stats and the ledger badge
+  // are read after it, so the first screen does not show counts from before the feed.
+  const refresh = async () => { await loadQueue(); loadStats(); loadVerify(); };
   loadDrafts();
-  let timer = setInterval(() => { loadStats(); loadQueue(); }, REFRESH_MS);
+  loadQueue({ announce: true }).then(() => { loadStats(); loadVerify(); });
+  let timer = setInterval(refresh, REFRESH_MS);
   document.addEventListener('visibilitychange', () => {
     clearInterval(timer);
-    if (document.visibilityState === 'visible') timer = setInterval(() => { loadStats(); loadQueue(); }, REFRESH_MS);
+    if (document.visibilityState === 'visible') timer = setInterval(refresh, REFRESH_MS);
   });
 }
 

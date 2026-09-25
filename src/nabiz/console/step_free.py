@@ -35,16 +35,20 @@ class StepFreeService:
         self.engine = engine
         self.offline = offline
 
-    def approved_for(self, station: str, alternative: dict[str, Any] | None) -> Binding | None:
-        """The active approval for this station, when it names the alternative shown now."""
-        if self.engine is None or alternative is None:
+    def approved_for(self, station: str, alternative: dict[str, Any] | None, outage_ids: Sequence[str]) -> Binding | None:
+        """The active approval for this station's current outage, when it names the alternative shown now.
+
+        One approval covers one outage (``nexus_core.approved``): a new fault at the same
+        station is a new outage the operator has not seen, so it gets no badge.
+        """
+        if self.engine is None or alternative is None or not outage_ids:
             return None
         states = self.engine.states()
         for binding in self.engine.bindings():
             state = states.get(binding.approved_signal_id)
             if state is None or not _same_station(state.signal.payload.get("station"), station):
                 continue
-            if _same_station(binding.alternative_station, alternative.get("station")):
+            if binding.outage_id in outage_ids and _same_station(binding.alternative_station, alternative.get("station")):
                 return binding
         return None
 
@@ -66,7 +70,8 @@ class StepFreeService:
             "uncertainty": data.get("uncertainty", []),
             "stale": bool(data.get("stale")),
         }
-        binding = self.approved_for(view["station"], alternative)
+        outages = [o for o in data.get("outage_ids") or [] if isinstance(o, str)]
+        binding = self.approved_for(view["station"], alternative, outages)
         if binding is not None and alternative is not None:
             # The machine's reason ends "operatör onayı taşımaz"; once a person approved, the page
             # shows the approved text instead, so the card never says both.

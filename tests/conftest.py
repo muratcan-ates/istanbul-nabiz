@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import atexit
 import json
+import os
 import pathlib
 import shutil
 import socket
@@ -32,6 +33,10 @@ from typing import Any
 
 import httpx
 import pytest
+
+# The console answers only a Host header naming this machine (nabiz.console.access); the
+# test client's own name is "testserver". A test of the door itself builds its own access.
+os.environ.setdefault("NABIZ_ALLOWED_HOSTS", "testserver")
 
 TESTS_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parent

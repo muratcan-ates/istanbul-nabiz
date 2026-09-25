@@ -48,7 +48,7 @@ conditions = [
 action = "publish_alternative"
 card_kind = "alternative"
 title = "Adımsız erişim: {station}"
-card_template = "İBB kaydına göre {station} istasyonunda bir asansör kullanılamıyor. İBB kaydında asansör arızası görünmeyen en yakın istasyon: {alternative_station} ({alternative_line}), tahmini +{extra_minutes} dk. Ek süre mesafeye dayalı tahmindir."
+card_template = "İBB kaydına göre {station} istasyonunda bir asansör kullanılamıyor. İBB kaydında asansör arızası görünmeyen en yakın istasyon: {alternative_station} ({alternative_line}). {station} ile {alternative_station} arası tahminen {extra_minutes} dk (mesafeye dayalı tahmin; varış noktasına dönüş yolu dahil değil)."
 
 # R-02 EĞER bir asansör kullanılamıyor VE adımsız alternatif bulunamadıysa O ZAMAN İBB çalışanına
 # getir; alternatif uydurulmaz.

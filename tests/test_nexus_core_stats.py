@@ -61,6 +61,7 @@ def test_deferrals_are_not_verdicts_and_rejections_lower_the_rate(tmp_path: path
     rule(engine, clock, 2, "defer", start=4)
     stats = engine.stats()
     assert stats.approval_rate == 0.75 and stats.rulings_counted == 4 and stats.awaiting_approval == 0
+    assert stats.deferred == 2, "a deferred card is still in the queue and is counted on its own"
 
 
 def test_approving_everything_raises_the_rubber_stamp_warning(tmp_path: pathlib.Path) -> None:
@@ -90,9 +91,35 @@ def test_stats_carry_no_operator(tmp_path: pathlib.Path) -> None:
     assert fields == {
         "reflex_closed_today",
         "awaiting_approval",
+        "deferred",
         "median_decision_s",
         "citizen_update_latency_s",
         "approval_rate",
         "rulings_counted",
         "rubber_stamp_warning",
     }
+
+
+def test_latency_counts_only_what_the_citizen_face_shows(tmp_path: pathlib.Path) -> None:
+    """An escalator reflex (R-03) or an approved R-06 card reaches no citizen page yet: no latency."""
+    clock = Clock(T0 + dt.timedelta(minutes=2))
+    engine = build_engine(tmp_path, clock)
+    engine.process(escalator())
+    long_outage = make_signal("long_outage", entity="E-LONG", station="Kartal", outage_id="L@1", outage_hours=48.0, text="K.")
+    clock.advance(seconds=20)
+    engine.decide(approve(engine.process(long_outage).signal_id))
+    assert engine.stats().citizen_update_latency_s is None
+
+
+def test_a_replay_is_timed_from_when_the_core_received_it(tmp_path: pathlib.Path) -> None:
+    """A recording observed days ago must not show days of latency."""
+    from nexus_helpers import origin
+
+    clock = Clock(T0 + dt.timedelta(days=5))
+    engine = build_engine(tmp_path, clock)
+    recorded = elevator(observed_at=T0)
+    recorded = recorded.model_copy(update={"provenance": origin(T0, mode="recorded")})
+    signal_id = engine.process(recorded).signal_id
+    clock.advance(seconds=45)
+    engine.decide(approve(signal_id))
+    assert engine.stats().citizen_update_latency_s == 45.0

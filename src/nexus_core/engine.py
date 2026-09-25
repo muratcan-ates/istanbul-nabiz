@@ -39,9 +39,12 @@ from nexus_core.approved import (
 from nexus_core.arena import DEFAULT_STALE_AFTER_S, ArenaPort, EvidenceItem, RuleBasedSeats, convene
 from nexus_core.decisions import (
     DO_NOTHING,
+    FINAL_STATUSES,
+    PROPOSAL_MAX,
     Alternative,
     Approval,
     Decision,
+    DecisionConflict,
     ProposedAction,
     Status,
     published_text,
@@ -110,6 +113,11 @@ def with_do_nothing(alternatives: Sequence[Alternative]) -> tuple[Alternative, .
 
 def _ms(started: float) -> float:
     return round((time.perf_counter() - started) * 1000, 3)
+
+
+def clip(text: str, limit: int = PROPOSAL_MAX) -> str:
+    """A proposal the card can hold: a long equipment list is cut, never allowed to fail the draft."""
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
 class NexusEngine:
@@ -277,13 +285,13 @@ class NexusEngine:
         expires = now + dt.timedelta(days=(rule.expires_days if rule and rule.expires_days else PROPOSAL_DAYS))
         if rule is not None:
             try:
-                text = render(rule.then.card_template, signal_values(signal))
+                text = clip(render(rule.then.card_template, signal_values(signal)))
                 return ProposedAction(kind=rule.then.action, text=text, expires_at=expires, template=rule.then.card_template)
             except MissingField:
                 pass
         where = signal.payload.get("station") or signal.entity_id
         text = f"{signal.title}: {where}. Son bilinen durum; kaynak ve veri yaşı kartta. Metni düzenleyerek onaylayın."
-        return ProposedAction(kind="publish_card", text=text, expires_at=expires)
+        return ProposedAction(kind="publish_card", text=clip(text), expires_at=expires)
 
     def decide(self, approval: Approval) -> DecisionReceipt:
         """Seal a human's ruling on a card. The only path from a draft to a published text."""
@@ -291,7 +299,12 @@ class NexusEngine:
             raise TypeError("only a human Approval settles a decision")
         with self._lock:
             state = self.states().get(approval.signal_id)
-            if state is None or state.decision is None:
+            if state is None:
+                raise DecisionNotFound(approval.signal_id)
+            if state.decision is None:
+                # A rule closed it: settled, with nothing a person could rule on (the console's 409).
+                if state.status in FINAL_STATUSES:
+                    raise DecisionConflict(f"{approval.signal_id} is already {state.status}")
                 raise DecisionNotFound(approval.signal_id)
             status = settle(state.status, approval)
             text = published_text(state.decision, approval)

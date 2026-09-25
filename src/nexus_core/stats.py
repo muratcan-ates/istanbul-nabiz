@@ -1,10 +1,16 @@
 """Stats: the time NEXUS gives back, measured from the ledger, for the team and never per person.
 
 * ``reflex_closed_today``: signals a rule closed since midnight, İstanbul time.
-* ``awaiting_approval``: Arena cards no one has ruled on yet (deferred ones are not counted).
+* ``awaiting_approval``: Arena cards no one has ruled on yet.
+* ``deferred``: cards a person deferred; they stay in the queue and can still be decided.
 * ``median_decision_s``: from the card being drafted to the first human ruling on it.
-* ``citizen_update_latency_s``: from the source observing the fault to the citizen card being
-  published (by a reflex, or by an approval): the delay a citizen actually lives with.
+* ``citizen_update_latency_s``: from the source observing the fault to the citizen face showing
+  it, counted only for what the citizen face really shows today: an approved step-free
+  alternative (``publish_alternative``), and a later snapshot of that outage closed by its
+  approval (OA). Other reflexes (an escalator card, the stale-data rule) are sealed but no
+  citizen page shows them yet, so counting them would time a delivery that never happened.
+  A recorded signal (a replay) is timed from when the core received it: its observation time
+  is the recording's, days before the replay.
 * ``approval_rate``: approvals (edited ones included) over approvals and rejections, over the
   last :data:`ROLLING_RULINGS` rulings; deferrals are not a verdict and are left out.
 
@@ -23,6 +29,7 @@ from collections.abc import Iterable
 
 from pydantic import BaseModel, ConfigDict
 
+from nexus_core.approved import BOUND_ACTION
 from nexus_core.signals import as_utc
 from nexus_core.state import SignalState
 
@@ -38,6 +45,7 @@ class Stats(BaseModel):
 
     reflex_closed_today: int
     awaiting_approval: int
+    deferred: int
     median_decision_s: float | None
     citizen_update_latency_s: float | None
     approval_rate: float | None
@@ -53,15 +61,30 @@ def _seconds(start: dt.datetime, end: dt.datetime) -> float:
     return max(0.0, (end - start).total_seconds())
 
 
+def citizen_published_at(state: SignalState) -> dt.datetime | None:
+    """When the citizen face started showing this signal's text, or ``None`` if it never does."""
+    if state.action is not None:
+        return state.closed_at if state.action.kind == BOUND_ACTION else None
+    if state.decision is not None and state.decision.proposed_action.kind == BOUND_ACTION:
+        return state.published_at
+    return None
+
+
+def _latency(state: SignalState, published: dt.datetime) -> float:
+    start = state.signal.observed_at if state.signal.provenance.mode == "live" else state.received_at
+    return _seconds(start, published)
+
+
 def compute_stats(states: Iterable[SignalState], now: dt.datetime) -> Stats:
     states = list(states)
     today = as_utc(now).astimezone(ISTANBUL).date()
     closed_today = sum(1 for s in states if s.closed_at and s.closed_at.astimezone(ISTANBUL).date() == today)
     awaiting = sum(1 for s in states if s.status == "awaiting_approval")
+    deferred = sum(1 for s in states if s.status == "deferred")
     decision_times = [
         _seconds(s.drafted_at, s.first_ruling.at) for s in states if s.drafted_at is not None and s.first_ruling is not None
     ]
-    latencies = [_seconds(s.signal.observed_at, published) for s in states if (published := s.published_at) is not None]
+    latencies = [_latency(s, published) for s in states if (published := citizen_published_at(s)) is not None]
     verdicts = sorted(
         (r for s in states for r in s.rulings if r.status in ("approved", "rejected")),
         key=lambda r: r.entry_id,
@@ -71,6 +94,7 @@ def compute_stats(states: Iterable[SignalState], now: dt.datetime) -> Stats:
     return Stats(
         reflex_closed_today=closed_today,
         awaiting_approval=awaiting,
+        deferred=deferred,
         median_decision_s=_median(decision_times),
         citizen_update_latency_s=_median(latencies),
         approval_rate=rate,

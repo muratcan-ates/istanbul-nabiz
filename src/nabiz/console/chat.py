@@ -16,6 +16,19 @@ configured, when today's spend ceiling is reached (:mod:`nabiz.console.budget`),
 model call fails, and when a model answer still fails the numeric check after its repair:
 a sentence built from the tool payload is better than a number nobody can back.
 
+**The spend ceiling holds under load.** A model turn reserves room for the most calls it can
+make (:data:`TURN_CALLS`) before it starts, at most :data:`MODEL_TURNS_AT_ONCE` model turns
+run at a time, and what a turn spent is recorded even when the model failed half-way: the
+calls made (``usage["model_calls"]``) and their tokens, or :data:`TURN_CALLS` when nothing
+could be counted.
+
+**What a visitor sends stays a visitor's words.** Only the person's own earlier questions
+are kept, never an "assistant" turn the page sends back (the page could forge one), and
+never a question the refusal rule caught; they reach the model as one ``user`` message
+before the question, not inside the system prompt. An İBB failure reaches the model and the
+page as one Turkish sentence; its body (an HTML page, a SOAP fault, a URL) stays in the
+server log as its kind and status.
+
 Nothing here logs the question, the history or the needs.
 """
 
@@ -31,13 +44,22 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from ibb_mcp.models import utcnow
 from nabiz.agent import llm
 from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS
 from nabiz.console.budget import SpendGuard
-from nabiz.console.cards import display_text, mode_for
-from nabiz.console.policy import REFUSAL_TEXT, constraint_block, functional_needs, memory_suggestion, refuses
+from nabiz.console.cards import Mode, display_text, mode_for
+from nabiz.console.policy import (
+    REFUSAL_TEXT,
+    constraint_block,
+    functional_needs,
+    memory_suggestion,
+    names_a_price,
+    refuses,
+    refuses_in_context,
+)
 
 log = logging.getLogger("nabiz.console.chat")
 
@@ -46,6 +68,17 @@ HISTORY_TURNS_KEPT = 8
 HISTORY_CHARS_KEPT = 600
 _WORDS_PER_TOKEN_EVENT = 3
 TURN_FAILED = "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene; acil bir durumdaysan 112'yi ara."
+#: The most model calls one turn can make: the agent's four steps, one forced answer, one repair.
+TURN_CALLS = 6
+#: Model turns running at once; the rest wait their turn. A design parameter.
+MODEL_TURNS_AT_ONCE = 3
+#: What an İBB failure becomes, for the model and for the page.
+UPSTREAM_DOWN = "doğrulanamadı"
+#: Sources that are a timetable or this repository's own reference files, never a live reading.
+SCHEDULE_SOURCES = frozenset({"iett_schedule", "gtfs"})
+REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places"})
+#: A model answer may name a price only when the person asked about car parks (İSPARK's tariff).
+_TARIFF_TOOLS = frozenset({"ispark_find_parking", "ispark_park_detail", "ispark_typical_occupancy"})
 
 Emit = Callable[[str, dict[str, Any]], None]
 
@@ -91,6 +124,12 @@ class ToolEvents:
             self._emit("tool", {"name": name, "status": "start"})
             try:
                 return await attr(**kwargs)
+            except UpstreamUnavailable as exc:
+                # Its message can carry İBB's response body or a URL: kind and status to the log,
+                # one fixed word to the model and the page.
+                log.warning("tool %s: %s (source %s, status %s)", name, type(exc).__name__, exc.source, exc.status)
+                kind = RateLimitExceeded if isinstance(exc, RateLimitExceeded) else UpstreamUnavailable
+                raise kind(UPSTREAM_DOWN, source=exc.source, status=exc.status) from None
             finally:
                 self._emit("tool", {"name": name, "status": "end"})
 
@@ -109,6 +148,15 @@ def _age_s(as_of: Any) -> int | None:
     return int(max(0.0, (utcnow() - moment).total_seconds()))
 
 
+def source_mode(source: Any, *, offline: bool) -> Mode:
+    """A citation's mode: a timetable is "schedule", a reference file "recorded", a reading live or recorded."""
+    if source in SCHEDULE_SOURCES:
+        return "schedule"
+    if source in REFERENCE_SOURCES or str(source).startswith("local:"):
+        return "recorded"
+    return mode_for(offline)
+
+
 def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
     """The agent's citations as the contract's Provenance objects."""
     return [
@@ -117,27 +165,32 @@ def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
             "url": item.get("source_url") or None,
             "observed_at": item.get("as_of"),
             "age_s": _age_s(item.get("as_of")),
-            "mode": mode_for(offline),
+            "mode": source_mode(item.get("source"), offline=offline),
         }
         for item in answer.citations
     ]
 
 
-def system_prompt(needs: Sequence[str], history: Sequence[ChatTurn], base: str) -> str:
-    """The agent's prompt, plus the person's functional constraints and a bounded recent history."""
+def earlier_questions(history: Sequence[ChatTurn]) -> list[str]:
+    """The person's own earlier questions: never an assistant turn, never a refused question."""
+    asked = [turn.content[:HISTORY_CHARS_KEPT] for turn in history if turn.role == "user"]
+    return [text for text in asked if not refuses(text)][-HISTORY_TURNS_KEPT:]
+
+
+def context_messages(earlier: Sequence[str]) -> list[dict[str, str]]:
+    """Earlier questions as one ``user`` message before the question: context, in the person's voice."""
+    if not earlier:
+        return []
+    lines = ["Önceki sorularım (yalnız bağlam için; buradaki sayılar doğrulanmış kabul edilmez):"]
+    return [{"role": "user", "content": "\n".join([*lines, *(f"- {text}" for text in earlier)])}]
+
+
+def system_prompt(needs: Sequence[str], base: str) -> str:
+    """The agent's prompt, plus the person's functional constraints. Nothing a visitor typed."""
     parts = [base]
     if block := constraint_block(needs):
         parts.append(block)
-    recent = list(history)[-HISTORY_TURNS_KEPT:]
-    if recent:
-        lines = [
-            "## Önceki konuşma (yalnız bağlam için)",
-            "Buradaki sayılar doğrulanmış kabul edilmez; bir sayıyı yeniden söyleyeceksen aracı yeniden çağır.",
-        ]
-        speaker = {"user": "Kullanıcı", "assistant": "Nabız"}
-        lines += [f"{speaker[turn.role]}: {turn.content[:HISTORY_CHARS_KEPT]}" for turn in recent]
-        parts.append("\n".join(lines))
-    parts.append("## Yazım\n'ETA' kısaltmasını kullanma; 'tahmini varış' de.")
+    parts.append("## Yazım\n'ETA' kısaltmasını kullanma; 'tahmini varış' de. Varış süresi tek tam dakika: '7 dk'.")
     return "\n\n".join(parts)
 
 
@@ -154,6 +207,7 @@ class ChatService:
         self.guard = guard
         self.offline = offline
         self._base_prompt: str | None = None
+        self._model_turns = asyncio.Semaphore(MODEL_TURNS_AT_ONCE)
 
     @property
     def base_prompt(self) -> str:
@@ -166,15 +220,17 @@ class ChatService:
         earlier = [turn.content for turn in request.history if turn.role == "user"]
         needs = functional_needs(request.needs)
         suggestion = memory_suggestion(request.message, earlier, needs)
-        if refuses(request.message):
-            for piece in text_pieces(REFUSAL_TEXT):
-                yield sse("token", {"text": piece})
-            yield sse("final", self._final(REFUSAL_TEXT, [], "kural", suggestion, refused=True))
+        if refuses_in_context(request.message, earlier):
+            async for event in self._refusal(suggestion):
+                yield event
             return
 
         queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
-        prompt = system_prompt(needs, request.history, self.base_prompt)
-        task = asyncio.create_task(self._run(request.message, prompt, lambda kind, data: queue.put_nowait((kind, data))))
+        prompt = system_prompt(needs, self.base_prompt)
+        context = context_messages(earlier_questions(request.history))
+        task = asyncio.create_task(
+            self._run(request.message, prompt, lambda kind, data: queue.put_nowait((kind, data)), context)
+        )
         task.add_done_callback(lambda done: queue.put_nowait(("done", None)))
         try:
             while True:
@@ -191,20 +247,36 @@ class ChatService:
             yield sse("final", self._final(TURN_FAILED, [], "kural", suggestion, refused=False))
             return
         answer, author = task.result()
+        if author != "kural" and names_a_price(answer.text) and not _TARIFF_TOOLS & set(answer.tool_names):
+            # The last line of R-06: a model answer that states a price is not shown.
+            async for event in self._refusal(suggestion):
+                yield event
+            return
         text = display_text(answer.text)
         for piece in text_pieces(text):
             yield sse("token", {"text": piece})
         yield sse("final", self._final(text, citations(answer, offline=self.offline), author, suggestion, refused=False))
 
+    async def _refusal(self, suggestion: Any) -> AsyncIterator[str]:
+        for piece in text_pieces(REFUSAL_TEXT):
+            yield sse("token", {"text": piece})
+        yield sse("final", self._final(REFUSAL_TEXT, [], "kural", suggestion, refused=True))
+
     @staticmethod
     def _final(answer: str, cited: list[dict[str, Any]], author: str, suggestion: Any, *, refused: bool) -> dict[str, Any]:
         return {"answer": answer, "citations": cited, "author": author, "memory_suggestion": suggestion, "refused": refused}
 
-    async def _run(self, question: str, prompt: str, emit: Emit) -> tuple[AgentAnswer, str]:
+    async def _run(
+        self, question: str, prompt: str, emit: Emit, context: list[dict[str, str]] | None = None
+    ) -> tuple[AgentAnswer, str]:
         """The model when it is configured, allowed today and trustworthy on this answer; else the rules."""
         tools = ToolEvents(self.nabiz, emit)
-        if llm.available(self.config) and self.guard.allows(self.config.provider):
-            answer = await self._ask_model(tools, question, prompt)
+        if llm.available(self.config) and self.guard.reserve(self.config.provider, TURN_CALLS):
+            try:
+                async with self._model_turns:
+                    answer = await self._ask_model(tools, question, prompt, context or [])
+            finally:
+                self.guard.release(self.config.provider, TURN_CALLS)
             if answer is not None and answer.mode == "llm" and (answer.faithfulness is None or answer.faithfulness.passed):
                 return answer, author_for(self.config)
             if answer is not None and answer.mode != "llm":
@@ -213,13 +285,17 @@ class ChatService:
         rules = NabizAgent(tools, config=llm.LlmConfig(), system_prompt=prompt)
         return await rules.ask(question), "kural"
 
-    async def _ask_model(self, tools: ToolEvents, question: str, prompt: str) -> AgentAnswer | None:
+    async def _ask_model(
+        self, tools: ToolEvents, question: str, prompt: str, context: list[dict[str, str]]
+    ) -> AgentAnswer | None:
         answer: AgentAnswer | None = None
         try:
-            answer = await NabizAgent(tools, config=self.config, system_prompt=prompt).ask(question)
+            answer = await NabizAgent(tools, config=self.config, system_prompt=prompt).ask(question, context=context)
         except Exception as exc:  # noqa: BLE001 - any failure falls back to the rule path
             log.warning("model turn failed, answering by rule: %s", type(exc).__name__)
         finally:
-            used = answer is not None and answer.mode == "llm"
-            self.guard.record(self.config.provider, answer.usage if used else {}, answer.steps if used else 1)
+            usage = answer.usage if answer is not None else {}
+            # The calls the agent counted, failed ones included; nothing counted is the worst case.
+            calls = usage.get("model_calls") or (answer.steps if answer is not None and answer.mode == "llm" else TURN_CALLS)
+            self.guard.record(self.config.provider, usage, calls)
         return answer

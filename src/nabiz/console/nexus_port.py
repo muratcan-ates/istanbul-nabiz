@@ -8,9 +8,15 @@
   engine. It runs when the queue is read, at most once per ``ingest_every_s``, so the page's
   refresh never turns into more upstream calls than the cache already allows.
 * **Not re-queueing the same outage.** A fault stays in İBB's list for days and every snapshot
-  of it is a new signal. One that is already waiting for a person, or that a rule closed or a
-  person rejected within :data:`QUIET_S`, is not handed over again (:func:`already_on_board`).
-  An approved one is: the next snapshot is exactly what the approved-alternative check needs.
+  of it is a new signal. One that is already waiting for a person (or deferred: it stays in the
+  queue, decidable), or that a rule closed or a person rejected within :data:`QUIET_S`, is not
+  handed over again (:func:`already_on_board`). An approved step-free alternative is: the next
+  snapshot is exactly what the approved-alternative check (OA) needs. Any other approval
+  published a one-off text; the same outage or alert is asked about again only after
+  :data:`APPROVED_QUIET_S`, not at every read.
+* **Not holding the page.** The sources and the Arena's model calls can take tens of seconds;
+  a queue read waits at most :data:`QUEUE_WAIT_S` for them and answers with what is sealed so
+  far (``reading_sources`` tells the page to look again soon).
 * **Speaking the API contract.** The core's views give the queue, the card, the stats and the
   drafts; this module adds what the page reads beside them (the signal's title and status on
   the card, a card for a reflex-closed signal, a sentence per ledger step).
@@ -23,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import hashlib
 import logging
 import time
 from collections.abc import Callable, Iterable
@@ -32,6 +39,7 @@ from ibb_mcp.tools import Nabiz
 from nabiz.console.ports import OPERATOR, PortConflict
 from nabiz.console.signals import CITY_WATCH, Incoming, alert_incoming, equipment_incoming
 from nexus_core import Approval, DecisionConflict, NexusEngine, Operator
+from nexus_core.approved import BOUND_ACTION
 from nexus_core.arena import assess_confidence, uncertainty_codes
 from nexus_core.engine import default_evidence
 from nexus_core.router import REASON_TEXT
@@ -44,35 +52,66 @@ log = logging.getLogger("nabiz.console.nexus")
 #: After a rule closed it or a person rejected it, the same outage waits this long before a new
 #: snapshot of it is handed to the core again. A design parameter, not a measured value.
 QUIET_S = 3600
+#: After a person approved a one-off text for it, the same outage or alert is asked about again
+#: after this long (a day): a reminder that it is still there, not a card every five minutes.
+#: A design parameter, not a measured value.
+APPROVED_QUIET_S = 24 * 3600
+#: How long a queue read waits for the sources and the Arena before answering with what it has.
+QUEUE_WAIT_S = 8.0
 DEFAULT_INGEST_EVERY_S = 300
 OPEN = frozenset({"awaiting_approval", "deferred"})
 SETTLED_QUIET = frozenset({"closed_by_reflex", "rejected"})
 
 #: Recorded replays the console offers (``POST /api/console/simulate``).
 SIMULATIONS = ("metro_faulty_kartal", "metro_equipment", "city_watch")
-NO_RECORDING = (
-    "Kayıtlı Metro arıza verisi yok. Kayıt bir kez alınmalı: "
-    "NABIZ_OFFLINE= .venv/bin/python scripts/capture_metro_equipment.py --live (ağ adımı, Murat çalıştırır)."
-)
+NO_RECORDING = "Kayıtlı Metro arıza verisi yok; oynatılacak sinyal bulunamadı."
+#: What the server log says instead: the page is no place for a command line.
+NO_RECORDING_LOG = "no Metro equipment recording; the owner records one with scripts/capture_metro_equipment.py --live"
 
 ACTION_TR = {"approve": "Onaylandı", "edit": "Düzenlenerek onaylandı", "reject": "Reddedildi", "defer": "Ertelendi"}
+KIND_TR = {
+    "equipment_fault": "ekipman arızası", "long_outage": "uzun süren arıza", "hub_faults": "aktarma merkezinde arızalar",
+    "source_stale": "bayat kaynak", "parking_full": "otopark doluluğu", "air_quality": "hava kalitesi",
+    "bus_bunching": "otobüs yığılması",
+}  # fmt: skip
+LEVEL_TR = {"high": "yüksek", "medium": "orta", "low": "düşük"}
+MODE_TR = {"live": "canlı", "recorded": "kayıtlı", "schedule": "tarife", "unknown": "bilinmiyor"}
+SOURCE_TR = {
+    "metro_equipment": "Metro İstanbul arıza kaydı", "Metro İstanbul": "Metro İstanbul arıza kaydı", "ispark": "İSPARK",
+    "aq_readings": "İBB hava kalitesi", "traffic": "İBB trafik indeksi", "iett": "İETT", "nabiz_alerts": "Nabız uyarıları",
+}  # fmt: skip
 
 
 def board_key(state_or_incoming: SignalState | Incoming) -> tuple[str, str, str | None]:
+    """The outage or alert a signal is about: its ``outage_id``, its alert key, or its fault list."""
     signal = state_or_incoming.signal
     outage = signal.payload.get("outage_id") or signal.payload.get("dedupe_key")
+    if not isinstance(outage, str) and isinstance(listing := signal.payload.get("equipment_list"), str):
+        # A hub's faults have no single outage: the same list of faults is the same event.
+        outage = "list:" + hashlib.sha256(listing.encode("utf-8")).hexdigest()[:16]
     return signal.kind, signal.entity_id, outage if isinstance(outage, str) else None
 
 
+def _quiet_for(state: SignalState) -> float | None:
+    """How long a settled card keeps new snapshots of its event away; ``None``: it does not."""
+    if state.status in SETTLED_QUIET:
+        return QUIET_S
+    if state.status == "approved" and state.decision is not None and state.decision.proposed_action.kind != BOUND_ACTION:
+        return APPROVED_QUIET_S
+    return None
+
+
 def already_on_board(index: dict[tuple[str, str, str | None], list[SignalState]], incoming: Incoming, now: dt.datetime) -> bool:
-    """The same outage is waiting for a person, or was settled a moment ago: do not hand it over again."""
+    """The same outage is waiting for a person, or was settled a while ago: do not hand it over again."""
     states = index.get(board_key(incoming), [])
     if any(s.status in OPEN for s in states):
         return True
     latest = max(states, key=lambda s: s.received_at, default=None)
-    if latest is None or latest.status not in SETTLED_QUIET:
+    quiet = _quiet_for(latest) if latest is not None else None
+    if latest is None or quiet is None:
         return False
-    return (now - latest.received_at).total_seconds() < QUIET_S
+    settled = latest.rulings[-1].at if latest.rulings else latest.received_at
+    return (now - settled).total_seconds() < quiet
 
 
 def _index(states: Iterable[SignalState]) -> dict[tuple[str, str, str | None], list[SignalState]]:
@@ -91,8 +130,12 @@ def describe_step(kind: str, detail: dict[str, Any]) -> str:  # noqa: PLR0911 - 
     if kind == "signal_received":
         signal = detail.get("signal") or {}
         origin = signal.get("provenance") or {}
-        where = f"{signal.get('kind')} · {signal.get('entity_id')}"
-        return f"Sinyal alındı: {where} (kaynak {origin.get('source')}, {origin.get('mode')})."
+        payload = signal.get("payload") or {}
+        where = payload.get("station") or payload.get("hub")
+        what = KIND_TR.get(str(signal.get("kind")), "sinyal") + (f" · {where}" if where else "")
+        mode = MODE_TR.get(str(origin.get("mode")), "bilinmiyor")
+        source = SOURCE_TR.get(str(origin.get("source")), origin.get("source"))
+        return f"Sinyal alındı: {what} (kaynak: {source}, {mode} veri)."
     if kind == "routed":
         path = "refleks" if detail.get("path") == "reflex" else "insan onayı (Arena)"
         rule = detail.get("rule_id") or "kural yok"
@@ -104,9 +147,9 @@ def describe_step(kind: str, detail: dict[str, Any]) -> str:  # noqa: PLR0911 - 
         return f"Kural çalışamadı ({detail.get('rule_id')}): {detail.get('failure')}. İnsana gönderildi."
     if kind == "arena_drafted":
         decision = detail.get("decision") or {}
-        level = (decision.get("confidence") or {}).get("level")
+        level = LEVEL_TR.get(str((decision.get("confidence") or {}).get("level")), "bilinmiyor")
         text = (decision.get("proposed_action") or {}).get("text", "")
-        return f"Arena kartı hazırladı ({decision.get('arena_label')}); güven {level}. Öneri: {text}"
+        return f"Arena kartı hazırladı ({decision.get('arena_label')}); güven: {level}. Öneri: {text}"
     if kind == "approval":
         action = ACTION_TR.get(detail.get("action", ""), detail.get("action", ""))
         reason = (detail.get("reason") or "gerekçe yazılmadı").rstrip(". ")
@@ -169,6 +212,8 @@ class NexusConsole:
         self._clock = clock
         self._last_ingest: float | None = None
         self._ingest_lock = asyncio.Lock()
+        self._ingest_task: asyncio.Task[list[str]] | None = None
+        self.queue_wait_s = QUEUE_WAIT_S
 
     # ------------------------------------------------------------------ feeding the core
     def _process_all(self, incoming: list[Incoming]) -> list[str]:
@@ -178,7 +223,11 @@ class NexusConsole:
         for one in incoming:
             if already_on_board(index, one, now):
                 continue
-            result = self.engine.process(one.signal, evidence=one.evidence)
+            try:
+                result = self.engine.process(one.signal, evidence=one.evidence)
+            except Exception as exc:  # noqa: BLE001 - one bad signal must not stop the batch
+                log.error("signal %s not processed: %s", one.signal.kind, type(exc).__name__)
+                continue
             taken.append(result.signal_id)
             state = self.engine.states().get(result.signal_id)
             if state is not None:
@@ -209,13 +258,22 @@ class NexusConsole:
             incoming = await self._read_sources(self.nabiz)
             return await asyncio.to_thread(self._process_all, incoming)
 
+    async def _read_in_background(self) -> bool:
+        """Start a read of the sources if none runs; wait for it a bounded time. True while it still runs."""
+        if self._ingest_task is None or self._ingest_task.done():
+            self._ingest_task = asyncio.create_task(self.ingest())
+            self._ingest_task.add_done_callback(_log_failure)
+        await asyncio.wait({self._ingest_task}, timeout=self.queue_wait_s)
+        return not self._ingest_task.done()
+
     # ------------------------------------------------------------------ the port
     async def queue(self) -> dict[str, Any]:
-        await self.ingest()
+        reading = await self._read_in_background()
         states = self.engine.states()
         payload = queue_payload(states.values())
         for item in payload["items"]:
             item["title"] = titled(item["title"], states[item["signal_id"]])
+        payload["reading_sources"] = reading
         return payload
 
     def _state(self, signal_id: str) -> SignalState:
@@ -279,9 +337,16 @@ class NexusConsole:
             incoming = equipment_incoming(await recorded.metro_equipment_signals())
         chosen = pick_replay(incoming, fixture)
         if chosen is None:
+            if fixture != "city_watch":
+                log.warning(NO_RECORDING_LOG)
             raise PortConflict(NO_RECORDING if fixture != "city_watch" else "Kayıtlı veride şehir uyarısı yok.")
         result = await asyncio.to_thread(self.engine.process, chosen.signal, chosen.evidence)
         return {"signal_id": result.signal_id, "status": result.status, "path": result.path, "duplicate": result.duplicate}
+
+
+def _log_failure(task: asyncio.Task[list[str]]) -> None:
+    if not task.cancelled() and task.exception() is not None:
+        log.error("reading the sources failed: %s", type(task.exception()).__name__)
 
 
 def pick_replay(incoming: list[Incoming], fixture: str) -> Incoming | None:

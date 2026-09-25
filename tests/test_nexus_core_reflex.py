@@ -86,7 +86,15 @@ def test_a_rule_title_template_is_rendered_too() -> None:
 
     result = ReflexEngine().run(rule("R-01"), elevator())
     assert result.ok and result.action.card.title == "Adımsız erişim: Taksim"
-    assert "Şişhane" in result.action.card.body and "+4 dk" in result.action.card.body
+    body = result.action.card.body
+    assert "Şişhane" in body and "Taksim ile Şişhane arası tahminen 4 dk" in body
+    assert "dönüş yolu dahil değil" in body and "+4 dk" not in body, "a ride between stations is not an extra time"
+
+
+def test_a_float_is_written_the_turkish_way() -> None:
+    from nexus_core.reflex import render
+
+    assert render("{h} saat, {n} dk", {"h": 119.6, "n": 24.0}) == "119,6 saat, 24 dk"
 
 
 def test_a_rule_that_cannot_fill_its_card_fails_and_names_the_field() -> None:
