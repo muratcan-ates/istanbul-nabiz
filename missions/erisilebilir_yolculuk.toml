@@ -1,0 +1,111 @@
+# Erişilebilir yolculuk: the first NEXUS mission (src/nexus_core/missions.py reads it).
+#
+# Each rule is one readable if-then: "EĞER <when> O ZAMAN <then>". `path = "reflex"` closes the
+# signal with the rule alone; `path = "arena"` drafts a card for the simulated operator. A rule
+# whose card cannot be filled (a field is missing) never publishes a half-empty card: the
+# signal goes to a person instead. Actions come only from nexus_core.missions.ACTION_CATALOG.
+#
+# Card texts never say an elevator "works": the most the data supports is "no fault in the İBB
+# record". Payload fields the rules read (set by the console from the İBB data):
+#   station, line, equipment_id, equipment_type ("elevator" | "escalator"), outage_id
+#   (equipment code + first seen), alternative_station, alternative_faulty (bool, same
+#   snapshot), extra_minutes, down_days, fault_count, source_name, age_min.
+# Thresholds (window, repeat count, 7 days) are design parameters, not measured values.
+
+[mission]
+id = "erisilebilir-yolculuk"
+title = "Erişilebilir yolculuk"
+intent = "Herkes için, Her zaman, Her yerde"
+reviewed_on = 2026-09-25
+
+[escalation]
+# The same entity seen in 3 separate outages within 14 days goes to a person.
+window_hours = 336
+repeat_threshold = 3
+critical_kinds = ["hub_faults", "long_outage"]
+
+# EĞER asansör kullanılamıyor VE kayıtta alternatif istasyon var
+# O ZAMAN alternatifi taslak olarak insana getir (tek onay bu arızaya bağlanır, OA).
+[[rules]]
+id = "R-01"
+path = "arena"
+expires_days = 30
+[rules.when]
+kind = "equipment_fault"
+conditions = [
+  { field = "equipment_type", op = "eq", value = "elevator" },
+  { field = "alternative_station", op = "present" },
+]
+[rules.then]
+action = "publish_alternative"
+card_kind = "alternative"
+title = "Adımsız erişim: {station}"
+card_template = "{station} istasyonunda asansör kullanılamıyor (İBB kaydı). İBB kaydında asansör arızası görünmeyen en yakın istasyon: {alternative_station}, yaklaşık +{extra_minutes} dk."
+
+# EĞER asansör kullanılamıyor VE alternatif istasyon bilinmiyor
+# O ZAMAN insana getir; alternatif uydurulmaz.
+[[rules]]
+id = "R-02"
+path = "arena"
+expires_days = 30
+[rules.when]
+kind = "equipment_fault"
+conditions = [
+  { field = "equipment_type", op = "eq", value = "elevator" },
+  { field = "alternative_station", op = "absent" },
+]
+[rules.then]
+action = "publish_card"
+card_kind = "metro_equipment"
+card_template = "{station} istasyonunda asansör kullanılamıyor (İBB kaydı). Adımsız alternatif doğrulanamadı."
+
+# EĞER yürüyen merdiven kullanılamıyor O ZAMAN bilgi kartını kuralla yayımla.
+[[rules]]
+id = "R-03"
+path = "reflex"
+expires_days = 30
+[rules.when]
+kind = "equipment_fault"
+conditions = [{ field = "equipment_type", op = "eq", value = "escalator" }]
+[rules.then]
+action = "publish_card"
+card_kind = "metro_equipment"
+card_template = "{station} istasyonunda yürüyen merdiven kullanılamıyor (İBB kaydı)."
+
+# EĞER kaynak bayat ya da yanıt vermiyor O ZAMAN son bilinen durumu yaşıyla göster.
+[[rules]]
+id = "R-04"
+path = "reflex"
+expires_days = 30
+[rules.when]
+kind = "source_stale"
+conditions = [{ field = "age_min", op = "present" }]
+[rules.then]
+action = "schedule_mode"
+card_template = "{source_name} verisi doğrulanamadı; son bilinen durum gösteriliyor ({age_min} dk önce)."
+
+# EĞER aynı aktarma merkezinde birden çok asansör kullanılamıyor O ZAMAN insana getir.
+[[rules]]
+id = "R-05"
+path = "arena"
+expires_days = 30
+[rules.when]
+kind = "hub_faults"
+conditions = [{ field = "fault_count", op = "gte", value = 2 }]
+[rules.then]
+action = "publish_card"
+card_kind = "metro_equipment"
+card_template = "{station} aktarma merkezinde {fault_count} asansör kullanılamıyor (İBB kaydı)."
+
+# EĞER arıza 7 gün ya da daha uzun sürüyor O ZAMAN insana getir.
+[[rules]]
+id = "R-06"
+path = "arena"
+expires_days = 30
+[rules.when]
+kind = "long_outage"
+conditions = [{ field = "down_days", op = "gte", value = 7 }]
+[rules.then]
+action = "publish_card"
+card_kind = "metro_equipment"
+card_template = "{station} istasyonunda asansör {down_days} gündür kullanılamıyor (İBB kaydındaki tarih; anlamı belgesiz)."

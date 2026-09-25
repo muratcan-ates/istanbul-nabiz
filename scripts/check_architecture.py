@@ -23,6 +23,8 @@ order they run::
                      * independent apps: nabiz.web, .agent, .collector, .alerts never
                        import each other (the page has no LLM; the collector carries the
                        Azure SDKs).
+                     * libraries: nexus_core imports nothing from ibb_mcp or nabiz; the
+                       console feeds it (DECISIONS #21).
     no-cycles        A cycle makes import order load-bearing and turns every split into an
                      untangling job. Zero on 2026-09-23; kept at zero, lazy imports included.
     dependency-sets  DECISIONS #8: installing ``ibb-mcp`` pulls three runtime packages. A
@@ -121,8 +123,17 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("services", ("ibb_mcp.routing", "ibb_mcp.analytics", "ibb_mcp.alerts")),
     ("facade", ("ibb_mcp.tools",)),
     ("transport", ("ibb_mcp.server",)),
+    # DECISIONS #21: the NEXUS decision library. Above the server, so ibb_mcp can never import
+    # it; below the apps, so the console can. LIBRARY_IMPORTS narrows what it may import itself.
+    ("nexus", ("nexus_core",)),
     ("apps", ("nabiz",)),
 )
+
+#: Libraries that import nothing from the project outside themselves, whatever their layer allows:
+#: nexus_core is stdlib + pydantic, fed by the console (DECISIONS #21).
+LIBRARY_IMPORTS: dict[str, tuple[str, ...]] = {"nexus_core": ()}
+#: Top-level packages that are this project's own code, never third-party.
+FIRST_PARTY = frozenset({"ibb_mcp", "nabiz", "nexus_core"})
 
 #: nabiz apps are siblings: none imports another. ``nabiz.alerts`` is now only the old name
 #: of ``ibb_mcp.alerts`` and stays in the list so nothing starts depending on it. A package
@@ -173,6 +184,7 @@ DEPENDENCY_SETS: dict[str, frozenset[str]] = {
     "nabiz.web": CORE | {"fastapi", "starlette", "uvicorn", "jinja2"},
     "nabiz.collector": CORE | {"azure", "deltalake", "pyarrow"},
     "nabiz.agent": CORE | {"openai", "agent_framework", "azure", "opentelemetry"},
+    "nexus_core": frozenset({"pydantic"}),
 }
 
 #: Edges that break the contract today, each with the change that removes it. An entry
@@ -333,6 +345,9 @@ def edge_violation(src: str, dst: str) -> str | None:
         return f"{LAYERS[ls][0]} imports {LAYERS[ld][0]} ({dst})"
     if under(src, "ibb_mcp.sources") and under(dst, "ibb_mcp.sources") and dst != "ibb_mcp.sources.base":
         return f"source imports sibling source {dst}"
+    library = next((lib for lib in LIBRARY_IMPORTS if under(src, lib)), None)
+    if library and not under(dst, library) and not any(under(dst, a) for a in LIBRARY_IMPORTS[library]):
+        return f"library {library} imports {dst}; it is fed by its caller, never the other way"
     app_s = next((app for app in INDEPENDENT_APPS if under(src, app)), None)
     app_d = next((app for app in INDEPENDENT_APPS if under(dst, app)), None)
     if app_s and app_d and app_s != app_d:
@@ -435,7 +450,7 @@ def check_dependency_sets(repo: pathlib.Path, mods: dict[str, Module], baseline:
             continue
         for target, lineno in mod.imports:
             top = target.split(".")[0]
-            if top in std or top in {"ibb_mcp", "nabiz"} or top in DEPENDENCY_SETS[key]:
+            if top in std or top in FIRST_PARTY or top in DEPENDENCY_SETS[key]:
                 continue
             findings.append(Finding(f"{rel(repo, mod.path)}:{lineno}", f"{key} imports undeclared third-party {top!r}"))
     if findings:
@@ -500,7 +515,7 @@ def check_private_imports(repo: pathlib.Path, mods: dict[str, Module], baseline:
     sibling_scripts = {p.stem for p in scripts if p.parent == repo / "scripts"}
 
     def in_src(module: str) -> bool:
-        return module.split(".")[0] in {"ibb_mcp", "nabiz"}
+        return module.split(".")[0] in FIRST_PARTY
 
     def in_scripts(module: str) -> bool:  # scripts import each other as top-level modules
         return in_src(module) or module.split(".")[0] in sibling_scripts
