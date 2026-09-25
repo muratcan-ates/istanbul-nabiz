@@ -46,7 +46,7 @@ kısıtlaması aşılmamıştır.
 
 ## Üçüncü taraf bileşenler
 
-Depoda üç üçüncü taraf dosya grubu vardır; her biri lisans metniyle birlikte sunulur:
+Depoda üçüncü taraf bileşenleri aşağıda listelenmiştir; lisanslarıyla birlikte sunulurlar:
 
 | Bileşen | Kaynak | Lisans | Depodaki dosyalar |
 |---|---|---|---|
@@ -55,6 +55,7 @@ Depoda üç üçüncü taraf dosya grubu vardır; her biri lisans metniyle birli
 | DOU-Synapse retrieval patterns | <https://github.com/muratcan-ates/DOU-Synapse>, commit `2cbe1eab8ab46c5958f4d529cb9a32c0b6bb2169` | MIT, Copyright (c) 2026 Muratcan Ates | `src/ibb_mcp/knowledge/` adapted retrieval, chunking and guardrail modules |
 | DOU-Synapse, arayüz kalıpları | <https://github.com/muratcan-ates/DOU-Synapse> commit `2cbe1ea`; `apps/web/lib/accessibility.ts`, `apps/web/components/accessibility-provider.tsx`, `apps/web/public/accessibility-boot.js`, `apps/web/components/chat-feedback.tsx`, `apps/web/components/chat/transcript-parts.tsx`, `apps/web/app/kvkk/page.tsx` | MIT, Copyright (c) 2026 Muratcan Ates | `src/nabiz/console/static/js/a11y.js`, `feedback.js`, `transcript.js`, `src/nabiz/console/static/css/a11y.css`, `src/nabiz/console/static/kvkk.html` (React'ten vanilla JS'e uyarlandı) |
 | Leaflet 1.9.4 | npm `leaflet@1.9.4`, dağıtım dosyaları değiştirilmeden kopyalandı; <https://github.com/Leaflet/Leaflet/tree/v1.9.4> | BSD-2-Clause, <https://github.com/Leaflet/Leaflet/blob/v1.9.4/LICENSE> | `src/nabiz/console/static/vendor/leaflet/` |
+| Panel oyu, belirsizlik etiketleri, çalışma makbuzu ve TTL davranışları | <https://github.com/muratcan-ates/cloudsentinel> @ `80938ae` | MIT, Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60) | `src/nexus_core/arena.py`, `src/nexus_core/decisions.py`, `src/nexus_core/engine.py`, `src/nexus_core/ledger.py`, `src/nexus_core/lifecycle.py`, `src/nexus_core/missions.py`, `src/nexus_core/processing.py`, `src/nexus_core/receipts.py`, `src/nexus_core/state.py`, `src/nexus_core/uncertainty.py`, `src/nexus_core/views.py` |
 
 Yazı tipi alt kümesi OFL'in "Değiştirilmiş Sürüm" koşulu gereği yeniden adlandırılmıştır: "Source"
 lisansta Ayrılmış Yazı Tipi Adı'dır, bu yüzden alt küme kendini "Nabiz Sans TR" olarak tanıtır; telif, marka

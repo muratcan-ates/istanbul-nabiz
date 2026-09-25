@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/actions.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """The engine: one signal in, a closed reflex or a card for a human out, every step sealed.
 
 :meth:`NexusEngine.process` is the whole nervous system in one call:
@@ -22,64 +24,40 @@ import datetime as dt
 import threading
 import time
 from collections.abc import Sequence
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from nexus_core.approved import (
-    APPROVED_BINDING,
-    BINDING_CHECK_FAILED,
-    BOUND_ACTION,
-    Binding,
-    binding_of,
-    find_binding,
-    outage_of,
-    revalidate,
-)
-from nexus_core.arena import DEFAULT_STALE_AFTER_S, ArenaPort, EvidenceItem, RuleBasedSeats, convene
+from nexus_core.approved import Binding, binding_of, find_binding, outage_of
+from nexus_core.arena import DEFAULT_STALE_AFTER_S, ArenaPort, EvidenceItem, RuleBasedSeats
 from nexus_core.decisions import (
-    DO_NOTHING,
     FINAL_STATUSES,
-    PROPOSAL_MAX,
     Alternative,
     Approval,
     Decision,
     DecisionConflict,
-    ProposedAction,
     Status,
     published_text,
     settle,
 )
-from nexus_core.escalation import CRITICAL, REFLEX_FAILED, REPEAT, Escalation
+from nexus_core.escalation import CRITICAL, REPEAT, Escalation
 from nexus_core.ledger import EntryKind, Ledger, Trace, VerifyResult
-from nexus_core.missions import EscalationSettings, Mission, MissionRule
-from nexus_core.reflex import Action, CardDraft, MissingField, ReflexEngine, render, signal_values
+from nexus_core.lifecycle import expire_cards
+from nexus_core.missions import EscalationSettings, Mission
+from nexus_core.processing import escalate_signal, run_binding, run_reflex
+from nexus_core.proposals import default_evidence as default_evidence
+from nexus_core.reflex import ReflexEngine
+from nexus_core.results import ProcessResult
 from nexus_core.router import RouteDecision, Router
 from nexus_core.rule_drafts import RuleDrafts
 from nexus_core.signals import Clock, Signal, system_clock
 from nexus_core.state import SignalState, replay
 from nexus_core.stats import Stats, compute_stats
 
-ROUTER_ACTOR = "yönlendirici"
-PROPOSAL_DAYS = 30
+__all__ = ["DecisionNotFound", "DecisionReceipt", "NexusEngine", "ProcessResult", "default_evidence"]
 
 
 class DecisionNotFound(KeyError):
     """No Arena card for that signal id."""
-
-
-class ProcessResult(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    signal_id: str
-    path: Literal["reflex", "arena"]
-    status: Status
-    rule_id: str | None = None
-    reasons: tuple[str, ...] = ()
-    action: Action | None = None
-    decision: Decision | None = None
-    reflex_ms: float | None = None
-    duplicate: bool = False
 
 
 class DecisionReceipt(BaseModel):
@@ -89,35 +67,6 @@ class DecisionReceipt(BaseModel):
     status: Status
     ledger_entry_id: int
     published_text: str | None
-
-
-def default_evidence(signal: Signal) -> tuple[EvidenceItem, ...]:
-    """The signal itself as the one piece of evidence, with its own provenance."""
-    where = signal.payload.get("station") or signal.entity_id
-    return (EvidenceItem(text=f"{signal.title}: {where}", provenance=signal.provenance),)
-
-
-def default_alternatives(proposal: ProposedAction) -> list[Alternative]:
-    return [
-        Alternative(label="A · Önerilen metni yayımla", detail=proposal.text),
-        Alternative(label="C · Beklet ve doğrula", detail="Kart yayımlanmaz; kaynak yeniden okununca tekrar değerlendirilir."),
-    ]
-
-
-def with_do_nothing(alternatives: Sequence[Alternative]) -> tuple[Alternative, ...]:
-    label, detail = DO_NOTHING
-    if any(a.label == label for a in alternatives):
-        return tuple(alternatives)
-    return (*alternatives, Alternative(label=label, detail=detail))
-
-
-def _ms(started: float) -> float:
-    return round((time.perf_counter() - started) * 1000, 3)
-
-
-def clip(text: str, limit: int = PROPOSAL_MAX) -> str:
-    """A proposal the card can hold: a long equipment list is cut, never allowed to fail the draft."""
-    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
 class NexusEngine:
@@ -132,13 +81,18 @@ class NexusEngine:
         clock: Clock = system_clock,
         stale_after_s: int = DEFAULT_STALE_AFTER_S,
         drafts: RuleDrafts | None = None,
+        usd_per_call: float | None = None,
     ) -> None:
+        if usd_per_call is not None and usd_per_call < 0:
+            raise ValueError("usd_per_call must be non-negative")
         self.ledger = ledger
         self._clock = clock
         self.stale_after_s = stale_after_s
+        self.usd_per_call = usd_per_call
         self.arena: ArenaPort = arena or RuleBasedSeats(stale_after_s=stale_after_s, clock=clock)
         self.drafts = drafts or RuleDrafts(ledger, clock=clock)
         settings = EscalationSettings.merged(m.escalation for m in missions)
+        self.ttl_hours = settings.ttl_hours
         escalation = Escalation(settings, history=self._history)
         self.router = Router(missions, escalation, learned=self.drafts.active_rules, clock=clock)
         self.reflex = ReflexEngine()
@@ -158,6 +112,7 @@ class NexusEngine:
         alternatives: Sequence[Alternative] | None = None,
     ) -> ProcessResult:
         """Route one signal to a reflex or to a card for a human, sealing every step."""
+        process_started = time.perf_counter()
         with self._lock:
             if self.ledger.has_signal(signal.signal_id):
                 return self._existing(signal.signal_id)
@@ -167,14 +122,14 @@ class NexusEngine:
             route = self.router.explain(signal)
             binding = self._binding(signal, route)
             if binding is not None:
-                outcome: ProcessResult | RouteDecision = self._run_binding(signal, route, binding, ids)
+                outcome: ProcessResult | RouteDecision = run_binding(self, signal, route, binding, ids, process_started)
             elif route.path == "reflex" and route.rule is not None:
-                outcome = self._run_reflex(signal, route, route.rule, ids)
+                outcome = run_reflex(self, signal, route, route.rule, ids, process_started)
             else:
                 outcome = route
             if isinstance(outcome, ProcessResult):
                 return outcome
-            return self._escalate(signal, outcome, ids, evidence, alternatives)
+            return escalate_signal(self, signal, outcome, ids, evidence, alternatives, process_started)
 
     def _binding(self, signal: Signal, route: RouteDecision) -> Binding | None:
         """An approved alternative for this outage, unless an escalation trigger fired."""
@@ -182,122 +137,12 @@ class NexusEngine:
             return None
         return find_binding(self.states().values(), signal, self._clock())
 
-    def _run_binding(
-        self, signal: Signal, route: RouteDecision, binding: Binding, ids: dict[str, str]
-    ) -> ProcessResult | RouteDecision:
-        """R-05: publish the approved text if the snapshot still supports it, else back to a person."""
-        started = time.perf_counter()
-        failures = revalidate(binding, signal, self._clock(), self.stale_after_s)
-        actor = f"onaylı alternatif {binding.binding_id}"
-        if failures:
-            detail = {"rule_id": binding.binding_id, "failure": ",".join(failures), "elapsed_ms": _ms(started)}
-            self.ledger.append(EntryKind.REFLEX_FAILED, actor=actor, detail=detail, **ids)
-            return route.model_copy(update={"path": "arena", "reasons": (BINDING_CHECK_FAILED, *failures)})
-        card = CardDraft(kind="alternative", title=signal.title, body=binding.text)
-        action = Action(kind=BOUND_ACTION, rule_id=binding.binding_id, signal_id=signal.signal_id, card=card)
-        bound = route.model_copy(update={"path": "reflex", "reasons": (APPROVED_BINDING,)})
-        return self._close(signal, bound, action, _ms(started), actor, ids)
-
-    def _run_reflex(
-        self, signal: Signal, route: RouteDecision, rule: MissionRule, ids: dict[str, str]
-    ) -> ProcessResult | RouteDecision:
-        """The closed result, or the route turned to the Arena when the rule could not run."""
-        result = self.reflex.run(rule, signal)
-        actor = f"kural {rule.id}"
-        if result.ok and result.action is not None:
-            return self._close(signal, route, result.action, result.elapsed_ms, actor, ids)
-        detail = {"rule_id": rule.id, "failure": result.failure, "elapsed_ms": result.elapsed_ms}
-        self.ledger.append(EntryKind.REFLEX_FAILED, actor=actor, detail=detail, **ids)
-        return route.model_copy(update={"path": "arena", "reasons": (*route.reasons, REFLEX_FAILED)})
-
-    def _close(
-        self, signal: Signal, route: RouteDecision, action: Action, elapsed_ms: float, actor: str, ids: dict[str, str]
-    ) -> ProcessResult:
-        self._seal_route(route, ids, rule_id=action.rule_id)
-        detail = {"action": action.model_dump(mode="json"), "elapsed_ms": elapsed_ms}
-        self.ledger.append(EntryKind.REFLEX_CLOSED, actor=actor, detail=detail, **ids)
-        return ProcessResult(
-            signal_id=signal.signal_id,
-            path="reflex",
-            status="closed_by_reflex",
-            rule_id=action.rule_id,
-            reasons=route.reasons,
-            action=action,
-            reflex_ms=elapsed_ms,
-        )
-
-    def _escalate(
-        self,
-        signal: Signal,
-        route: RouteDecision,
-        ids: dict[str, str],
-        evidence: Sequence[EvidenceItem] | None,
-        alternatives: Sequence[Alternative] | None,
-    ) -> ProcessResult:
-        self._seal_route(route, ids)
-        decision = self._draft(signal, route, evidence, alternatives)
-        detail = {"decision": decision.model_dump(mode="json")}
-        self.ledger.append(EntryKind.ARENA_DRAFTED, actor=f"Arena ({decision.author})", detail=detail, **ids)
-        return ProcessResult(
-            signal_id=signal.signal_id,
-            path="arena",
-            status="awaiting_approval",
-            rule_id=decision.rule_id,
-            reasons=route.reasons,
-            decision=decision,
-        )
-
-    def _seal_route(self, route: RouteDecision, ids: dict[str, str], rule_id: str | None = None) -> None:
-        rule_id = rule_id or (route.rule.id if route.rule else None)
-        detail = {"path": route.path, "rule_id": rule_id, "reasons": list(route.reasons), "repeats": route.repeats}
-        self.ledger.append(EntryKind.ROUTED, actor=ROUTER_ACTOR, detail=detail, **ids)
-
-    def _draft(
-        self,
-        signal: Signal,
-        route: RouteDecision,
-        evidence: Sequence[EvidenceItem] | None,
-        alternatives: Sequence[Alternative] | None,
-    ) -> Decision:
-        now = self._clock()
-        items = tuple(evidence) if evidence is not None else default_evidence(signal)
-        outcome = convene(self.arena, signal, items, now, self.stale_after_s)
-        proposal = self._proposal(signal, route.rule, now)
-        options = alternatives if alternatives is not None else default_alternatives(proposal)
-        return Decision(
-            signal_id=signal.signal_id,
-            rule_id=route.rule.id if route.rule else None,
-            reasons=route.reasons,
-            evidence=items,
-            alternatives=with_do_nothing(options),
-            opinions=outcome.opinions,
-            dissent_summary=outcome.dissent_summary,
-            proposed_action=proposal,
-            confidence=outcome.confidence,
-            author=outcome.author,
-            arena_label=outcome.label,
-            created_at=now,
-        )
-
-    @staticmethod
-    def _proposal(signal: Signal, rule: MissionRule | None, now: dt.datetime) -> ProposedAction:
-        """The rule's own card text when it renders; otherwise a fixed text the operator can edit."""
-        expires = now + dt.timedelta(days=(rule.expires_days if rule and rule.expires_days else PROPOSAL_DAYS))
-        if rule is not None:
-            try:
-                text = clip(render(rule.then.card_template, signal_values(signal)))
-                return ProposedAction(kind=rule.then.action, text=text, expires_at=expires, template=rule.then.card_template)
-            except MissingField:
-                pass
-        where = signal.payload.get("station") or signal.entity_id
-        text = f"{signal.title}: {where}. Son bilinen durum; kaynak ve veri yaşı kartta. Metni düzenleyerek onaylayın."
-        return ProposedAction(kind="publish_card", text=clip(text), expires_at=expires)
-
     def decide(self, approval: Approval) -> DecisionReceipt:
         """Seal a human's ruling on a card. The only path from a draft to a published text."""
         if not isinstance(approval, Approval):
             raise TypeError("only a human Approval settles a decision")
         with self._lock:
+            self.expire()
             state = self.states().get(approval.signal_id)
             if state is None:
                 raise DecisionNotFound(approval.signal_id)
@@ -335,8 +180,14 @@ class NexusEngine:
             action=state.action,
             decision=state.decision,
             reflex_ms=state.reflex_ms,
+            receipt=state.receipt,
             duplicate=True,
         )
+
+    def expire(self, now: dt.datetime | None = None) -> list[str]:
+        """Seal expired unanswered cards; a deferred card remains a human-owned choice."""
+        with self._lock:
+            return expire_cards(self.ledger, self.states().values(), self.ttl_hours, now or self._clock())
 
     def bindings(self) -> list[Binding]:
         """Active approved alternatives (OA), newest first: what earns the "operatör onaylı" badge."""

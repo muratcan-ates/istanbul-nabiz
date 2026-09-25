@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/ledger.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """The decision ledger: an append-only SQLite log where every entry seals the one before it.
 
 Each entry holds when, who, what kind of step, which signal and a JSON detail, plus the hash
@@ -64,6 +66,7 @@ class EntryKind(StrEnum):
     REFLEX_FAILED = "reflex_failed"
     ARENA_DRAFTED = "arena_drafted"
     APPROVAL = "approval"
+    EXPIRED = "expired"
     RULE_ADOPTED = "rule_adopted"
     RULE_REVOKED = "rule_revoked"
 
