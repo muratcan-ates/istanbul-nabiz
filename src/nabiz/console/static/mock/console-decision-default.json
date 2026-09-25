@@ -1,0 +1,32 @@
+{
+  "signal_id": "sig-002",
+  "signal": {
+    "signal_id": "sig-002",
+    "kind": "metro_equipment",
+    "title": "Ayrılık Çeşmesi (M4): asansör 9 gündür arızalı",
+    "severity": "warning",
+    "path": "arena",
+    "status": "awaiting_approval",
+    "created_at": "2026-09-25T09:15:00+03:00",
+    "summary": "Kesinti 7 günü aştı, istasyonda çalışan başka asansör kaydı yok. E-01 eskalasyonu; tarih alanının anlamı belgesiz."
+  },
+  "evidence": [
+    { "text": "AYC-ASN-01: İBB kaydında Arıza; kayıttaki tarih 16.09 (anlamı belgesiz).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T09:00:00+03:00", "age_s": 6120, "mode": "live" } },
+    { "text": "İstasyonda başka asansör kaydı yok; peron erişimi kaynakta yok.", "provenance": { "source": "metro_stations", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-10T09:00:00+03:00", "age_s": 1302000, "mode": "recorded" } }
+  ],
+  "freshness_s": 6120,
+  "alternatives": [
+    { "label": "A. Onaylı alternatifi yayımla", "detail": "Kadıköy (M4), +4 dk (tahmin)." },
+    { "label": "C. Beklet ve doğrula", "detail": "Kaynak yeniden okunana kadar 'doğrulanamadı' kalır." },
+    { "label": "D. Hiçbir şey yapma", "detail": "Kart son bilinen durumu yaşıyla gösterir." }
+  ],
+  "opinions": [
+    { "role": "Erişilebilirlik", "stance": "support", "rationale": "Uzun kesintide alternatif metni gecikmemeli.", "citations": [ { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T09:00:00+03:00", "age_s": 6120, "mode": "live" } ] },
+    { "role": "Operasyon", "stance": "oppose", "rationale": "Veri 1 saat 42 dakikalık; eşiği aşıyor. Önce yeniden oku.", "citations": [] },
+    { "role": "İletişim", "stance": "conditional", "rationale": "Metin yayımlanacaksa 'doğrulanamadı' etiketi ve kayıt tarihiyle birlikte.", "citations": [] }
+  ],
+  "dissent_summary": "Operasyon karşı: veri tazeliği eşiğin üstünde; yeniden okumadan yayım riskli.",
+  "proposed_action": { "kind": "hold", "text": "Kaynağı yeniden oku; taze kayıtla A seçeneğini yeniden değerlendir.", "expires_at": "2026-09-25T12:00:00+03:00" },
+  "confidence": { "level": "low", "reasons": [ "Veri eşikten eski.", "Tarih alanının anlamı belgesiz.", "Tek kaynak." ] },
+  "author": "kural"
+}

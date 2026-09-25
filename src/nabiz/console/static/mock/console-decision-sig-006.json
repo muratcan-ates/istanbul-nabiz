@@ -1,0 +1,33 @@
+{
+  "signal_id": "sig-006",
+  "signal": {
+    "signal_id": "sig-006",
+    "kind": "metro_equipment",
+    "title": "Kartal (M4): kayıtlı sinyal (oynatıldı)",
+    "severity": "warning",
+    "path": "arena",
+    "status": "awaiting_approval",
+    "created_at": "2026-09-25T10:44:00+03:00",
+    "summary": "Kayıtlı bir arıza sinyali oynatıldı: 1 asansör arızalı, onaylı alternatif var. R-05 çalışma anı denetimi bekliyor."
+  },
+  "evidence": [
+    { "text": "KRT-ASN-02 (peron katı): kayıtlı fixture'da Arıza (tests/fixtures/metro_faulty_kartal).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-24T18:00:00+03:00", "age_s": 60240, "mode": "recorded" } },
+    { "text": "Onaylı alternatif OA-KRT-ASN-02: Pendik (M4), +6 dk (tahmin); son onay 25.09 10:44.", "provenance": { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T10:44:32+03:00", "age_s": 30, "mode": "live" } },
+    { "text": "Pendik asansörleri aynı kayıtta arızasız (R-05 birinci şart).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-24T18:00:00+03:00", "age_s": 60240, "mode": "recorded" } }
+  ],
+  "freshness_s": 60240,
+  "alternatives": [
+    { "label": "A. Onaylı alternatifi yayımla", "detail": "OA metni vatandaş kartına bağlanır; kayıtlı veriyle 'kayıtlı' etiketi taşır, 'canlı' demez." },
+    { "label": "C. Beklet ve doğrula", "detail": "Canlı kayıt gelene kadar kart 'doğrulanamadı, son bilinen durum' der." },
+    { "label": "D. Hiçbir şey yapma", "detail": "Kart son bilinen durumu yaşıyla gösterir." }
+  ],
+  "opinions": [
+    { "role": "Erişilebilirlik", "stance": "conditional", "rationale": "Alternatif hazır; ancak veri kayıtlı (16 saat). Yayımlanacaksa yaşı görünür olmalı.", "citations": [ { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T10:44:32+03:00", "age_s": 30, "mode": "live" } ] },
+    { "role": "Operasyon", "stance": "oppose", "rationale": "R-05 ikinci şart (veri yaşı eşiğin altında) sağlanmıyor: 16 saatlik kayıt. E-05 açılmalı, canlı okuma beklenmeli.", "citations": [ { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-24T18:00:00+03:00", "age_s": 60240, "mode": "recorded" } ] },
+    { "role": "İletişim", "stance": "conditional", "rationale": "Metin 'kayıtlı · 24.09 18:00' damgasıyla yayımlanabilir; 'canlı' kelimesi geçmemeli.", "citations": [] }
+  ],
+  "dissent_summary": "Operasyon karşı: veri yaşı R-05 eşiğini aşıyor; canlı okuma olmadan yayım E-05 gerektirir.",
+  "proposed_action": { "kind": "hold", "text": "Canlı Metro kaydı gelene kadar beklet; kart 'doğrulanamadı, son bilinen durum 24.09 18:00' desin.", "expires_at": "2026-09-25T12:00:00+03:00" },
+  "confidence": { "level": "low", "reasons": [ "Veri kayıtlı, 16 saatlik.", "Tek kaynak.", "R-05 çalışma anı denetimi geçmedi." ] },
+  "author": "kural"
+}

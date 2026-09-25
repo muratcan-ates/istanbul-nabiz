@@ -1,0 +1,87 @@
+/* Shared components, one prefix each: card, stamp, badge, callout, skeleton, chip, cite, stat.
+   Adapted from src/nabiz/web/static/css/components.css (docs/design/README.md, "Stylesheets"). */
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip, .stamp, .cite { --icon-size: var(--icon-size-sm); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); font-size: var(--text-sm); white-space: nowrap; transition: background-color var(--dur-ui), transform var(--dur-press); }
+.chip .icon { color: var(--text-muted); }
+.chip:hover, .chip[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-subtle); color: var(--on-primary-subtle); }
+.chip:active { transform: translateY(1px) scale(.98); }
+@media (max-width: 767px) {
+  .chips { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+  .chip { flex: none; scroll-snap-align: start; }
+}
+@media (pointer: coarse) { .chip { min-height: var(--tap); } }
+
+/* A card: one surface, the kind icon in the gutter, a title, one metric or status, the stamp in the foot. */
+.cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+@media (min-width: 640px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.card { position: relative; display: grid; grid-template-columns: var(--icon-size) minmax(0, 1fr); gap: var(--space-1) var(--space-3); padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); box-shadow: var(--shadow-1); scroll-margin-top: calc(var(--topbar-h) + var(--space-4)); }
+.card > * { grid-column: 2; min-width: 0; }
+.card > .card-kind { grid-area: 1 / 1; color: var(--text-muted); }
+.card-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.card-body { color: var(--text); }
+.card-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); margin-top: var(--space-2); }
+.card-value { font-size: var(--text-3xl); font-weight: var(--weight-bold); line-height: 1; }
+.card-value.is-word { font-size: var(--text-xl); }
+.card-unit { color: var(--text-muted); }
+.card-status { display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.card.is-ok .card-status { color: var(--ok); }
+.card.is-warning .card-status { color: var(--warn); }
+.card.is-stale .card-status, .card.is-unverified .card-status { color: var(--text-muted); }
+.card.is-warning { border-color: var(--warn); }
+.card.is-unverified { border-style: dashed; }
+.card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); margin-top: var(--space-3); color: var(--text-subtle); font-size: var(--text-sm); }
+.card-author { color: var(--text-subtle); }
+.card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.card-empty { grid-column: 1 / -1; color: var(--text-muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .card-in { animation: card-enter var(--dur-enter) var(--ease-out) both; animation-delay: calc(var(--i, 0) * var(--stagger)); }
+}
+@keyframes card-enter { from { opacity: 0; transform: translateY(8px); } }
+
+/* The stamp: source mode (canlı, tarife, kayıtlı, bilinmiyor) with its icon, then the data age. */
+.stamp { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--text-subtle); font-size: var(--text-sm); }
+.stamp b { color: var(--text-muted); }
+.stamp.is-live { color: var(--text-muted); }
+.stamp.is-live .icon { color: var(--accent-strong); }
+.stamp.is-unknown, .stamp.is-warn { color: var(--warn); }
+.src { color: var(--text-subtle); font-size: var(--text-sm); }
+a.src { color: var(--link); }
+
+.badge { display: inline-flex; justify-content: center; min-width: 2.5em; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--line, var(--line-unknown)); color: var(--line-ink, var(--line-unknown-ink)); box-shadow: inset 0 0 0 1px var(--line-casing); font-size: var(--text-lg); font-weight: var(--weight-bold); }
+.badge-bus { --line: var(--badge-bus); --line-ink: var(--badge-bus-ink); }
+.tag { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-control); color: var(--text-muted); font-size: var(--text-sm); font-weight: var(--weight-semibold); white-space: nowrap; }
+.tag.is-ok { border-color: var(--ok); color: var(--ok); }
+.tag.is-warn { border-color: var(--warn); color: var(--warn); }
+.tag.is-bad { border-color: var(--bad); color: var(--bad); }
+.tag.is-info { border-color: var(--info); color: var(--info); }
+
+.callout { --callout-ink: var(--info); display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-surface); background: var(--info-wash); }
+.callout > .icon { flex: none; margin-top: 2px; color: var(--callout-ink); }
+.callout p { max-width: none; }
+.callout-warn { --callout-ink: var(--warn); background: var(--warn-wash); }
+.callout-ok { --callout-ink: var(--ok); background: var(--ok-wash); }
+.callout-bad { --callout-ink: var(--bad); background: var(--bad-wash); }
+.callout-title { font-weight: var(--weight-semibold); }
+.callout-error { --callout-ink: var(--bad); border: 1px solid var(--border); background: var(--surface-raised); }
+
+.cites { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0; list-style: none; }
+.cite { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-sunken); font-size: var(--text-sm); }
+
+.skeleton { display: grid; gap: var(--space-3); padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); }
+.skeleton-line { height: .75rem; border-radius: var(--radius-control); background: var(--skeleton); }
+.skeleton-line:nth-child(odd) { width: 60%; }
+@media (prefers-reduced-motion: no-preference) { .skeleton-line { animation: skeleton-pulse 1200ms var(--ease-in-out) infinite alternate; } }
+@keyframes skeleton-pulse { from { opacity: .55; } }
+
+/* Stat tiles (console): one number, its label, and the simulation note under the strip. */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); padding: 0; list-style: none; }
+@media (min-width: 768px) { .stats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.stat { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.stat-value { font-size: var(--text-2xl); font-weight: var(--weight-bold); line-height: 1.1; }
+.stat-value.is-word { font-size: var(--text-lg); color: var(--text-muted); }
+.stat-label { --icon-size: var(--icon-size-sm); display: flex; align-items: center; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-sm); }
+
+@media (forced-colors: active) { .badge, .chip, .callout, .card, .stat, .cite, .tag { border: 1px solid CanvasText; } }
