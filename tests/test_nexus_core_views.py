@@ -22,10 +22,10 @@ def test_the_queue_items_have_the_contract_fields(tmp_path: pathlib.Path) -> Non
     arena = engine.process(elevator()).signal_id
     items = queue_payload(engine.states().values())["items"]
     assert [i["signal_id"] for i in items][0] == arena  # newest first
-    required = {"signal_id", "kind", "title", "severity", "path", "status", "created_at", "summary"}
+    required = {"signal_id", "kind", "title", "severity", "path", "status", "created_at", "summary", "expires_at"}
     for item in items:
         assert required <= set(item)
-        assert item["status"] in {"closed_by_reflex", "awaiting_approval", "approved", "rejected", "deferred"}
+        assert item["status"] in {"closed_by_reflex", "awaiting_approval", "approved", "rejected", "deferred", "expired"}
         assert item["severity"] in {"info", "warning", "critical"} and item["path"] in {"reflex", "arena"}
     assert items[1]["status"] == "closed_by_reflex" and items[1]["summary"].startswith("Kadıköy")
     json.dumps(items)
@@ -38,7 +38,7 @@ def test_the_decision_card_has_the_contract_fields(tmp_path: pathlib.Path) -> No
     card = decision_payload(engine.states()[signal_id], clock.now)
     required = {
         "signal_id", "signal", "evidence", "freshness_s", "alternatives", "opinions",
-        "dissent_summary", "proposed_action", "confidence", "author",
+        "dissent_summary", "proposed_action", "confidence", "author", "panel", "receipt", "expires_at",
     }  # fmt: skip
     assert required <= set(card)
     assert card["freshness_s"] == 300 and card["author"] == "kural"
@@ -49,7 +49,10 @@ def test_the_decision_card_has_the_contract_fields(tmp_path: pathlib.Path) -> No
         assert opinion["role"] in {"Erişilebilirlik", "Operasyon", "İletişim"}
         assert all(set(c) == PROVENANCE for c in opinion["citations"])
     assert set(card["proposed_action"]) == {"kind", "text", "expires_at"}
-    assert set(card["confidence"]) == {"level", "reasons"} and card["confidence"]["level"] in {"high", "medium", "low"}
+    assert set(card["confidence"]) == {"level", "reasons", "uncertainty"}
+    assert card["confidence"]["level"] in {"high", "medium", "low"}
+    assert set(card["panel"]) == {"verdict", "votes", "answered", "quorum", "rounds"}
+    assert set(card["receipt"]) == {"reflex_ms", "arena_ms", "wall_ms", "llm_calls", "usd"}
     json.dumps(card)
 
 
