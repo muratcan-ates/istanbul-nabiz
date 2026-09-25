@@ -96,8 +96,9 @@ def test_landmarks_headings_and_live_regions(name: str) -> None:
 def test_the_honesty_bands_are_on_both_pages() -> None:
     index, console = read("index.html"), read("console.html")
     assert "Resmî İBB hizmeti" in index and "Resmî İBB hizmeti" in console
-    chat = read("js/chat.js")
-    assert "Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum." in chat
+    # The AI notice text has one source, disclosure.js (G15); chat.js shows it by importing it.
+    assert "Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum." in read("js/disclosure.js")
+    assert "import { AI_NOTICE } from './disclosure.js';" in read("js/chat.js")
     assert "Simüle operatör" in console
     assert "İBB onaylı" not in index and "İBB onaylı" not in console
     for page in (index, console):
@@ -235,7 +236,9 @@ def test_unknown_text_is_verbatim() -> None:
 
 def test_ai_notice_appears_once_per_page_session() -> None:
     source = read("js/chat.js")
-    assert source.count("const AI_NOTICE =") == 1
+    # The text itself lives once, in disclosure.js (G15); chat.js only shows it once per session.
+    assert "const AI_NOTICE =" not in source
+    assert "import { AI_NOTICE } from './disclosure.js';" in source
     assert "event === 'session_started'" in source
     assert "if (!sessionStarted)" in source
 

@@ -7,12 +7,12 @@
 
 import { stream } from './api.js';
 import { HISTORY_TURNS } from './config.js';
+import { AI_NOTICE } from './disclosure.js';
 import { dateTime, esc, has, int, num } from './format.js';
 import { icon } from './icons.js';
 import { AUTHOR_TR, TOOL_TR, ageText, howPanel, sourceLabel, sourceLink } from './provenance.js';
 
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
-const AI_NOTICE = 'Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum. Resmî karar veren bir görevli değilim.';
 const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';
 
 function refusalNote() {
