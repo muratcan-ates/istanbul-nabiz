@@ -276,6 +276,9 @@ Azure for Students has no card attached; when the credit is exhausted the subscr
 rather than billed. The practical risk is therefore *losing the subscription early*, not a surprise
 invoice — unless the subscription is ever upgraded to pay-as-you-go, which changes every row below.
 
+A budget is an alert, not a brake: it never stops a resource, and cost data can lag by a day. The brakes are
+the template settings below.
+
 | ID | What could spend | Guard | Status | Where |
 |---|---|---|---|---|
 | COST-1 | **MCP Container App kept warm by traffic.** `minReplicas` 0, `maxReplicas` 1, 0.5 vCPU / 1 GiB. The monthly free grant quoted in the template is 180,000 vCPU-seconds and 360,000 GiB-seconds; one replica warm for a 30-day month is 0.5 × 2,592,000 = 1,296,000 vCPU-seconds, about 7.2 times the grant (arithmetic on the template's numbers). Steady outside traffic can therefore move the app from free to paid-from-credit. | Scale to zero, one replica ceiling. An Azure cost budget with alerts would give warning; none exists in `infra/`. | implemented (scale bounds) · owner action (budget alert) | `infra/modules/containerapps.bicep`, `infra/main.bicep` |
@@ -304,7 +307,7 @@ Ordered by what the owner can close fastest for the most risk removed.
 | 5 | Upstream free text can instruct the model (AGT-1). | Done in the working tree (2026-09-23): one sentence in `src/nabiz/agent/system_prompt.md` and in `INSTRUCTIONS` in `src/ibb_mcp/server.py`. Closes when pushed. | owner (push) | — |
 | 6 | Non-existent line codes and one busy client drain the İETT budget (MCP-5). | Done in the working tree for the MCP transport (line-code check, per-caller bucket). The web app's GET routes still have no per-client bucket. | owner (push) · lane (web app) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py`, `src/nabiz/web/main.py` |
 | 7 | Server and collector budgets add up past İETT's documented limit (COL-2). | Size the server's İETT budget as 100 minus the collector's planned peak minus a margin once the jobs are deployed. | owner decision, then lane | `src/ibb_mcp/http.py` |
-| 8 | Guardrails and the authorship gate do not protect `main` until they are on it (CI-6). | Commit and push the in-progress CI changes; then make the CI jobs required checks in the ruleset from row 2. | owner | `.github/workflows/ci.yml` |
+| 8 | Guardrails and the authorship gate do not protect `main` until they are on it (CI-6). | stage 1 (no force push, no deletion) now; the required CI check only with a rehearsed pull-request flow. Until then: `make ci-commit` before the push (or the pre-push hook) and `gh run watch` after it. | owner | `.github/workflows/ci.yml` |
 | 9 | Credit exhaustion is noticed only when the subscription stops. | Create a cost budget with e-mail alerts at 50/80/100 % of the credit. | owner | Azure portal → Cost Management → Budgets |
 | 10 | Dependencies are not locked (SC-2); action pinning is not on `main` yet (CI-4). | Add a lockfile; push the SHA-pinned workflow. | lane | `pyproject.toml`, `.github/workflows/ci.yml` |
 | 11 | No integrity hash on the CDN script (SC-6); the CSP (WEB-1) is in the working tree. | Add an `integrity` attribute to both MapLibre 4.7.1 tags, using the SRI value cdnjs publishes for those exact files. | lane (needs a network read of cdnjs) | `src/nabiz/web/static/index.html` |

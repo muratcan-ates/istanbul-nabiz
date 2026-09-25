@@ -2,7 +2,7 @@
 
 **Istanbul City Agent on Azure, powered by an open MCP server over İBB live data** · Microsoft AI Innovators · 7 günlük solo sprint · Plan v3, 8 Eylül 2026 (Nefes v2'den pivot; eski plan `docs/archive/PLAN-nefes-v2.md`) · **v3.1, 23 Eylül 2026:** durum (§0) ve araştırma düzeltmeleri eklendi; eskiyen yerler silinmedi, işaretlendi (§0.4)
 
-> **Teslim tarihi / kanal:** `______` ← 23 Eylül itibarıyla **hâlâ yazılı değil.** Mentorün brifini yazılı al (son tarih, video süresi ve dili, repo public mı, yükleme adresi). Gelene kadar takvim teslimi D7 = 29 Eylül varsayar: [`docs/SPRINT.md`](docs/SPRINT.md).
+> **Teslim tarihi / kanal:** `______` ← 23 Eylül itibarıyla **hâlâ yazılı değil.** Mentorün brifini yazılı al (son tarih: gün, saat ve saat dilimi; değerlendirme ölçütleri; teslim formu ve zorunlu alanları; video: azami süre, dil, altyazı, dosya biçimi, yükleme kanalı; dağıtılmış URL şart mı, yerel demo yeter mi; repo public olmalı mı; örnek ya da referans teslim; hangi ürünlerle kıyaslanacağı). Gelene kadar takvim teslimi D7 = 29 Eylül varsayar: [`docs/SPRINT.md`](docs/SPRINT.md).
 
 > **BLUF:** İBB'nin kayıt istemeyen canlı servislerini (İSPARK doluluk, İETT otobüs konumları, Metro arıza durumu, trafik indeksi, hava kalitesi) **tek bir MCP server** (`ibb-mcp`) hâline getiriyorsun; Azure Functions bu akışları saatlik/dakikalık Delta Lake + Azure Data Explorer'a biriktiriyor (İBB'nin kendisinin tutmadığı tarihçe); Microsoft Agent Framework ile yazılmış **"İstanbul Nabız" ajanı** bu MCP server'ın ilk müşterisi olarak vatandaşın gerçek sorularına canlı, kaynak atıflı, TR/EN cevap veriyor: *"Taksim'e 20 dakikaya varıyorum, hangi otoparkta yer var, ücreti ne?"*, *"500T 4. Levent'e ne zaman gelir?"*, *"M4'te arıza var mı, Kartal istasyonunda asansör var mı?"*, *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"*. Aynı MCP server VS Code Copilot, Copilot Studio ve Claude'dan da çalışıyor. Ölçülen şeyler: görev başarı oranı, otobüs ETA hatası (dakika), sayısal sadakat, veri tazeliği. Bicep + azd + GitHub Actions; haftalık maliyet ≈ 4–12 $; Fabric'e ve Azure OpenAI kotasına bağımlı değil.
 
@@ -20,7 +20,7 @@ Bu bölüm her sprint gününün sonunda güncellenir. Günlük takvim, çıkı�
 |---|---|---|
 | MCP sunucusu | `main`'de 15 araç (`plan_journey`, `line_reliability`, `check_alerts` 23 Eyl'de eklendi; sabah 12'ydi). stdio ve streamable HTTP gerçek bir istemciyle doğrulandı | `git show HEAD:src/ibb_mcp/server.py`; `make smoke`, 23 Eyl, çevrimdışı; `tests/test_mcp_integration.py` |
 | Geçmişe dayalı modüller | `occupancy.py`, `reliability.py`, `routing.py` (rota *karşılaştırması*, navigasyon değil) ve `city_freshness` aracı `main`'de | `git ls-files src/ibb_mcp`; `5437530` (13 Eyl) |
-| CI | `main`'de 15 koşu: ilk **13'ü kırmızı** (8–22 Eyl; git'e girmeyen GTFS dosyasını okuyan testler, 13 Eyl'de ayrıca 2 ruff hatası), sonra **yeşil**: `1599c40` ve `d59b5a8` (23 Eyl). Düzeltme `tests/fixtures/gtfs_mini`. İnceleme düzeltmeleriyle çalışma ağacında 1250 test geçiyor; `make ci-local` temiz kopyada da yeşil (23 Eyl). `main` henüz korumalı değil | `gh run list --workflow ci.yml --branch main`; [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1 |
+| CI | `main`'de 16 koşu: ilk **13'ü kırmızı** (8–22 Eyl; git'e girmeyen GTFS dosyasını okuyan testler, 13 Eyl'de ayrıca 2 ruff hatası), sonra **yeşil**: `1599c40`, `d59b5a8` ve `d1b4c57` (23 Eyl). Düzeltme `tests/fixtures/gtfs_mini`. `d1b4c57` koşusunda 1250 test geçti, 1 atlandı, 4 xfail (`gh run view 35822752371 --log`). `main` henüz korumalı değil: 23 Eyl 16:44 UTC'de ruleset yok, `protected: false` | `gh run list --workflow ci.yml --branch main`; `gh api repos/muratcan-ates/istanbul-nabiz/rules/branches/main`; [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1 |
 | Azure | **0 deploy.** `az`/`azd` kurulu değil. Bicep hazır; toplayıcı için Container Apps Jobs modülü D1'de yazıldı ve çevrimdışı test edildi (DECISIONS #10) | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1; `infra/modules/collectorjobs.bicep` |
 | Toplayıcı | Dizüstünde, supervisor altında. 8–22 Eyl arasındaki 15 günün yalnızca 4'ünde izlenen hat görüntüsü var; 14 Eyl 03:48 → 22 Eyl 19:12 UTC arası hiç veri yok | `src/nabiz/collector/job.py` (modül açıklaması); `eval/results/eta.md` |
 | Otobüs ETA hatası | MAE **12,94 dk**; 6.801 tahminin 1.351'i gerçek varışla eşleşti; hepsi ayarlanmamış 120 sn/durak ile; %27,3'ü 5 dk içinde | `eval/results/eta.md` (23 Eyl, çevrimdışı) |
@@ -29,7 +29,8 @@ Bu bölüm her sprint gününün sonunda güncellenir. Günlük takvim, çıkı�
 | Hat düzenliliği | 39 hücreden 15'i yayımlandı, 24'ü yetersiz gözlem yüzünden reddedildi; 2 takvim günü | `eval/results/reliability.md` |
 | Kimlik | 21 commit'in 19'u kişisel e-postayla, 2'si noreply adresiyle; yerel git kimliği artık noreply | `git log --format=%ae \| sort \| uniq -c`; `git config --local user.email` |
 | Repo güvenlik ayarları | secret scanning ve push protection açık; Dependabot uyarıları ve private vulnerability reporting kapalı; `main` korumasız | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1 |
-| Birleşmemiş işler | `feat/route-advisor` ve `feat/ops-hardening` worktree'leri 13 Eyl'den beri commit'lenmemişti; 23 Eyl'de (D1) çalışma ağacına hasat edildi: dosya dosya sonuç [`docs/route-advisor.md`](docs/route-advisor.md) §9'da, ops kodu DECISIONS #15–#16'da, altyapı #11'de. Commit'ten sonra iki worktree silinebilir | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1; `git worktree list` |
+| Birleşmemiş işler | `feat/route-advisor` ve `feat/ops-hardening` worktree'leri 13 Eyl'den beri commit'lenmemişti; 23 Eyl'de (D1) çalışma ağacına hasat edildi: dosya dosya sonuç [`docs/route-advisor.md`](docs/route-advisor.md) §9'da, ops kodu DECISIONS #15–#16'da, altyapı #11'de. Hasat `main`'de (ilk dalga, `1599c40`'a kadar); `401ab4b`'de duran iki worktree D2 görev 7'deki prosedürle kaldırılır ([`docs/SPRINT.md`](docs/SPRINT.md) D2), silme sahibin işi | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1; `git worktree list` |
+| Çalışma ağacı (D1 akşamı) | Üçüncü dalga **commit bekliyor:** kural ve tüzük güncellemeleri ([`AGENTS.md`](AGENTS.md) §9, brief ve handoff şablonları, günlük ritim ve kapsam kuralları), süreç hedefleri (`make status`, `make ci-commit`, `make lake-backup`, ci-local kilidi, pre-push kuralı, `no-azure-ids` guardrail'i), sunucu (`iett_line` TTL 90 sn, DECISIONS #3; çevrimdışı verinin yaşı kayıt zamanından; `.env.example` kodla eşit), yeniden tasarımın 3'ten 6'ya kadar olan adımları. İniş (commit aralığı, CI koşusu) push anında buraya yazılır | [`docs/SPRINT.md`](docs/SPRINT.md) D1 durum notu; `git status --short` |
 | Teslim tarihi | yazılı değil | başlık |
 
 ### 0.2 İkinci derin araştırma raporu (22 Eylül) — doğrulanmış düzeltmeler
@@ -63,6 +64,7 @@ Rapor yalnızca README'yi okuyabildi (kendi §0'ında söylüyor); repoya konmad
 
 - **v3 — 8 Eylül 2026:** yedi günlük plan (§1–§18).
 - **v3.1 — 23 Eylül 2026:** §0 eklendi. §1–§18 yeniden yazılmadı; 23 Eylül'de eskiyen yerlere tarihli not düşüldü (toplayıcı → Container Apps Jobs, GTFS eşleşmesi, ETA kalibrasyonu, §11 takvimi, §17). Makineye özgü ayrıntılar (§1, §3, §10) kaldırıldı: repo public ([`AGENTS.md`](AGENTS.md) §3).
+- **v3.1, D1 akşamı (23 Eylül):** §0.1'e D1 sonu durumu (CI, worktree'ler, commit bekleyen çalışma ağacı); başlık satırında mentora sorulacakların tam listesi; §2'ye senaryo sayısı notu; §5 tablosunda `iett_line_buses` 90 sn (DECISIONS #3); §8'e araç ve senaryo sayım notu; §14'e kanıt notu; §15'te CI satırı kapandı; §16'ya "Teslim" ve "Program gereksinimleri" kutuları.
 
 ---
 
@@ -105,7 +107,7 @@ EnerjiIQ ele (İBB yok, EPİAŞ kaydı, Azure OpenAI + AI Search bağımlılığ
 
 **EN:** "Nabız exposes İBB live data as an open MCP server on Azure Container Apps, stores the history İBB doesn't keep in Delta Lake + Azure Data Explorer, and serves a Microsoft Agent Framework city agent with measured task success and ETA accuracy."
 
-`[T] [S] [E]` Gün 5 eval'inden *(23 Eyl: D4 = 26 Eylül eval'inden, [`docs/SPRINT.md`](docs/SPRINT.md))*. **Uydurma sayı yok.**
+`[T] [S] [E]` Gün 5 eval'inden *(23 Eyl: D4 = 26 Eylül eval'inden, [`docs/SPRINT.md`](docs/SPRINT.md); cümledeki "24 gerçek senaryo" 8 Eylül sayısıdır, `eval/journeys.jsonl` bugün 30 satır, §8 notu)*. **Uydurma sayı yok.**
 
 ---
 
@@ -211,7 +213,7 @@ Kaynak başına tazelik (son başarılı snapshot yaşı), boş/eksik oran, 503 
 | `ispark_find_parking` | lat, lon, `radius_km=1.5`, `min_free=1`, `open_now=true` | ≤ 5 otopark: ad, boş/kapasite, tür, tarife metni, mesafe, `updateDate` | Park + ParkDetay · 5 dk |
 | `ispark_typical_occupancy` | park_id, weekday, hour | medyan doluluk %, örnek sayısı, "n günlük veri" notu | ADX `ispark_profile` |
 | `iett_stops_search` | `query` ("Kadıköy"), `line?` | stop_id, ad, lat, lon, hatlar | GTFS |
-| `iett_line_buses` | line_code | araçlar: yön, en yakın durak, son konum zamanı | GetHatOtoKonum · 60 sn |
+| `iett_line_buses` | line_code | araçlar: yön, en yakın durak, son konum zamanı | GetHatOtoKonum · 90 sn |
 | `iett_next_arrivals` | stop_id, line_code | en yakın 2 araç: kaç durak, tahmini dk, planlanan sefer | konum + GTFS sırası + `iett_line_speed` |
 | `metro_status` | — | hat bazlı canlı bildirimler | GetServiceStatuses · 5 dk |
 | `metro_station_info` | `name` | hat, sıra, asansör/yürüyen merdiven/WC/bebek odası | GetStations · 1 gün |
@@ -251,6 +253,7 @@ Kaynak başına tazelik (son başarılı snapshot yaşı), boş/eksik oran, 503 
 ## 8. Üç katmanlı eval
 1. **Araç kontratı:** 12 araç × fixture testleri; canlı smoke; tazelik.
 2. **Görev başarısı:** `eval/journeys.jsonl` **24 senaryo** (J1–J4 × 6; 12 TR / 12 EN): beklenen araç zinciri, beklenen alanlar, yasak ifadeler ("kesin", "garanti"). Metrikler: **görev başarısı %S**, tool-call doğruluğu, **sayısal sadakat**, atıf oranı, p50/p95 gecikme, sorgu maliyeti; Groundedness/Relevance (`azure-ai-evaluation`; judge Azure OpenAI varsa, yoksa Foundry Local "küçük model judge").
+   *2026-09-23: sunucuda 15 araç (`make smoke`), `eval/journeys.jsonl` 30 senaryo (`wc -l`); yukarıdaki 12 ve 24, 8 Eylül planıdır.*
 3. **ETA doğruluğu:** `eta_log` → MAE/medyan hata, ≥ 200 gerçek varış (toplayıcı 4–5 günde toplar). *23 Eyl: 1.351 eşleşmiş tahmin, hedef aşıldı (`eval/results/eta.md`).*
 Videoda **başarısızlık + düzeltme anı**: ajan uydurulan boş yer sayısını söyler → sadakat kontrolü reddeder → cache'teki gerçek sayıyla, `updateDate` ile yeniden.
 
@@ -393,6 +396,8 @@ istanbul-nabiz/
 | 1:45–2:15 | Mimari: Functions *(23 Eyl: Container Apps Jobs)* → Delta Lake → ADX → MCP → ajan; Bicep + azd; App Insights trace; kanıt tablosu (görev başarısı, ETA MAE, sadakat, tazelik), CI, maliyet | Bicep, azd, Delta Lake, OpenTelemetry, Azure AI Evaluation, GitHub Actions |
 | 2:15–2:30 | Sonraki adımlar: PyPI, Copilot Studio connector, Fabric Eventhouse, Event Hubs | Microsoft Fabric, Real-Time Intelligence |
 
+*23 Eyl:* söylenecek her adın ve her iddianın kanıtı [`docs/video_script.md`](docs/video_script.md) "Kanıt" tablosunda; koşulu tutmayan ad söylenmez. Azure AI Evaluation'ı hiçbir kod kullanmıyor (`grep -rn` `pyproject.toml`, `src/`, `eval/`), metinden çıktı; Functions yerine Container Apps Jobs (DECISIONS #10). Her çekimin nerede çalıştığı ve `/healthz` 200 dönmeden "canlı" denmeyeceği aynı dosyada.
+
 ---
 
 ## 15. Riskler ve Plan B
@@ -412,7 +417,7 @@ istanbul-nabiz/
 | Otopark profili için az veri | Yüksek (ilk hafta) | Düşük | Ajan "n günlük veri" der; README'de büyüyen veri seti |
 | App registration / OIDC kapalı | Orta | Düşük | CI sadece test; lokal deploy |
 | Spending limit | Düşük | Yüksek | Pahalı servis yok; budget; ADX + Foundry Local abonelikten bağımsız |
-| *23 Eyl:* `main` CI hiç yeşil olmadı (13/13 kırmızı) — kırmızı, yeni bir kusuru eskisinin arkasına saklıyor | gerçekleşti | Yüksek | GTFS'siz, hermetik testler (D1); ilk yeşil koşudan sonra `main`'e CI şartlı ruleset (sahip) |
+| *23 Eyl:* `main` CI hiç yeşil olmadı (13/13 kırmızı) — kırmızı, yeni bir kusuru eskisinin arkasına saklıyor | **kapandı (23 Eyl):** `1599c40`'tan beri yeşil, 3 koşu; koruma yok | Yüksek | GTFS'siz, hermetik testler (D1, `tests/fixtures/gtfs_mini`); koruma iki aşamalı: önce silme ve force push engeli, CI şartı yalnız provası yapılmış bir PR akışıyla; o güne kadar push'tan önce `make ci-commit`, sonra `gh run watch` ([`docs/SPRINT.md`](docs/SPRINT.md) D1 görev 11) |
 | *23 Eyl:* dizüstü toplayıcı uykuyla duruyor — 15 günün 4'ünde veri | gerçekleşti | Yüksek | Container Apps Jobs (DECISIONS #10); dizüstü ile Jobs **asla aynı anda** değil: Jobs tepe saatte 66, dizüstü 80, İETT sınırı 100 |
 | *23 Eyl:* kalibre ETA görülmeyen duraklarda daha kötü (35,82'ye karşı 10,18 dk) | gerçekleşti | Orta | Sunulan tahminci = ölçülen tahminci: 23 Eyl'de ayarlanmamış 120 sn/durak'a dönüldü (DECISIONS #18) |
 | *23 Eyl:* 21 commit'in 19'u kişisel e-postayla, public geçmişte | gerçekleşti | Orta | Yeniden yazmak ya da bırakmak sahibin kararı (D2); yeni commit'ler noreply ile, `scripts/check_authorship.py` |
@@ -433,6 +438,24 @@ istanbul-nabiz/
 - [ ] `azd up` tek komut; `tests/` ≥ 28 — *test hedefi aşıldı ([`docs/ENGINEERING.md`](docs/ENGINEERING.md) §1); `azd up` hiç koşmadı*
 - [x] Limitations: İSBİKE kapalı, hal fiyatı anahtar, PM2.5 yok, 100 istek/saat, ETA "tahmini"
 - [ ] Maliyet + "çalışır tutmanın aylık maliyeti"; DECISIONS.md; İBB atıfı; video linki — *DECISIONS ve İBB atıfı ✓; maliyet README'de yok (`docs/deploy.md` §7); video yok*
+
+### Teslim
+
+- [ ] Video, brifin süre sınırı içinde (ölçülen süre ve ölçüm komutu yanında)
+- [ ] İngilizce altyazı dosyası
+- [ ] Teslim metni; sayılar yalnız `eval/results/` dosyalarından
+- [ ] Ekran görüntüleri: dağıtılmış URL'de bir MCP istemcisi, telefon genişliğinde arayüz, bir Application Insights izi
+- [ ] Canlı URL, ya da README'de "deploy edilmedi" cümlesi
+- [ ] Teslim etiketi (`v0.1.0`) README'de adıyla
+- [ ] Gönderildi; onay sahibinde (repo dışında)
+
+İşaretlenen her kutunun yanına tarih ve kanıt yazılır.
+
+### Program gereksinimleri
+
+Brif geldiği gün doldurulur. Her gereksinim kendi cümlemizle yazılır (alıntı yok), yanında kanıtı: dosya, URL, eval dosyası ya da video zaman damgası. Kanıtı olmayan satır neyin eksik olduğunu söyler.
+
+- [ ] (brif bekleniyor)
 
 ## 17. Yapılmayacaklar
 Fabric'e bağlı kritik yol · rota planlama / çok modlu yolculuk optimizasyonu · kullanıcı hesabı/bildirim altyapısı · free-form NL2SQL · derin öğrenme · Copilot Studio kritik yolda · Power BI Desktop · Assistants API / prompt flow / Synapse / `azure-ai-inference` (emekli) · AI Search Basic · Stream Analytics · Belbim 68 GB · İSBİKE · hal fiyatları.

@@ -251,6 +251,7 @@ The order matters. The jobs plan 66 İETT requests in their peak hour; the lapto
 itself 80 per hour (DECISIONS #3); İETT documents 100. Running both, even for an hour, can exceed it.
 
 ```bash
+make lake-backup BACKUP_DIR=<private directory>   # the laptop-era history exists nowhere else
 make collect-stop                     # stops scripts/supervise_collector.sh and the collector
 pgrep -fl collect_forever.py          # must print nothing
 azd provision                         # creates the five jobs with the image from 4.2
@@ -328,6 +329,8 @@ make eta
 
 Do this at least once every `NABIZ_BRONZE_RETENTION_DAYS` (30 by default): the lifecycle rule
 deletes cloud history that has not been synced or ingested into ADX.
+
+Bronze has no soft delete, so an expiry or a purge is final: sync it down before `bronzeRetentionDays` runs out.
 
 ### 4.6 After a code change
 
@@ -488,8 +491,11 @@ is exactly the sort of line a budget alert exists to catch.
 
 ### Budget alerts — before anything can spend
 
-A disabled subscription is unrecoverable in a seven-day sprint. Create the alerts **before the
-first `azd up`**. Three thresholds: $5 is the tripwire for a runaway job (the jobs' ceiling is
+A budget sends an e-mail; it never stops a resource, and cost data on a Students subscription can lag by a
+day. The brakes are in the template: `minReplicas` 0, `maxReplicas` 1, the 0.16 GB/day log cap and the per-run
+deadline ([`THREAT_MODEL.md`](THREAT_MODEL.md) §6). Never leave a cost experiment running in the hope that an
+alert will stop it. A disabled subscription is unrecoverable in a seven-day sprint. Create the alerts **before
+the first `azd up`**. Three thresholds: $5 is the tripwire for a runaway job (the jobs' ceiling is
 $34.97/month; the log cap's is $0 at the default 0.16 GB/day and grows by about $9.27/month for every 0.1 GB/day
 above it), $20 and $40 are the sprint plan's.
 

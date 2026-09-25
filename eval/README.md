@@ -13,21 +13,20 @@ a plausible-looking placeholder in a results table is worse than an admission.
 .venv/bin/python eval/run_eval.py --mode agent --require-llm          # …and refuses to run without a model
 ```
 
-Each run writes `eval/results/<timestamp>-<mode>-<offline|live>.json` (every call, every
-field check, every latency) plus the same summary as `<timestamp>-<mode>-<offline|live>.md`,
-and copies that summary over `eval/results/latest.md`, which is also printed to stdout.
-`latest.md` is therefore whichever run went last. It is meant to be the **offline deterministic**
-run, the only configuration that covers every scenario with no network, but the committed copy is
-the 8 September **live** run (identical to `results/20260908T084908Z-deterministic-live.md`); the
-offline run of the same morning is `results/20260908T084817Z-deterministic-offline.md`. Both predate
-the J5 scenarios, so refresh `latest.md` with `make eval` once the J5 batch is committed: the footer
+Each run writes `<timestamp>-<mode>-<offline|live>.json` (every call, every field check, every
+latency) and the same summary as `.md`. `make eval` writes them to `reports/eval/`, which git
+ignores; `make eval-record` and `make eval-live` write to `eval/results/`. `latest.md` is the most
+recent live run: only a live run, or a run with `--update-latest`, replaces it. The summary is also
+printed to stdout. The committed `latest.md` is the 8 September **live** run (identical to
+`results/20260908T084908Z-deterministic-live.md`); the offline run of the same morning is
+`results/20260908T084817Z-deterministic-offline.md`. Both predate the J5 scenarios, and only the
+next live run (`make eval-live`, NETWORK, the owner's) refreshes `latest.md`. Every report's footer
 stamps the commit, and a run over uncommitted changes is stamped `<hash>-dirty`. The offline run
-still reads GTFS from `data/reference/gtfs/` (the harness builds `Settings(offline=True)` itself), so
-its J2 scenarios need that export on the machine that runs it: on a clean copy without it (23 Sep), four
-J2 scenarios fail and the run scores 26/30. `--results-dir`
-writes somewhere else entirely, which is how you try a selection without disturbing the
-committed files. The exit code is `0` when every scenario passed, `1` when one failed, `2`
-when the selection matched nothing and `3` when agent mode skipped.
+still reads GTFS from `data/reference/gtfs/` (the harness builds `Settings(offline=True)` itself),
+so its J2 scenarios need that export on the machine that runs it: on a clean copy without it (23
+Sep), four J2 scenarios fail and the run scores 26/30. `--results-dir` writes somewhere else
+entirely. The exit code is `0` when every scenario passed, `1` when one failed, `2` when the
+selection matched nothing and `3` when agent mode skipped.
 
 ## The two modes measure different things
 
@@ -204,13 +203,15 @@ The skip is visible rather than silent:
 | `j3-en-1` | en | J3 | skipped | 0 ms | skipped: upstream budget of 1 requests spent |
 ```
 
-## ETA accuracy cannot be measured yet — and why
+## How ETA accuracy is measured
 
-The README's **Bus ETA mean absolute error** row is `n/a`, and it will stay `n/a` for
-several days. This is not a missing feature; it is arithmetic. Measuring the error of an
-arrival prediction requires pairs of *(what we predicted, when the bus actually arrived)*,
-and İETT publishes neither historical predictions nor arrival events. Both halves of every
-pair have to be observed by this project, in real time, over days:
+The README's **Bus ETA mean absolute error** row cites [`results/eta.md`](results/eta.md).
+That file's opening line gives the resolved and logged counts, and the note that ends its
+generated part gives the collection window; this section explains why the number needs days
+of collection before it means anything. Measuring the error of an arrival prediction
+requires pairs of *(what we predicted, when the bus actually arrived)*, and İETT publishes
+neither historical predictions nor arrival events. Both halves of every pair have to be
+observed by this project, in real time, over days:
 
 1. **Prediction.** Every estimate `iett_next_arrivals` produces is written to `eta_log`
    with its method (`stop_sequence`, `distance`, `schedule`), the target stop, the door
@@ -228,9 +229,9 @@ pair have to be observed by this project, in real time, over days:
    §8 sets the bar at ≥ 200 resolved arrivals before the number goes in the README, which
    is roughly four to five days of collection.
 
-Until then the honest report is the count of pairs (zero) and the reason, which is what the
-harness prints. The same log is what will justify moving the constants in `EtaParams`, and
-what a trained model would eventually have to beat.
+Below that bar, the honest report is the count of resolved pairs and the reason, not a mean.
+The same log is what will justify moving the constants in `EtaParams`, and what a trained
+model would eventually have to beat.
 
 ## Files
 
@@ -238,7 +239,7 @@ what a trained model would eventually have to beat.
 eval/
 ├── journeys.jsonl   30 scenarios, 15 TR / 15 EN, six per journey (J1–J5)
 ├── run_eval.py      the harness: runner, metrics, markdown report, --selftest
-└── results/         <timestamp>-<mode>-<offline|live>.{json,md} + latest.md
+└── results/         evidence runs: <timestamp>-<mode>-<offline|live>.{json,md} + latest.md (the last live run)
 ```
 
 Contains public sector information from the İstanbul Metropolitan Municipality Open Data

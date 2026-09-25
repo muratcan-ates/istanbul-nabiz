@@ -6,15 +6,16 @@ the palette study and the three competing directions it was chosen from. Section
 [`README.md`](README.md) ("spec §15", "step 5") refer to that spec; this file carries every rule a
 contributor needs.
 
-**Status on 2026-09-23.** Steps 0 to 2 of the plan (§12) are in the tree: the before measurements and
-screenshots, the budget gate, and the old `app.js` split into ES modules with no visible change. A review
-the same day added fixes to the old page that the design keeps: the data-age strip and the status pill
-read the data's own age (§7), darker greys and status colours so small text passes 4.5:1, focus kept on
-"Sor" while an answer loads, Turkish names for the map's controls and markers, a table under the traffic
-bars, `Cache-Control: no-cache` on the page's files (step 9, half), and `js/motion.js` for scripted
-motion. Everything else here is specified and not built yet. The page still has the old look, as in
-[`screens/after-first-1440-light.png`](screens/after-first-1440-light.png), and the README shows no
-screenshot until step 5.
+**Status on 2026-09-23.** Steps 0 to 6 of the plan (§12) are in the tree: the before measurements and
+screenshots, the budget gate, the old `app.js` split into ES modules with no visible change, the font
+subset, the Tabler sprite and favicon with their licences (step 3), the generated `tokens.css` with
+three hand-written stylesheets in place of `style.css` (step 4), the new markup with MapLibre loaded only
+with the first map (step 5), and the pen line, the "Veri tazeliği" ruler and `hero.js` (step 6). A review
+the same day added fixes that the design keeps: the data-age strip and the status pill read the data's own
+age (§7), darker greys and status colours so small text passes 4.5:1, focus kept on "Sor" while an answer
+loads, Turkish names for the map's controls and markers, a table under the traffic bars, `Cache-Control:
+no-cache` on the page's files (step 9, half), and `js/motion.js` for scripted motion. Answers keep the old
+renderers until step 7. How each piece is built, and why: [`README.md`](README.md).
 
 ---
 
@@ -92,10 +93,11 @@ tokens through classes, or through `getComputedStyle` for MapLibre paint.
 | Non-colour | 8 type sizes and a display clamp, 3 weights, 3 leadings, a 4 px spacing scale, two radii, layout widths, 2 easings and 7 durations, drawing strokes, a z-index scale |
 | Role aliases (no new colour) | `--pulse-ink-low/high/archive`, `--chart-guide/ref/now/halo/best`, `--live-dot`, `--occupancy-ink`, `--route-foot/transit/drive`, `--badge-bus`, `--line-casing`, `--marker-edge`, `--map-wash`, `--sheet-bg`, `--skeleton`, `--selected-row`, `--topbar-bg` |
 
-**Verified.** Re-run on 2026-09-23 on the approved file with the design stage's verifier: the palette's
+**Verified.** `scripts/design/verify_tokens.py` on the files in the tree (2026-09-23): the palette's
 required pairs **178/178** and the pairs this design adds **76/76** pass WCAG AA in both themes; the served
-and annotated copies resolve identically, and so do the two dark blocks. The file is 13,835 B raw and
-3,706 B gzip -9 (budget 16 KB / 4 KB). An excerpt, light / dark:
+and annotated copies resolve identically, and so do the two dark blocks. The served file keeps a
+three-line header (the long one stays in the annotated copy) and is 12,177 B raw and 2,850 B gzip -9
+(budget 16 KB / 4 KB). An excerpt, light / dark:
 
 | Pair | Light | Dark | Needs |
 |---|---:|---:|---:|
@@ -108,31 +110,27 @@ and annotated copies resolve identically, and so do the two dark blocks. The fil
 
 Line badges set their code at 19 px bold (WCAG large text): every ink passes 3:1, and M4, M8, T3, T5 and
 M11 do not reach 4.5:1 with any ink, which is why there is no small badge. The verifier and the palette
-script land in `scripts/design/` with step 4; `verify_tokens.py` exits 1 on any failed pair.
+scripts are in `scripts/design/` (commands in [`README.md`](README.md)); `verify_tokens.py` exits 1 on any
+failed pair, and `tests/test_web_design_tokens.py` holds the served file to what the scripts write.
 
 ## 4. Type
 
 | | |
 |---|---|
-| Family | **Atkinson Hyperlegible Next** (Braille Institute, Applied Design Works, Letters From Sweden; SIL Open Font License 1.1), variable weight, upright only |
-| Why | Riders match codes to signs (`M1A`, `500T`, door `C-338`, stop `401351`) and Turkish needs `İ i I ı` kept apart: the family was drawn for exactly that. Nobody's identity here (İBB, İETT and Metro İstanbul use other faces), and not one of the faces generated pages default to (Inter, Geist). |
-| Delivery | One self-hosted subset, `static/fonts/nabiz-sans-tr-v1.woff2`, `font-display: swap`, preloaded; a metric-matched fallback face whose overrides are computed from the subset's tables with fontTools, never guessed; `OFL.txt` beside it and a line in `NOTICE.md` |
+| Family | **Source Sans 3** (Adobe; SIL Open Font License 1.1), variable weight 400 to 700, upright only |
+| Why | Of the two faces the spec weighed, the one with every glyph the page prints (`₺`, `µ`, `³`, `₂`, `₃` beside the Turkish letters) and tabular lining figures by default, so riders can line up codes and times (`M1A`, `500T`, door `C-338`, `18:00`). Nobody's identity here (İBB, İETT and Metro İstanbul use other faces), and not one of the faces generated pages default to (Inter, Geist). |
+| Delivery | One self-hosted subset, `static/fonts/nabiz-sans-tr-v1.woff2` (23,388 B), `font-display: swap`, preloaded; a metric-matched fallback face whose overrides are computed from the subset's tables with fontTools, never guessed; `OFL.txt` beside it and a line in `NOTICE.md`. Renamed "Nabiz Sans TR" inside the file, because "Source" is a Reserved Font Name |
 | Scale | A display clamp (32 to 48 px, h1 only) and 8 sizes: 48, 36, 28 (the one metric per row), 22, 19, 16 (body), 14, 12 (axis labels only). Weights 400, 600, 700. Hierarchy by weight and ink, not size jumps. |
 | Rules | Sentence case; **no `text-transform: uppercase`** (it is the eyebrow tell and breaks Turkish casing on ASCII data such as `YENIKAPI`); tabular lining numbers; Turkish decimal comma via `toLocaleString('tr-TR')`; body measure 65ch |
 
-**Open: glyph coverage.** A coverage check run on 2026-09-23 with fontTools on google/fonts'
-`AtkinsonHyperlegibleNext[wght].ttf` (version 2.001, 114,552 B) found **no glyph** for `₺` (U+20BA), `µ`
-(U+00B5), `₂` (U+2082) or `₃` (U+2083), which the page prints (tariffs, µg/m³, NO₂, O₃). The rule is never
-to mix faces and never to fall back to "TL" or "NO2": the spec's answer is Source Sans 3 (OFL 1.1, same
-tokens and scale). Its google/fonts variable file (`SourceSans3[wght].ttf`, version 3.052, 646,340 B,
-weights 200 to 900) has all four glyphs, and its figures are tabular and lining by default: re-measured the
-same day with fontTools 4.65.0, the ten digits share one advance at every weight tried (497, 513 and 528
-units at 400, 600 and 700). It has no `tnum` because it needs none; `pnum` and `onum` are opt-in. Atkinson
-is the other way round: proportional digits by default, tabular through `tnum`. So the coverage gate of
-step 3 (`check_font.py`) asks for **tabular figures, by default or through `tnum`**, measured from the
-`hmtx` advances, not for a `tnum` feature, and both fonts meet the figure rule; only Source Sans 3 meets
-the glyph rule. The owner chose to keep Atkinson before this was measured, so the choice is his again
-(§12).
+**Why not Atkinson Hyperlegible Next**, the face the spec first chose. A coverage check run on 2026-09-23
+with fontTools on google/fonts' `AtkinsonHyperlegibleNext[wght].ttf` (version 2.001, 114,552 B) found **no
+glyph** for `₺` (U+20BA), `µ` (U+00B5), `₂` (U+2082) or `₃` (U+2083), which the page prints (tariffs,
+µg/m³, NO₂, O₃). The rule is never to mix faces and never to fall back to "TL" or "NO2", so the owner chose
+Source Sans 3 the same day. The coverage gate of step 3, `scripts/design/check_font.py`, reads the shipped
+subset: 259 glyphs, 218 characters, every Turkish letter and `₺ µ ³ ₂ ₃ °`, and **tabular figures, by
+default or through `tnum`**, measured from the `hmtx` advances. Source Sans 3 has no `tnum` because it
+needs none: the ten digits share one advance at each weight (497, 513 and 528 units at 400, 600 and 700).
 
 ## 5. Icons
 
@@ -141,8 +139,9 @@ stroke and it matches the data pen (2 at 20 px is 1.67 px; the pen is 1.75 px). 
 hand-drawn; no Unicode glyph used as an icon (`↗ ▲ ▼ → ▸`).
 
 - Built from the official npm tarball, verified against `npm view @tabler/icons@3.48.0 dist.integrity`, by a
-  stdlib script into two outputs: an inline sprite block in `index.html` for the 19 glyphs the static markup
-  uses, and a same-origin `static/icons.svg` for the rest (answers only).
+  stdlib script (`scripts/design/build_icon_sprite.py`) into two outputs: an inline sprite block in
+  `index.html` for the 19 glyphs the static markup uses, and a same-origin `static/icons.svg` for the rest
+  (answers only), with the MIT text in `static/icons.LICENSE.txt`.
 - `js/icons.js` keeps the `icon(name)` indirection; every icon is `aria-hidden` and the word beside it
   carries the meaning. The favicon is Tabler's `activity` glyph on a primary-700 square.
 - 52 names in total (19 inline, 32 external, 1 favicon), each checked by the design stage to exist in 3.48.0.
@@ -306,15 +305,16 @@ node imports them in tests. 300 lines per JS module, 350 per hand-written CSS fi
 **Performance (FE-OPT).** Budgets, raw / gzip -9 (each file gzipped on its own, the way it is served, then
 summed per type):
 
-| Item | Budget | Today (`check_web_budget.py --report`, 2026-09-23, after the review fixes) |
+| Item | Budget | Today (`check_web_budget.py --report`, 2026-09-23, after steps 5 and 6) |
 |---|---:|---:|
-| HTML | 20 / 6 KB | 13.6 / 4.4 KB |
-| CSS, at most 4 files | 40 / 10 KB | 31.3 / 7.4 KB (1 file) |
-| First-party JS | 80 / 25 KB | 65.6 / 28.2 KB: over by 3,164 B gzip (1,801 B after step 2, raised for the review fixes), a listed target the owner decides (§12) |
-| Total | 140 / 40 KB | 110.5 / 39.98 KB (39,975 B gzip) |
-| Fonts | at most 4 files, 60 KB | 0 |
-| Third-party render-blocking | 0 | 1 (the MapLibre stylesheet; step 8 loads MapLibre only on the first map) |
-| Layout-property animations | 0 | 1 (a `width` transition in `style.css`; step 4) |
+| HTML | 20 / 6 KB | 17.5 / 5.4 KB (17,547 / 5,384 B) |
+| CSS, at most 4 files | 40 / 10 KB | 36.7 / 9.9 KB (4 files, 9,863 B gzip; 160 B come back when step 7 deletes the rules for the old gauges) |
+| First-party JS | 80 / 25 KB | 91.8 / 40.0 KB: over by 14,974 B gzip and 11,773 B raw. 1,801 B after step 2, raised for the review fixes, step 3's icon routing and steps 5 and 6 (+11,598 B, of which the pen line, the ruler and `hero.js` are 9,763 B); a listed target the owner decides (§12) |
+| Icons (`icons.svg`, in the total) | none of its own | 6.7 / 1.9 KB |
+| Total | 140 / 40 KB | 152.7 / 57.2 KB: over by 17,162 B gzip, a listed target that follows the JS one |
+| Fonts | at most 4 files, 60 KB | 1 file, 23,388 B |
+| Third-party render-blocking | 0 | 0 (MapLibre loads with the first answer that has points, pinned by SRI hashes) |
+| Layout-property animations | 0 | 0 |
 
 The rules also require, from the steps that build them: MapLibre 4.7.1 loaded lazily with a
 subresource-integrity hash; `air` and `traffic` firing their two calls in parallel and a superseded answer
@@ -326,15 +326,16 @@ measured by hand with Lighthouse, never gated in CI; before and after numbers go
 ## 12. Decisions and the plan
 
 **Approved by the owner on 2026-09-23:** keep the charter's attribution line verbatim as the one allowlisted
-dash; allow the one cached boot request `/api/traffic?window=24h`; keep Atkinson Hyperlegible Next; the copy
+dash; allow the one cached boot request `/api/traffic?window=24h`; Source Sans 3 as the one face (§4); the copy
 changes (page title, 404 title, the version placeholder, the brand sub-line, the welcome rows, the cached
 stamp wording); the behaviour changes (`aria-live` moves to `#answer-status`, welcome rows submit through the
 router, the map loads lazily and on phones behind a button). Never the İBB logo; "resmî değildir" always
 visible; every number keeps its data age.
 
-**Open:** the font (§4, coverage measured after the decision: Source Sans 3 has every glyph the page prints
-and tabular figures by default, Atkinson lacks four glyphs); the JS gzip budget for native modules (the
-split costs gzip, not bytes, and the review fixes added 1,363 B: `eval/results/web-vitals.md`); the
+**Open:** the JS gzip budget for native modules (the split costs gzip, not bytes; the review fixes added
+1,363 B, step 3's icon routing 212 B and steps 5 and 6 11,598 B: `eval/results/web-vitals.md`), and with it
+the page total, which
+the type budgets cannot all meet at once (6 + 10 + 25 KB of gzip is more than the 40 KB total); the
 OpenStreetMap tile policy for the deployed app.
 
 | Step | What | State |
@@ -342,10 +343,10 @@ OpenStreetMap tile policy for the deployed app.
 | 0 | Before measurements and screenshots | done ([`screens/`](screens/), `eval/results/web-vitals.md`) |
 | 1 | The budget gate, its tests, `make web-budget`, the CI step | done |
 | 2 | `app.js` split into ES modules, no visible change | done |
-| 3 | Font subset and coverage check, Tabler sprite, favicon, notices | not in the tree (the font decision is open) |
-| 4 | `tokens.css` and three stylesheets replace `style.css`; token scripts | not in the tree |
-| 5 | Markup: topbar, hero with the pen figure, ruler, workspace, footer | not in the tree |
-| 6 | The pen line, the ruler, `hero.js` | not in the tree |
+| 3 | Font subset and coverage check, Tabler sprite, favicon, notices | done (Source Sans 3; 51 glyphs, 32 waiting for steps 5, 7 and 8) |
+| 4 | `tokens.css` and three stylesheets replace `style.css`; token scripts | done |
+| 5 | Markup: topbar, hero with the pen figure, ruler, workspace, footer | done; MapLibre moved out of `<head>` into a loader with SRI hashes (step 8 keeps the rest) |
+| 6 | The pen line, the ruler, `hero.js` | done, without the "paper advance" (redraws in place) and the ruler's slide (marks jump) |
 | 7 | Answers: sheet, rows, stamps, per-kind renderers, loading states | not in the tree |
 | 8 | Lazy map with SRI, calm tiles, double-edged markers | not in the tree |
 | 9 | Server: gzip and cache headers | half: `Cache-Control: no-cache` on the page's own files is in the tree (with the review fixes); gzip is not |

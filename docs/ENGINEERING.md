@@ -45,7 +45,7 @@ change · `4` enforced and measured over time. "Unknown" means there is no evide
 | Why they fail | 10 runs: the same 3 tests in `tests/test_web.py`, which read GTFS files under the gitignored `data/reference/gtfs/` (176 MB locally), so the runner has none. 3 runs on 2026-09-13: the ruff gate (2 errors), so pytest never ran. Fixed on 2026-09-23 (`tests/fixtures/gtfs_mini`, DECISIONS #17), pushed with `1599c40`, whose run was the first green one | `gh run view <id> --log-failed` |
 | First and latest CI run | 2026-09-08 08:49 UTC · 2026-09-23 00:44 UTC. Red from the first run until 2026-09-23 00:40 UTC (`1599c40`), 14.7 days | same |
 | CI duration (queued to completed) | median 23 s, range 17–43 s (n = 15; the two green runs 41 and 43 s, because pytest now runs) | `createdAt`/`updatedAt` from `gh run list --json` |
-| Local test suite | 1250 passed, 1 skipped, 4 xfailed on the working tree with the review fixes, and the same on the clean copy `make ci-local` builds (2026-09-23; 1214 after the second integration pass, 943 at `d59b5a8`). The fourth xfail is the İETT hourly budget, an open owner decision (OPT-3) | `NABIZ_OFFLINE=1 .venv/bin/python -m pytest -q` |
+| Local test suite | 1250 passed, 1 skipped, 4 xfailed on the working tree with the review fixes, and the same on the clean copy `make ci-local` builds (2026-09-23; 1214 after the second integration pass, 943 at `d59b5a8`). The fourth xfail was the İETT hourly budget (OPT-3); it became a passing test when the line TTL went to 90 s later that day | `NABIZ_OFFLINE=1 .venv/bin/python -m pytest -q` |
 | `scripts/guardrails.py` | 12 checks, 0 failed, 1 warning on the working tree (the warning is a truncated local file the loader never reads), 0 warnings on the clean copy; a blocking CI step since `1599c40` | `NABIZ_OFFLINE=1 .venv/bin/python scripts/guardrails.py` |
 | Deployments | 0 | `gh api repos/muratcan-ates/istanbul-nabiz/deployments --jq length` |
 | Secret scanning / push protection | enabled / enabled | `gh api repos/muratcan-ates/istanbul-nabiz --jq .security_and_analysis` |
@@ -69,9 +69,9 @@ build", "fix broken builds immediately", "keep the build fast", "make the build 
 | # | Rule | Why (incident or reference) | Enforced by | State |
 |---|---|---|---|---|
 | CI-1 | Every push to `main` and every pull request runs CI; the pipeline is code in the repo. | Fowler | `.github/workflows/ci.yml` | holds |
-| CI-2 | Local equals CI: one command runs the gate list CI runs. | "It passed locally" is only useful if locally means the same checks | `make ci-local` (added with this sprint's CI change) | holds locally (green on a clean copy, 2026-09-23) |
-| CI-3 | **Stop the line.** While `main` is red, the only change that merges is the fix. No "this check may stay red". | §1: the first 13 runs were red, for 14.7 days, until `1599c40`. Two lint errors landed on 2026-09-13 and failed three runs before pytest could start, looking exactly like the failure already there — red hid a new defect. The previous project's red `main` silently switched its delivery off (§11) | nothing yet — a ruleset requiring the CI check is the gate (owner, §12) | **green since `1599c40`, not gated**: nothing stops a red change from landing until the ruleset exists |
-| CI-4 | **Hermetic tests.** CI must not need a file that exists only on a laptop. | The three failing tests read `data/reference/gtfs/`, which is gitignored. They pass locally and fail on every runner — a dev/prod parity failure (Twelve-Factor X) | `tests/fixtures/gtfs_mini` behind the shared test settings; `make ci-local` copies only what a push publishes | holds: pushed with `1599c40`, green on the runner |
+| CI-2 | Local equals CI: one command runs the gate list CI runs. | "It passed locally" is only useful if locally means the same checks | `make ci-local` checks the working tree, untracked files included; `make ci-commit` checks the commit a push would publish | holds locally (green on a clean copy, 2026-09-23) |
+| CI-3 | **Stop the line.** While `main` is red, the only change that merges is the fix. No "this check may stay red". | §1: the first 13 runs were red, for 14.7 days, until `1599c40`. Two lint errors landed on 2026-09-13 and failed three runs before pytest could start, looking exactly like the failure already there — red hid a new defect. The previous project's red `main` silently switched its delivery off (§11) | stage 1 (no force push, no deletion) now; the required CI check only with a rehearsed pull-request flow. Until then: `make ci-commit` before the push (or the pre-push hook) and `gh run watch` after it | **green since `1599c40`, not gated**: nothing stops a red change from landing until the ruleset exists |
+| CI-4 | **Hermetic tests.** CI must not need a file that exists only on a laptop. | The three failing tests read `data/reference/gtfs/`, which is gitignored. They pass locally and fail on every runner — a dev/prod parity failure (Twelve-Factor X) | `tests/fixtures/gtfs_mini` behind the shared test settings; `make ci-local` checks the working tree, untracked files included; `make ci-commit` checks the commit a push would publish | holds: pushed with `1599c40`, green on the runner |
 | CI-5 | Keep the build fast; never cancel a run on `main`. | Fowler. The previous project cancelled a large share of its `main` runs through `cancel-in-progress` | `ci.yml`: `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}` | holds (on `main` since `1599c40`) |
 | CI-6 | A gate proves it can fail. A new check lands with evidence that it goes red on the incident it guards. | Fowler, "self-testing"; `scripts/guardrails.py` is built as regression tests for real incidents | review | partial |
 
@@ -90,7 +90,7 @@ development — <https://trunkbaseddevelopment.com/> and DORA's capability page
 |---|---|---|---|---|
 | CD-1 | **Deploy for real before writing more delivery automation.** First `azd up`, then one workflow. | The previous project wrote deploy, release and rollback workflows that never ran once (§11) | review | holds — CI only compiles Bicep; deployment is `azd` from a laptop until OIDC works (`.github/workflows/README.md`) |
 | CD-2 | **Build once, from a lock.** The artefact that is tested is the artefact that ships. | Humble & Farley. On `main`, `pyproject.toml` allows `mcp>=1.2` while the code imports the 2.x API (`from mcp.server.mcpserver import MCPServer`); the working tree pins `mcp>=2.2,<3`. There is no lockfile yet | none | **gap**: add `uv.lock` before the first image; build the image from it |
-| CD-3 | **Short-lived branches, integrated daily.** A lane that cannot land in a day is split. | DORA trunk-based development. §1: two lane worktrees from 2026-09-13 still hold uncommitted work ten days later, five commits behind `main` | review | **gap** |
+| CD-3 | **Short-lived branches, integrated daily.** A lane that cannot land in a day is split. | DORA trunk-based development. §1: two lane worktrees from 2026-09-13 still hold uncommitted work ten days later, five commits behind `main` | SPRINT evening exit (review) | **gap** |
 | CD-4 | Deploy credentials are federated (OIDC), never a stored secret; `azd provision` stays manual because it can create billable resources. | GitHub Actions hardening <https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions> | no workflow reads `secrets.*` (`grep -rn 'secrets\.' .github/`) | holds |
 | CD-5 | Rollback is rehearsed once, and the minutes are written down, before anyone relies on it. | Humble & Farley; Container Apps keeps revisions | none | not started — nothing is deployed |
 
@@ -142,13 +142,13 @@ commits here.
 
 | # | Rule | Incident or reference | Enforced by |
 |---|---|---|---|
-| AI-1 | Agent instructions are code: one short `AGENTS.md`, a `CLAUDE.md` that only imports it, dated, pointing to the charter instead of copying it. | Previous project: an `AGENTS.md` that pointed at a long-stale branch (§11); `AGENTS.md` convention <https://agents.md/>; Claude Code imports <https://code.claude.com/docs/en/memory> | guardrail `agent-rules-links`: every repository path and `make` target named in `AGENTS.md`, `CLAUDE.md` and `CONTRIBUTING.md` exists |
+| AI-1 | Agent instructions are code: one short `AGENTS.md`, a `CLAUDE.md` that only imports it, dated, pointing to the charter instead of copying it. | Previous project: an `AGENTS.md` that pointed at a long-stale branch (§11); `AGENTS.md` convention <https://agents.md/>; Claude Code imports <https://code.claude.com/docs/en/memory> | guardrail `agent-rules-links`: every repository path and `make` target named in `AGENTS.md`, `CLAUDE.md` and `CONTRIBUTING.md` exists, and every relative link in a tracked Markdown file resolves |
 | AI-2 | **One lane, one worktree, one file list.** | On 2026-09-13 two sessions edited one working tree at once. A branch does not isolate that: `git checkout` moves the tree under the other session, and two agents writing one file lose each other's edits with no conflict marker. The ops lane moved to its own worktree for that reason (handoff on the unmerged `feat/ops-hardening`) | review |
 | AI-3 | **Lane agents never commit or push; staging is by explicit path.** | Previous project: concurrent sessions' `git add -A` swallowed another lane's work, and a lane's work was left uncommitted in a sandbox | review |
 | AI-4 | **No AI attribution; noreply identity.** | Owner's rule, after an assistant appeared in a contributor list on an earlier project | `.claude/settings.json`, `.vscode/settings.json`; `scripts/check_authorship.py` (commits; before a push through `.githooks/pre-push` once `make hooks` has run); guardrail `no-ai-attribution` (files) |
 | AI-5 | **A research brief names one subject and one repository, embeds the verified current state, and opens with a proof-of-reading gate.** | Commit `7cc0fc1`: the first brief linked only another project's repo, so the research model planned the wrong project, took a stale README section for current state and reported a 314-commit repository as a 10-commit MVP | review (`docs/research_prompt_v2.md` is the template) |
-| AI-6 | **When lanes collide, the first fix is less concurrency, not another gate.** | Previous project: every collision produced a new gate or document, never fewer agents | review |
-| AI-7 | The owner's review goes to risky paths first: `src/ibb_mcp/{http,cache,models,server}.py`, `.github/`, `scripts/guardrails.py`, `infra/`. | Fowler/ISE code review; principle 7 | review |
+| AI-6 | **When lanes collide, the first fix is less concurrency, not another gate.** | Previous project: every collision produced a new gate or document, never fewer agents | the lane ceiling in `docs/SPRINT.md` (owner decisions); the lock in `.github/scripts/ci_local.sh`; otherwise review |
+| AI-7 | The owner's review goes to risky paths first: `src/ibb_mcp/{http,cache,models,server}.py`, `.github/`, `.githooks/`, `.claude/`, `scripts/guardrails.py`, `infra/`. | Fowler/ISE code review; principle 7 | review |
 
 ## 6. Testing strategy and the eval harness
 
@@ -254,8 +254,8 @@ checked in code and templates, not observed behaviour.
 | VII Port binding | `ibb-mcp --transport http --port`, `uvicorn` | `Makefile` |
 | VIII Concurrency | scale-out blocked until cache and budget are shared | `containerapps.bicep` |
 | IX Disposability | **politeness client** and stale-on-error make restarts cheap; supervisor restarts the collector | `src/ibb_mcp/http.py`; `scripts/supervise_collector.sh` |
-| X Dev/prod parity | **violated** — tests need gitignored GTFS data (CI-4) | §1 |
-| XI Logs | stdout; logs never tracked | one log file is still tracked: `logs/mcp-http.log` |
+| X Dev/prod parity | tests read only committed data (DECISIONS #17) | **holds** since `1599c40`: offline tests read the committed `tests/fixtures/gtfs_mini/` (CI-4) |
+| XI Logs | stdout; logs never tracked | stdout; no log file is tracked (`git ls-files logs` prints nothing) |
 | XII Admin processes | one-off scripts in `scripts/` | `scripts/README.md` |
 
 ## 10. Documentation and decisions
@@ -319,21 +319,22 @@ nothing stops a red change from landing anyway.
 The integration batch of 2026-09-23 closes several "next steps" below in the working tree (the committed
 GTFS subset, guardrails and the authorship gate in `ci.yml`, SHA pins, the `Dockerfile`, 17 ADRs, a
 refreshed README). It was pushed the same night and its first run on `main` was green (`1599c40`, §1). The
-scores below were set before that run and have not been re-scored; that is the owner's call.
+scores below were set before that run and have not been re-scored, except Incident guardrails (1 to 2, on
+the evidence in §1); the rest is the owner's call.
 
 | Area | Score | Evidence | Next step to +1 |
 |---|---:|---|---|
 | CI pipeline | 2 | `ci.yml` runs on every push and PR; 13 runs, all red (§1) | fix CI-4, protect `main` → 3 |
 | Keeping `main` green | 0 | red for 14.7 days; green since `1599c40` (2026-09-23), not yet gated; score not revised since | CI-3 |
-| Merge gate and review | 0 | `protected: false`, no ruleset, 0 PRs | ruleset requiring the CI check (owner) |
+| Merge gate and review | 0 | `protected: false`, no ruleset, 0 PRs | stage 1 (no force push, no deletion) now; the required CI check only with a rehearsed pull-request flow. Until then: `make ci-commit` before the push (or the pre-push hook) and `gh run watch` after it (owner) |
 | Trunk-based integration | 1 | all commits straight to `main`; two lanes uncommitted since 2026-09-13 | land or close the two lanes |
 | Continuous delivery | 1 | Bicep compiles in CI; 0 deployments; no lockfile, no Dockerfile | `uv.lock`, then first `azd up` |
 | DORA measurement | 1 | measured once, by hand, in §4 | read-only scheduled measurement |
 | Tests | 2 | suite passes locally (§1); network refused; over-the-wire MCP test; red on every runner so far | green in CI + gate → 3 |
 | Eval harness | 2 | 30 scenarios (J5 added 2026-09-23); results in `eval/results/`; run by hand; its selftest now runs in the suite | `make eval` in CI |
-| Incident guardrails | 1 | `scripts/guardrails.py` written but untracked and not in CI on 2026-09-23 | track it, make it pass, wire it into CI → 3 |
+| Incident guardrails | 2 | tracked, and a blocking CI step since `1599c40` (§1) | a ruleset on `main` requiring the CI check (owner) → 3 |
 | Authorship and identity | 2 | 0 AI trailers in 21 commits; 2 of 21 on the noreply address; `.claude/settings.json` | `scripts/check_authorship.py` in CI |
-| Secrets | 3 | GitHub push protection blocks known secret shapes at push | add the `no-secrets` guardrail to CI; rotate-on-leak runbook |
+| Secrets | 3 | GitHub push protection blocks known secret shapes at push | the owner procedure in [`SECURITY.md`](../SECURITY.md), "Handling keys" |
 | Personal data and privacy | 2 | plate drop and alert privacy tested; a public fixture carried plate values until 2026-09-23 | privacy guardrails running in a green, blocking CI → 3 |
 | Supply chain | 1 | read-only token; tag pins, unpinned installer, no lock, no scanning | SHA pins, `uv.lock`, alerts, `pip-audit` |
 | Disclosure and threat model | 1 | `SECURITY.md`; private reporting off; threat model in progress | enable private reporting |
@@ -343,9 +344,10 @@ scores below were set before that run and have not been re-scored; that is the o
 | Documentation and decisions | 2 | 9 ADRs, charter, privacy doc; drift in README status and positioning (§10) | fix the drift; date every rule file |
 | AI-SDLC process | 2 | protocol, briefs and handoffs written (charter §5); lanes own files | eval-gated merge in CI; lanes land within a day |
 
-Unweighted mean: **1.47** over 19 areas. It is not comparable with the previous project's scorecard, which
-averaged a much finer-grained list of principles. The fastest movers are owner actions that take minutes: a
-ruleset on `main`, private vulnerability reporting, Dependabot alerts — plus one test fix (CI-4).
+Unweighted mean: **1.53** over 19 areas (1.47 before the guardrails row moved). It is not comparable with the
+previous project's scorecard, which averaged a much finer-grained list of principles. The fastest movers are
+owner actions that take minutes: a ruleset on `main`, private vulnerability reporting, Dependabot alerts — plus
+one test fix (CI-4).
 
 ---
 
@@ -406,7 +408,7 @@ so a number in a commit and a number CI enforces cannot drift apart.
 |---|---|---|---|
 | OPT-1 | **Before and after, same machine.** A change that claims to be faster or cheaper carries `make perf-report` (or `make web-budget`) output from before and after in its commit body. | "Faster" without numbers is a claim nobody can check (charter §1.5) | **none**: review. There are no pull requests to lint, so a PR-body check would never run |
 | OPT-2 | **Upstream calls per tool:** a budget per MCP tool on a cold cache, 0 when warm; a new tool fails until it has a budget line and a sample call. Each cold cost also fits the tool's public price in `TOOL_COSTS` (1 per answer, 1 per gateway call, 4 per İETT call). Counted at the cache and at the boundary (a recorded response read offline, a request reaching the client), the larger of the two, because nothing but review forces a source through the cache. | DECISIONS #3 and #15: the gateway budget is shared with everyone, and an undercharged tool lets one caller spend it. On 2026-09-23 a review showed a second read beside the cache passing every gate, because only the cache was counted | `test_upstream_calls_cold_within_budget_and_zero_when_warm`, `test_the_public_price_covers_what_a_cold_call_costs`, `test_every_tool_has_an_upstream_budget_and_a_sample_call`, `test_the_harness_counts_a_read_beside_the_cache` |
-| OPT-3 | **Cache behaviour through the real tool path:** 50 concurrent cold questions cost what one costs (single flight); an expired entry whose reload fails is served marked `cached` (stale-on-error); `DEFAULT_TTL` equals DECISIONS #3's table. **Open, owner decision:** one line asked about continuously costs 3600/60 + 3600/120 = 90 İETT calls an hour against the budget of 80 (raise `iett_line` to ≥ 90 s, raise `iett_fleet`, or accept stale answers after ~53 minutes). | A TTL is an upstream bill; a TTL change has to change the ADR too | `test_fifty_concurrent_questions_cost_what_one_costs`, `test_an_expired_entry_is_served_stale_when_the_upstream_fails`, `test_ttls_match_the_documented_table`; the İETT arithmetic is a strict `xfail` that turns red when it changes in either direction |
+| OPT-3 | **Cache behaviour through the real tool path:** 50 concurrent cold questions cost what one costs (single flight); an expired entry whose reload fails is served marked `cached` (stale-on-error); `DEFAULT_TTL` equals DECISIONS #3's table. **One hot line fits the İETT budget:** a line asked about continuously costs 3600/90 + 3600/120 = 70 İETT calls an hour against the budget of 80. At the old 60 s line TTL it cost 90, and after about 53 minutes every İETT answer went stale (DECISIONS #3, 2026-09-23). | A TTL is an upstream bill; a TTL change has to change the ADR too | `test_fifty_concurrent_questions_cost_what_one_costs`, `test_an_expired_entry_is_served_stale_when_the_upstream_fails`, `test_ttls_match_the_documented_table`, `test_one_hot_line_fits_the_hourly_iett_budget` (the arithmetic exactly, so a TTL change in either direction turns it red) |
 | OPT-4 | **Work once per process:** the GTFS index, stop sequences, the gazetteer and each reference table are parsed at most once per process per file version (`ibb_mcp.reference.parse_once`); the default arrival mode never reads the ETA profile. | Until 2026-09-23 the reliability table and the ETA profile were parsed on every call, and they grow with the history the collector keeps adding | `test_expensive_loads_happen_at_most_once_per_process` (spies over 20 rounds, both ETA modes); `test_the_harness_counts_a_parse_moved_onto_the_request_path` proves the spy can go red |
 | OPT-5 | **Latency backstop, wide margin:** warm p95 ≤ 50 ms per tool over 30 calls, cold offline ≤ 500 ms. The measured values and the margin are stated beside the constants. | Catches an order-of-magnitude regression (a real-GTFS parse on the request path, an accidental sleep) without failing on a slow shared runner | `test_warm_latency_backstop` |
 | OPT-6 | **GTFS on the committed mini fixture:** index load and sequence build each ≤ 250 ms and ≤ 4 MiB tracemalloc peak. tracemalloc counts allocations, so the memory budget is the machine-independent one. The real export is laptop-only; its numbers are re-measured by hand, never in CI. | On the laptop's full export (2026-09-23): index load 0.27 s for 15,386 stops; a full sequence rebuild from `stop_times.txt` 8.62 s for 2,876 routes, with the process peaking at 584 MiB RSS (`/usr/bin/time -l` around `GtfsIndex.load` and `build_stop_sequences`), against the 1 GiB container in `infra/modules/containerapps.bicep`. That is why `.dockerignore` leaves `stop_times.*` and `trips.csv` out | `test_gtfs_mini_index_and_sequences_stay_small` |

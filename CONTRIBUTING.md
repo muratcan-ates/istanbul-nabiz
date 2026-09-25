@@ -26,15 +26,16 @@ Every `make` target runs through `./.venv`, so a forgotten `activate` cannot tes
 
 | Command | What it checks | Blocks CI |
 |---|---|---|
-| `make lint` | `ruff check src/ scripts/ tests/ .github/scripts/` (line length 130) | yes |
+| `make lint` | `ruff check src/ scripts/ tests/ .github/scripts/ eval/` (line length 130) | yes |
 | `make test` | the offline pytest suite; any network access fails the test | yes |
 | `make smoke` | builds the MCP server offline: at least 12 tools, each with a real input schema | yes |
 | `make guardrails` | `scripts/guardrails.py`: regression checks for incidents this repo already had | yes |
 | `make authorship` | `scripts/check_authorship.py`: commit identity and message trailers | yes |
 | `make architecture` | `scripts/check_architecture.py`: import layers, cycles, dependency sets, size and complexity ratchets | yes |
 | `make web-budget` | `scripts/check_web_budget.py`: the page's bytes, fonts, motion, colour tokens and module sizes | yes |
-| `make eval` | the 30 journey scenarios against recorded fixtures; rewrites `eval/results/latest.md` (its `--selftest` runs inside `make test`) | not yet |
-| `make ci-local` | the whole CI gate list in one command | — |
+| `make eval` | the journey scenarios against recorded fixtures, written to `reports/eval/`, which git ignores (its `--selftest` runs inside `make test`) | not yet |
+| `make ci-local` | the whole CI gate list on a clean copy of the working tree, untracked files included | local only |
+| `make ci-commit` | the whole CI gate list on `HEAD` exactly as committed: what a push publishes | local only |
 | `make fmt` | `ruff format` — advisory; CI only reports it | no |
 
 Targets marked **NETWORK** in `make help` (`fixtures`, `eval-live`, `warmup`, `collect`, `collect-bg`,
