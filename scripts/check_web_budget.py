@@ -62,8 +62,12 @@ Modes::
     .venv/bin/python scripts/check_web_budget.py --strict   # targets fail too: the enforcing mode
     .venv/bin/python scripts/check_web_budget.py --report   # print everything, always exit 0
     .venv/bin/python scripts/check_web_budget.py --only dashes,icons
+    NABIZ_SPRINT_MODE=1 .venv/bin/python scripts/check_web_budget.py   # payload's failures are WARN
 
-Stdlib only, no network. Exit 1 on any FAIL (never with --report).
+Stdlib only, no network. Exit 1 on any FAIL (never with --report). In sprint mode (DECISIONS #26, lane
+branches until 2026-10-01) the ``payload`` check, the byte budget and its targets, reports its failures
+as WARN and does not fail the run; every other check is a fence and fails as before. ``--strict``
+ignores the variable, and so does the integration merge, which runs without it.
 """
 
 from __future__ import annotations
@@ -72,6 +76,7 @@ import argparse
 import fnmatch
 import gzip
 import html
+import os
 import pathlib
 import re
 import sys
@@ -83,7 +88,11 @@ from html.parser import HTMLParser
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 STATIC = pathlib.Path("src/nabiz/web/static")
-PASS, FAIL, TARGET = "PASS", "FAIL", "TARGET"
+PASS, FAIL, WARN, TARGET = "PASS", "FAIL", "WARN", "TARGET"
+#: DECISIONS #26: set to "1" on a lane branch (``make lane-gates``) until 2026-10-01, the byte budget's
+#: failures print as WARN and do not fail the run. Every other check is a fence and fails as before.
+SPRINT_MODE_ENV = "NABIZ_SPRINT_MODE"
+SUSPENDED_IN_SPRINT = frozenset({"payload"})
 
 #: (raw bytes, gzip -9 bytes) per asset type, first party only.
 BUDGETS = {"html": (20_000, 6_000), "css": (40_000, 10_000), "js": (80_000, 25_000), "total": (140_000, 40_000)}
@@ -1019,8 +1028,16 @@ CHECK_NAMES = tuple(fn.__name__.removeprefix("check_").replace("_", "-") for fn 
 # --------------------------------------------------------------------------------------
 # targets and output
 # --------------------------------------------------------------------------------------
-def judge(result: CheckResult, targets: dict[str, Target], strict: bool) -> CheckResult:
-    """Mark each finding FAIL or TARGET, and fail on a target whose finding is gone."""
+def sprint_mode() -> bool:
+    return os.environ.get(SPRINT_MODE_ENV) == "1"
+
+
+def judge(result: CheckResult, targets: dict[str, Target], strict: bool, sprint: bool = False) -> CheckResult:
+    """Mark each finding FAIL or TARGET, and fail on a target whose finding is gone.
+
+    In sprint mode a suspended check's FAIL lines become WARN: the lane carries them to the
+    integration merge, which judges the same page without the variable.
+    """
     for finding in result.findings:
         target = targets.get(finding.key)
         if target is None or strict:
@@ -1033,16 +1050,22 @@ def judge(result: CheckResult, targets: dict[str, Target], strict: bool) -> Chec
     for key in sorted(k for k in targets if k.startswith(result.name + ":") and k not in present):
         check, subject = key.split(":", 1)
         result.lines.append((FAIL, f"target met: delete TARGETS_BY_CHECK[{check!r}][{subject!r}] ({targets[key].step})"))
+    if sprint and result.name in SUSPENDED_IN_SPRINT:
+        result.lines = [(WARN if status == FAIL else status, line) for status, line in result.lines]
     statuses = {status for status, _ in result.lines}
-    result.status = FAIL if FAIL in statuses else TARGET if TARGET in statuses else PASS
+    result.status = FAIL if FAIL in statuses else WARN if WARN in statuses else TARGET if TARGET in statuses else PASS
     return result
 
 
 def run_checks(repo: pathlib.Path, only: list[str] | None = None, strict: bool = False,
-               targets: dict[str, Target] | None = None) -> list[CheckResult]:
+               targets: dict[str, Target] | None = None, sprint: bool | None = None) -> list[CheckResult]:
     page = Page.read(repo / STATIC)
     targets = TARGETS if targets is None else targets
-    return [judge(fn(page), targets, strict) for fn, name in zip(CHECKS, CHECK_NAMES, strict=True) if not only or name in only]
+    # --strict is the enforcing mode: it ignores the variable.
+    sprint = (sprint_mode() if sprint is None else sprint) and not strict
+    return [
+        judge(fn(page), targets, strict, sprint) for fn, name in zip(CHECKS, CHECK_NAMES, strict=True) if not only or name in only
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1064,8 +1087,9 @@ def main(argv: list[str] | None = None) -> int:
         for status, line in r.lines:
             print(f"{' ' * width}    {status.lower():6}  {line}")
     tally = Counter(r.status for r in results)
-    mode_name = "strict" if args.strict else "report" if args.report else "default"
-    print(f"\n{len(results)} checks: {tally[PASS]} PASS, {tally[TARGET]} TARGET, {tally[FAIL]} FAIL (mode: {mode_name})")
+    mode_name = "strict" if args.strict else "report" if args.report else "sprint" if sprint_mode() else "default"
+    counts = f"{tally[PASS]} PASS, {tally[TARGET]} TARGET, {tally[WARN]} WARN, {tally[FAIL]} FAIL"
+    print(f"\n{len(results)} checks: {counts} (mode: {mode_name})")
     return 0 if args.report or not tally[FAIL] else 1
 
 

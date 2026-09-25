@@ -138,6 +138,9 @@ Short on purpose, and binding. Last verified: 2026-09-23.
 - [ ] handoff report in the charter's §5.3 format, with exact pass/fail counts
 
 `make ci-local` runs the same gate list as CI. Report failures in files you do not own; do not fix them.
+Sprint mode (DECISIONS #26, until 2026-10-01): a lane branch runs `make lane-gates` (tests, lint, `make architecture`
+with `NABIZ_SPRINT_MODE=1`, guardrails) and, when the page changed, `make web-budget` under the same flag. There the
+ratchets and the byte budget print WARN, the fences still FAIL; `make ci-commit` runs unchanged at the integration merge.
 
 ## 8. Where each rule is enforced
 

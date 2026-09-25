@@ -60,7 +60,11 @@ Stdlib only; the complexity check shells out to the ruff next to this interprete
 ``make lint`` uses, and FAILS when it cannot find it: a gate that silently skips is not a
 gate. Exit 0 when every check is PASS or WARN, 1 on any FAIL. WARN only ever means "a
 baseline entry can be lowered" (``make architecture-tighten``); it never means "fine to
-leave red". The baseline is ``scripts/architecture_baseline.json``; its entries are meant only to go
+leave red". The one exception is sprint mode (DECISIONS #26, lane branches until 2026-10-01):
+with ``NABIZ_SPRINT_MODE=1`` a failing ratchet (one-meaning, module-size, class-size, complexity)
+is reported as WARN, findings included, and the run exits 0; the import fences FAIL as ever, and
+the integration merge runs without the variable, where the same WARN is a FAIL again.
+The baseline is ``scripts/architecture_baseline.json``; its entries are meant only to go
 down. Nothing here compares it with the committed file, so raising an entry is a review matter and
 needs its reason in the commit that does it.
 
@@ -75,6 +79,7 @@ import argparse
 import ast
 import io
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -87,6 +92,10 @@ from dataclasses import dataclass, field
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BASELINE_NAME = "scripts/architecture_baseline.json"
 PASS, FAIL, WARN = "PASS", "FAIL", "WARN"
+#: DECISIONS #26: set to "1" on a lane branch (``make lane-gates``) until 2026-10-01, a failing ratchet
+#: is reported as WARN. The import fences are contracts, not debt, and FAIL whatever the variable says.
+SPRINT_MODE_ENV = "NABIZ_SPRINT_MODE"
+RATCHETS = frozenset({"one-meaning", "module-size", "class-size", "complexity"})
 
 # ---------------------------------------------------------------------------------------
 # the contract
@@ -755,16 +764,31 @@ def tighten(old: dict, new: dict) -> dict:
     return out
 
 
+def sprint_mode() -> bool:
+    return os.environ.get(SPRINT_MODE_ENV) == "1"
+
+
+def suspend(result: CheckResult) -> CheckResult:
+    """Sprint mode: a failing ratchet is a WARN the lane carries to the merge; its findings stay on screen."""
+    if result.status == FAIL:
+        result.status = WARN
+        result.summary = f"{result.summary}; sprint mode ({SPRINT_MODE_ENV}=1), FAILS at the integration merge"
+    return result
+
+
 def run_checks(repo: pathlib.Path, baseline: dict, only: set[str] | None = None) -> list[CheckResult]:
     mods = load_modules(repo)
+    sprint = sprint_mode()
     results = []
     for name, check in CHECKS:
         if only and name not in only:
             continue
         try:
-            results.append(check(repo, mods, baseline))
+            result = check(repo, mods, baseline)
         except Exception as exc:  # noqa: BLE001 - a broken check must be loud, never a silent pass
             results.append(CheckResult(name, FAIL, f"the check itself raised {type(exc).__name__}", [Finding(name, repr(exc))]))
+            continue
+        results.append(suspend(result) if sprint and name in RATCHETS else result)
     return results
 
 

@@ -6,6 +6,8 @@
 # `make web-budget` and `make authorship` are the gates CI runs; `make ci-local` runs them
 # on a clean copy of the working tree, and `make ci-commit` on HEAD exactly as a push
 # publishes it, which is the only way to see what CI will see. See .github/workflows/README.md.
+# `make lane-gates` is the sprint's shorter list for a lane branch (DECISIONS #26, until 2026-10-01):
+# the ratchets and the web byte budget print WARN there and FAIL again at the integration merge.
 #
 # A target marked WRITES rewrites a tracked file: run it only when that file is yours to change.
 #
@@ -32,7 +34,7 @@ EVAL_OUT ?= reports/eval
 AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit architecture \
+.PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit lane-gates architecture \
         architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console eval eval-record eval-live fixtures places \
         sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
@@ -90,6 +92,12 @@ ci-local:  ## run every CI gate on a clean copy of the working tree, untracked f
 
 ci-commit:  ## run every CI gate on HEAD exactly as committed: what a push publishes (CI_LOCAL_DIR=)
 	CI_LOCAL_REF=HEAD bash .github/scripts/ci_local.sh
+
+lane-gates:  ## the sprint's gates for a lane branch (DECISIONS #26): tests, lint, architecture with ratchets as WARN, guardrails
+	NABIZ_OFFLINE=1 $(PY) -m pytest -q -x
+	$(RUFF) check $(SRC)
+	NABIZ_SPRINT_MODE=1 $(MAKE) --no-print-directory architecture
+	$(MAKE) --no-print-directory guardrails
 
 mcp:  ## run the MCP server on stdio — the shape VS Code and Claude launch
 	./.venv/bin/ibb-mcp
