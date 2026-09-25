@@ -1,0 +1,56 @@
+{
+  "from": "Kartal",
+  "to": "4. Levent",
+  "options": [
+    {
+      "mode": "metro",
+      "label": "Metro / raylı sistem",
+      "available": true,
+      "minutes": 34.0,
+      "transfers": 1,
+      "accessibility": {
+        "lift_status": "out_of_service",
+        "note": "asansör arızalı (İBB kaydı)"
+      },
+      "accessibility_note": null,
+      "reliability": null,
+      "reliability_note": null,
+      "provenance": {
+        "source": "nabiz_routing",
+        "url": null,
+        "observed_at": "2026-09-25T10:30:00+03:00",
+        "age_s": 120,
+        "mode": "recorded"
+      },
+      "reason": null
+    },
+    {
+      "mode": "bus",
+      "label": "Otobüs 500T",
+      "line_code": "500T",
+      "available": true,
+      "minutes": 41.5,
+      "transfers": 0,
+      "accessibility": null,
+      "accessibility_note": null,
+      "reliability": {
+        "available": true,
+        "note": "14 dk ortanca sefer aralığı, düzenlilik: düzenli.",
+        "median_headway_min": 14.0,
+        "bunching_label": "düzenli"
+      },
+      "reliability_note": null,
+      "provenance": {
+        "source": "nabiz_routing",
+        "url": null,
+        "observed_at": "2026-09-25T10:30:00+03:00",
+        "age_s": 120,
+        "mode": "recorded"
+      },
+      "reason": null
+    }
+  ],
+  "unavailable": [],
+  "disclaimer": "Bu bir tahmindir, adım adım yol tarifi değildir: mesafeler kuş uçuşu ölçülüp yol katsayısıyla çarpılır, hız canlı trafik indeksinden türetilir. Gerçek süre trafiğe, aktarma beklemesine ve yol çalışmalarına göre değişir.",
+  "generated_at": "2026-09-25T10:30:00+03:00"
+}
