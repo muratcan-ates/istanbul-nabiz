@@ -70,6 +70,7 @@ _REFUSE_WORDS = frozenset(
         "hak", "hakki", "hakkim", "hakkimiz", "hakkimi", "hakkina", "haklar", "haklari", "haklarim",
         "haklarimiz", "haklarimi", "lira", "tl", "yasal", "yasa", "alerji", "alerjim", "abonman", "vize",
         "para", "parasi", "parasini", "parali", "parasiz", "paraya", "kalp", "koah",
+        "nakit", "kira", "kirayi", "kirami", "kiraci", "zam", "zammi", "cash", "landlord",
         # English, for the tourist persona
         "fare", "fares", "ticket", "tickets", "price", "prices", "cost", "costs", "fine", "fines", "fined",
         "discount", "discounts", "penalty", "penalties", "rights", "entitled", "asthma", "pregnant", "medicine",
@@ -79,7 +80,7 @@ _REFUSE_WORDS = frozenset(
 _REFUSE_PREFIXES = (
     "ucret", "fiyat", "indirim", "tazminat", "ceza", "saglig", "hastalik", "hastalig", "ilac",
     "doktor", "hekim", "tedavi", "teshis", "mevzuat", "kanun", "yonetmelik", "bedava", "bedel",
-    "kurus", "refakat", "bilet", "astim", "hamile", "gebe", "health",
+    "kurus", "refakat", "bilet", "astim", "hamile", "gebe", "health", "bahsis", "iade",
 )  # fmt: skip
 #: "hasta..." is a person's health ("hastasıyım"); "hastane..." is a place to travel to.
 _ILL, _HOSPITAL = "hasta", "hastane"
@@ -87,7 +88,18 @@ _ILL, _HOSPITAL = "hasta", "hastane"
 _REFUSE_PHRASES = (
     "kac para", "ne kadar tutar", "zararli mi", "zarar ver", "maske tak", "saglik", "engelli kart",
     "how much is", "for free", "free ride", "free of charge", "is it free", "disability card",
+    "free for", "the rent", "raise the rent", "rent increase", "tip the", "tipping", "kredi karti gec",
 )  # fmt: skip
+
+# G14 uses these terms to select quote-only answers. They do not change refusal behavior.
+SENSITIVE_TOPIC_TERMS: dict[str, list[str]] = {
+    "hak": ["hak", "hakkı", "right", "entitlement"],
+    "ucret": ["ücret", "fiyat", "tarife", "bedel", "zam", "fee", "price", "tariff", "charge", "increase"],
+    "ceza": ["ceza", "yaptırım", "gecikme", "penalty", "fine", "sanction", "late"],
+    "saglik": ["sağlık", "tedavi", "health", "treatment"],
+    "indirim": ["indirim", "muafiyet", "discount", "exemption"],
+    "basvuru": ["başvuru şartı", "uygunluk", "zorunlu", "eligibility", "requirement", "mandatory"],
+}
 #: Travel questions that name a health place: "sağlık ocağına nasıl giderim" is a route.
 _TRAVEL_TO_HEALTH = ("saglik ocag", "saglik merkez", "hastane")
 #: "ne kadar" asks a price when it is about a ticket, a card or a transfer, and a duration or a
