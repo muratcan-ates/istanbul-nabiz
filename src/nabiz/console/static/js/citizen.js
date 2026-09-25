@@ -8,7 +8,8 @@ import { DEFAULT_ARRIVAL, DEFAULT_LINES, DEFAULT_STATIONS, REFRESH_MS } from './
 import { dateTime, esc } from './format.js';
 import { icon } from './icons.js';
 import {
-  NEEDS, addMemory, clearMemory, clearProfile, effectiveNeeds, readMemory, readProfile, removeMemory, savedPlaces, writeProfile,
+  NEEDS, addMemory, answerLanguage, clearMemory, clearProfile, effectiveNeeds, profileReview, readMemory, readProfile,
+  removeMemory, savedPlaces, setAnswerLanguage, writeProfile,
 } from './profile.js';
 import { mountToggles } from './theme.js';
 
@@ -123,6 +124,32 @@ function renderProfileState() {
   $('#profile-sent').textContent = (profile.consent
     ? (sent.length ? `Sunucuya giden kısıt listesi: ${sent.join(', ')}.` : 'Sunucuya giden kısıt listesi boş.')
     : 'Onay verilmedi: sunucuya hiçbir kısıt gitmiyor.') + places;
+  const review = profileReview(profile, new Date().toISOString());
+  const reviewHost = $('#profile-review');
+  const clearButton = $('#profile-clear');
+  reviewHost.replaceChildren();
+  reviewHost.hidden = !review.due;
+  if (review.due) {
+    const message = document.createElement('p');
+    message.textContent = 'Profiliniz 30 gündür bu tarayıcıda. Hâlâ gerekli mi?';
+    const keep = document.createElement('button');
+    keep.type = 'button';
+    keep.className = 'btn';
+    keep.id = 'profile-review-keep';
+    keep.textContent = 'Evet, kalsın';
+    const actions = document.createElement('div');
+    actions.className = 'btn-row';
+    actions.append(keep, clearButton);
+    reviewHost.append(message, actions);
+  } else {
+    $('#profile-actions').append(clearButton);
+  }
+  const languageButton = $('#chat-lang-en');
+  if (languageButton) {
+    const english = answerLanguage(profile) === 'en';
+    languageButton.setAttribute('aria-pressed', english ? 'true' : 'false');
+    languageButton.textContent = english ? "Türkçe'ye dön" : 'English';
+  }
 }
 
 function mountProfile() {
@@ -141,8 +168,11 @@ function mountProfile() {
       return;
     }
     $('#consent-error').hidden = true;
-    profile = { ...profile, needs: chosen, consent };
-    status.textContent = writeProfile(profile) ? 'Kaydedildi. Yalnız bu tarayıcıda durur.' : 'Kaydedilemedi: tarayıcı depolamaya izin vermiyor.';
+    const keepEnglish = profile.needs.includes('answer_en');
+    profile = { ...profile, needs: keepEnglish ? [...chosen, 'answer_en'] : chosen, consent };
+    const saved = writeProfile(profile);
+    if (saved) profile = readProfile();
+    status.textContent = saved ? 'Kaydedildi. Yalnız bu tarayıcıda durur.' : 'Kaydedilemedi: tarayıcı depolamaya izin vermiyor.';
     renderProfileState();
     refreshAll();
   });
@@ -156,6 +186,13 @@ function mountProfile() {
     refreshAll();
   });
   form.addEventListener('click', (evt) => {
+    if (evt.target.closest('#profile-review-keep')) {
+      const saved = writeProfile(profile);
+      if (saved) profile = readProfile();
+      status.textContent = saved ? 'Profiliniz güncellendi.' : 'Kaydedilemedi: tarayıcı depolamaya izin vermiyor.';
+      renderProfileState();
+      return;
+    }
     const add = evt.target.closest('button[data-add]');
     const remove = evt.target.closest('button[data-remove]');
     if (add) {
@@ -164,7 +201,7 @@ function mountProfile() {
       if (!value) { input.focus(); return; }
       const key = add.dataset.add === 'station' ? 'stations' : 'lines';
       if (!profile[key].includes(value)) profile = { ...profile, [key]: [...profile[key], value] };
-      writeProfile(profile);
+      if (writeProfile(profile)) profile = readProfile();
       input.value = '';
       renderPlaces();
       status.textContent = `${value} kaydedildi.`;
@@ -172,12 +209,21 @@ function mountProfile() {
     } else if (remove) {
       const key = remove.dataset.remove;
       profile = { ...profile, [key]: profile[key].filter((v) => v !== remove.dataset.value) };
-      writeProfile(profile);
+      if (writeProfile(profile)) profile = readProfile();
       renderPlaces();
       status.textContent = `${remove.dataset.value} kaldırıldı.`;
       refreshAll();
     }
   });
+  const languageButton = $('#chat-lang-en');
+  if (languageButton) {
+    languageButton.addEventListener('click', () => {
+      const next = answerLanguage(profile) === 'en' ? 'tr' : 'en';
+      const updated = setAnswerLanguage(profile, next);
+      if (writeProfile(updated)) profile = readProfile();
+      renderProfileState();
+    });
+  }
 }
 
 /* ---- Hafızam ----------------------------------------------------------------------------- */

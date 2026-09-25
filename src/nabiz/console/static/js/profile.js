@@ -18,9 +18,9 @@ const NEEDS = [
   { key: 'hearing', label: 'Az duyuyorum', hint: 'Anonsların yazılı hâli.', icon: 'bell' },
   { key: 'plain_language', label: 'Sade dil', hint: 'Kısa cümle, tek sayı, kod yerine kelime.', icon: 'list-details' },
 ];
-const NEED_KEYS = new Set(NEEDS.map((n) => n.key));
+const NEED_KEYS = new Set([...NEEDS.map((n) => n.key), 'answer_en']);
 
-const EMPTY = { consent: false, needs: [], stations: [], lines: [] };
+const EMPTY = { consent: false, needs: [], stations: [], lines: [], saved_at: null };
 
 function readJson(key, fallback) {
   try {
@@ -43,11 +43,32 @@ function readProfile() {
     needs: Array.isArray(p.needs) ? p.needs.filter((k) => NEED_KEYS.has(k)) : [],
     stations: Array.isArray(p.stations) ? p.stations.filter(Boolean) : [],
     lines: Array.isArray(p.lines) ? p.lines.filter(Boolean) : [],
+    saved_at: typeof p.saved_at === 'string' ? p.saved_at : null,
   };
 }
 
 function writeProfile(profile) {
-  return writeJson(PROFILE_KEY, { ...EMPTY, ...profile });
+  return writeJson(PROFILE_KEY, { ...EMPTY, ...profile, saved_at: new Date().toISOString() });
+}
+
+/** Whether a saved profile should be reviewed, without reading from or writing to storage. */
+function profileReview(profile, nowIso, days = 30) {
+  const savedAt = Date.parse(profile?.saved_at || '');
+  const now = Date.parse(nowIso || '');
+  if (!Number.isFinite(savedAt) || !Number.isFinite(now)) return { due: false, days: 0 };
+  const elapsed = Math.max(0, Math.floor((now - savedAt) / 86400000));
+  return { due: elapsed >= days, days: elapsed };
+}
+
+/** Keep answer-language preference in the existing local functional-needs list. */
+function setAnswerLanguage(profile, lang) {
+  const needs = Array.isArray(profile?.needs) ? profile.needs.filter((key) => key !== 'answer_en') : [];
+  if (lang === 'en') needs.push('answer_en');
+  return { ...profile, needs };
+}
+
+function answerLanguage(profile) {
+  return Array.isArray(profile?.needs) && profile.needs.includes('answer_en') ? 'en' : 'tr';
 }
 
 function clearProfile() {
@@ -97,5 +118,5 @@ function savedPlaces(profile, memory) {
 
 export {
   NEEDS, NEED_KEYS, readProfile, writeProfile, clearProfile, readMemory, addMemory, removeMemory, clearMemory,
-  effectiveNeeds, savedPlaces,
+  effectiveNeeds, savedPlaces, profileReview, setAnswerLanguage, answerLanguage,
 };
