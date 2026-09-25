@@ -243,10 +243,10 @@ def _completion(content=None, tool_calls=None) -> dict:
 
 
 def test_tool_schemas_cover_the_twelve_mcp_tools():
-    """Named for the original twelve; the agent now offers fifteen of the server's sixteen."""
+    """Named for the original twelve; the agent now offers sixteen of the server's seventeen."""
     schemas = build_tool_schemas()
     names = [schema["function"]["name"] for schema in schemas]
-    assert len(names) == 15
+    assert len(names) == 16
     assert set(names) == set(TOOL_DESCRIPTIONS)
     for schema in schemas:
         assert schema["function"]["description"].strip()

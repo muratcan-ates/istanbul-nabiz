@@ -19,8 +19,8 @@ a stale cache — so an agent using this server can cite what it says and state 
 
 | | |
 |---|---|
-| Tool implementations (all 15) | **working** — `src/ibb_mcp/tools.py` |
-| MCP server entry point (`src/ibb_mcp/server.py`) over **stdio** | **working** — `initialize`, `tools/list` (15) and `tools/call` verified against a real MCP client (`tests/test_mcp_integration.py`) |
+| Tool implementations (all 17) | **working** — `src/ibb_mcp/tools.py` |
+| MCP server entry point (`src/ibb_mcp/server.py`) over **stdio** | **working** — `initialize`, `tools/list` (17) and `tools/call` verified against a real MCP client (`tests/test_mcp_integration.py`) |
 | The same entry point over **streamable HTTP** (`--transport http`) | **working locally** — stateless transport, per-caller rate budget, optional API key, closed CORS and `GET /healthz`, exercised over ASGI by `tests/test_server_security.py`; not deployed |
 | Hosted HTTP endpoint on Azure Container Apps | **planned**, Day 3 |
 | PyPI release (`uvx ibb-mcp`) | **planned** — roadmap, after delivery |
@@ -172,8 +172,8 @@ and a tenant is available to test in.
 
 ## Tools
 
-All sixteen tools are implemented in `src/ibb_mcp/tools.py` and registered in `src/ibb_mcp/server.py`: the
-twelve of PLAN.md §5, plus `plan_journey`, `line_reliability`, `check_alerts` and `metro_equipment_status`. Parameters marked with a
+All seventeen tools are implemented in `src/ibb_mcp/tools.py` and registered in `src/ibb_mcp/server.py`: the
+twelve of PLAN.md §5, plus `plan_journey`, `line_reliability`, `check_alerts`, `metro_equipment_status` and `ibb_services_search`. Parameters marked with a
 default are optional. Every tool answers with the same JSON envelope:
 `{ data, provenance: { source, source_url, reported_at, observed_at, age, age_seconds, stale, license }, note }`.
 A failure is an envelope too — `{ error, message, advice }` with `error` one of `bad_request`,
@@ -203,6 +203,7 @@ before the tool runs, as an MCP tool error.
 | `plan_journey` | `origin` *(str)* **or** `origin_lat`+`origin_lon`; `destination` *(str)* **or** `destination_lat`+`destination_lon` *(degrees, WGS84, inside İstanbul)* | a **comparison, not navigation**: per mode (drive, metro, one bus line, walk) total minutes, legs, a 0–100 comfort score, confidence, and every assumption with its value and unit; the metro option follows the rail graph line by line (one leg per line ridden and per transfer; the Bosphorus only through the Marmaray tube); `detail.other_direct_lines` names other single-line buses with stop counts and no minutes; `readings` includes `traffic_typical`; `unavailable_options` names each mode that could not be costed and why (no single bus line, too far to walk, no pedestrian Bosphorus crossing, no GTFS); the disclaimer travels in `data` | traffic index, İSPARK, metro stations and notices, İETT timetable (all through the shared cache) + GTFS stop sequences for the bus option + traffic history `/28/H` (every 6 h); `observed_at` is the oldest live input |
 | `line_reliability` | `line_code` *(str, e.g. `"500T"`)*, `hour=now` *(0–23, İstanbul)* | measured **history**, not live: median headway (min), headway cv and its label, samples, vehicles, days, stop-capture rate and the cv a perfectly regular line would show at that rate, the observation window — both numbers are upper bounds. `available: false` with the reason when the cell is too thin or the line was never watched | `data/reference/line_reliability.json`, built by `scripts/reliability_report.py` from the collector's vehicle snapshots; `reported_at` is the last observation |
 | `check_alerts` | `subscription` *(object)*: `places[]` `{key, label, lat, lon}`, `rules[]` — one of `metro_disruption` `{lines}`, `parking_filling` `{park_ids, threshold_pct}`, `air_quality` `{place, aqi_threshold}`, `traffic` `{threshold_index}`, `bus_bunching` `{line}`, each with an optional `cooldown_seconds` — and `muted_keys[]` | alerts in Turkish and English with severity, a `dedupe_key`, `cooldown_seconds` and a citation (value + provenance) for every number; sources that could not be read; the cooldown policy and a privacy summary. **Evaluated in memory for this one request and never stored or logged** ([privacy.md](privacy.md)) | only the sources the rules need: metro notices, the İSPARK list, the nearest air-quality station, the traffic index, the line-reliability table |
+| `ibb_services_search` | `query` *(str, at most 200 characters)*, `limit=5` *(1–10)* | hits from a **local index** of reviewed public-service pages: quote, link, page title, `fetched_at`, plus `evidence.level`; no index on the server, or no verifiable match, answers with `note` and no hits (`evidence.level: index_missing` when the index is absent) | none from İBB: the SQLite index `NABIZ_KNOWLEDGE_DB` (default `data/knowledge/knowledge.db`, built by the owner with `scripts/knowledge_ingest.py`); an optional query embedding goes to the configured model endpoint, never offline |
 
 Two parameters read differently from the sketch in PLAN.md §5, and the wider form was kept because it is
 what people actually type:

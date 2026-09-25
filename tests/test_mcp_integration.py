@@ -53,6 +53,7 @@ EXPECTED_TOOLS = {
     "plan_journey",
     "line_reliability",
     "check_alerts",
+    "ibb_services_search",
 }
 
 #: A directory that does not exist. Created by nobody: every path under it reads as missing.

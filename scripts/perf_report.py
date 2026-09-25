@@ -101,6 +101,7 @@ TOOL_CALLS: dict[str, dict[str, Any]] = {
     "plan_journey": {"origin": "Kadıköy", "destination": "Taksim"},
     "line_reliability": {"line_code": "500T"},
     "check_alerts": {"subscription": SUBSCRIPTION},
+    "ibb_services_search": {"query": "su aboneliği", "limit": 5},
 }
 
 

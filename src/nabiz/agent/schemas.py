@@ -79,6 +79,11 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     "projenin kendi araç konumu anlık görüntülerinden (~3,2 dk adımla) hesaplanmış GEÇMİŞTİR, canlı değildir ve "
     "kaçırılan geçişler yüzünden üst sınırdır. Yeterli gözlem yoksa `available: false` ve gerekçe döner "
     "(kaynak: data/reference/line_reliability.json).",
+    "ibb_services_search": "İstanbul'daki kamu hizmeti sayfalarından derlenmiş yerel dizinde arama yapar. Her sonuçta kaynak "
+    "cümlesi, bağlantısı ve alınma tarihi döner. Abonelik, başvuru, belge ve benzeri hizmet sorularında kullan. Cevabı yalnızca "
+    "dönen alıntılara dayandır ve her alıntının bağlantısını ver. Dizin sunucuda kurulu değilse ya da doğrulanabilir eşleşme "
+    "yoksa `note` döner; o zaman bilgi uydurma, bulunamadığını söyle. Bu araç İBB'ye canlı istek atmaz; dizin önceden kurulur "
+    "ve `fetched_at` sayfanın alındığı tarihtir.",
     "city_freshness": "Her veri kaynağının ne kadar güncel olduğunu ve kalan istek bütçesini döner. Bir cevabın ne kadar taze "
     "veriye dayandığını söylemen gerektiğinde bunu çağır. `data_age_seconds` verinin kendi yaşıdır (kaynak bir ölçüm zamanı "
     "bildiriyorsa `reported_at_utc`'den); `age_seconds` yalnızca kaynağın en son ne zaman okunduğudur. Tazelik sorulduğunda "

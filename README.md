@@ -24,7 +24,7 @@ separate SOAP and REST endpoints. There is a Mobiett app, an İSPARK app, a CepH
 app — but no single conversational surface, no open integration layer, and no history to answer *"how full
 is it **usually** at this hour?"*.
 
-Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 16 tools) that any agent can call,
+Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 17 tools) that any agent can call,
 and ships a web page and a city agent as its first clients. Six journeys drive the design; each has six
 eval scenarios in `eval/journeys.jsonl`:
 
@@ -60,7 +60,7 @@ day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status
 | Layer | State | Where |
 |---|---|---|
 | İBB client, cache, models, GTFS repair, ETA engine | **working**; arrivals serve the untuned 120 s/stop since 23 Sep, the estimator with the better held-out score ([DECISIONS #18](DECISIONS.md)) | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py`, `src/ibb_mcp/eta_profile.py` |
-| 15 MCP tools behind one façade, plus the `ibb://attribution` resource | **working** — offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
+| 17 MCP tools behind one façade, plus the `ibb://attribution` resource | **working** — offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
 | MCP over streamable HTTP | **working locally** — stateless, per-caller budget, optional API key, closed CORS, `/healthz`; not deployed | `src/ibb_mcp/server.py`, `tests/test_server_security.py` |
 | Derived tables | **committed, thin** — built on 13 Sep from the laptop's lake; see Results for what each supports | `data/reference/` |
 | Collector | **today:** the owner's laptop, under a supervisor; its lake holds watched-line snapshots on 4 of the 15 days from 8 to 22 Sep (DECISIONS #10). **Target:** five scheduled Container Apps Jobs, written and tested offline, not deployed | `scripts/collect_forever.py`, `src/nabiz/collector/job.py`, `infra/modules/collectorjobs.bicep` |
@@ -103,7 +103,7 @@ flowchart LR
     AI[Application Insights<br/>allow-listed spans]
   end
   REF[(data/reference<br/>occupancy · reliability · ETA rates)]
-  TL[Tool layer · Nabiz<br/>16 tools · shared cache · PoliteClient]
+  TL[Tool layer · Nabiz<br/>17 tools · shared cache · PoliteClient]
   subgraph CL["Clients"]
     WEB[Nabız web page]
     AG[Nabız agent<br/>tool loop + faithfulness check]
@@ -388,7 +388,7 @@ Stated plainly, because a public-data project that hides these is not trustworth
 ## Türkçe
 
 **İstanbul Nabız**, İBB'nin kayıt istemeyen canlı açık verisini (İSPARK doluluk, İETT otobüs konumları,
-Metro arıza durumu, trafik indeksi, hava kalitesi) **16 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
+Metro arıza durumu, trafik indeksi, hava kalitesi) **17 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
 sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının yanında kaynağı ve zaman damgası vardır.
 
 > **Bu resmî bir İBB hizmeti değildir.** Bağımsız bir öğrenci projesidir; İBB, İETT, İSPARK veya Metro
