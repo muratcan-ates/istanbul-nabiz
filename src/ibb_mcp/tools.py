@@ -779,6 +779,20 @@ class Nabiz:
         sources = self._source("metro_equipment"), self._source("metro")
         return await alternative_answer(*sources, station=station, needs=needs)
 
+    async def accessible_journey(
+        self, origin: str | tuple[float, float], destination: str | tuple[float, float], needs: list[str] | None = None
+    ) -> Any:
+        """A step-free rail journey with per-station lifts (``ibb_mcp.journey_accessible``; not an MCP tool)."""
+        from ibb_mcp.journey_accessible import plan_accessible_journey
+
+        return await plan_accessible_journey(self, origin, destination, needs)
+
+    async def ibb_services_search(self, query: str, limit: int = 5) -> ToolResult:
+        """Reviewed İBB service pages from the local knowledge index (``ibb_mcp.knowledge``)."""
+        from ibb_mcp.knowledge.tool import search_local_index
+
+        return await search_local_index(query, limit, offline=self.settings.offline)
+
     async def metro_equipment_signals(self) -> ToolResult:
         """The equipment snapshot as NEXUS signal candidates, for the console (not an MCP tool)."""
         from ibb_mcp.equipment_signals import equipment_signals

@@ -6,7 +6,6 @@ from typing import Any
 
 from fastapi import Query, Request
 
-from ibb_mcp.journey_accessible import plan_accessible_journey
 from nabiz.console.brief import split_csv
 from nabiz.console.cards import provenance_view, unknown_provenance
 from nabiz.console.operator import port_problem
@@ -21,9 +20,7 @@ async def accessible_journey_route(
 ) -> Any:
     """GET /api/journey/accessible: source-backed steps and an honest unavailable answer."""
     try:
-        result = await plan_accessible_journey(
-            request.app.state.nabiz, from_place, to, split_csv(needs, limit=16)
-        )
+        result = await request.app.state.nabiz.accessible_journey(from_place, to, split_csv(needs, limit=16))
     except PortNotWired as exc:
         return port_problem(503, "not_wired", str(exc))
     except LookupError:

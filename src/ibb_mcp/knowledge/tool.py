@@ -68,6 +68,38 @@ async def ibb_services_search(
 
 _search_impl = ibb_services_search
 
+#: What the facade answers when this server has no index: a named gap, never an empty "no match".
+INDEX_MISSING_NOTE = (
+    "Yerel hizmet sayfası dizini bu sunucuda kurulu değil; hizmet sayfası araması yapılamadı. "
+    "Kaynak uydurma, kullanıcıya bu aramanın şu an yapılamadığını söyle."
+)
+
+
+async def search_local_index(query: str, limit: int = 5, *, offline: bool = False) -> ToolResult:
+    """The ``Nabiz.ibb_services_search`` body: open the index the environment names and search it.
+
+    Offline, the optional embedding endpoint is never called (lexical search only), so an
+    offline run makes no network request at all. A missing index is reported, not hidden.
+    """
+    if not isinstance(query, str) or not query.strip() or len(query) > 200:
+        raise ValueError("Arama metni 1 ile 200 karakter arasında olmalı.")
+    if not 1 <= int(limit) <= 10:
+        raise ValueError("limit 1 ile 10 arasında olmalı.")
+    from . import open_from_env
+
+    store, embedder = open_from_env()
+    if store is None:
+        return ToolResult(
+            data={"query": query, "hits": [], "evidence": {"level": "index_missing"}},
+            provenance=Provenance(
+                source="local:knowledge",
+                source_url="data/knowledge/sources.txt",
+                license="Kurum web sayfası; alıntı, kaynak bağlantısıyla",
+            ),
+            note=INDEX_MISSING_NOTE,
+        )
+    return await _search_impl(query, int(limit), store=store, embedder=None if offline else embedder)
+
 
 def register_mcp_tool(mcp: MCPServer, *, store: KnowledgeStore, embedder: Embedder | None) -> None:
     """Advertise the search tool without importing the transport composition root."""

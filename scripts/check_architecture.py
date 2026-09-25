@@ -139,6 +139,8 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "ibb_mcp.accessibility",
             "ibb_mcp.equipment_signals",
             "ibb_mcp.knowledge",
+            # G20: the step-free rail journey; the facade delegates to it (Nabiz.accessible_journey)
+            "ibb_mcp.journey_accessible",
         ),
     ),
     ("facade", ("ibb_mcp.tools",)),

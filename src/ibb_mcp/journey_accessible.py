@@ -9,17 +9,17 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlencode
 
 from ibb_mcp import accessibility
+from ibb_mcp.config import Settings
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from ibb_mcp.metro_graph import MARMARAY_LINE, PATH_FAILURE_REASONS, MetroGraph, MetroLeg, MetroPath, marmaray_tube
 from ibb_mcp.models import MetroStation, Provenance, haversine_km
 from ibb_mcp.routing import Waypoint
 from ibb_mcp.sources.metro_equipment import EquipmentSnapshot
 from ibb_mcp.text import fold_tr
-from ibb_mcp.tools import Nabiz
 
 DISCLAIMER_TR = (
     "Bu bir tahmindir, adım adım yol tarifi değildir. Süreler istasyon mesafesi modeline dayanır ve tarife içermez. "
@@ -33,6 +33,20 @@ _PATH_REASONS_TR = {
     "no_station_near_destination": "Varış noktasının yakınında metro istasyonu bulunamadı.",
     "disconnected": "Bu iki nokta arasında doğrulanabilir bir raylı sistem bağlantısı bulunamadı.",
 }
+
+
+class JourneyFacade(Protocol):
+    """What this module needs from the ``ibb_mcp.tools.Nabiz`` facade, without importing it.
+
+    The facade delegates to :func:`plan_accessible_journey` (``Nabiz.accessible_journey``), so
+    importing ``ibb_mcp.tools`` here would be a cycle; a services-layer module stays below it.
+    """
+
+    settings: Settings
+
+    def _source(self, name: str) -> Any: ...
+
+    def _endpoint(self, name: str | None, lat: float | None, lon: float | None, *, role: str) -> Any: ...
 
 
 @dataclass(frozen=True)
@@ -51,7 +65,7 @@ def _maps_links(lat: float, lon: float, label: str) -> dict[str, str]:
     return {"apple": f"https://maps.apple.com/?{apple}", "google": f"https://www.google.com/maps/dir/?{google}"}
 
 
-def _endpoint(nabiz: Nabiz, value: str | tuple[float, float], *, role: str) -> Waypoint:
+def _endpoint(nabiz: JourneyFacade, value: str | tuple[float, float], *, role: str) -> Waypoint:
     if isinstance(value, str):
         return nabiz._endpoint(value, None, None, role=role)
     if isinstance(value, tuple) and len(value) == 2:
@@ -278,7 +292,7 @@ def _steps(
 
 
 async def _read_sources(
-    nabiz: Nabiz, start: Waypoint, end: Waypoint, needs: Sequence[str]
+    nabiz: JourneyFacade, start: Waypoint, end: Waypoint, needs: Sequence[str]
 ) -> tuple[list[MetroStation], EquipmentSnapshot, Provenance, list[str]] | JourneyResult:
     metro = nabiz._source("metro")
     equipment = nabiz._source("metro_equipment")
@@ -370,14 +384,14 @@ def _finish_route(
 
 
 async def plan_accessible_journey(
-    nabiz: Nabiz,
+    nabiz: JourneyFacade,
     origin: str | tuple[float, float],
     destination: str | tuple[float, float],
     needs: Sequence[str] | None = None,
 ) -> JourneyResult:
     """Plan an accessible rail trip with per-station lifts and a checked detour if needed.
 
-    Place names use the same ``Nabiz._endpoint`` gazetteer path as ``plan_journey``. One
+    Place names use the same ``Nabiz._endpoint`` (the facade) gazetteer path as ``plan_journey``. One
     station list and one lift snapshot feed the whole route; no per-station upstream calls or
     user location storage are introduced. A detour is accepted only when its graph path omits
     the station it replaces. NEXUS is deliberately not imported here, so its simulated
