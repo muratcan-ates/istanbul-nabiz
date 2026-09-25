@@ -30,6 +30,12 @@ _spec.loader.exec_module(budget)
 EM, EN = "—", "–"
 
 
+@pytest.fixture(autouse=True)
+def _default_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests pin the default verdicts; an exported NABIZ_SPRINT_MODE=1 would soften them to WARN."""
+    monkeypatch.delenv(budget.SPRINT_MODE_ENV, raising=False)
+
+
 @pytest.fixture
 def repo(tmp_path: pathlib.Path) -> pathlib.Path:
     """A copy of the page as it is in this checkout, for one test to break."""
