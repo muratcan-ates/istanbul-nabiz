@@ -30,7 +30,7 @@ from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.ports import OPERATOR, Ports
 
 PROVENANCE_KEYS = {"source", "url", "observed_at", "age_s", "mode"}
-CARD_KEYS = {"id", "kind", "title", "body", "status", "provenance", "author"}
+CARD_KEYS = {"id", "kind", "title", "body", "status", "provenance", "author", "how"}
 DISPLAYS = {"tarifeye göre", "doğrulanamadı"}
 
 
@@ -420,6 +420,15 @@ def test_brief_without_equipment_data_says_unverified(nabiz: Nabiz) -> None:
     cards = brief(nabiz, None, stations="Taksim", needs="step_free")
     lift = next(one for one in cards if one["kind"] == "metro_equipment")
     assert lift["status"] == "unverified" and lift["provenance"]["mode"] == "unknown"
+
+
+def test_every_brief_card_says_how_it_was_found(nabiz: Nabiz) -> None:
+    cards = brief(nabiz, FakeStepFree(), stations="Kartal", lines="500T:401351", needs="step_free")
+    required = {"tool", "source_url", "observed_at", "rule_id", "signal_id", "uncertainty", "latency_ms"}
+    for one in cards:
+        assert isinstance(one["how"], dict)
+        assert required <= one["how"].keys()
+        assert isinstance(one["how"]["uncertainty"], list)
 
 
 def test_brief_with_nothing_saved_still_shows_the_city(nabiz: Nabiz) -> None:

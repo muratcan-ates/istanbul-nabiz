@@ -24,7 +24,7 @@ DASHES = (chr(0x2014), chr(0x2013))  # em dash, en dash
 
 #: The contract's field names (the API SÖZLEŞMESİ of the sprint brief), checked on every mock reply.
 PROVENANCE_KEYS = {"source", "url", "observed_at", "age_s", "mode"}
-CARD_KEYS = {"id", "kind", "title", "body", "status", "provenance", "author"}
+CARD_KEYS = {"id", "kind", "title", "body", "status", "provenance", "author", "how"}
 QUEUE_ITEM_KEYS = {"signal_id", "kind", "title", "severity", "path", "status", "created_at", "summary"}
 DECISION_KEYS = {
     "signal_id",
@@ -38,7 +38,9 @@ DECISION_KEYS = {
     "confidence",
     "author",
 }
-FINAL_KEYS = {"answer", "citations", "author", "memory_suggestion", "refused"}
+FINAL_KEYS = {
+    "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
+}
 
 
 def read(name: str) -> str:
@@ -94,7 +96,8 @@ def test_landmarks_headings_and_live_regions(name: str) -> None:
 def test_the_honesty_bands_are_on_both_pages() -> None:
     index, console = read("index.html"), read("console.html")
     assert "Resmî İBB hizmeti" in index and "Resmî İBB hizmeti" in console
-    assert "Bu bir yapay zekâ asistanıdır" in index
+    chat = read("js/chat.js")
+    assert "Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum." in chat
     assert "Simüle operatör" in console
     assert "İBB onaylı" not in index and "İBB onaylı" not in console
     for page in (index, console):
@@ -162,11 +165,13 @@ def test_mock_replies_follow_the_contract() -> None:
     assert re.fullmatch(r"\d+ dk|tarifeye göre|doğrulanamadı", arrival["display"])
     alternative = mock("alternative")
     assert {"station", "lift_status", "alternative", "operator_approved", "provenance"}.issubset(alternative)
-    for name in ("chat", "chat-memory", "chat-refused"):
+    for name in ("chat", "chat-memory", "chat-refused", "chat-quote"):
         events = mock(name)["events"]
         assert events[-1]["event"] == "final"
         assert FINAL_KEYS.issubset(events[-1]["data"])
-        assert all(e["event"] in {"token", "tool", "final"} for e in events)
+        assert all(e["event"] in {"session_started", "token", "tool", "final"} for e in events)
+    quote = mock("chat-quote")["events"][-1]["data"]
+    assert quote["mode"] == "quote_only" and quote["citations"][0]["quote"]
     for item in mock("console-queue")["items"]:
         assert QUEUE_ITEM_KEYS.issubset(item)
         assert item["path"] in {"reflex", "arena"}
@@ -202,3 +207,42 @@ def test_every_module_parses(tmp_path) -> None:
     for path in sorted((STATIC / "js").glob("*.js")):
         proc = subprocess.run([node, "--check", str(path)], capture_output=True, text=True, timeout=60)
         assert proc.returncode == 0, f"{path.name}: {proc.stderr}"
+
+
+def test_the_home_screen_has_the_question_box_before_city_cards() -> None:
+    html = read("index.html")
+    assert html.index('id="home-screen"') < html.index('id="chat-input"') < html.index('id="quick-cards"')
+    assert html.index('id="quick-cards"') < html.index('id="city-cards"') < html.index('id="cards"')
+    question = html[html.index('id="chat-input"'):html.index('id="chat-submit"')]
+    assert 'placeholder="İstanbul hakkında ne öğrenmek istiyorsun?"' in question
+    assert "autofocus" in question and 'tabindex="0"' in question
+    source = read("js/home.js")
+    assert 'role="button" tabindex="0"' in source and "button[data-seed]" in source
+    assert "requestSubmit()" in source and "localStorage" not in source
+    assert "İstanbul ulaşımı için resmî bilgi nerede?" in source
+
+
+def test_unknown_text_is_verbatim() -> None:
+    source = read("js/chat.js")
+    match = re.search(r'^const UNKNOWN_TEXT = "([^\"]*)";$', source, flags=re.M)
+    assert match
+    expected = (
+        "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. "
+        "153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin."
+    )
+    assert match.group(1) == expected
+
+
+def test_ai_notice_appears_once_per_page_session() -> None:
+    source = read("js/chat.js")
+    assert source.count("const AI_NOTICE =") == 1
+    assert "event === 'session_started'" in source
+    assert "if (!sessionStarted)" in source
+
+
+def test_unknown_and_emergency_answers_do_not_show_provenance_panels() -> None:
+    source = read("js/chat.js")
+    unknown_path = source[source.index("const unknown ="):source.index("return html;", source.index("const unknown ="))]
+    assert "if (!unknown)" in unknown_path
+    emergency_path = source[source.index("if (mode === 'redirect'"):source.index("const unknown =")]
+    assert "howPanel" not in emergency_path
