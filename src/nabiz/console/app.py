@@ -51,6 +51,7 @@ from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.compare_api import compare_routes
 from nabiz.console.envfile import load_env_file
+from nabiz.console.feedback_api import feedback_routes
 from nabiz.console.history_api import history_routes
 from nabiz.console.journey_api import accessible_journey_route
 from nabiz.console.knowledge_api import knowledge_routes
@@ -286,6 +287,7 @@ def build_console_app(
     app.add_exception_handler(RequestValidationError, _invalid_request)
     app.include_router(citizen_routes)
     app.include_router(compare_routes)
+    app.include_router(feedback_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
     app.include_router(operator_routes)
