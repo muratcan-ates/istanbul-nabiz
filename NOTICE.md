@@ -46,7 +46,7 @@ kısıtlaması aşılmamıştır.
 
 ## Üçüncü taraf bileşenler
 
-Depoda iki üçüncü taraf dosya grubu vardır; ikisi de lisans metniyle birlikte sunulur:
+Depoda üç üçüncü taraf dosya grubu vardır; her biri lisans metniyle birlikte sunulur:
 
 | Bileşen | Kaynak | Lisans | Depodaki dosyalar |
 |---|---|---|---|
@@ -54,6 +54,7 @@ Depoda iki üçüncü taraf dosya grubu vardır; ikisi de lisans metniyle birlik
 | Tabler Icons 3.48.0, çizgi (outline) seti | npm `@tabler/icons@3.48.0`, npm'in yayımladığı `dist.integrity` ile doğrulanmış paket; <https://github.com/tabler/tabler-icons> | MIT, Copyright (c) 2020-2026 Paweł Kuna | `src/nabiz/web/static/index.html` içindeki üretilmiş simge bloğu ve favicon, `src/nabiz/web/static/icons.svg`; lisans metni `src/nabiz/web/static/icons.LICENSE.txt` |
 | DOU-Synapse retrieval patterns | <https://github.com/muratcan-ates/DOU-Synapse>, commit `2cbe1eab8ab46c5958f4d529cb9a32c0b6bb2169` | MIT, Copyright (c) 2026 Muratcan Ates | `src/ibb_mcp/knowledge/` adapted retrieval, chunking and guardrail modules |
 | DOU-Synapse, arayüz kalıpları | <https://github.com/muratcan-ates/DOU-Synapse> commit `2cbe1ea`; `apps/web/lib/accessibility.ts`, `apps/web/components/accessibility-provider.tsx`, `apps/web/public/accessibility-boot.js`, `apps/web/components/chat-feedback.tsx`, `apps/web/components/chat/transcript-parts.tsx`, `apps/web/app/kvkk/page.tsx` | MIT, Copyright (c) 2026 Muratcan Ates | `src/nabiz/console/static/js/a11y.js`, `feedback.js`, `transcript.js`, `src/nabiz/console/static/css/a11y.css`, `src/nabiz/console/static/kvkk.html` (React'ten vanilla JS'e uyarlandı) |
+| Leaflet 1.9.4 | npm `leaflet@1.9.4`, dağıtım dosyaları değiştirilmeden kopyalandı; <https://github.com/Leaflet/Leaflet/tree/v1.9.4> | BSD-2-Clause, <https://github.com/Leaflet/Leaflet/blob/v1.9.4/LICENSE> | `src/nabiz/console/static/vendor/leaflet/` |
 
 Yazı tipi alt kümesi OFL'in "Değiştirilmiş Sürüm" koşulu gereği yeniden adlandırılmıştır: "Source"
 lisansta Ayrılmış Yazı Tipi Adı'dır, bu yüzden alt küme kendini "Nabiz Sans TR" olarak tanıtır; telif, marka
@@ -66,7 +67,7 @@ Web sayfası iki bileşeni çalışma anında, ziyaretçinin tarayıcısında y�
 | Bileşen | Kaynak | Lisans | Kullanım |
 |---|---|---|---|
 | MapLibre GL JS 4.7.1 | `https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/` (`maplibre-gl.min.js`, `maplibre-gl.min.css`) | BSD-3-Clause, <https://github.com/maplibre/maplibre-gl-js/blob/v4.7.1/LICENSE.txt> | harita; konumu olan ilk yanıtla, SRI özetleriyle sabitlenmiş olarak yüklenir; yüklenemezse konumlar liste olarak gösterilir |
-| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | harita altlığı; atıf haritada ve sayfanın altında |
+| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | web ve vatandaş konsolu harita altlığı; atıf harita üzerinde |
 
 ## Sorumluluk reddi
 
