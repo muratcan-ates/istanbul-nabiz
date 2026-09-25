@@ -14,6 +14,8 @@
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/components.css">
 <link rel="stylesheet" href="/css/citizen.css">
+<link rel="stylesheet" href="/css/a11y.css">
+<link rel="stylesheet" href="/css/map.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/citizen.js">
 <link rel="modulepreload" href="/js/api.js">
@@ -23,6 +25,9 @@
 <link rel="modulepreload" href="/js/profile.js">
 <link rel="modulepreload" href="/js/provenance.js">
 <link rel="modulepreload" href="/js/history.js">
+<link rel="modulepreload" href="/js/a11y.js">
+<link rel="modulepreload" href="/js/disclosure.js">
+<link rel="modulepreload" href="/js/feedback.js">
 <link rel="modulepreload" href="/js/format.js">
 <link rel="modulepreload" href="/js/icons.js">
 <link rel="modulepreload" href="/js/theme.js">
@@ -32,6 +37,13 @@
 <script type="module" src="/js/voice.js"></script>
 <script type="module" src="/js/share.js"></script>
 <script type="module" src="/js/history.js"></script>
+<script type="module" src="/js/compare.js"></script>
+<script type="module" src="/js/map.js"></script>
+<!-- a11y.css and map.css are linked above (their modules skip a sheet already present); nearby.js,
+     voice.js and share.js add their own sheets when they mount. Leaflet loads from /vendor on demand. -->
+<script type="module" src="/js/a11y.js"></script>
+<script type="module" src="/js/disclosure.js"></script>
+<script type="module" src="/js/feedback.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -86,12 +98,12 @@
         <button type="submit" class="btn btn-primary" id="chat-submit">Sor<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
       </div>
       <p class="field-error" hidden>Bir soru yazın.</p>
-      <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz.</p>
+      <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a><span data-pending="tid" hidden>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz</span>.</p>
       <p id="chat-lang">Cevap dili: <button type="button" class="btn" id="chat-lang-en" aria-pressed="false">English</button></p>
     </form>
     <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
     <div class="band" role="note">
-      <p>Yanıtlar resmî İstanbul kaynaklarına dayanır. Kaynak bulamazsam tahmin etmem.
+      <p>Yanıtları bir yapay zekâ asistanı yazar ve İBB açık verisine dayandırır. Kaynak bulamazsam tahmin etmem.
         <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
     </div>
   </section>
@@ -130,6 +142,19 @@
           <span class="section-note">ilk kayıtlı istasyonunuz için</span>
         </div>
         <div id="alternative"></div>
+      </section>
+
+      <section id="compare" aria-labelledby="compare-title">
+        <div class="section-head">
+          <h2 id="compare-title">Metro mu, otobüs mü?</h2>
+          <span class="section-note">tahmini süre, kaynağı ve yaşıyla</span>
+        </div>
+        <form id="compare-form" class="arrival-form" autocomplete="off">
+          <div class="field"><label for="compare-from">Nereden</label><input id="compare-from" name="from" type="text"></div>
+          <div class="field"><label for="compare-to">Nereye</label><input id="compare-to" name="to" type="text"></div>
+          <button type="submit" class="btn">Karşılaştır</button>
+        </form>
+        <div id="compare-result"></div>
       </section>
 
       <section id="equipment-history" aria-labelledby="equipment-history-title" hidden>
@@ -231,12 +256,13 @@
     <p id="hakkinda">
       Bağımsız öğrenci projesi; <strong>resmî İBB hizmeti değildir</strong>. İBB, İETT, İSPARK ve Metro İstanbul ile bağlantısı
       yoktur. Varış süreleri <strong>tahmindir</strong>; hava kalitesi çıktısı sağlık tavsiyesi değildir. Yolculuk planlarken
-      resmî İETT ve Metro İstanbul kaynaklarını esas alın. İnsanla konuşmak için <a href="tel:153">153</a>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz.
+      resmî İETT ve Metro İstanbul kaynaklarını esas alın. İnsanla konuşmak için <a href="tel:153">153</a><span data-pending="tid" hidden>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz</span>.
     </p>
   </div>
   <p>
     <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a><br>
     <a href="/console">İBB çalışanı konsolu (simüle operatör)</a><br>
+    <a href="/kvkk.html">KVKK / Gizlilik</a><br>
     Yazı tipi: Source Sans 3 (OFL)<br>
     Simgeler: Tabler Icons (MIT)
   </p>

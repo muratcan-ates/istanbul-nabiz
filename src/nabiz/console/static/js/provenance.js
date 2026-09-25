@@ -35,6 +35,7 @@ const SOURCE_TR = {
   nabiz_alerts: 'Nabız uyarıları',
   nexus_ledger: 'Nabız karar defteri',
   nexus_rules: 'Nabız kural kataloğu',
+  'local:knowledge': 'Hizmet sayfaları (yerel dizin)',
 };
 
 const MODE_TR = { live: 'canlı', old: 'ölçüm', recorded: 'kayıtlı', schedule: 'tarifeye göre', unknown: 'bilinmiyor' };

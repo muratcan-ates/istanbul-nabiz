@@ -234,6 +234,8 @@ def test_page_has_the_tid_line() -> None:
     expected = '<a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a>'
 
     assert page.count(expected) == 2
+    # No verified address yet: both mentions stay hidden until one is confirmed (integration, 25 Sep).
+    assert page.count('<span data-pending="tid" hidden>') == 2
     assert "istanbulsenin.istanbul" not in page.casefold()
     assert "text-toggle" not in page
 
