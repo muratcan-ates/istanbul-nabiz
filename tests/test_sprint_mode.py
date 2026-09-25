@@ -2,11 +2,13 @@
 
 Same synthetic trees as ``tests/test_check_architecture.py`` and ``tests/test_check_web_budget.py``, with a
 ratchet violation and a contract violation side by side, so the flag is seen to loosen the first and leave
-the second red. Without the variable both scripts behave exactly as before; ``make ci-commit`` never sets it.
+the second red. Without the variable both scripts behave exactly as before. ``make ci-commit`` and CI set it only
+for the length of the sprint (DECISIONS #29, until 2026-10-01); the last test here turns red the day that ends.
 """
 
 from __future__ import annotations
 
+import datetime
 import pathlib
 import shutil
 
@@ -151,22 +153,34 @@ def test_the_web_exit_code_follows_the_verdict(
 
 
 # --------------------------------------------------------------------------------------
-# the make targets: lane-gates sets the flag, ci-commit and CI never do
+# the make targets: lane-gates sets the flag; ci-commit and CI carry it only for the sprint (DECISIONS #29)
 # --------------------------------------------------------------------------------------
+SPRINT_ENDS = datetime.date(2026, 10, 1)  # DECISIONS #26 and #29 expire together; the flag leaves CI in one commit
+CI_FILES = (".github/scripts/ci_local.sh", ".github/workflows/ci.yml")
+
+
 def recipe(makefile: str, target: str) -> str:
     return makefile.split(f"\n{target}:", 1)[1].split("\n\n", 1)[0]
 
 
-def test_lane_gates_runs_the_sprint_list_and_the_full_gate_never_sees_the_flag() -> None:
+def test_lane_gates_runs_the_sprint_list_and_ci_carries_the_flag_only_during_the_sprint() -> None:
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     lane = recipe(makefile, "lane-gates")
-    # NABIZ_LLM_NO_PROBE=1 keeps the Foundry Local probe out of the lane gate too (G8, DECISIONS #28).
-    assert "NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) -m pytest -q -x" in lane
+    # NABIZ_LLM_NO_PROBE=1 keeps the Foundry Local probe out of the lane gate too (G8, DECISIONS #28); the sprint
+    # flag reaches pytest so that the repository's own-fences test reads the ratchets as WARN (DECISIONS #29).
+    assert f"NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 {FLAG}=1 $(PY) -m pytest -q -x" in lane
     assert "$(RUFF) check $(SRC)" in lane
     assert f"{FLAG}=1 $(MAKE) --no-print-directory architecture" in lane
     assert "$(MAKE) --no-print-directory guardrails" in lane
+    # The make recipes themselves stay clean: ci-commit delegates to ci_local.sh, which owns the sprint lines.
     assert FLAG not in recipe(makefile, "ci-commit") and FLAG not in recipe(makefile, "architecture")
-    for path in (".github/scripts/ci_local.sh", ".github/workflows/ci.yml"):
-        assert FLAG not in (REPO_ROOT / path).read_text(encoding="utf-8"), path
+    ci_texts = {path: (REPO_ROOT / path).read_text(encoding="utf-8") for path in CI_FILES}
+    if datetime.date.today() < SPRINT_ENDS:
+        # DECISIONS #29: during the sprint the ratchets and the byte budget warn in CI as well, each line marked.
+        for path, text in ci_texts.items():
+            assert FLAG in text and "DECISIONS #29" in text, path
+    else:
+        for path, text in ci_texts.items():
+            assert FLAG not in text, f"{path}: the sprint ended on {SPRINT_ENDS}; revert DECISIONS #29 first"
     # ci_local.sh strips every NABIZ_* variable from the shell it inherits, so an exported flag dies there too.
-    assert "NABIZ_[A-Za-z0-9_]*" in (REPO_ROOT / ".github/scripts/ci_local.sh").read_text(encoding="utf-8")
+    assert "NABIZ_[A-Za-z0-9_]*" in ci_texts[".github/scripts/ci_local.sh"]
