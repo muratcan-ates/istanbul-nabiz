@@ -9,8 +9,8 @@ truth for validation. That is why numeric ranges live in the field descriptions 
 as ``ge``/``le`` constraints — the engine's Turkish refusal is the one the user should see,
 and it never echoes a coordinate back (``docs/privacy.md`` §4).
 
-Every constant quoted here is imported from the engine, so the description cannot drift
-from what is enforced.
+Every limit quoted here is imported from the module that enforces it, so the description
+cannot drift from its parser.
 
 String and list *lengths* are the exception, and are enforced here: they bound the work a
 request can cause, not the meaning of a field, and the engine has no reason to see a
@@ -37,14 +37,13 @@ from ibb_mcp.alerts.engine import (
     PARKING_THRESHOLD_RANGE,
     TRAFFIC_THRESHOLD_RANGE,
 )
+from ibb_mcp.alerts.lift import LIFT_EQUIPMENT, MAX_LABEL_CHARS, MAX_LINES_PER_RULE, MAX_STATIONS_PER_RULE
 from ibb_mcp.models import LAT_RANGE, LON_RANGE
 
 #: A place key is a short handle ("ev", "is"), and a label is what a person reads.
 MAX_KEY_CHARS = 32
-MAX_LABEL_CHARS = 120
 #: Rail and bus line codes; the longest GTFS ``route_short_name`` is 12 characters.
 MAX_LINE_CHARS = 16
-MAX_LINES_PER_RULE = 20
 #: ``muted_keys`` are the dedupe keys a client is sitting on. One rule yields one alert per
 #: request, but a key changes with the situation it describes (a new notice, a new AQI
 #: band), so a client can hold several per rule inside one cooldown window: bounded
@@ -153,10 +152,41 @@ class BusBunchingRuleSpec(BaseModel):
     cooldown_seconds: int | None = Field(default=None, description=_cooldown("bus_bunching"))
 
 
+class LiftOutageRuleSpec(BaseModel):
+    """A recorded lift, escalator or moving-walkway outage at a watched station or line."""
+
+    kind: Literal["lift_outage"]
+    stations: list[Annotated[str, Field(min_length=1, max_length=MAX_LABEL_CHARS)]] | None = Field(
+        default=None,
+        max_length=MAX_STATIONS_PER_RULE,
+        description=(
+            f"İzlenen metro istasyonları; en fazla {MAX_STATIONS_PER_RULE} ad, "
+            f"her biri en fazla {MAX_LABEL_CHARS} karakter."
+        ),
+    )
+    lines: list[LineCode] | None = Field(
+        default=None,
+        max_length=MAX_LINES_PER_RULE,
+        description=f"İzlenen raylı sistem hat kodları; en fazla {MAX_LINES_PER_RULE} hat.",
+    )
+    equipment: list[Literal["elevator", "escalator", "moving_walkway"]] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=len(LIFT_EQUIPMENT),
+        description="İzlenecek ekipman türleri; verilmezse yalnız asansör.",
+    )
+    cooldown_seconds: int | None = Field(default=None, description=_cooldown("lift_outage"))
+
+
 #: One rule, told apart by ``kind``. A discriminated union gives the model one object shape
 #: per kind instead of a bag of optional fields that are each valid for only one of them.
 AlertRuleSpec = Annotated[
-    MetroDisruptionRuleSpec | ParkingFillingRuleSpec | AirQualityRuleSpec | TrafficRuleSpec | BusBunchingRuleSpec,
+    MetroDisruptionRuleSpec
+    | ParkingFillingRuleSpec
+    | AirQualityRuleSpec
+    | TrafficRuleSpec
+    | BusBunchingRuleSpec
+    | LiftOutageRuleSpec,
     Field(discriminator="kind"),
 ]
 
