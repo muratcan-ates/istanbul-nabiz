@@ -434,10 +434,18 @@ class MetroEquipmentSource:
             snap.uncertainty.append(SUMMARY_DETAIL_MISMATCH)
 
 
+def unread_provenance() -> Provenance:
+    """The equipment stamp when no record could be read: no time, so no age to show."""
+    return Provenance(source="metro_equipment", source_url=METRO_FAULTY_EQUIPMENT_DETAILS, observed_at=None)
+
+
 def _snapshot_provenance(entries: Sequence[CacheEntry[Any]]) -> Provenance:
-    """The oldest read among the groups dates the answer; any stale group marks it stale."""
+    """The oldest read among the groups dates the answer; any stale group marks it stale.
+
+    With no group read there is no time at all: the stamp stays unread, never "now".
+    """
     if not entries:
-        return make_provenance("metro_equipment", url=METRO_FAULTY_EQUIPMENT_DETAILS)
+        return unread_provenance()
     oldest = min(entries, key=lambda entry: entry.observed_at_utc)
     provenance = make_provenance("metro_equipment", entry=oldest, url=METRO_FAULTY_EQUIPMENT_DETAILS)
     if any(not entry.fresh for entry in entries):

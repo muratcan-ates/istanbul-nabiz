@@ -12,6 +12,7 @@ reading it does not have. ``unknown`` means nothing was read at all, and its car
 from __future__ import annotations
 
 import datetime as dt
+import math
 import os
 import re
 from collections.abc import Mapping, Sequence
@@ -74,6 +75,8 @@ def provenance_view(prov: Provenance, *, offline: bool, mode: Mode | None = None
     page prints (:meth:`~ibb_mcp.models.Provenance.describe_age`).
     """
     reference = prov.reported_at or prov.observed_at
+    if reference is None:
+        return unknown_provenance(prov.source, prov.source_url or None)
     return {
         "source": prov.source,
         "url": prov.source_url or None,
@@ -94,6 +97,8 @@ def read_age_s(prov: Provenance) -> float:
     Not :attr:`Provenance.age_seconds`: a Metro notice may be weeks old and still be the
     current notice, read a minute ago.
     """
+    if prov.observed_at is None:
+        return math.inf  # never read: past any staleness limit
     return max(0.0, (utcnow() - prov.observed_at).total_seconds())
 
 

@@ -229,7 +229,7 @@ def alert_age_tr(provenance: Provenance | None) -> str:
 
 def alert_age_en(provenance: Provenance | None) -> str:
     """English mirror of :meth:`Provenance.describe_age`, same thresholds."""
-    if provenance is None:
+    if provenance is None or provenance.unread:
         return "age unknown"
     seconds = provenance.age_seconds
     if seconds < 90:

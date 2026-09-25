@@ -541,3 +541,13 @@ def test_with_an_index_but_no_quote_a_refused_question_keeps_the_refusal(
     with client_for(nabiz, llm.LlmConfig()) as client:
         _, final = ask(client, "Kaçak geçiş cezası kaç lira?")
     assert final["mode"] == "refused" and final["answer"] == REFUSAL_TEXT and final["citations"] == []
+
+
+def test_an_unread_lift_record_shows_no_age(nabiz: Nabiz) -> None:
+    """The recorded fixtures hold no lift record: the answer says so and states no age."""
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, "Kartal metro istasyonunda asansör var mı?")
+    assert "doğrulanamadı" in final["answer"] and "Verinin yaşı" not in final["answer"]
+    cited = [item for item in final["citations"] if item.get("source") == "metro_equipment"]
+    assert cited and all(item["observed_at"] is None and item["age_s"] is None for item in cited)
+    assert all(item["mode"] == "unknown" for item in cited)

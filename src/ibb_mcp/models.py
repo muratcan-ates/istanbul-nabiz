@@ -166,21 +166,36 @@ class Provenance(BaseModel):
 
     ``observed_at`` is when we fetched it; ``reported_at`` is the timestamp İBB itself
     put on the data, when one exists. The agent quotes ``reported_at`` to the user.
+    Both are ``None`` when nothing was read at all (:attr:`unread`): an answer then says
+    "kayıt yok" and shows no age, because "0 sn önce" would claim a reading that never happened.
     """
 
     source: str = Field(description="Short source key, e.g. 'ispark' or 'iett'.")
     source_url: str
     # Looked up at call time, not bound at class creation, so a test that patches this module's
     # utcnow freezes the fetch time and the age computed from it alike.
-    observed_at: dt.datetime = Field(default_factory=lambda: utcnow())
+    observed_at: dt.datetime | None = Field(default_factory=lambda: utcnow())
     reported_at: dt.datetime | None = None
     cached: bool = False
     license: str = "İBB Açık Veri Lisansı (CC BY 4.0)"
 
     @property
+    def unread(self) -> bool:
+        """Nothing was read: no time to state and no age to count."""
+        return self.observed_at is None and self.reported_at is None
+
+    @property
     def age_seconds(self) -> float:
+        """Seconds since the data's own time; infinite when nothing was read, so it is never fresh."""
         reference = self.reported_at or self.observed_at
+        if reference is None:
+            return math.inf
         return max(0.0, (utcnow() - reference).total_seconds())
+
+    @property
+    def shown_age_seconds(self) -> float | None:
+        """:attr:`age_seconds` for a JSON body, rounded; ``None`` when nothing was read."""
+        return None if self.unread else round(self.age_seconds, 1)
 
     def describe_age(self) -> str:
         """Data age in the largest unit a person would use.
@@ -189,6 +204,8 @@ class Provenance(BaseModel):
         at both ends of the range. A Metro disruption notice can legitimately be six weeks
         old, and "1034.3 saat önce" is technically right and useless.
         """
+        if self.unread:
+            return "kayıt yok"
         seconds = self.age_seconds
         if seconds < 90:
             return f"{int(seconds)} sn önce"

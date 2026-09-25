@@ -124,10 +124,10 @@ def envelope(result: ToolResult) -> dict[str, Any]:
         "provenance": {
             "source": prov.source,
             "source_url": prov.source_url,
-            "observed_at": prov.observed_at.isoformat(),
+            "observed_at": prov.observed_at.isoformat() if prov.observed_at else None,
             "reported_at": prov.reported_at.isoformat() if prov.reported_at else None,
-            "age": prov.describe_age(),
-            "age_seconds": round(prov.age_seconds, 1),
+            "age": None if prov.unread else prov.describe_age(),
+            "age_seconds": prov.shown_age_seconds,
             "stale": prov.cached,
             "license": prov.license,
         },

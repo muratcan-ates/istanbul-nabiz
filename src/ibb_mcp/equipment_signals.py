@@ -32,11 +32,9 @@ from ibb_mcp.accessibility import (
     platform_key,
     status_note,
 )
-from ibb_mcp.config import METRO_FAULTY_EQUIPMENT_DETAILS
 from ibb_mcp.http import UpstreamUnavailable
 from ibb_mcp.metro_graph import DEFAULT_METRO_PARAMS, MetroGraph
 from ibb_mcp.models import MetroStation, Provenance, ToolResult, haversine_km
-from ibb_mcp.sources.base import make_provenance
 from ibb_mcp.sources.metro import MetroSource
 from ibb_mcp.sources.metro_equipment import (
     EQUIPMENT_GROUPS,
@@ -46,6 +44,7 @@ from ibb_mcp.sources.metro_equipment import (
     line_key,
     match_station,
     station_key,
+    unread_provenance,
 )
 
 #: This many faults at one interchange go to a person (rule R-05).
@@ -181,7 +180,7 @@ async def equipment_signals(equipment: MetroEquipmentSource, metro: MetroSource)
     try:
         snapshot, provenance = await equipment.snapshot(EQUIPMENT_GROUPS)
     except UpstreamUnavailable:
-        provenance = make_provenance("metro_equipment", url=METRO_FAULTY_EQUIPMENT_DETAILS)
+        provenance = unread_provenance()
         data = {"available": False, "mode": "recorded" if offline else "live", "signals": [], "observed_at": None}
         return ToolResult(data=data, provenance=provenance, note="Metro ekipman kaydı okunamadı.")
     stations, _ = await metro.stations()
@@ -193,6 +192,6 @@ async def equipment_signals(equipment: MetroEquipmentSource, metro: MetroSource)
         "available": snapshot.available,
         "mode": "recorded" if offline else "live",
         "signals": found,
-        "observed_at": observed.isoformat(),
+        "observed_at": observed.isoformat() if observed else None,
     }
     return ToolResult(data=data, provenance=provenance, note=None if snapshot.available else status_note({"available": False}))

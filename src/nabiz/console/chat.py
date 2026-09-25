@@ -186,12 +186,14 @@ def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
         if any(key in item for key in ("fetched_at", "source_updated_at", "institution", "quote")):
             result.append(dict(item))
             continue
+        as_of = item.get("as_of")
         result.append({
             "source": item.get("source"),
             "url": item.get("source_url") or None,
-            "observed_at": item.get("as_of"),
-            "age_s": _age_s(item.get("as_of")),
-            "mode": source_mode(item.get("source"), offline=offline),
+            "observed_at": as_of,
+            # Nothing was read (an unread stamp): no age and no mode, never "0 sn önce".
+            "age_s": _age_s(as_of) if as_of else None,
+            "mode": source_mode(item.get("source"), offline=offline) if as_of else "unknown",
         })
     return result
 

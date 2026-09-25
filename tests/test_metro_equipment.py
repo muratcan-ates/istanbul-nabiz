@@ -256,6 +256,18 @@ async def test_offline_without_a_recording_is_no_data_and_costs_nothing_twice(tm
     assert again.uncertainty == [NO_RECORDED_DATA]
 
 
+async def test_nothing_recorded_leaves_the_stamp_unread_with_no_age(tmp_path: pathlib.Path) -> None:
+    """No record read means no time: the stamp is not "now", so no answer says "0 sn önce"."""
+    from nabiz.agent.templates import render_answer
+
+    write_recordings(tmp_path, {}, None)
+    _, provenance = await MetroEquipmentSource(offline_ctx(tmp_path)).snapshot()
+    assert provenance.observed_at is None and provenance.reported_at is None and provenance.unread
+    assert provenance.describe_age() == "kayıt yok" and provenance.shown_age_seconds is None
+    payload = {"data": {"available": False}, "provenance": {"age": None}}
+    assert "Verinin yaşı" not in render_answer("metro_equipment_status", payload, "tr")
+
+
 async def test_a_missing_group_is_named(tmp_path: pathlib.Path) -> None:
     write_recordings(tmp_path, {"Asansör": [record()]}, None)
     snap, _ = await MetroEquipmentSource(offline_ctx(tmp_path)).snapshot()

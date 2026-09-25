@@ -29,12 +29,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from ibb_mcp.config import METRO_FAULTY_EQUIPMENT_DETAILS
 from ibb_mcp.http import UpstreamUnavailable
 from ibb_mcp.metro_graph import MetroGraph
 from ibb_mcp.models import MetroStation, Provenance, ToolResult, haversine_km
 from ibb_mcp.routing import rail_params, slow_walk_params
-from ibb_mcp.sources.base import make_provenance
 from ibb_mcp.sources.metro import MetroSource
 from ibb_mcp.sources.metro_equipment import (
     DATE_LABEL_TR,
@@ -49,6 +47,7 @@ from ibb_mcp.sources.metro_equipment import (
     match_station,
     resolve_group,
     station_key,
+    unread_provenance,
 )
 from ibb_mcp.text import fold_tr, rank_match_loose, squash_punctuation
 
@@ -427,7 +426,7 @@ async def alternative_answer(
     try:
         snapshot, provenance = await equipment.snapshot(("Asansör",))
     except UpstreamUnavailable:
-        snapshot, provenance = None, make_provenance("metro_equipment", url=METRO_FAULTY_EQUIPMENT_DETAILS)
+        snapshot, provenance = None, unread_provenance()
     data = accessible_alternative(station, needs, stations=stations, snapshot=snapshot)
     stale = snapshot is not None and snapshot.available and is_stale(provenance, offline=offline)
     if stale:

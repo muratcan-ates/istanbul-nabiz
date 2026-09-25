@@ -497,7 +497,7 @@ class Nabiz:
         fresh the traffic index behind the drive estimate is. Each input keeps its own full
         stamp in ``data.provenance``.
         """
-        observed = min((p.observed_at for p in inputs), default=None) or utcnow()
+        observed = min((p.observed_at for p in inputs if p.observed_at), default=None) or utcnow()
         return Provenance(
             source="nabiz_routing",
             source_url="local:src/ibb_mcp/routing.py",

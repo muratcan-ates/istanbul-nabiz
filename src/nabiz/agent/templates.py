@@ -250,6 +250,7 @@ def render_answer(tool: str, payload: dict[str, Any], lang: str) -> str:
     lines += RENDERERS.get(tool, _r_generic)(payload.get("data") or {})
     if payload.get("note"):
         lines.append(str(payload["note"]))
-    lines.append(f"Verinin yaşı: {payload['provenance']['age']}.")
+    if payload["provenance"].get("age"):  # nothing read: no age line, never "0 sn önce"
+        lines.append(f"Verinin yaşı: {payload['provenance']['age']}.")
     lines.append(ATTRIBUTION_LINE)
     return "\n".join(line for line in lines if line)
