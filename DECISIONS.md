@@ -1336,3 +1336,74 @@ Until 2026-10-01, in addition to #26:
 - Branches on the public remote are published work: no secrets, no personal data, no fixtures with plates; the
   guardrails run on every push of every branch.
 - The owner still pushes `main` by hand and reviews every merge.
+
+## 30. Dalga-1 sonrası düzeltmeler (25–26 Eyl 2026): the post-merge fixes and the lane notes wired
+
+**Date:** 2026-09-26 · **Status:** Accepted for `gun2/entegrasyon`; the owner reviews it before anything is pushed
+
+### Context
+
+After the dalga-1 merge (#28) the integration branch took a round of fixes found by using the app, then the
+owner's #29, then the lane notes #28 left open. This entry lists both rounds, `bc047b0..HEAD`, so the next
+reader finds why each behaviour changed without reading twelve commit bodies.
+
+### Decision
+
+Fixes found by using the app (2026-09-25):
+
+- **Emergency terms** (`bc047b0`). `policy.emergency_intent` recognises whole-word terms (kaza, yaralı,
+  kanama, intihar, saldırı, kalp krizi), verb stems with person endings, "acil" only beside a help word and
+  "düştü" only with a person, before the model is asked; "fiyat düştü" and "acil durum toplanma alanı" stay
+  ordinary questions. No eval journey question reads as an emergency.
+- **153 for out-of-scope** (`f60f52d`). The unrouted answer ends by pointing to the 153 Çözüm Merkezi or the
+  official page; the numeric check treats 153 as a known help number, not a reading.
+- **Chat and the knowledge layer** (`04951b9`). With a service-page index, a refused question gets a
+  verified quote and an uncovered question gets quotes or an unknown that names 153; without an index the
+  chat keeps its refusal. Tests point `NABIZ_KNOWLEDGE_DB` at a file that never exists.
+- **Turkish error message** (`2c7b713`). `/api/knowledge/*` errors carry `{error, message}` in Turkish, the
+  shape the page's cards read.
+- **Lift data age** (`dedb246`). No equipment record read means an unread provenance: "kayıt yok", no
+  "0 sn önce", and the card says "doğrulanamadı" with no age.
+
+This round (2026-09-26), from the lane notes and the product rules:
+
+- **Whole minutes on the compare card** (`8c6325d`): trip time and headway round to one whole minute.
+- **One AI notice per chat session** (`116097c`): the band at the top of the log stays; the copy inside the
+  first answer is gone; `disclosure.js` owns the text and the band markup.
+- **`make console-offline`** (`4da690a`): the product app with `NABIZ_ENV_FILE=/dev/null`, offline, no model
+  probe, sprint flag on, on `CONSOLE_PORT` (8090).
+- **G12 wiring** (`bf480cf`). `iett_next_arrivals` passes the line code, the GTFS route timetables and service
+  days (`ibb_mcp.timetables`, loaded once per facade) and the caller's `stale_after_s`, which the arrival card
+  sets from `NABIZ_ARRIVAL_STALE_S`. Past the limit with no timetable row the card says "tarifeye göre"; the
+  web page's timetable rows say "tarifeye göre" instead of a minute counted to the first stop's departure.
+  The MCP schema is unchanged; `build_route_timetables` joins the parse-once budget.
+- **G11** (`9085564`). `check_alerts` describes `lift_outage`; its price goes 10 → 15 (the rule can add the
+  equipment summary, three detail POSTs and Metro's station list); the perf sample watches Kartal's lifts
+  (cold budget 5 → 6 offline); `docs/mcp-usage.md` shows the rule.
+- **G16** (`3df9b6b`). A queue read runs `engine.expire()` first; `build_engine` passes `usd_per_call`: 0
+  for rule-based seats (no model call), the owner's new `NABIZ_ARENA_USD_PER_CALL` for model seats, no cost
+  shown when unset. The card's panel verdict and required level read in Turkish.
+- **G8** (`269a5ea`). The chat takes the first model rung whose provider has room today
+  (`llm.first_rung`), so a spent cloud budget drops to Foundry Local before the rules; "cevabı yazan" follows
+  the rung that wrote the answer (`llm.author_of`), in the chat, the Arena and an agent-mode eval report.
+
+### Consequences and open risks
+
+- **G12's architecture debt stands.** `eta.py` 494 and `gtfs.py` 534 code lines against the 400 cap, and
+  `estimate_arrivals` at 11 arguments against a baseline of 8 (`NABIZ_SPRINT_MODE=1 make architecture`,
+  2026-09-26). Under #29 these WARN; after 2026-10-01 they FAIL until the modules are split. `tools.py`
+  went down (590 → 587, `Nabiz` 533 → 529): `make architecture-tighten` can lower that baseline.
+- **Side effect of the ETA log fix** (`71b6232`, 2026-09-25). Before it, positions rebuilt from the lake lost
+  their timestamp, and the estimator keeps a position of unknown age but lowers its arrival's confidence one
+  notch (`eta.py`, `_drop_stale`). So `eta_predictions` rows written from rebuilt positions before that fix may
+  carry a confidence one level lower than the same estimate would get now. A report of accuracy by confidence
+  should split those rows off by time.
+- The GTFS fallback also lists trips that end at the target stop (500T towards Şifa Sondurak, counted to its
+  departure from the other terminus). No minute is shown for any timetable row now, but the row still reads
+  as an approaching bus; `_from_timetable`'s filter is for the dalga-2 plan. Without `calendar.csv` the day
+  filter is off and the diagnostics say so; downloading it is the owner's (NETWORK).
+- `tests/test_sprint_mode.py::test_lane_gates_runs_the_sprint_list_and_the_full_gate_never_sees_the_flag`
+  has failed since #29 (`3c02ab7`): it still asserts the lane pytest line and CI carry no sprint flag.
+  The test was left as it is; aligning it with #29 until 2026-10-01 is the owner's call.
+- The home screen's band ("Yanıtları bir yapay zekâ asistanı yazar", #28) and the chat's AI notice band
+  are two sentences about AI on one page; whether the home band should go is the owner's call.
