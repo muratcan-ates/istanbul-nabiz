@@ -114,6 +114,9 @@ console:  ## serve the product app: citizen face (/) and simulated-operator cons
 eval:  ## run the journey eval offline into reports/eval (gitignored); never writes eval/results (EVAL_ARGS='--mode agent')
 	$(PY) eval/run_eval.py --offline --results-dir $(EVAL_OUT) $(EVAL_ARGS)
 
+eval-knowledge:  ## validate the locked knowledge question set with fixed offline unknown answers
+	$(PY) eval/run_knowledge_eval.py --questions eval/knowledge_questions.jsonl --offline
+
 eval-record:  ## WRITES eval/results: an offline run kept as evidence (Integrator or owner only)
 	$(PY) eval/run_eval.py --offline $(EVAL_ARGS)
 
