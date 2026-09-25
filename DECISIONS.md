@@ -1223,3 +1223,84 @@ the whole gate list a lane spends the sprint on the gates' paperwork instead of 
 ### Consequences
 - Personas widen two facade signatures; MCP surface unchanged. The measured growth belongs to the routing helper and the facade methods.
 - Model prompts carry plain-language and last-departure guidance; deterministic rule templates do not implement those behaviors yet.
+
+
+## 28. Dalga 1 birleştirmesi (25 Eyl 2026): seventeen day-2 lanes wired into one app
+
+**Date:** 2026-09-25 · **Status:** Accepted for `gun2/entegrasyon`; the owner reviews it before anything is pushed
+
+### Context
+
+`gun2/entegrasyon` was cut from `gun1/entegrasyon` (`76fda61`) and took seventeen lanes with
+`git merge --no-ff`, in this order: G14 knowledge layer (`2ed0940`), G1 citizen cards (`7416b03`), G15
+DOU-Synapse UI patterns (`0d4ccb8`), G20 accessible journey (`b9ac6e7`), G11 lift alert rule (`276bc67`),
+G12 timetable fallback (`c32660b`), G17 nearby (`32f18c7`), G2 personas (`c0afb90`), G18 map (`c54382b`),
+G3 voice (`6608065`), G22 compare (`c301e4d`), G24 share and save (`01de4a6`), G9+G25 equipment snapshots
+and history (`2aaaf40`), G7 eval traps (`618202a`), G6 console accessibility (`010712e`), G16 CloudSentinel
+organs (`61f11ef`), G8 Foundry Local ladder (`0e6145d`). Seven merges conflicted, in `NOTICE.md`, `app.py`
+and `index.html`; each was resolved by keeping both sides. Lanes were forbidden to edit shared files
+(`app.py`, `index.html`, `tools.py`, `server.py`, the agent's tool table), so each left the lines it needed
+in its report. This entry records how those notes were applied.
+
+### Decision
+
+- **Routes.** The console mounts `compare_routes` (G22), `knowledge_routes` (G14) and a new
+  `feedback_routes` (G15's `POST /api/feedback`: exactly `{answer_id, vote, reason}`, counted in memory per
+  (vote, reason), the id checked and dropped, nothing on disk) beside the citizen, history and operator
+  routers. No path is registered twice.
+- **The facade stays the only door.** `ibb_mcp.journey_accessible` (G20) types the facade with a Protocol
+  instead of importing `ibb_mcp.tools`, joins the services layer, and is reached through
+  `Nabiz.accessible_journey`; the console route no longer bypasses the facade. `Nabiz.ibb_services_search`
+  delegates to `ibb_mcp.knowledge.tool.search_local_index`, which never calls the embedding endpoint offline
+  and answers a missing index with a named gap, not an empty result. The console still reads the knowledge
+  index directly for `/api/knowledge/*`, under G14's `FACADE_ONLY` entry: a local SQLite file, no İBB call.
+- **G25's fault history is computed in the console** (`nabiz.console.history_api`), not in `ibb_mcp`: the
+  charter forbids `ibb_mcp → nabiz`, and the reader of the collector's local NDJSON belongs with the app
+  that serves it. It duplicates G9's reader logic; that is an open risk below.
+- **Seventeenth MCP tool.** `ibb_services_search` is registered in `server.py` (price 1 token: a local
+  index; the optional query embedding goes to the model endpoint, never to İBB), described in the server
+  instructions, and offered to the agent with the server's text verbatim (sixteen of seventeen tools;
+  `check_alerts` stays not offered). Counts that state today's tool list moved 16 → 17 (tests, perf harness,
+  README, `docs/mcp-usage.md`, the charter's tree); dated plans keep their historical counts. J12 adds six
+  deterministic scenarios so every tool keeps an eval scenario.
+- **Size baseline.** `server.py` 528 → 540, `tools.py` 582 → 590, `Nabiz` 525 → 533 code lines and 24 → 26
+  public methods, measured after the wiring (commit `b72c5e8`); the two new methods only delegate.
+- **Citizen page (`index.html`).** G18 `map.js` (Leaflet from `static/vendor/`, loaded on demand), G22's
+  comparison section and `compare.js`, G15's `a11y.css`, `a11y.js`, `disclosure.js`, `feedback.js` and a
+  KVKK link. G3's single `voice.js` line was reviewed and kept: speech is opt-in, the page says before
+  opt-in that the browser may send audio to its speech provider, and no new origin is added. The home band
+  now says an AI assistant writes the answers from İBB open data, instead of "resmî İstanbul kaynaklarına
+  dayanır", which read as official; G1 had removed the only visible AI line on the home screen. The
+  not-official band, the footer and `chat.js`'s AI notice stay. G2's TİD link has no verified address, so
+  both mentions sit in a hidden `data-pending="tid"` span. The 112 link G2 dropped was put back at merge.
+- **"Tek dakika" wording kept.** The arrival card shows one whole minute by the owner's rule
+  (`src/nabiz/console/arrival.py`, product principles §4.4); "tek dakika / ETA yok" reads as "a whole
+  minute, never a range, never the word ETA", so the page's "tek dakika" notes are not a contradiction.
+- **CSP.** `img-src` admits `https://tile.openstreetmap.org` and `https://*.tile.openstreetmap.org` for the
+  map's tiles; scripts and styles stay `'self'`. No `Permissions-Policy` header is sent, so G17's and G18's
+  geolocation needs no change.
+- **SSRF (G14).** The ingest no longer lets the HTTP client follow redirects: `PoliteClient.get_hop` hands a
+  3xx back, and the ingest follows at most three hops, each only to an exact reviewed host that a known
+  robots file does not disallow; anything else is refused, logged by host and reported `redirect-refused`.
+- **Guardrail target narrowed, not loosened.** `no-raw-ibb-calls` exempts one function,
+  `knowledge/embed.py::embed_documents`, as a model-endpoint call, only while its file names no İBB host;
+  `OpenAIEmbedder` refuses an İBB or `.istanbul` base URL.
+- `make test` and `make lane-gates` set `NABIZ_LLM_NO_PROBE=1` (G8). `NOTICE.md` keeps one licensed row per
+  source (DOU-Synapse, Leaflet, CloudSentinel); no Bürokratt or MUCGPT code exists in the tree.
+
+### Consequences and open risks
+
+- Not run at this step: `make test`, `make lane-gates`, `make eval`, `make eval-knowledge`. Run next, offline.
+- G12 grew `eta.py` (494) and `gtfs.py` (534) past the 400-line cap and `estimate_arrivals` to 11 arguments
+  (was 8). Sprint mode shows WARN; `make ci-commit` fails on them until they are split or a raise is recorded.
+  G12's `tools.py` wiring (timetable, service days, `provenance.mode`) is not done, and
+  `tests/test_collector_job.py` expects estimates from rows without a timestamp that G12 now skips.
+- The knowledge index is not built and no source was fetched: robots and terms were never checked for any host,
+  so the ingest is the owner's decision. Evidence thresholds (cosine 0.35, BM25 1.0, coverage 0.27) are unmeasured.
+- Still open from the lane notes: G11's `lift_outage` is not in `check_alerts`' description or price; G16's
+  `engine.expire()` in `nexus_port.queue()` and `usd_per_call`; G8's provider label in `chat.py`,
+  `arena_seats.py` and `eval/run_eval.py`; G1's `citizen_published_at`; G14's `chat.py` sensitive-answer path;
+  G2's `tests/test_faithfulness.py` schema expectation; the `Gönder` label `tests/test_personas.py` expects
+  (the button now says "Sor"); G25's reader duplicating G9's; the web budget after the new modules.
+- `policy.py`'s `startswith` matching (EMERGENCY_TERMS `polis`, `fire`; G7's `zam`, `kira`, `iade`) can match
+  unrelated words; `make eval` after this merge is the check.
