@@ -83,6 +83,7 @@ class AgentAnswer:
     warnings: list[str] = field(default_factory=list)
     usage: dict[str, Any] = field(default_factory=dict)
     model: str | None = None
+    provider: str | None = None
     messages: list[dict[str, Any]] = field(default_factory=list)
 
     @property
@@ -318,7 +319,7 @@ class NabizAgent:
             {"role": "user", "content": question},
         ]
         calls: list[ToolCallRecord] = []
-        text, model_name, steps = "", None, 0
+        text, model_name, provider, steps = "", None, None, 0
         #: True while the model is still mid-chain. A reply that asks for tools may also
         #: carry prose ("Trafiğe bakıyorum…") — that prose was written *before* the tool
         #: results existed, so it must never survive as the answer.
@@ -328,7 +329,7 @@ class NabizAgent:
             steps += 1
             with span("nabiz.llm.chat", **{"nabiz.agent.step": steps}):
                 response = await _chat(self.config, usage, messages, tools=self.schemas)
-            model_name = response.get("model") or model_name
+            model_name, provider = response.get("model") or model_name, response.get("provider") or provider
             text = (response.get("content") or "").strip()
             requested = response.get("tool_calls") or []
             pending_tools = bool(requested)
@@ -355,6 +356,7 @@ class NabizAgent:
             with span("nabiz.llm.chat", **{"nabiz.agent.step": steps + 1, "nabiz.agent.forced": True}):
                 response = await _chat(self.config, usage, [*messages, {"role": "user", "content": _FORCE_PROSE[lang]}])
             steps += 1
+            model_name, provider = response.get("model") or model_name, response.get("provider") or provider
             text = (response.get("content") or "").strip() or text
 
         evidence = [call.payload for call in calls if call.payload]
@@ -374,6 +376,7 @@ class NabizAgent:
             with span("nabiz.llm.chat", **{"nabiz.agent.step": steps + 1, "nabiz.agent.repair": True}):
                 response = await _chat(self.config, usage, messages)
             steps += 1
+            model_name, provider = response.get("model") or model_name, response.get("provider") or provider
             retry = (response.get("content") or "").strip()
             if retry:
                 repaired, text = True, retry
@@ -395,6 +398,7 @@ class NabizAgent:
             warnings=warnings,
             usage=usage,
             model=model_name or self.config.model,
+            provider=provider or self.config.provider,
             messages=messages,
         )
 
@@ -516,9 +520,9 @@ class NabizAgent:
             return AgentAnswer(
                 text=message,
                 faithfulness=check_faithfulness(message, None, question=question),
-                mode="deterministic",
-                lang=lang,
+                mode="deterministic", lang=lang,
                 warnings=[DETERMINISTIC_NOTE[lang]],
+                provider="none",
             )
         with span("nabiz.agent.deterministic", **{"nabiz.tool.name": tool}):
             record = await self._call_tool(tool, arguments)
@@ -529,25 +533,22 @@ class NabizAgent:
         # The error is relayed verbatim, so its own numbers ("bu durağa uğrayan hatlar:
         # 153, 154 …") came from the tool and are not this agent's invention.
         report = check_faithfulness(text, [record.payload], question=question, extra_sources=record.error)
-        warnings = [DETERMINISTIC_NOTE[lang]]
-        if not report.passed:
-            # A template is hand-written Turkish, so a numeric constant can creep into one
-            # and then no number in it came from the payload. The model path warns when the
-            # check fails; this path must warn too, or a failed check is invisible here.
-            warnings.append(
-                "Sayısal sadakat denetimi geçilemedi; şu sayılar araç sonuçlarında yok: "
-                + ", ".join(report.unsupported_texts)
-            )
+        # A template is hand-written Turkish, so a numeric constant can creep into one and
+        # then no number in it came from the payload. The model path warns when the check
+        # fails; this path must warn too, or a failed check is invisible here.
+        warnings = [DETERMINISTIC_NOTE[lang]] + (
+            ["Sayısal sadakat denetimi geçilemedi; şu sayılar araç sonuçlarında yok: " + ", ".join(report.unsupported_texts)]
+            if not report.passed
+            else []
+        )
         return AgentAnswer(
             text=text,
             tool_calls=[record],
             citations=_citations([record]),
             faithfulness=report,
-            mode="deterministic",
-            lang=lang,
-            steps=1,
-            warnings=warnings,
-            model=None,
+            mode="deterministic", lang=lang,
+            steps=1, warnings=warnings,
+            provider="none",
         )
 
 
@@ -566,6 +567,7 @@ def _describe_turn(turn: Span, answer: AgentAnswer) -> AgentAnswer:
             "nabiz.agent.tools": ",".join(answer.tool_names),
             "nabiz.agent.repaired": answer.repaired,
             "nabiz.agent.model": answer.model,
+            "nabiz.agent.provider": answer.provider,
             "nabiz.agent.faithful": None if answer.faithfulness is None else answer.faithfulness.passed,
         }
     )
@@ -597,9 +599,7 @@ async def _chat(config: llm.LlmConfig, usage: dict[str, Any], messages: list[dic
 
 
 def _merge_usage(total: dict[str, Any], usage: Any) -> None:
-    for key, value in (usage or {}).items():
-        if isinstance(value, (int, float)):
-            total[key] = total.get(key, 0) + value
+    total.update({key: total.get(key, 0) + value for key, value in (usage or {}).items() if isinstance(value, (int, float))})
 
 
 def _citations(calls: list[ToolCallRecord]) -> list[dict[str, Any]]:

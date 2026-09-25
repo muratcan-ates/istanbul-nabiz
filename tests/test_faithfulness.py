@@ -445,7 +445,7 @@ async def test_a_dead_endpoint_falls_back_to_deterministic_mode(ctx):
 
 def test_llm_config_reads_the_environment_and_classifies_the_provider():
     config = LlmConfig.from_env(
-        {"NABIZ_LLM_BASE_URL": "https://r.openai.azure.com/openai/v1/", "NABIZ_LLM_MODEL": "gpt-4.1-mini"}
+        {"NABIZ_LLM_BASE_URL": "https://r.openai.azure.com/openai/v1/", "NABIZ_LLM_MODEL": "gpt-4.1-mini"}, probe=False
     )
     assert config.provider == "azure_openai"
     assert config.base_url.endswith("/v1")  # trailing slash trimmed
