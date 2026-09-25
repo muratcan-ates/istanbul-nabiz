@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/actions.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """Decisions and approvals: the card the Arena drafts, and the human act that settles it.
 
 A :class:`Decision` is a draft waiting for a person: the evidence, the alternatives, the
@@ -26,14 +28,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from nexus_core.arena import Author, Confidence, EvidenceItem, Opinion
+from nexus_core.arena import Author, Confidence, EvidenceItem, Opinion, PanelVerdict, PanelVotes
 from nexus_core.missions import ACTION_CATALOG
+from nexus_core.receipts import RunReceipt
+from nexus_core.uncertainty import Uncertainty
 
-Status = Literal["closed_by_reflex", "awaiting_approval", "approved", "rejected", "deferred"]
+Status = Literal["closed_by_reflex", "awaiting_approval", "approved", "rejected", "deferred", "expired"]
 ApprovalAction = Literal["approve", "edit", "reject", "defer"]
 
 #: Settled: no further ruling. A deferred card goes back to the queue and can still be decided.
-FINAL_STATUSES = frozenset({"closed_by_reflex", "approved", "rejected"})
+FINAL_STATUSES = frozenset({"closed_by_reflex", "approved", "rejected", "expired"})
 REASON_MAX = 280
 #: The longest text a card publishes (a proposal or a person's edit).
 PROPOSAL_MAX = 600
@@ -44,7 +48,7 @@ DO_NOTHING = ("D · Hiçbir şey yapma", "Kart yayımlanmaz; sinyal defterde kal
 
 
 class DecisionConflict(Exception):
-    """A ruling on a card that is already settled (approved, rejected or closed by a reflex)."""
+    """A ruling on a settled card (approved, rejected, expired or closed by a reflex)."""
 
 
 class Alternative(BaseModel):
@@ -90,6 +94,14 @@ class Decision(BaseModel):
     author: Author
     arena_label: str
     created_at: dt.datetime
+    panel: PanelVerdict = Field(
+        default_factory=lambda: PanelVerdict(
+            verdict="no_quorum", votes=PanelVotes(support=0, oppose=0, conditional=0), answered=0
+        )
+    )
+    uncertainties: tuple[Uncertainty, ...] = ()
+    receipt: RunReceipt | None = None
+    expires_at: dt.datetime | None = None
 
     def freshness_s(self, now: dt.datetime) -> int | None:
         """Age of the stalest evidence item with a known time; the card's worst case."""

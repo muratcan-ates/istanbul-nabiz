@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/actions.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """Missions: the if-then rules NEXUS runs, read from TOML with ``tomllib``.
 
 A mission file is a small library of readable rules ("EĞER asansör kullanılamıyor VE
@@ -194,10 +196,11 @@ class EscalationSettings(BaseModel):
     window_hours: int = Field(default=336, gt=0, le=24 * 90)
     repeat_threshold: int = Field(default=3, ge=2, le=100)
     critical_kinds: tuple[str, ...] = ()
+    ttl_hours: int = Field(default=72, ge=0, le=24 * 90)
 
     @classmethod
     def merged(cls, settings: Iterable[EscalationSettings]) -> EscalationSettings:
-        """The strictest combination: the widest window, the lowest threshold, every critical kind."""
+        """The strictest combination: the widest window, lowest threshold and shortest card TTL."""
         items = list(settings)
         if not items:
             return cls()
@@ -205,6 +208,7 @@ class EscalationSettings(BaseModel):
             window_hours=max(s.window_hours for s in items),
             repeat_threshold=min(s.repeat_threshold for s in items),
             critical_kinds=tuple(sorted({k for s in items for k in s.critical_kinds})),
+            ttl_hours=min(s.ttl_hours for s in items),
         )
 
 

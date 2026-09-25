@@ -46,12 +46,13 @@ kısıtlaması aşılmamıştır.
 
 ## Üçüncü taraf bileşenler
 
-Depoda iki üçüncü taraf dosya grubu vardır; ikisi de lisans metniyle birlikte sunulur:
+Depoda üçüncü taraf bileşenleri aşağıda listelenmiştir; lisanslarıyla birlikte sunulurlar:
 
 | Bileşen | Kaynak | Lisans | Depodaki dosyalar |
 |---|---|---|---|
 | Source Sans 3 (Adobe), yazı tipi | google/fonts `ofl/sourcesans3/SourceSans3[wght].ttf`, commit `4591e3457ab8be6d70167aa6818922b91e78ab2d`, sürüm 3.052; üst kaynak <https://github.com/adobe-fonts/source-sans> | SIL Open Font License 1.1 | `src/nabiz/web/static/fonts/nabiz-sans-tr-v1.woff2` (Türkçe alt küme, 400-700 ağırlık ekseni) ve lisans metni `src/nabiz/web/static/fonts/OFL.txt` |
 | Tabler Icons 3.48.0, çizgi (outline) seti | npm `@tabler/icons@3.48.0`, npm'in yayımladığı `dist.integrity` ile doğrulanmış paket; <https://github.com/tabler/tabler-icons> | MIT, Copyright (c) 2020-2026 Paweł Kuna | `src/nabiz/web/static/index.html` içindeki üretilmiş simge bloğu ve favicon, `src/nabiz/web/static/icons.svg`; lisans metni `src/nabiz/web/static/icons.LICENSE.txt` |
+| Panel oyu, belirsizlik etiketleri, çalışma makbuzu ve TTL davranışları | <https://github.com/muratcan-ates/cloudsentinel> @ `80938ae` | MIT, Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60) | `src/nexus_core/arena.py`, `src/nexus_core/decisions.py`, `src/nexus_core/engine.py`, `src/nexus_core/ledger.py`, `src/nexus_core/lifecycle.py`, `src/nexus_core/missions.py`, `src/nexus_core/processing.py`, `src/nexus_core/receipts.py`, `src/nexus_core/state.py`, `src/nexus_core/uncertainty.py`, `src/nexus_core/views.py` |
 
 Yazı tipi alt kümesi OFL'in "Değiştirilmiş Sürüm" koşulu gereği yeniden adlandırılmıştır: "Source"
 lisansta Ayrılmış Yazı Tipi Adı'dır, bu yüzden alt küme kendini "Nabiz Sans TR" olarak tanıtır; telif, marka

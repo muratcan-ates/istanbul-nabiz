@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/debate.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """The Arena: three seats argue an escalated signal from its evidence, a human decides.
 
 The seats are Erişilebilirlik (who loses step-free access, and what replaces it), Operasyon
@@ -28,6 +30,7 @@ from typing import Literal, Protocol, runtime_checkable
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from nexus_core.signals import Clock, Origin, Signal, system_clock
+from nexus_core.uncertainty import UNCERTAINTY_TEXT
 
 Role = Literal["Erişilebilirlik", "Operasyon", "İletişim"]
 Stance = Literal["support", "oppose", "conditional"]
@@ -40,21 +43,32 @@ DEFAULT_STALE_AFTER_S = 900
 LONG_OUTAGE_DAYS = 7
 STEP_FREE_EQUIPMENT = frozenset({"elevator", "asansör"})
 
-#: Uncertainty codes and their Turkish text. A code in NOT_COUNTED is shown, not scored.
-UNCERTAINTY_TEXT: dict[str, str] = {
-    "no_evidence": "Kanıt yok",
-    "stale_data": "Veri eşikten eski",
-    "unknown_age": "Bir kanıtın veri yaşı bilinmiyor",
-    "single_source": "Tek kaynak",
-    "recorded_data": "Kayıtlı veri, canlı değil",
-    "dissent": "Koltuklardan en az biri karşı",
-    "abstained_seat": "Yanıt vermeyen koltuk var",
-    "not_in_source": "Kanıtta olmayan atıf ayıklandı",
-    "model_unavailable": "Model yanıt vermedi; kural tabanlı koltuklar kullanıldı",
-}
+#: A code in NOT_COUNTED is shown, not scored.
 BLOCKING_CODES = frozenset({"no_evidence", "stale_data", "unknown_age"})
-NOT_COUNTED = frozenset({"model_unavailable"})
+NOT_COUNTED = frozenset({"model_unavailable", "warning_grade", "rule_based_seats", "no_precedent"})
 HIGH_REASONS = ("Kanıt taze", "Birden çok kaynak", "Koltuklar arasında itiraz yok")
+PANEL_QUORUM = 2
+MAX_ROUNDS = 2
+
+
+class PanelVotes(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    support: int = Field(ge=0)
+    oppose: int = Field(ge=0)
+    conditional: int = Field(ge=0)
+
+
+class PanelVerdict(BaseModel):
+    """The panel's label for a card; it cannot approve or change the card's status."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    verdict: Literal["publish", "hold", "tie", "no_quorum"]
+    votes: PanelVotes
+    answered: int = Field(ge=0)
+    quorum: int = Field(default=PANEL_QUORUM, ge=1)
+    rounds: Literal[1, 2] = 1
 
 
 class EvidenceItem(BaseModel):
@@ -101,6 +115,7 @@ class ArenaOutcome(BaseModel):
     confidence: Confidence
     author: Author
     label: str
+    panel: PanelVerdict
 
 
 def _stale(evidence: Sequence[EvidenceItem], now: dt.datetime, stale_after_s: int) -> int | None:
@@ -250,6 +265,22 @@ def assess_confidence(codes: set[str]) -> Confidence:
     return Confidence(level=level, reasons=reasons, codes=ordered)
 
 
+def vote(opinions: Sequence[Opinion], quorum: int = PANEL_QUORUM) -> PanelVerdict:
+    """Count answered seats; conditional is visible but does not vote either way."""
+    votes = PanelVotes(
+        support=sum(o.stance == "support" for o in opinions),
+        oppose=sum(o.stance == "oppose" for o in opinions),
+        conditional=sum(o.stance == "conditional" for o in opinions),
+    )
+    if len(opinions) < quorum:
+        verdict: Literal["publish", "hold", "tie", "no_quorum"] = "no_quorum"
+    elif votes.support == votes.oppose:
+        verdict = "tie"
+    else:
+        verdict = "publish" if votes.support > votes.oppose else "hold"
+    return PanelVerdict(verdict=verdict, votes=votes, answered=len(opinions), quorum=quorum)
+
+
 def convene(
     port: ArenaPort | None,
     signal: Signal,
@@ -257,7 +288,7 @@ def convene(
     now: dt.datetime,
     stale_after_s: int = DEFAULT_STALE_AFTER_S,
 ) -> ArenaOutcome:
-    """Ask the port for the three opinions, screen them, and score the card's confidence."""
+    """Ask the port for opinions, optionally give it one revision, and label the panel vote."""
     fallback = RuleBasedSeats(stale_after_s=stale_after_s, clock=lambda: now)
     seats: ArenaPort = port or fallback
     extra: set[str] = set()
@@ -267,6 +298,16 @@ def convene(
         seats, raw = fallback, fallback.opinions(signal, evidence)
         extra.add("model_unavailable")
     opinions, screened = screen(raw, evidence)
+    panel = vote(opinions)
+    revise = getattr(seats, "revise", None)
+    if (any(o.stance == "oppose" for o in opinions) or panel.verdict == "no_quorum") and callable(revise):
+        try:
+            revised_raw = revise(signal, evidence, opinions)
+        except Exception:  # noqa: BLE001 - a failed optional round leaves the first panel intact
+            extra.add("model_unavailable")
+        else:
+            opinions, screened = screen(revised_raw, evidence)
+            panel = vote(opinions).model_copy(update={"rounds": MAX_ROUNDS})
     codes = uncertainty_codes(evidence, opinions, now, stale_after_s) | screened | extra
     return ArenaOutcome(
         opinions=opinions,
@@ -274,4 +315,5 @@ def convene(
         confidence=assess_confidence(codes),
         author=seats.author,
         label=seats.label,
+        panel=panel,
     )

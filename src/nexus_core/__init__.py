@@ -11,17 +11,19 @@ console is the composition root that feeds signals and evidence in and publishes
 (``scripts/check_architecture.py`` holds the fence).
 """
 
-from nexus_core.arena import ArenaPort, Confidence, EvidenceItem, Opinion, RuleBasedSeats
+from nexus_core.arena import ArenaPort, Confidence, EvidenceItem, Opinion, PanelVerdict, RuleBasedSeats
 from nexus_core.decisions import Alternative, Approval, Decision, DecisionConflict, Operator, ProposedAction
 from nexus_core.engine import DecisionNotFound, DecisionReceipt, NexusEngine, ProcessResult
 from nexus_core.escalation import Escalation
 from nexus_core.ledger import Ledger
 from nexus_core.missions import Mission, MissionError, MissionRule, load_mission, load_missions
+from nexus_core.receipts import RunReceipt
 from nexus_core.reflex import Action, ReflexEngine
 from nexus_core.router import Router
 from nexus_core.rule_drafts import RuleDraft, RuleDrafts
 from nexus_core.signals import Origin, Signal
 from nexus_core.stats import Stats
+from nexus_core.uncertainty import Uncertainty
 
 __all__ = [
     "Action",
@@ -43,6 +45,7 @@ __all__ = [
     "Operator",
     "Opinion",
     "Origin",
+    "PanelVerdict",
     "ProcessResult",
     "ProposedAction",
     "ReflexEngine",
@@ -50,8 +53,10 @@ __all__ = [
     "RuleBasedSeats",
     "RuleDraft",
     "RuleDrafts",
+    "RunReceipt",
     "Signal",
     "Stats",
+    "Uncertainty",
     "load_mission",
     "load_missions",
 ]

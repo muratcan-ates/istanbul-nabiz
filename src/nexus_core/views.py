@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/analytics.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """The console API's JSON shapes, built from replayed state.
 
 The console (``nabiz.console``) serves ``/api/console/*``; these functions give it the exact
@@ -13,6 +15,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from nexus_core.ledger import Trace
+from nexus_core.receipts import receipt_of
 from nexus_core.rule_drafts import RuleDraft
 from nexus_core.state import SignalState
 from nexus_core.stats import Stats
@@ -39,6 +42,7 @@ def queue_item(state: SignalState) -> dict[str, Any] | None:
         "summary": summary,
         "rule_id": state.rule_id,
         "reflex_ms": state.reflex_ms,
+        "expires_at": state.decision.expires_at.isoformat() if state.decision and state.decision.expires_at else None,
     }
 
 
@@ -54,6 +58,7 @@ def decision_payload(state: SignalState, now: dt.datetime) -> dict[str, Any]:
     if decision is None:
         raise ValueError(f"{state.signal.signal_id} has no decision card")
     proposal = decision.proposed_action
+    receipt = receipt_of(state)
     return {
         "signal_id": decision.signal_id,
         "signal": state.signal.model_dump(mode="json"),
@@ -77,7 +82,30 @@ def decision_payload(state: SignalState, now: dt.datetime) -> dict[str, Any]:
             "text": proposal.text,
             "expires_at": proposal.expires_at.isoformat() if proposal.expires_at else None,
         },
-        "confidence": {"level": decision.confidence.level, "reasons": list(decision.confidence.reasons)},
+        "panel": {
+            "verdict": decision.panel.verdict,
+            "votes": decision.panel.votes.model_dump(),
+            "answered": decision.panel.answered,
+            "quorum": decision.panel.quorum,
+            "rounds": decision.panel.rounds,
+        },
+        "confidence": {
+            "level": decision.confidence.level,
+            "reasons": list(decision.confidence.reasons),
+            "uncertainty": [item.model_dump() for item in decision.uncertainties],
+        },
+        "receipt": (
+            {
+                "reflex_ms": receipt.reflex_ms,
+                "arena_ms": receipt.arena_ms,
+                "wall_ms": receipt.wall_ms,
+                "llm_calls": receipt.llm_calls,
+                "usd": receipt.usd,
+            }
+            if receipt is not None
+            else None
+        ),
+        "expires_at": decision.expires_at.isoformat() if decision.expires_at else None,
         "author": decision.author,
         "arena_label": decision.arena_label,
     }

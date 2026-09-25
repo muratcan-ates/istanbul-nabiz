@@ -1,3 +1,5 @@
+# Adapted from CloudSentinel app/actions.py (github.com/muratcan-ates/cloudsentinel @ 80938ae), MIT License,
+# Copyright (c) 2026 CloudSentinel Team (YZTA Bootcamp 2026, Group 60). See NOTICE.md.
 """Replay: every signal's current state, read back from the ledger and nothing else.
 
 The ledger is the only record. The queue, a decision card, the stats and the rule drafts are
@@ -15,6 +17,7 @@ from pydantic import BaseModel, ConfigDict
 
 from nexus_core.decisions import Decision, Operator, Status
 from nexus_core.ledger import EntryKind, LedgerEntry
+from nexus_core.receipts import RunReceipt
 from nexus_core.reflex import Action
 from nexus_core.signals import Signal
 
@@ -51,7 +54,9 @@ class SignalState(BaseModel):
     reflex_failure: str | None = None
     closed_at: dt.datetime | None = None
     decision: Decision | None = None
+    receipt: RunReceipt | None = None
     drafted_at: dt.datetime | None = None
+    expired_at: dt.datetime | None = None
     rulings: list[Ruling] = []
 
     @property
@@ -78,6 +83,8 @@ def _reflex_closed(state: SignalState, entry: LedgerEntry) -> None:
     state.action = Action.model_validate(entry.detail["action"])
     state.reflex_ms = entry.detail.get("elapsed_ms")
     state.closed_at = entry.at
+    if entry.detail.get("receipt") is not None:
+        state.receipt = RunReceipt.model_validate(entry.detail["receipt"])
     state.status = "closed_by_reflex"
 
 
@@ -88,8 +95,14 @@ def _reflex_failed(state: SignalState, entry: LedgerEntry) -> None:
 
 def _arena_drafted(state: SignalState, entry: LedgerEntry) -> None:
     state.decision = Decision.model_validate(entry.detail["decision"])
+    state.receipt = state.decision.receipt
     state.drafted_at = entry.at
     state.status = "awaiting_approval"
+
+
+def _expired(state: SignalState, entry: LedgerEntry) -> None:
+    state.expired_at = entry.at
+    state.status = "expired"
 
 
 def _approval(state: SignalState, entry: LedgerEntry) -> None:
@@ -114,6 +127,7 @@ _FOLD: dict[str, Callable[[SignalState, LedgerEntry], None]] = {
     EntryKind.REFLEX_FAILED: _reflex_failed,
     EntryKind.ARENA_DRAFTED: _arena_drafted,
     EntryKind.APPROVAL: _approval,
+    EntryKind.EXPIRED: _expired,
 }
 
 
