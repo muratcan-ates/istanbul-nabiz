@@ -322,6 +322,23 @@ def test_an_emergency_redirect_never_calls_the_model_or_tools(nabiz: Nabiz, monk
     assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
 
 
+@pytest.mark.parametrize("question", ["acil, biri düştü", "Kaza oldu, yaralı var", "Annem düştü kalkamıyor"])
+def test_the_wider_emergency_vocabulary_redirects_before_the_model(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, question: str
+) -> None:
+    fake = FakeModel()
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        _, final = ask(client, question)
+    assert final["mode"] == "redirect" and final["emergency"] is True and fake.calls == []
+
+
+def test_an_assembly_area_question_is_not_an_emergency(nabiz: Nabiz) -> None:
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, "Acil durum toplanma alanı nerede?")
+    assert final["emergency"] is False and final["mode"] != "redirect"
+
+
 def test_a_broken_turn_still_ends_with_a_final_event(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
     async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None) -> Any:
         raise RuntimeError("bug")

@@ -11,6 +11,7 @@ from nabiz.console.policy import (
     REFUSAL_TEXT,
     SENSITIVE_TOPIC_TERMS,
     constraint_block,
+    emergency_intent,
     functional_needs,
     names_a_price,
     refuses,
@@ -116,3 +117,52 @@ def test_sensitive_topic_terms_cover_the_c_report_list() -> None:
         "basvuru": ["başvuru şartı", "uygunluk", "zorunlu", "eligibility", "requirement", "mandatory"],
     }
     assert expected == SENSITIVE_TOPIC_TERMS
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Acil, biri düştü!",
+        "Kaza oldu, yaralı var",
+        "Nefes alamıyor",
+        "Annem düştü, kalkamıyor",
+        "Yangın çıktı",
+        "Acil yardım lazım",
+        "Yaşlı bir adam merdivenden düştü",
+        "Raylara biri düştü",
+        "Kalp krizi geçiriyor olabilir",
+        "Arkadaşım boğuluyor",
+        "Bilincini kaybetti",
+    ],
+)
+def test_an_emergency_is_recognised(question: str) -> None:
+    assert emergency_intent(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Acil durum toplanma alanı nerede?",
+        "Otobüs fiyatı düştü mü?",
+        "Fiyat düştü",
+        "Kazan dairesi nerede?",
+        "Acil çıkış hangi tarafta?",
+        "Seferlerin sayısı düştü mü?",
+        "Hastaneye nasıl giderim?",
+    ],
+)
+def test_acil_and_dustu_alone_are_not_an_emergency(question: str) -> None:
+    assert not emergency_intent(question)
+
+
+def test_the_first_vocabulary_still_matches_as_a_word_prefix() -> None:
+    # "polis" has redirected to 112 since the first vocabulary; kept on purpose, not widened.
+    assert emergency_intent("Polis merkezi nerede?")
+
+
+def test_no_journey_question_is_taken_for_an_emergency() -> None:
+    for path in sorted((ROOT / "eval").glob("journeys*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                row = json.loads(line)
+                assert not emergency_intent(row["question"]), (path.name, row["id"])

@@ -48,16 +48,15 @@ from pydantic import BaseModel, Field
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
 from ibb_mcp.models import utcnow
-from ibb_mcp.text import normalize_tr
 from nabiz.agent import llm
 from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS
 from nabiz.console.budget import SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.policy import (
-    EMERGENCY_TERMS,
     REFUSAL_TEXT,
     constraint_block,
+    emergency_intent,
     functional_needs,
     memory_suggestion,
     names_a_price,
@@ -185,12 +184,6 @@ def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
             "mode": source_mode(item.get("source"), offline=offline),
         })
     return result
-
-
-def emergency_intent(message: str) -> bool:
-    """Recognize the small, explicit emergency vocabulary before any agent or tool is called."""
-    words = normalize_tr(message).split()
-    return any(word.startswith(term) for term in EMERGENCY_TERMS["acil"] for word in words)
 
 
 def _how(answer: AgentAnswer | None, started: float, *, rule_id: str | None) -> dict[str, Any]:

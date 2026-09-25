@@ -1,6 +1,6 @@
 """What the chat will not answer, what it passes on about the person, and what it offers to remember.
 
-Three rules, all decided before any model is asked, all deterministic:
+Four rules, all decided before any model is asked, all deterministic:
 
 **Refusal (plan rule R-06).** A question about rights, fares, fines or health gets no
 generated answer, from a model or a template: a wrong fare or a wrong entitlement costs the
@@ -13,6 +13,9 @@ question ("Peki öğrenciler için ne kadar?"), and the model's own prompt
 (``system_prompt.md`` §4a). A last filter drops a model answer that names a price
 (:func:`names_a_price`) unless the person asked about car parks, whose tariff is İSPARK's
 own data.
+
+**An emergency comes first** (:func:`emergency_intent`): the page shows 112 before any model,
+tool or refusal. "acil" and "düştü" count only with company ("acil yardım", "annem düştü").
 
 **Needs are functional constraints, nothing else.** The page may send a few profile keys
 ("step_free", "stroller" …). Only the keys in :data:`NEEDS` pass, as one line of constraint
@@ -120,8 +123,26 @@ _NOT_A_PRICE = ("sur", "uzak", "guncel", "dakika", "zaman", "bekle", "yogun", "d
 _FOLLOW_UP = ("ne kadar", "kac", "peki", "ya ", "onlar", "bunun", "bunlar", "o zaman", "what about", "how about")
 _PRICE = re.compile(r"₺|\b\d+(?:[.,]\d+)?\s*(?:tl|lira)\b", re.IGNORECASE)
 
-# Folded whole-word stems that must bypass both the model and ordinary policy refusals.
+# -- emergency vocabulary, over normalize_tr-folded text ----------------------------------
+# An emergency bypasses the model, the tools and the refusal rule: the page shows 112 at once.
+# A missed emergency costs more than a false alarm, but "acil" and "düştü" alone are everyday
+# words ("acil durum toplanma alanı", "fiyat düştü"), so those two count only with company.
+#: Word stems, matched at a word's start (the first vocabulary; "polis merkezi" still redirects).
 EMERGENCY_TERMS = {"acil": ("yangin", "ambulans", "polis", "siddet", "kalp", "bayildi", "fire", "ambulance")}
+#: Whole words: "kaza" must not catch "kazan dairesi".
+_EMERGENCY_WORDS = ("kaza", "kazasi", "yarali", "yaralilar", "kanama", "kalp krizi", "intihar", "saldiri")
+#: Verb stems from a word boundary, so the person endings pass ("boğuluyorum", "yaralandık").
+_EMERGENCY_STEMS = ("yaraland", "kaniyor", "nefes alamiyor", "boguluyor", "bilincini kaybet")
+_EMERGENCY_RE = re.compile(r"\b(?:" + "|".join(_EMERGENCY_WORDS) + r")\b|\b(?:" + "|".join(_EMERGENCY_STEMS) + ")")
+#: "acil" is an emergency only next to one of these ("acil yardım", "acil, biri düştü").
+_URGENT = re.compile(r"\bacil\b")
+_URGENT_COMPANY = re.compile(r"\b(?:yardim|ambulans|dustu|kaza\b|kazasi\b|yarali|doktor|hastane)")
+#: "düştü" is an emergency only when a person fell ("annem düştü") or cannot get up.
+_FELL = re.compile(r"\b(?:dustu|dustum|dusmus)\b")
+_FALLEN_PERSON = re.compile(
+    r"\b(?:biri|birisi|annem|babam|dedem|ninem|anneannem|babaannem|cocuk|cocugum|yasli|adam|kadin|teyze|amca"
+    r"|esim|kardesim|arkadasim|oglum|kizim|bebegim|yolcu|raya|raylara)\b|\bkalkamiyor"
+)
 
 REFUSAL_TEXT = (
     "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: "
@@ -163,6 +184,18 @@ def refuses_in_context(question: str, earlier_user_messages: Sequence[str]) -> b
         return False
     text = f"{normalize_tr(question)} "
     return len(text.split()) <= 8 and any(cue in text for cue in _FOLLOW_UP)
+
+
+def emergency_intent(message: str) -> bool:
+    """Is this an emergency? Decided before any model, tool or refusal is reached."""
+    text = normalize_tr(message)
+    if any(word.startswith(EMERGENCY_TERMS["acil"]) for word in text.split()):
+        return True
+    if _EMERGENCY_RE.search(text):
+        return True
+    if _URGENT.search(text) and _URGENT_COMPANY.search(text):
+        return True
+    return bool(_FELL.search(text) and _FALLEN_PERSON.search(text))
 
 
 def names_a_price(text: str) -> bool:
