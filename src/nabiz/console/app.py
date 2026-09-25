@@ -51,6 +51,7 @@ from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.envfile import load_env_file
 from nabiz.console.journey_api import accessible_journey_route
+from nabiz.console.nearby_api import nearby_router
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
@@ -82,6 +83,7 @@ CONSOLE_HEADERS = {
 }
 
 citizen_routes = APIRouter()
+citizen_routes.include_router(nearby_router)
 
 
 @citizen_routes.get("/healthz")
