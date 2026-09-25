@@ -1,0 +1,13 @@
+{
+  "stops": [
+    { "name": "Örnek Otobüs Durağı 1", "stop_code": "demo-1", "distance_m": 120, "lat": 41.0082, "lon": 28.9784, "provenance": { "source": "gtfs", "url": "local:data/reference/gtfs/stops.csv", "observed_at": "2026-09-25T08:00:00+00:00", "age_s": 10800, "mode": "recorded" } },
+    { "name": "Örnek Otobüs Durağı 2", "stop_code": "demo-2", "distance_m": 260, "lat": 41.0091, "lon": 28.9791, "provenance": { "source": "gtfs", "url": "local:data/reference/gtfs/stops.csv", "observed_at": "2026-09-25T08:00:00+00:00", "age_s": 10800, "mode": "recorded" } },
+    { "name": "Örnek Otobüs Durağı 3", "stop_code": "demo-3", "distance_m": 410, "lat": 41.0101, "lon": 28.9801, "provenance": { "source": "gtfs", "url": "local:data/reference/gtfs/stops.csv", "observed_at": "2026-09-25T08:00:00+00:00", "age_s": 10800, "mode": "recorded" } }
+  ],
+  "stops_provenance": { "source": "gtfs", "url": "local:data/reference/gtfs/stops.csv", "observed_at": "2026-09-25T08:00:00+00:00", "age_s": 10800, "mode": "recorded" },
+  "metro": { "station": "Örnek Metro İstasyonu", "line": "M2", "distance_m": 400, "lift_status": "working", "lat": 41.011, "lon": 28.981, "provenance": { "source": "metro_equipment", "url": null, "observed_at": "2026-09-25T08:30:00+00:00", "age_s": 1800, "mode": "recorded" } },
+  "metro_provenance": { "source": "metro_equipment", "url": null, "observed_at": "2026-09-25T08:30:00+00:00", "age_s": 1800, "mode": "recorded" },
+  "parking": { "name": "Örnek İSPARK", "distance_m": 300, "empty": 12, "lat": 41.012, "lon": 28.982, "provenance": { "source": "ispark", "url": null, "observed_at": "2026-09-25T08:45:00+00:00", "age_s": 900, "mode": "recorded" } },
+  "parking_provenance": { "source": "ispark", "url": null, "observed_at": "2026-09-25T08:45:00+00:00", "age_s": 900, "mode": "recorded" },
+  "charging": { "status": "planlanan" }
+}

@@ -1,0 +1,20 @@
+/* Yakınımda cards use the shared palette and spacing tokens. */
+
+#yakinimda-mount { display: grid; gap: var(--space-3); }
+.nearby-intro { max-width: 68ch; color: var(--text-muted); }
+.nearby-status { min-height: 1.5em; color: var(--text-subtle); font-size: var(--text-sm); }
+.nearby-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+@media (min-width: 640px) { .nearby-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1120px) { .nearby-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.nearby-card { display: grid; align-content: start; justify-items: start; gap: var(--space-2); min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.nearby-card h3, .nearby-card p { margin: 0; overflow-wrap: anywhere; }
+.nearby-card .nearby-kind { color: var(--text-subtle); font-size: var(--text-sm); }
+.nearby-distance { font-size: var(--text-lg); font-weight: var(--weight-semibold); }
+.nearby-detail { color: var(--text-muted); font-size: var(--text-sm); }
+.nearby-card .stamp { margin-block: var(--space-1); }
+.nearby-go { min-height: 44px; }
+.nearby-go:disabled { cursor: not-allowed; opacity: .65; }
+.nearby-card.is-empty { background: var(--surface-sunken); }
+.nearby-card.is-planned { border-style: dashed; }
+.nearby-card.is-planned::after { content: "Planlanan"; color: var(--text-muted); font-size: var(--text-sm); }
+@media (forced-colors: active) { .nearby-card { border: 1px solid CanvasText; } }
