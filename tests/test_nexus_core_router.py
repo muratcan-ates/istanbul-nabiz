@@ -32,9 +32,9 @@ def test_a_rule_can_send_its_signal_to_a_person() -> None:
 
 
 def test_a_signal_no_rule_knows_goes_to_a_person() -> None:
-    decision = router().explain(make_signal("parking_full"))
+    decision = router().explain(make_signal("crowding"))
     assert decision.path == "arena" and decision.rule is None and decision.reasons == (NO_RULE,)
-    assert router().route(make_signal("parking_full")) == "arena"
+    assert router().route(make_signal("crowding")) == "arena"
 
 
 def test_critical_severity_escalates_whatever_the_rule_says() -> None:

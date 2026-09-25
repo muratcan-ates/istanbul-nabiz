@@ -232,7 +232,7 @@ to `~`; no subscription or tenant id is recorded).
 ./.venv/bin/python scripts/probe_day0.py --azure       # NETWORK: + the az subscription checks
 ```
 
-**Run the MCP server.** `ibb-mcp` is the console script declared in `pyproject.toml`; it registers the 15
+**Run the MCP server.** `ibb-mcp` is the console script declared in `pyproject.toml`; it registers the 16
 tools below and an `ibb://attribution` resource.
 
 ```bash
@@ -240,7 +240,15 @@ make mcp                                  # stdio, the shape VS Code and Claude 
 .venv/bin/ibb-mcp --offline               # stdio, served from tests/fixtures (reproducible demo)
 make mcp-http                             # streamable HTTP on 127.0.0.1:8000, the shape Container Apps runs
 NABIZ_OFFLINE=1 make web                  # the web page on http://127.0.0.1:8080, from fixtures
+make console                              # the product app on http://127.0.0.1:8090: citizen face at /, simulated operator at /console
+NABIZ_OFFLINE=1 make console              # the same, from recordings only (no İBB call)
 ```
+
+The product app (`python -m nabiz.console`) reads `.env`, binds the decision core (`nexus_core`, ledger in
+`data/nexus/nexus.db`, rules in `missions/*.toml`) and feeds it the Metro equipment snapshot and a small city
+watch (car parks, air quality, one bus line) when the console's queue is read, at most every 300 s. Without a
+model the Arena's three seats are rule-based and say so; with `NABIZ_LLM_*` set, each seat is one model call
+over the card's evidence. `POST /api/console/simulate` replays a recorded signal, never live data.
 
 | Tool | What it answers |
 |---|---|

@@ -29,6 +29,7 @@ the reasoning stays readable.
 | [21](#21-nexus_core-is-a-third-package-a-library-that-imports-nothing-from-the-other-two) | `nexus_core` is a third package: a library that imports nothing from the other two | Accepted |
 | [22](#22-metro-equipment-status-joins-the-facade-and-the-size-baseline-is-raised-for-it) | Metro equipment status joins the facade, and the size baseline is raised for it | Accepted, temporary; needs the owner's review |
 | [23](#23-the-product-app-is-a-composition-root-that-may-import-the-agent) | The product app is a composition root that may import the agent | Accepted |
+| [24](#24-the-console-feeds-nexus_core-from-the-facade-and-the-size-baseline-is-raised-once-more) | The console feeds `nexus_core` from the facade, and the size baseline is raised once more | Accepted, temporary; needs the owner's review |
 
 ---
 
@@ -1072,3 +1073,47 @@ deploy in three days.
 - A change to the agent's surface the console uses (`NabizAgent`, `AgentAnswer`, `PROMPT_PATH`,
   `TOOL_DESCRIPTIONS`) can break the console; `tests/test_console_chat.py` runs that surface offline.
 - `.env.example` no longer says that nothing loads `.env`.
+
+---
+
+## 24. The console feeds `nexus_core` from the facade, and the size baseline is raised once more
+
+**Date:** 2026-09-25 · **Status:** Accepted, temporary; needs the owner's review before it is pushed
+
+### Context
+
+The four day-one lanes met in `gun1/entegrasyon`: the decision core (#21), the Metro equipment source (#22)
+and the product app with its pages (#23). The console's ports answered "not wired" until something turned
+İBB data into signals, chose the Arena's seats and bound the step-free answer to the operator's approvals.
+The console may reach İBB data only through `ibb_mcp.tools` (#19, `FACADE_ONLY`), and the signal candidates
+lived in `ibb_mcp.accessibility`, which the facade did not expose.
+
+### Decision
+
+- One facade method, `Nabiz.metro_equipment_signals` (not an MCP tool), delegates to
+  `ibb_mcp.equipment_signals`, split out of `ibb_mcp.accessibility` so that module stays under the 400-line
+  cap. The baseline is raised by what the method measured (`scripts/check_architecture.py`, 2026-09-25):
+  `tools.py` 572 to 575 code lines, `Nabiz` 515 to 518 code lines and 23 to 24 public methods. No fence was
+  loosened; the console still imports only the facade.
+- `nabiz.console.wiring` binds the ports when the app is started (`wire_nexus=True`, as `python -m
+  nabiz.console` does): the ledger (`NEXUS_DB_PATH`, default `data/nexus/nexus.db`), every `missions/*.toml`,
+  and the Arena's seats: `nabiz.console.arena_seats.ModelSeats` when `NABIZ_LLM_*` configures a model (one
+  call per role, evidence only, JSON only, a seat that cites nothing or states a number absent from the
+  evidence is dropped), the core's rule-based seats otherwise. Confidence stays the core's deterministic score.
+- Signals come in when the console's queue is read, at most every `NABIZ_CONSOLE_INGEST_S` (300 s), through
+  the shared cache: the Metro equipment snapshot and a fixed city watch (two İSPARK car parks, Taksim Meydanı
+  for air quality, line 500T's measured bunching). The city watch's rules are `missions/sehir_nabzi.toml`
+  (R-07 to R-09, all to a person). The same outage is not queued again while it waits for a person, nor for
+  an hour after a rule closed it or a person rejected it; an approved one is, because the next snapshot is
+  what the approved-alternative check needs.
+- `POST /api/console/simulate` replays only recordings, through a second, offline facade. With no Metro
+  equipment recording in `tests/fixtures` it answers 409 and names the capture command; nothing is made up.
+
+### Consequences
+
+- AGENTS.md §6 says a module over budget is not extended. This extends `tools.py` in the open, by one
+  delegating method; the owner accepts or rejects it before a push.
+- The watch list, the 300 s ingest interval and the one-hour quiet period are design parameters, not measured
+  values.
+- Until the owner records the Metro equipment answers (`scripts/capture_metro_equipment.py --live`), the
+  console's Metro signals exist only live, and the replay button answers 409.

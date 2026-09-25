@@ -121,7 +121,10 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "ibb_mcp.traffic_profile",
         ),
     ),
-    ("services", ("ibb_mcp.routing", "ibb_mcp.analytics", "ibb_mcp.alerts", "ibb_mcp.accessibility")),
+    (
+        "services",
+        ("ibb_mcp.routing", "ibb_mcp.analytics", "ibb_mcp.alerts", "ibb_mcp.accessibility", "ibb_mcp.equipment_signals"),
+    ),
     ("facade", ("ibb_mcp.tools",)),
     ("transport", ("ibb_mcp.server",)),
     # DECISIONS #21: the NEXUS decision library. Above the server, so ibb_mcp can never import

@@ -18,7 +18,6 @@ from test_metro_equipment import offline_ctx, record, stations, write_recordings
 
 from ibb_mcp.accessibility import (
     EQUIPMENT_DATA_UNAVAILABLE,
-    HUB_FAULT_THRESHOLD,
     LIFT_COUNT_UNKNOWN,
     NO_ALTERNATIVE,
     NO_LIFT_RECORDED,
@@ -32,10 +31,8 @@ from ibb_mcp.accessibility import (
     faults_by_platform,
     lift_state,
     resolve_platforms,
-    signal_candidates,
-    stale_signal,
-    transfer_hubs,
 )
+from ibb_mcp.equipment_signals import HUB_FAULT_THRESHOLD, signal_candidates, stale_signal, transfer_hubs
 from ibb_mcp.metro_graph import MetroGraph
 from ibb_mcp.models import Provenance
 from ibb_mcp.sources.metro import MetroSource

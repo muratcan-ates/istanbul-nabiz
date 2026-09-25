@@ -10,8 +10,9 @@ Until then every console call answers 503 "not wired" and the alternative answer
 "unknown": an unbound seam says so, it never invents a queue or a lift status.
 
 Error contract for implementations: raise ``LookupError`` (``KeyError`` included) for an
-unknown id (the route answers 404), ``ValueError`` for a refused request (400), and
-:class:`PortNotWired` when the backing store is not available (503).
+unknown id (the route answers 404), ``ValueError`` for a refused request (400),
+:class:`PortConflict` when the state does not allow it (409), and :class:`PortNotWired` when the
+backing store is not available (503).
 """
 
 from __future__ import annotations
@@ -26,6 +27,10 @@ OPERATOR = "Simüle operatör"
 
 class PortNotWired(RuntimeError):
     """The implementation behind a port is not bound in this process."""
+
+
+class PortConflict(RuntimeError):
+    """The request is valid but the state does not allow it (a settled card, no recording): 409."""
 
 
 class StepFreePort(Protocol):

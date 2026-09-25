@@ -69,7 +69,7 @@ def test_render_fills_names_and_never_re_expands_a_value() -> None:
 
 
 def rule(rule_id: str) -> MissionRule:
-    return next(r for r in missions()[0].rules if r.id == rule_id)
+    return next(r for mission in missions() for r in mission.rules if r.id == rule_id)
 
 
 def test_a_reflex_run_returns_the_action_and_the_card() -> None:

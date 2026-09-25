@@ -68,5 +68,9 @@ began or when service should resume), so `outage_hours_basis` is `ibb_date` and 
   - R-04 equipment data stale: last known state, "doğrulanamadı" (reflex).
   - R-05 two or more faults at one interchange: Arena.
   - R-06 more than 24 hours since İBB's recorded date: Arena.
+- [`sehir_nabzi.toml`](sehir_nabzi.toml): the console's city watch (`nabiz.console.signals`). R-07 a
+  watched car park fills up, R-08 air quality at the watched place, R-09 the watched line's measured
+  bunching history: each alert's own message is the card text, and each goes to a person (Arena).
+  Signal field: `text` (plus `alert_rule`, `dedupe_key`).
 
 Wording in every template: never "çalışıyor"; the most a card says is "İBB kaydında arıza yok".

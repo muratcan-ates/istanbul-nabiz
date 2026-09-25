@@ -97,9 +97,11 @@ async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> l
     if "step_free" in needs and lift == "out_of_service" and alternative:
         extra = alternative.get("extra_minutes")
         detail = f" Yaklaşık {extra} dk ek süre." if isinstance(extra, int) else ""
-        approved = "" if view.get("operator_approved") else " Operatör onayı yok."
         where = f"{alternative.get('station')} ({alternative.get('line')})"
-        body = f"İBB kaydında asansör arızası olmayan en yakın istasyon: {where}.{detail}{approved}"
+        body = f"İBB kaydında asansör arızası olmayan en yakın istasyon: {where}.{detail} Operatör onayı yok."
+        if view.get("operator_approved") and view.get("approved_text"):
+            # The text the simulated operator approved for this outage replaces the suggestion.
+            body = f"{view['approved_text']} (Simüle operatör onayladı.)"
         title = f"{station} için adımsız seçenek"
         cards.append(card("alternative", station, title=title, body=body, status="warning", provenance=provenance))
     return cards

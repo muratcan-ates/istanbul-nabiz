@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, Query, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ibb_mcp.config import ATTRIBUTION_EN, Settings
@@ -127,6 +127,12 @@ async def citizen_alternative(
     return view
 
 
+@citizen_routes.get("/console")
+async def operator_page() -> FileResponse:
+    """The simulated operator's page; the static mount serves everything it loads."""
+    return FileResponse(CONSOLE_STATIC_DIR / "console.html", media_type="text/html")
+
+
 @citizen_routes.post("/api/chat")
 async def citizen_chat(request: Request, body: ChatRequest) -> StreamingResponse:
     service: ChatService = request.app.state.chat
@@ -144,10 +150,13 @@ def build_console_app(
     llm_config: llm.LlmConfig | None = None,
     ports: Ports | None = None,
     guard: SpendGuard | None = None,
+    wire_nexus: bool = False,
 ) -> FastAPI:
     """Build the app. Anything passed in (a facade, a model config, ports) is used as given.
 
-    An injected facade is left open on shutdown: whoever built it owns it.
+    ``wire_nexus`` binds the ports to the decision core and the lift records once the facade
+    exists (:mod:`nabiz.console.wiring`); without it, and without ``ports``, every console call
+    answers 503 "not wired". An injected facade is left open on shutdown: whoever built it owns it.
     """
 
     @asynccontextmanager
@@ -159,10 +168,19 @@ def build_console_app(
         if owned:
             app.state.nabiz = Nabiz(SourceContext.create(settings=app.state.settings))
         app.state.chat = ChatService(app.state.nabiz, chat_config, app.state.guard, offline=app.state.settings.offline)
+        release = None
+        if wire_nexus and ports is None:
+            from nabiz.console.wiring import wire_ports
+
+            app.state.ports, release = wire_ports(
+                app.state.nabiz, app.state.settings, llm_config=chat_config, guard=app.state.guard
+            )
         log.info("nabiz console up: offline=%s model=%s", app.state.settings.offline, chat_config.describe())
         try:
             yield
         finally:
+            if release is not None:
+                await release()
             if owned:
                 await app.state.nabiz.aclose()
                 app.state.nabiz = None
@@ -187,6 +205,10 @@ def build_console_app(
         log.info("%s %s -> %s in %.1f ms", request.method, request.url.path, response.status_code, elapsed_ms)
         for name, value in CONSOLE_HEADERS.items():
             response.headers.setdefault(name, value)
+        if not request.url.path.startswith("/api/"):
+            # The page is ES modules with no build step: a cached old module beside a new one
+            # breaks the page (the web app's DECISIONS entry on the same trap).
+            response.headers.setdefault("Cache-Control", "no-cache")
         return response
 
     app.include_router(citizen_routes)
@@ -204,7 +226,7 @@ def main() -> None:  # pragma: no cover - process entry point
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     load_env_file()
     uvicorn.run(
-        build_console_app(),
+        build_console_app(wire_nexus=True),
         host=os.getenv("NABIZ_HOST", "127.0.0.1"),
         port=int(os.getenv("NABIZ_CONSOLE_PORT", str(DEFAULT_CONSOLE_PORT))),
         access_log=False,

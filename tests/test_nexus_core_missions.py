@@ -52,8 +52,8 @@ def write(tmp_path: pathlib.Path, name: str, text: str) -> pathlib.Path:
 
 
 def test_the_repository_mission_loads_and_every_rule_is_time_bound() -> None:
-    (mission,) = missions()
-    assert mission.id == "erisilebilir-yolculuk" and mission.source == "erisilebilir_yolculuk.toml"
+    mission = next(m for m in missions() if m.id == "erisilebilir-yolculuk")
+    assert mission.source == "erisilebilir_yolculuk.toml"
     assert [r.id for r in mission.rules] == ["R-01", "R-02", "R-03", "R-04", "R-05", "R-06"]
     for rule in mission.rules:
         assert rule.then.action in ACTION_CATALOG
@@ -61,9 +61,18 @@ def test_the_repository_mission_loads_and_every_rule_is_time_bound() -> None:
     assert mission.escalation.repeat_threshold == 3 and "hub_faults" in mission.escalation.critical_kinds
 
 
+def test_the_city_watch_mission_sends_every_alert_to_a_person() -> None:
+    mission = next(m for m in missions() if m.id == "sehir-nabzi")
+    assert [(r.id, r.path, r.when.kind) for r in mission.rules] == [
+        ("R-07", "arena", "parking_full"),
+        ("R-08", "arena", "air_quality"),
+        ("R-09", "arena", "bus_bunching"),
+    ]
+
+
 def test_no_repository_card_text_says_an_elevator_works() -> None:
     """The data never supports "çalışıyor"; the most it supports is "no fault in the İBB record"."""
-    for rule in missions()[0].rules:
+    for rule in (rule for mission in missions() for rule in mission.rules):
         assert "çalışıyor" not in rule.then.card_template.lower()
         assert "ETA" not in rule.then.card_template
 

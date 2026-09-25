@@ -20,7 +20,7 @@ from fastapi import APIRouter, Path, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from nabiz.console.ports import OPERATOR, ConsolePort, PortNotWired
+from nabiz.console.ports import OPERATOR, ConsolePort, PortConflict, PortNotWired
 
 log = logging.getLogger("nabiz.console.operator")
 
@@ -55,6 +55,8 @@ async def port_answer(call: Awaitable[dict[str, Any]]) -> Any:
         return await call
     except PortNotWired as exc:
         return port_problem(503, "not_wired", str(exc))
+    except PortConflict as exc:
+        return port_problem(409, "conflict", str(exc))
     except LookupError:
         return port_problem(404, "not_found", "Bu kayıt bulunamadı.")
     except ValueError as exc:

@@ -1,0 +1,59 @@
+# Şehir nabzı: the console's city watch (nabiz.console.signals.CITY_WATCH) raised an alert.
+#
+# The alerts come from ibb_mcp.alerts, the same rules the citizen's own alerts use; the console
+# wraps each one as a nexus_core signal whose `text` is the alert's own Turkish message, with its
+# numbers and their sources as evidence. None of these closes by itself: a car park filling up,
+# an air-quality band or a line's measured bunching history is a person's call to publish.
+# The watch list itself (which car parks, which place, which line) is a design parameter.
+
+[mission]
+id = "sehir-nabzi"
+title = "Şehir nabzı"
+intent = "Otopark, hava kalitesi ve otobüs yığılması uyarılarını kaynağı ve veri yaşıyla İBB çalışanına getirmek."
+reviewed_on = 2026-09-25
+
+# R-07 EĞER izlenen İSPARK otoparklarından biri eşiği geçtiyse O ZAMAN İBB çalışanına getir.
+[[rules]]
+id = "R-07"
+path = "arena"
+expires_days = 30
+
+[rules.when]
+kind = "parking_full"
+conditions = [{ field = "text", op = "present" }]
+
+[rules.then]
+action = "publish_card"
+card_kind = "parking"
+card_template = "{text}"
+
+# R-08 EĞER izlenen yerin en yakın ölçüm istasyonu hava kalitesi eşiğini geçtiyse O ZAMAN İBB
+# çalışanına getir. Sağlık tavsiyesi değildir; kart bunu söyler.
+[[rules]]
+id = "R-08"
+path = "arena"
+expires_days = 30
+
+[rules.when]
+kind = "air_quality"
+conditions = [{ field = "text", op = "present" }]
+
+[rules.then]
+action = "publish_card"
+card_kind = "air"
+card_template = "{text}"
+
+# R-09 EĞER izlenen hattın ölçülmüş geçmişi bu saatte yığılma gösteriyorsa O ZAMAN İBB
+# çalışanına getir. Canlı tespit değildir; kart bunu söyler.
+[[rules]]
+id = "R-09"
+path = "arena"
+expires_days = 30
+
+[rules.when]
+kind = "bus_bunching"
+conditions = [{ field = "text", op = "present" }]
+
+[rules.then]
+action = "publish_card"
+card_template = "{text}"

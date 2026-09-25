@@ -772,6 +772,12 @@ class Nabiz:
         sources = self._source("metro_equipment"), self._source("metro")
         return await alternative_answer(*sources, station=station, needs=needs)
 
+    async def metro_equipment_signals(self) -> ToolResult:
+        """The equipment snapshot as NEXUS signal candidates, for the console (not an MCP tool)."""
+        from ibb_mcp.equipment_signals import equipment_signals
+
+        return await equipment_signals(self._source("metro_equipment"), self._source("metro"))
+
     # -- 5. traffic ---------------------------------------------------------------
     async def traffic_index(self, window: str = "now") -> ToolResult:
         """City-wide traffic index, 1 (free flowing) to 99 (gridlocked)."""
