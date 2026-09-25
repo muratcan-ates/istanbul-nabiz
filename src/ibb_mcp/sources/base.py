@@ -18,7 +18,7 @@ from typing import Any
 from ibb_mcp.cache import CacheEntry, TTLCache
 from ibb_mcp.config import SOURCE_URLS, Settings
 from ibb_mcp.http import PoliteClient
-from ibb_mcp.models import Provenance
+from ibb_mcp.models import Provenance, utcnow
 from ibb_mcp.reference import parse_once
 
 #: Written by ``scripts/capture_fixtures.py`` beside the recorded responses: one entry per
@@ -134,7 +134,7 @@ def make_provenance(
     The entry keeps ``reported_at`` too, so ``city_freshness`` reports the data's own age
     and not only when Nabız last read the source (see ``TTLCache.freshness``).
     """
-    observed = entry.observed_at_utc if entry is not None else dt.datetime.now(dt.UTC)
+    observed = entry.observed_at_utc if entry is not None else utcnow()
     if entry is not None and reported_at is not None:
         entry.reported_at = reported_at
     return Provenance(

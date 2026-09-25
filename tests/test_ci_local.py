@@ -20,7 +20,9 @@ SCRIPT = REPO_ROOT / ".github" / "scripts" / "ci_local.sh"
 
 def test_a_second_run_on_the_same_copy_refuses_before_touching_it(tmp_path: pathlib.Path) -> None:
     repo = tmp_path / "repo"
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    # CI_LOCAL_REF=HEAD is set while `make ci-commit` runs this suite; inherited, it sent the script
+    # to this empty repository's HEAD, which is not a commit, before it reached the lock.
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "CI_LOCAL_"))}
     env.update(HOME=str(tmp_path), GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
     subprocess.run(["git", "init", "-q", str(repo)], check=True, env=env)
     dest = tmp_path / "copy"

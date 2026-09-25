@@ -170,7 +170,9 @@ class Provenance(BaseModel):
 
     source: str = Field(description="Short source key, e.g. 'ispark' or 'iett'.")
     source_url: str
-    observed_at: dt.datetime = Field(default_factory=utcnow)
+    # Looked up at call time, not bound at class creation, so a test that patches this module's
+    # utcnow freezes the fetch time and the age computed from it alike.
+    observed_at: dt.datetime = Field(default_factory=lambda: utcnow())
     reported_at: dt.datetime | None = None
     cached: bool = False
     license: str = "İBB Açık Veri Lisansı (CC BY 4.0)"

@@ -15,6 +15,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from collections.abc import Iterator
 from typing import Any
 
@@ -24,6 +25,7 @@ from conftest import offline_settings, refuse_network
 from fastapi.testclient import TestClient
 
 import ibb_mcp.eta
+import ibb_mcp.models
 from ibb_mcp.cache import TTLCache
 from ibb_mcp.http import PoliteClient
 from ibb_mcp.models import AQI_BANDS
@@ -40,6 +42,10 @@ INJECTION = '<img src=x onerror="alert(1)">'
 # The recorded 500T positions are stamped 09:08:48-09:08:59 İstanbul time on 2026-09-08
 # (tests/fixtures/iett_hat_500T.json): a clock a minute later lets the ETA engine use them.
 FIXTURE_CAPTURED_AT = dt.datetime(2026, 9, 8, 6, 10, tzinfo=dt.UTC)
+#: The server's clock while it answers, so every age it states is a fixed distance from the
+#: 2026-09-08 recording ("15 gün önce") on whatever day the suite runs. CLOCK below is the same
+#: moment for the drawings.
+SERVER_NOW = dt.datetime(2026, 9, 23, 12, tzinfo=dt.UTC)
 CALLS = {
     "parking": ("/api/parking", {"place": "Taksim", "radius_km": 1.5, "min_free": 1}),
     "buses": ("/api/buses", {"line": "500T"}),
@@ -87,21 +93,30 @@ MODULES = {
 }
 
 
+def freeze_server_clock(patch: pytest.MonkeyPatch, moment: dt.datetime) -> None:
+    """Every loaded project module that imported ``ibb_mcp.models.utcnow`` reads ``moment`` instead."""
+    real = ibb_mcp.models.utcnow
+    for name, module in list(sys.modules.items()):
+        if name.split(".")[0] in {"ibb_mcp", "nabiz"} and getattr(module, "utcnow", None) is real:
+            patch.setattr(module, "utcnow", lambda: moment)
+
+
 @pytest.fixture(scope="module")
 def answers() -> Iterator[dict[str, Any]]:
-    """The offline app's answers, plus arrivals under a clock just after the recorded positions."""
-    nabiz = Nabiz(
-        SourceContext.create(
-            client=PoliteClient(transport=httpx.MockTransport(refuse_network)), cache=TTLCache(), settings=offline_settings()
+    """The offline app's answers at SERVER_NOW, plus arrivals under a clock just after the recorded positions."""
+    with pytest.MonkeyPatch.context() as patch:
+        freeze_server_clock(patch, SERVER_NOW)
+        nabiz = Nabiz(
+            SourceContext.create(
+                client=PoliteClient(transport=httpx.MockTransport(refuse_network)), cache=TTLCache(), settings=offline_settings()
+            )
         )
-    )
-    with TestClient(create_app(nabiz=nabiz)) as client:
-        got = {}
-        for name, (path, params) in CALLS.items():
-            response = client.get(path, params=params)
-            assert response.status_code == 200, (name, response.text)
-            got[name] = response.json()
-        with pytest.MonkeyPatch.context() as patch:
+        with TestClient(create_app(nabiz=nabiz)) as client:
+            got = {}
+            for name, (path, params) in CALLS.items():
+                response = client.get(path, params=params)
+                assert response.status_code == 200, (name, response.text)
+                got[name] = response.json()
             patch.setattr(ibb_mcp.eta, "utcnow", lambda: FIXTURE_CAPTURED_AT)
             got["arrivals"] = client.get("/api/arrivals", params={"line": "500T", "stop": "401351", "limit": 3}).json()
     assert got["arrivals"]["data"]["arrivals"], "the frozen clock must give the fixture's buses an estimate"
@@ -121,7 +136,7 @@ def node(tmp_path, body: str, **inputs: Any) -> Any:
     return json.loads(proc.stdout)
 
 
-CLOCK = int(dt.datetime(2026, 9, 23, 12, tzinfo=dt.UTC).timestamp() * 1000)
+CLOCK = int(SERVER_NOW.timestamp() * 1000)
 #: Each answer as the page would show it: its HTML and every drawing at 600 x 180.
 RENDER_ALL = (
     "const out = {};\n"
@@ -298,7 +313,10 @@ def test_traffic_uses_the_pen_line_at_card_size(rendered) -> None:
     assert "Çizgi için yeterli ölçüm yok." in rendered["traffic_without_history"]["html"]
 
 
-RIBBON_ENDS = 'const s = RB.ribbon(LEGS, MAX);\nconsole.log(JSON.stringify([...s.matchAll(/x2="([\\d.]+)"/g)].map((m) => +m[1])));'
+RIBBON_ENDS = (
+    "const s = RB.ribbon(LEGS, MAX);\n"
+    'console.log(JSON.stringify([...s.matchAll(/x2="([\\d.]+)"/g)].map((m) => +m[1])));'
+)
 
 
 def test_route_ribbons_share_one_minute_axis_and_keep_the_unavailable_options(tmp_path, rendered, answers) -> None:

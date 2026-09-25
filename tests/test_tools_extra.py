@@ -471,9 +471,11 @@ def page_scripts() -> list[pathlib.Path]:
 
 
 def test_every_endpoint_the_page_calls_exists_with_that_method(client: Any) -> None:
-    """The page used to probe three endpoints nobody had shipped and hide their panels on 404."""
+    """The page used to probe three endpoints nobody had shipped and hide their panels on 404.
+
+    The journeys call ``get``: js/journeys.js hands each one api() bound to its run's abort signal."""
     source = "\n".join(path.read_text(encoding="utf-8") for path in page_scripts())
-    calls = {("GET", path) for path in re.findall(r"(?:api|probe)\('(/api/[a-z/]+)'", source)}
+    calls = {("GET", path) for path in re.findall(r"(?<![\w.])(?:api|probe|get)\('(/api/[a-z/]+)'", source)}
     calls |= {("POST", path) for path in re.findall(r"apiPost\('(/api/[a-z/]+)'", source)}
     routes = {(method, route.path) for route in client.app.routes for method in getattr(route, "methods", None) or ()}
 
