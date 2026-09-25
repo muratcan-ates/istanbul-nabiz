@@ -11,7 +11,7 @@ const PATH_TR = { reflex: 'refleks', arena: 'arena' };
 const PATH_ICON = { reflex: 'bolt', arena: 'arrows-exchange' };
 const STATUS_TR = {
   closed_by_reflex: 'refleksle kapandı', awaiting_approval: 'onay bekliyor', approved: 'onaylandı', rejected: 'reddedildi',
-  deferred: 'ertelendi',
+  deferred: 'ertelendi', expired: 'Süresi doldu', executed: 'Uygulandı (simülasyon)',
 };
 const KIND_TR = {
   metro_equipment: 'Metro ekipmanı', metro_status: 'Metro hattı', arrival: 'varış', traffic: 'trafik', air: 'hava kalitesi',
@@ -20,7 +20,7 @@ const KIND_TR = {
   air_quality: 'hava kalitesi', bus_bunching: 'otobüs yığılması',
 };
 /* Settled: nothing left to decide. A deferred card is not settled: it can still be decided. */
-const SETTLED = ['approved', 'rejected', 'closed_by_reflex'];
+const SETTLED = ['approved', 'rejected', 'closed_by_reflex', 'expired', 'executed'];
 const STEP_TR = {
   signal_received: 'sinyal', routed: 'yönlendirme', reflex_closed: 'refleks', reflex_failed: 'refleks çalışamadı',
   arena_drafted: 'Arena kartı', approval: 'karar', rule_adopted: 'kural benimsendi', rule_revoked: 'kural geri alındı',
@@ -35,6 +35,36 @@ const ACTION_TR = {
   hold: 'beklet ve doğrula',
   none: 'hiçbir şey yapma',
 };
+const REASON_CODES = {
+  approve: [
+    { code: 'evidence_current', label: 'Kanıt güncel ve yeterli' },
+    { code: 'seats_agree', label: 'Üç koltuk uyumlu' },
+    { code: 'text_correct', label: 'Metin doğru ve yayıma uygun' },
+  ],
+  reject: [
+    { code: 'evidence_stale', label: 'Kanıt eşikten eski' },
+    { code: 'evidence_insufficient', label: 'Kanıt yetersiz' },
+    { code: 'wrong_place', label: 'Yanlış yer ya da hat' },
+    { code: 'duplicate', label: 'Yinelenen sinyal' },
+    { code: 'text_unfit', label: 'Metin yayıma uygun değil' },
+  ],
+  defer: [
+    { code: 'needs_verification', label: 'Ek doğrulama gerekiyor' },
+    { code: 'await_fresh_data', label: 'Taze veri bekleniyor' },
+  ],
+};
+
+function gatedAction(action) {
+  return action === 'approve' || action === 'edit';
+}
+
+function composeReason(code, text) {
+  const label = Object.values(REASON_CODES).flat().find((item) => item.code === code)?.label;
+  if (!label) return null;
+  const detail = String(text || '').trim();
+  const prefix = label + (detail ? ': ' : '');
+  return prefix + detail.slice(0, Math.max(0, 280 - prefix.length));
+}
 
 const word = (table, key) => table[key] || key || UNKNOWN;
 
@@ -70,13 +100,15 @@ function statsStrip(stats) {
 function queueItem(item, current) {
   const sev = SEVERITY_TR[item.severity] ? item.severity : 'info';
   const path = PATH_TR[item.path] ? item.path : 'arena';
+  const repeats = Number(item.folded_repeats) > 0 ? `<span class="tag">${int(item.folded_repeats)} tekrar katlandı</span>` : '';
+  const expires = item.expires_at ? `<span>Son karar: ${dateTime(item.expires_at)}</span>` : '';
   return `<li><button type="button" class="queue-item is-${sev}" data-id="${esc(item.signal_id)}" aria-current="${current ? 'true' : 'false'}">`
     + `<span class="queue-sev">${icon(SEVERITY_ICON[sev])}</span>`
     + `<span class="queue-head"><span class="queue-title">${esc(item.title)}</span>`
-    + `<span class="tag ${path === 'reflex' ? '' : 'is-info'}">${icon(PATH_ICON[path])}${PATH_TR[path]}</span></span>`
+    + `<span class="tag ${path === 'reflex' ? '' : 'is-info'}">${icon(PATH_ICON[path])}${PATH_TR[path]}</span>${repeats}</span>`
     + `<span class="queue-meta"><span>${SEVERITY_TR[sev]}</span><span>${esc(word(KIND_TR, item.kind))}</span>`
-    + `<span>${esc(word(STATUS_TR, item.status))}</span><span>${clock(item.created_at)}</span></span>`
-    + `<span class="queue-summary">${esc(item.summary || '')}</span></button></li>`;
+    + `<span>${esc(word(STATUS_TR, item.status))}</span><span>${clock(item.created_at)}</span>${expires}</span>`
+    + `<span class="queue-summary">${esc(item.operator_summary || item.summary || '')}</span></button></li>`;
 }
 
 function queueLists(items, currentId) {
@@ -127,11 +159,34 @@ function decisionCard(d, options) {
   const level = LEVEL_TR[conf.level] ? conf.level : 'low';
   const action = d.proposed_action || {};
   const ruleBased = d.author === 'kural';
+  const evidence = d.evidence || [];
+  const waitingSince = Date.parse(s.created_at || '');
+  const wait = !done && Number.isFinite(waitingSince)
+    ? `<p class="decision-wait" id="decision-wait" data-created-at="${esc(s.created_at)}">Kuyrukta: ${esc(shortAge(Math.max(0, (Date.now() - waitingSince) / 1000)))}</p>`
+    : '';
+  const repeatTag = Number(d.folded_repeats) > 0 ? `<span class="tag">${int(d.folded_repeats)} tekrar katlandı</span>` : '';
+  const uncertainty = Array.isArray(conf.uncertainty) && conf.uncertainty.length
+    ? `<div class="decision-part"><h4>Neden emin değilim</h4><ul class="uncertainty">${conf.uncertainty.map((item) =>
+      `<li title="${esc(item.code || '')}"><b>${esc(item.label || '')}</b>${item.detail ? `: ${esc(item.detail)}` : ''}</li>`
+    ).join('')}</ul></div>` : '';
+  const receipt = d.receipt && typeof d.receipt === 'object' ? [
+    d.receipt.wall_ms !== null && d.receipt.wall_ms !== undefined ? `Süre: ${num(d.receipt.wall_ms, 1)} ms` : '',
+    d.receipt.llm_calls !== null && d.receipt.llm_calls !== undefined ? `model çağrısı: ${num(d.receipt.llm_calls, 0)}` : '',
+    d.receipt.usd !== null && d.receipt.usd !== undefined ? `${num(d.receipt.usd, 4)} USD` : '',
+  ].filter(Boolean) : [];
+  const receiptLine = receipt.length ? `<p class="receipt">${receipt.map(esc).join(' · ')}</p>` : '';
+  const expires = !done && d.expires_at ? `<p class="field-hint">Son karar: ${dateTime(d.expires_at)}</p>` : '';
+  const panel = d.panel && d.panel.verdict ? `<p class="field-hint">Panel: ${esc(d.panel.verdict)}</p>` : '';
+  const requiredLevel = d.stakes && d.stakes.required_level
+    ? `<p class="field-hint">Gereken güven: ${esc(d.stakes.required_level)}</p>` : '';
+  const reasonGroups = Object.entries(REASON_CODES).flatMap(([group, items]) => items.map((item) =>
+    `<label class="reason-code" data-for="${group}"><input type="radio" name="reason-code" value="${item.code}"> <span>${item.label}</span></label>`
+  )).join('');
   return `<div class="decision-part">
   <div class="decision-head"><h3 id="decision-signal">${esc(s.title || d.signal_id)}</h3>`
     + `<span class="tag ${sev === 'critical' ? 'is-bad' : sev === 'warning' ? 'is-warn' : ''}">${icon(SEVERITY_ICON[sev])}${SEVERITY_TR[sev]}</span>`
-    + `<span class="tag">${esc(word(STATUS_TR, s.status))}</span></div>
-  <p>${esc(s.summary || '')}</p>
+    + `<span class="tag">${esc(word(STATUS_TR, s.status))}</span>${repeatTag}</div>
+  <p>${esc(s.payload && s.payload.operator_text || s.summary || '')}</p>${wait}${expires}
   <div class="decision-meta"><span>${esc(d.signal_id)}</span><span>${esc(word(KIND_TR, s.kind))}</span>`
     + `<span>${s.created_at ? dateTime(s.created_at) : ''}</span>${freshnessLine(d.freshness_s, warnS)}</div>
 </div>
@@ -139,8 +194,8 @@ ${d.dissent_summary ? `<div class="decision-part"><div class="callout callout-wa
     + `<p class="callout-title">İtiraz özeti</p><p>${esc(d.dissent_summary)}</p></div></div></div>` : ''}
 <div class="decision-part">
   <details id="evidence" class="decision-evidence">
-    <summary>${icon('chevron-right')}Kanıt (${(d.evidence || []).length})</summary>
-    ${evidenceList(d.evidence, warnS)}
+    <summary>${icon('chevron-right')}Kanıt (${evidence.length})</summary>
+    ${evidenceList(evidence, warnS)}
   </details>
   <p class="actions-gate" id="evidence-gate"${done ? ' hidden' : ''}>Onaylamadan önce kanıtı açın.</p>
 </div>
@@ -157,16 +212,18 @@ ${d.dissent_summary ? `<div class="decision-part"><div class="callout callout-wa
 </div>
 <div class="decision-part">
   <h4>Önerilen eylem</h4>
-  <div class="proposed"><p><b>${esc(word(ACTION_TR, action.kind))}</b></p><p>${esc(action.text || '')}</p>`
+  <div class="proposed"><p><b>${esc(word(ACTION_TR, action.kind))}</b></p><p class="field-hint">Vatandaşa yayımlanacak metin:</p><p>${esc(action.text || '')}</p>`
     + `<p class="field-hint">Son geçerlilik: ${action.expires_at ? dateTime(action.expires_at) : 'belirtilmedi'}. Uygulanan tek şey Nabız yüzündeki metindir; dışarıya hiçbir şey gönderilmez.</p></div>
   <div class="confidence is-${level}"><span class="confidence-level">${icon(level === 'high' ? 'circle-check' : level === 'medium' ? 'clock-question' : 'alert-triangle')}güven: ${LEVEL_TR[level]}</span>`
     + `${conf.reasons && conf.reasons.length ? `<ul>${conf.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}</div>
 </div>
+${uncertainty}${receiptLine}${panel}${requiredLevel}
 <div class="decision-part actions" id="decision-actions"${done ? ' hidden' : ''}>
-  <div class="field"><label for="decision-reason">Gerekçe</label>
-    <textarea id="decision-reason" rows="3" maxlength="280" aria-describedby="reason-hint"></textarea>
-    <span class="field-hint" id="reason-hint">Ret ve erteleme için zorunlu, en fazla 280 karakter. Kişi adı yazmayın.</span>
-    <span class="field-error" id="reason-error" hidden>Ret ve erteleme için gerekçe yazın.</span></div>
+  <div class="field"><fieldset class="reason-codes" data-action="approve"><legend>Gerekçe kodu</legend>${reasonGroups}</fieldset>
+    <label for="decision-reason">Gerekçe ayrıntısı</label>
+    <textarea id="decision-reason" rows="3" maxlength="240" aria-describedby="reason-hint reason-error"></textarea>
+    <span class="field-hint" id="reason-hint">Kod isteğe bağlıdır. Ayrıntı en fazla 240 karakterdir. Kişi adı yazmayın.</span>
+    <span class="field-error" id="reason-error" hidden>Ret ve erteleme için gerekçe kodu seçin.</span></div>
   <div class="field" id="edit-field" hidden><label for="decision-edit">Düzenlenmiş metin</label>
     <textarea id="decision-edit" rows="4" maxlength="600" aria-describedby="edit-hint">${esc(action.text || '')}</textarea>
     <span class="field-hint" id="edit-hint">En fazla 600 karakter.</span></div>
@@ -178,7 +235,6 @@ ${d.dissent_summary ? `<div class="decision-part"><div class="callout callout-wa
   </div>
 </div>
 <div class="decision-part">
-  <p class="status-line" id="decision-status" role="status"></p>
   <div class="btn-row"><button type="button" class="btn" data-act="trace">${icon('history')}Bu karar nasıl verildi?</button></div>
   <div id="trace"></div>
 </div>`;
@@ -222,5 +278,6 @@ function draftItem(d) {
 }
 
 export {
-  SETTLED, SEVERITY_TR, STATUS_TR, STANCE_TR, LEVEL_TR, ACTION_TR, statsStrip, queueItem, queueLists, decisionCard, traceList, verifyBadge, draftItem,
+  SETTLED, SEVERITY_TR, STATUS_TR, STANCE_TR, LEVEL_TR, ACTION_TR, REASON_CODES, gatedAction, composeReason,
+  statsStrip, queueItem, queueLists, decisionCard, traceList, verifyBadge, draftItem,
 };

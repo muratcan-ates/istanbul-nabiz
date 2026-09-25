@@ -5,11 +5,13 @@
 
 /* Queue: each signal is a button; the reflex-closed ones sit behind a counter. */
 .queue-list { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
-.queue-item { display: grid; grid-template-columns: var(--icon-size) minmax(0, 1fr); gap: var(--space-1) var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); text-align: start; transition: background-color var(--dur-ui), border-color var(--dur-ui); }
+.queue-item { display: grid; grid-template-columns: var(--icon-size) minmax(0, 1fr); gap: var(--space-1) var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); text-align: start; }
+@media (prefers-reduced-motion: no-preference) { .queue-item { transition: background-color var(--dur-ui), border-color var(--dur-ui); } }
 .queue-item > * { grid-column: 2; min-width: 0; }
 .queue-item > .queue-sev { grid-area: 1 / 1; color: var(--text-muted); }
 .queue-item:hover { background: var(--surface-sunken); }
 .queue-item[aria-current="true"] { border-color: var(--primary); background: var(--selected-row); }
+.queue-item:focus-visible { outline-width: 3px; }
 .queue-item.is-critical > .queue-sev { color: var(--bad); }
 .queue-item.is-warning > .queue-sev { color: var(--warn); }
 .queue-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
@@ -18,6 +20,8 @@
 .queue-summary { color: var(--text-muted); font-size: var(--text-sm); }
 .queue-empty { color: var(--text-muted); font-size: var(--text-sm); }
 .queue-reflex .queue-item { padding-block: var(--space-2); }
+.queue-reflex > summary { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+.queue-reflex > summary h3 { margin: 0; font-size: inherit; }
 
 /* Decision card: sections separated by hairlines inside one raised surface. */
 .decision { padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); box-shadow: var(--shadow-2); }
@@ -53,10 +57,17 @@
 .confidence.is-medium .confidence-level { color: var(--warn); }
 .confidence.is-low .confidence-level { color: var(--bad); }
 .confidence ul { color: var(--text-muted); font-size: var(--text-sm); }
+.uncertainty { display: grid; gap: var(--space-1); padding-inline-start: 1.25em; color: var(--text-muted); font-size: var(--text-sm); }
+.receipt, .decision-wait { color: var(--text-muted); font-size: var(--text-sm); }
 
 .actions { display: grid; gap: var(--space-3); }
 .actions .btn-row { gap: var(--space-2); }
+.actions .btn[aria-disabled="true"] { opacity: 1; background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); }
 .actions-gate { color: var(--text-muted); font-size: var(--text-sm); }
+.reason-codes { display: grid; gap: var(--space-2); min-width: 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-control); }
+.reason-codes legend { padding-inline: var(--space-1); font-weight: var(--weight-semibold); }
+.reason-code { display: flex; align-items: start; gap: var(--space-2); }
+.reason-code input { flex: 0 0 auto; accent-color: var(--primary); }
 
 /* Trace: the steps in order, the hash badge in the head. */
 .trace { display: grid; gap: var(--space-2); padding-inline-start: 1.5em; }
@@ -73,5 +84,15 @@
 .draft-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
 @media (min-width: 768px) { .draft-form { grid-template-columns: 8rem minmax(0, 1fr) auto; align-items: end; } }
 .draft-form .field-hint { grid-column: 1 / -1; }
+
+@media (max-width: 480px) {
+  .topbar-actions { display: grid; grid-template-columns: minmax(0, 1fr) 4rem var(--tap) 4rem; width: 100%; }
+  #ledger-badge { min-width: 0; }
+  #ledger-badge .tag { white-space: normal; }
+  #simple-toggle, .topbar-nav, .topbar-nav > a { width: 100%; min-width: 0; padding-inline: var(--space-1); white-space: normal; text-align: center; }
+  .topbar-nav > a { line-height: var(--leading-tight); }
+  .decision-head .tag, .queue-head .tag { white-space: normal; }
+  .btn-row .btn { flex: 1 1 auto; }
+}
 
 @media (forced-colors: active) { .queue-item, .decision, .evidence-item, .opinion, .draft, .proposed { border: 1px solid CanvasText; } }
