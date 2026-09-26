@@ -4,8 +4,12 @@
 > yalnızca **kendi tarayıcınızda** saklanır. Sunucu hiçbir kullanıcı kaydı tutmaz: ne konum, ne
 > profil, ne geçmiş. Her kontrolde abonelik istekle birlikte gelir, sunucu yalnızca zaten herkes
 > için çektiği İBB verisiyle kuralları değerlendirir ve yanıtı döndükten sonra her şeyi unutur.
-> Hesap yok, çerez yok, sunucuda silinecek bir kaydınız yok. Her şeyi silmek için tarayıcınızdaki
+> Hesap bağlamadıkça sunucuda silinecek bir kaydınız yok; çerez yok. Her şeyi silmek için tarayıcınızdaki
 > site verisini temizlemeniz yeterlidir (aşağıda §6).
+>
+> **Tek istisna, açık rızayla (DECISIONS #36):** isteğe bağlı örnek hesap bağlarsanız e-posta adresiniz ve
+> takip ettiğiniz konular (hat, istasyon ya da anahtar kelime; asla konum) sunucuda saklanır; hesabı
+> silene ya da 12 ay kullanmayana kadar. "Hesabımı ve verilerimi sil" tek dokunuşla hepsini siler (§10).
 
 This document describes how the alert engine in `src/ibb_mcp/alerts/` handles user data. It is not a
 promise bolted onto a finished feature; it is the shape of the feature. Where a claim here is
@@ -83,8 +87,9 @@ only) and logs at `INFO` unless `--log-level` is lowered by hand.
 | İBB data used to evaluate rules | Shared TTL cache (`src/ibb_mcp/cache.py`) | Everyone — it is public city data | One cache TTL (60 s – 1 day) |
 | Measured line-headway table | `data/reference/line_reliability.json`, built from our own vehicle snapshots | Public | Rebuilt on demand |
 
-There is no database, no user table, no session, no cookie and no account. **There is nothing to
-breach, because there is nothing to store.**
+For the alert engine there is no database, no user table, no session, no cookie and no account.
+**There is nothing to breach, because there is nothing to store.** The one place the product keeps a
+person's data is the explicit-consent example account (§10), and it holds no location.
 
 ## 4. What the server logs
 
@@ -235,7 +240,7 @@ copy of the deleted data exists anywhere else — see §3.
 
 ## 8. What this design deliberately does not do (yet)
 
-**True push notifications.** Web Push requires the server to store a push endpoint and its keys per
+**True push notifications.** (The daily e-mail digest of §10 is option (c) below, for account holders only.) Web Push requires the server to store a push endpoint and its keys per
 subscriber, and to run the evaluation on a timer — i.e. exactly the per-user record and the per-user
 schedule this design avoids. Today the client polls while the page is open, which needs no stored
 endpoint. Adding real push is therefore not a small feature but a **decision to record in
@@ -258,3 +263,50 @@ Alerts are derived from İBB Açık Veri Portalı data:
 *Kamu sektörü bilgilerini içerir — İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0).*
 Alerts are estimates, not official İBB announcements, and air-quality alerts are not health advice.
 Both disclaimers ship inside the alert payload itself, not only in this document.
+
+## 10. The explicit-consent account exception (DECISIONS #36)
+
+The owner decided on 26 Sep 2026 that one kind of personal data may live on the server: what a person
+chooses to keep there, with explicit consent, to get a higher daily quota and a daily digest of the
+topics they follow. Without an account nothing changes: everything above still holds, and follows stay
+on the device. The code is `src/nabiz/console/accounts.py`, `accounts_api.py`, `quota.py`,
+`quota_api.py`, `follow.py`, `follow_eval.py`, `digest.py` and `email_sender.py`.
+
+| Data | Where | Who can read it | Retention |
+|---|---|---|---|
+| E-mail address, example provider, tier, consent time and consent-text version | `data/accounts/accounts.sqlite` (`NABIZ_ACCOUNTS_DB`, gitignored) | The person (through the token on their device) and the operator of the server | Until the account is deleted, or 12 months without use (`INACTIVE_DAYS`) |
+| Sign-in token | Its SHA-256 only, same file; the token itself on the device (`nabiz.account.v1`) | Nobody can read it back | With the account |
+| Followed topics (a metro line, a station, a bus line or a keyword) and the public alert sentences last seen for each | Same file | Same | With the account |
+| Prepared e-mails (address, subject, text) | `data/outbox/` (`NABIZ_OUTBOX_DIR`, gitignored), shown in Profilim as a preview | Same | Deleted with the account; files older than 30 days removed by the digest run |
+| Daily question and model-call counts | Server memory: a salted SHA-256 of the device id (`nabiz.device.v1`, random, made by the browser), of the address (IPv6 by /64) or of the account id | Nobody: the salt is new on every start | One Istanbul day, or until restart |
+
+What holds it:
+
+* **No consent, no write.** `POST /api/account/signin` answers 400 before it opens the account file when
+  the consent box is not ticked (`tests/test_quota_accounts.py::test_without_consent_nothing_reaches_the_server`
+  checks that neither the file nor the outbox exists afterwards).
+* **Example sign-in only.** İBB, İstanbulkart and Google are not contacted. Every card carries the band
+  "Örnek hesap · gerçek İBB/İstanbulkart bağlantısı yok · entegrasyon İBB izni gerektirir"; the SMS code is
+  shown on the screen, and no telephone number is asked
+  (`tests/test_account_static.py::test_every_example_sign_in_carries_the_band_and_says_it_is_an_example`).
+  Since nothing is verified, every sign-in makes a new account: typing someone's address never opens theirs.
+* **Nothing is sent.** The verification e-mail and the digest go to the outbox. Azure Communication
+  Services (`AcsEmailSender`) is off unless `NABIZ_ACS_CONNECTION_STRING` and `NABIZ_ACS_SENDER` are set
+  *and* `scripts/notify_digest.py --deliver` is run; sending real e-mail to unverified addresses waits for a
+  real sign-in and the owner's yes.
+* **A topic is never a location.** `follow.topic_from` refuses a pair of decimal numbers, and the kinds are
+  a line code, a station name, a bus line code or a keyword. The alert engine's no-location tests in
+  `tests/test_alerts.py` are unchanged.
+* **Logs.** No route logs an address, a token or a topic; the request log writes the path only
+  (`test_sign_in_is_an_example_the_sms_code_is_shown_and_nothing_is_sent` captures every record).
+* **One-tap deletion.** `DELETE /api/account` removes the account and its follows in one transaction and its
+  outbox files; the page then clears every `nabiz*` key and the conversations on the device
+  (`test_one_tap_delete_removes_the_account_its_follows_and_its_outbox`). An e-mail's "takibi bırak" link
+  carries a signed token in the URL fragment, which never reaches a server log.
+* **The quota never blocks help.** An emergency is neither counted nor limited, and past the quota the rules
+  keep answering with 112 and 153 on every card
+  (`test_an_emergency_is_never_counted_never_limited_and_always_answered`).
+
+Deployment gate, not done: before real users, the account file needs encryption at rest and a backup
+policy of its own, and the ingress log caveat above applies to the account routes too (their bodies are
+POSTs; the paths carry no address).

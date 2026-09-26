@@ -1673,3 +1673,77 @@ kapsamı. An unchecked translation on a city-help page is a risk we cannot sign 
   1 warning); full `pytest tests` 2980 passed, 1 skipped, 3 xfailed; `make web-budget` 12 PASS 1 TARGET 0 FAIL;
   `make eval` 60/60 offline. Smoke on `make console-offline` (port 8190): only Türkçe/English buttons,
   `/i18n/ar.json` and `/css/rtl.css` 404, English sets `lang=en`, `?lang=ar` stays `ltr`.
+
+---
+
+## 36. Hesap, kota ve takip (hesap-kota-takip, 26 Eyl, Murat kararı): an explicit-consent account exception
+
+**Date:** 2026-09-26 · **Status:** Accepted by the owner (26 Sep); the example sign-in and the outbox are live, real
+e-mail and real İBB/İstanbulkart sign-in wait for the owner's steps below. Another branch may have taken #36 too; the
+number is fixed at the merge.
+
+### Context
+
+The charter (§1.3) and AGENTS §3 kept no personal data on the server. The owner wanted three things that need a
+little: a daily quota that grows when a person links an account, topics a person follows ("M2 hattını takip et"),
+and a daily e-mail when one of them changes. He decided (26 Sep): (a) only with explicit consent may an e-mail
+address and followed topics be kept on the server; without an account everything stays on the device as today;
+"hesabımı ve verilerimi sil" is one tap; (b) sign-in is a demonstration for now, honestly labelled; (c) e-mail goes
+through Azure Communication Services, whose resource does not exist yet.
+
+### Decision
+
+- **The exception.** With explicit consent, `data/accounts/accounts.sqlite` (gitignored) keeps an e-mail address,
+  the example provider, the tier, the consent time and text version, the followed topics and the public alert
+  sentences last seen for each; the sign-in token only as its SHA-256. Kept until the account is deleted or unused
+  for 12 months. Without `consent: true` the sign-in answers 400 before the file is opened. AGENTS §3 names this
+  "açık rızalı hesap istisnası", the charter §1.3 points here, `docs/privacy.md` §10 is the design, `kvkk.html` has
+  the section "Hesap ve takip (açık rıza)", and the privacy notice now says "Hesap bağlamadıkça sunucuda kişisel veri
+  saklanmaz".
+- **Example sign-in** (`nabiz.console.accounts.PROVIDERS`): "İBB hesabı ile giriş (örnek)", "İstanbulkart hesabı ile
+  SMS girişi (örnek)", "Google ile giriş (örnek)". Every card and the signed-in view carry the band "Örnek hesap ·
+  gerçek İBB/İstanbulkart bağlantısı yok · entegrasyon İBB izni gerektirir"; the SMS code (123456) is shown on the
+  screen and no telephone number is asked; no address is verified, so every sign-in makes a new account.
+- **Quota tiers** (`nabiz.console.quota.TIERS`, the one table; `NABIZ_QUOTA_*` in `.env.example`, names only):
+  without an account 20 questions and 60 model calls a day; example e-mail/Google 60 and 180; example
+  İBB/İstanbulkart 150 and 450. Design parameters, not measured. Counted in memory by a salted SHA-256 of a random
+  browser id (`nabiz.device.v1`) and of the address (IPv6 by /64; an address holds five devices' worth), or of the
+  account id; the salt is new at every start. Past the question count the turn runs with the model rung closed
+  (`MeteredGuard` over the one `SpendGuard`, per-person model calls through a context variable), so the rules keep
+  answering. An emergency is neither counted nor limited: it also skips the per-minute limiter. Every chat `final`
+  gains `quota`; `tests/test_console_chat.py` expects it.
+- **Follows** (`nabiz.console.follow`): a follow cue plus a metro line code, a station name before "asansör" /
+  "istasyon", a bus line code, or a keyword becomes a `follow_suggestion` in the final ("Takip edilecek konu: M2 ·
+  onayla"); `chat.js` hands it to `follow.js`. Water, gas and power cuts answer "Bu konu için veri kaynağı yok (İBB
+  entegrasyonu gerekir)". A topic that looks like a coordinate is refused. Without an account at most three, on the
+  device, shown on the page while it is open; with one at most ten, on the server. Evaluated through the facade
+  (`check_alerts` with `metro_disruption`, `lift_outage`, `bus_bunching`; `metro_station_info`;
+  `ibb_services_search`).
+- **Digest** (`make notify-digest`, `scripts/notify_digest.py`, `nabiz.console.digest`): once per account per
+  Istanbul day, only new or cleared faults, line notices and new service pages (not a bus line's bunching), one
+  plain-text Turkish and English e-mail with each line's source and age, "Resmî İBB hizmeti değildir", a signed
+  "takibi bırak" link in the URL fragment and the delete link. `OutboxEmailSender` (default) writes JSON under
+  `data/outbox/` (gitignored) and Profilim shows it as "Gönderilecek e-posta önizlemesi"; `AcsEmailSender` needs both
+  `NABIZ_ACS_CONNECTION_STRING` and `NABIZ_ACS_SENDER` and `--deliver`, and imports the SDK (new `email` extra,
+  `azure-communication-email`, not installed here) only then.
+- **Guardrail narrowed, not loosened.** `no-personal-data` lets exactly `example.com`, `example.org` and
+  `example.net` through (RFC 2606 documentation domains, which no person can hold), for the placeholder address;
+  `example.invalid` and look-alikes stay findings, and one existing test's stand-in moved to `example.invalid`.
+  `scripts/check_architecture.py` declares `azure` for `nabiz.console.email_sender` only. The service worker goes to v6.
+
+### Consequences and open risks
+
+- **Owner's yes needed, one at a time:** creating the ACS resource (Azure, billable); verifying a sender domain;
+  installing the `email` extra (network); the first `--deliver` run. Real sending should wait for a real sign-in,
+  because today no address is verified and anyone can type anyone's address.
+- Real İBB or İstanbulkart sign-in needs İBB's permission and an integration; none exists.
+- The quota lives in memory: a restart or a second replica gives a fresh day. The spend ceiling stays the hard limit.
+- Before real users: encryption at rest and a backup policy for the account file; the ingress log caveat of
+  `docs/privacy.md` §4 applies to the account routes.
+- Gates (26 Sep, sprint flag, this worktree): `make lint` pass; `make lane-gates` pytest 3054 passed, 2 skipped,
+  3 xfailed, architecture 8 checks 0 failed (the existing WARNs only), guardrails 14 checks 0 failed; `make web-budget`
+  12 PASS, 1 TARGET, 0 FAIL; `make eval` 60/60 with the GTFS extract present (this worktree has none: 55/60, five
+  J2 scenarios fail on the missing gitignored `data/reference/gtfs/`, as `/api/arrival` does in the smoke).
+- The new sections are Turkish only; the English page switch does not translate them yet. No eval journey: the
+  feature is not an MCP tool path; `tests/test_quota_accounts.py`, `tests/test_follow_digest.py` and
+  `tests/test_account_static.py` hold it.
