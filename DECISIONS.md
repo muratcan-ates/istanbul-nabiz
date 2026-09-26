@@ -1606,3 +1606,33 @@ host list and question coverage in `data/knowledge/SOURCES-EXPANDED.md`.
   in the evidence path still apply.
 - Gates (26 Sep, sprint flag): `make lint` pass; `make guardrails` 14 checks 0 failed (1 existing WARN);
   full `pytest tests` 2974 passed, 1 skipped, 3 xfailed; `make eval-knowledge` 100 records PASS (offline).
+
+## 34. E06 oturum B: çok dilli yüzey bağlandı (26 Eyl): the citizen page switches between Turkish, English and Arabic
+
+### Context
+
+E06 session A had already merged `templates_i18n.py` and the tr/en/ar catalogues. Session B (branch
+`gun3/cok-dilli-yuzey`) added `js/i18n.js`, `css/rtl.css` and its tests without touching the page.
+
+### Decision
+
+- `index.html` loads `/js/i18n.js` right after `disclosure.js`; the module adds `/css/rtl.css` itself when
+  Arabic is chosen, so the page carries no extra render-blocking sheet.
+- **One owner for the page language.** i18n.js owns the `[data-language]` group (G1's Türkçe/English plus
+  its own عربي), the `?lang=` URL value, `<html lang/dir>` and the device key `nabiz.lang.v1`. `home.js`
+  no longer sets the URL or `aria-pressed` for those buttons. The answer-language button `#chat-lang-en`
+  (G2) stays the profile switch; i18n.js follows it and presses it when the page language changes, so the
+  two cannot disagree. `chat.js` sends `lang` from the URL, else from `<html lang>`.
+- The Arabic draft label stays visible next to عربي in every language (`AR_REVIEWED = false`).
+- `kvkk.html` lists `nabiz.lang.v1`; the service worker goes to `v4`, caches `/i18n/` as static and adds
+  `i18n.js`, `rtl.css` and the three catalogues to the shell. `kolay.html` is left Turkish: it has no
+  catalogue keys and sends `lang=tr` on purpose.
+
+### Consequences and open risks
+
+- The server still ignores `lang` on `/api/chat`; fixed answers in English/Arabic from the server side are
+  B01b's work (`ChatRequest.lang`, `detect_lang(message, chosen=lang)`, `fixed_text`, `quote_frame`).
+- Arabic text is a draft until a native reader signs off; 320 px RTL layout has only a desktop-width check.
+- Gates (26 Sep, sprint flag): `make lint` pass; `make lane-gates` pass (architecture 0 failed with the
+  existing sprint WARNs; guardrails 14 checks 0 failed); full `pytest tests` 2980 passed, 1 skipped,
+  3 xfailed; `make web-budget` 12 PASS 1 TARGET 0 FAIL; `make eval` 60/60 offline.
