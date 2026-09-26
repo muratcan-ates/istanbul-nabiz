@@ -32,6 +32,7 @@ Foundation layer: this module imports nothing from the project.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 #: Every Turkish letter onto its ASCII skeleton, before casefolding (see the module
@@ -118,3 +119,39 @@ def rank_match_loose(query: str, loose_query: str, candidate: str | None) -> int
         return rank
     loose = rank_match(loose_query, squash_punctuation(folded))
     return None if loose is None else loose + LOOSE_RANK_PENALTY
+
+
+#: Phrasings that address a model rather than a citizen, matched on the :func:`normalize_tr` key
+#: (ASCII, no punctuation). Narrow on purpose: "talimat" or "sistem" alone is ordinary service text
+#: ("Başvuru sistemi üzerinden yapılır"), and a false positive drops a whole source quote, or the
+#: console's single merged history message with every earlier question in it.
+_INSTRUCTION_PHRASES = re.compile(
+    r"\b(?:onceki|yukaridaki|tum) (?:talimat|yonerge)\w* (?:yok say|gormezden gel|unut)"
+    r"|\bsistem (?:istemi|mesaji)"
+    r"|\b(?:artik sen|sen artik) (?:bir )?\w* ?(?:asistan|yapay zeka|model|bot)"
+    r"|\bignore (?:all |any )?(?:previous|prior|above) (?:instructions|prompts)\b"
+    r"|\bsystem prompt\b"
+    r"|\byou are now\b"
+    r"|\bdisregard (?:the )?(?:above|previous)\b"
+)
+#: Chat-template role markers, matched on the case-folded raw text: :func:`normalize_tr` would
+#: erase the ``:``, ``<|``, ``[`` and ``#`` they are made of, and both keys erase line starts.
+_ROLE_MARKERS = re.compile(
+    r"^\s*(?:system|assistant|developer|sistem|asistan)\s*:"
+    r"|<\|im_start\|>"
+    r"|<\|system\|>"
+    r"|\[inst\]"
+    r"|^\s*###\s*(?:system|instruction)",
+    re.MULTILINE,
+)
+
+
+def looks_like_instruction(text: str | None) -> bool:
+    """True when text talks to a model ("önceki talimatları yok say", ``<|im_start|>``, ``system:``).
+
+    For data that must never steer one: a quoted source page, a tool result, a client's chat
+    history. The caller drops the whole item rather than trimming it.
+    """
+    if not text:
+        return False
+    return bool(_INSTRUCTION_PHRASES.search(normalize_tr(text)) or _ROLE_MARKERS.search(_strip_marks(text)))
