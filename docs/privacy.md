@@ -4,12 +4,16 @@
 > yalnızca **kendi tarayıcınızda** saklanır. Sunucu hiçbir kullanıcı kaydı tutmaz: ne konum, ne
 > profil, ne geçmiş. Her kontrolde abonelik istekle birlikte gelir, sunucu yalnızca zaten herkes
 > için çektiği İBB verisiyle kuralları değerlendirir ve yanıtı döndükten sonra her şeyi unutur.
-> Hesap bağlamadıkça sunucuda silinecek bir kaydınız yok; çerez yok. Her şeyi silmek için tarayıcınızdaki
+> Hesap bağlamadıkça ve operatöre talep iletmedikçe sunucuda silinecek bir kaydınız yok; çerez yok. Her şeyi silmek için tarayıcınızdaki
 > site verisini temizlemeniz yeterlidir (aşağıda §6).
 >
 > **Tek istisna, açık rızayla (DECISIONS #38):** isteğe bağlı örnek hesap bağlarsanız e-posta adresiniz ve
 > takip ettiğiniz konular (hat, istasyon ya da anahtar kelime; asla konum) sunucuda saklanır; hesabı
 > silene ya da 12 ay kullanmayana kadar. "Hesabımı ve verilerimi sil" tek dokunuşla hepsini siler (§10).
+>
+> **İkinci istisna, sizin gönderiminizle (DECISIONS #39):** "Operatöre ilet" onay kutusu işaretlenip gönderilirse
+> maskelenmiş soru, Türkçe çevirisi, konu tahmini ve operatörün cevabı sunucuda ayrı bir tabloda 30 gün tutulur,
+> sonra silinir (`src/nabiz/console/citizen_requests.py`, `TTL_DAYS = 30`). Acil durumlar operatöre iletilmez.
 
 This document describes how the alert engine in `src/ibb_mcp/alerts/` handles user data. It is not a
 promise bolted onto a finished feature; it is the shape of the feature. Where a claim here is
