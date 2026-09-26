@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="/css/console_report_map.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/console.js">
+<link rel="modulepreload" href="/js/console_desk.js">
 <link rel="modulepreload" href="/js/api.js">
 <link rel="modulepreload" href="/js/config.js">
 <link rel="modulepreload" href="/js/console-cards.js">
@@ -92,104 +93,111 @@
     gelir. <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
 </div>
 
-<nav class="console-nav" aria-label="Konsol bölümleri">
-  <ul class="wrap">
-    <li><a href="#today">Bugün</a></li>
-    <li><a href="#queue">Sinyal kutusu</a></li>
-    <li><a href="#report-map">Bildirim haritası</a></li>
-    <li><a href="#citizen-requests">Talepler</a></li>
-    <li><a href="#rules">Kurallar</a></li>
-    <li><a href="#nx-organs">NEXUS</a></li>
-    <li><a href="#approval-health">Sağlık</a></li>
-    <li><a href="#service-receipt">Maliyet</a></li>
-  </ul>
-</nav>
-
-<main class="wrap" id="main" tabindex="-1">
-  <h1 id="page-title" class="sr-only">Nabız konsol: simüle operatör</h1>
-  <section id="today" aria-labelledby="stats-title">
-    <div class="section-head">
-      <h2 id="stats-title">Bugün</h2>
-      <span class="section-note">sayılar simülasyon; pilotta ölçülecek. Kişi bazında metrik yok.</span>
-    </div>
-    <ul class="stats" id="stats" aria-label="Zaman paneli">
-      <li class="stat"><span class="stat-value is-word">yükleniyor</span><span class="stat-label">zaman paneli</span></li>
+<div class="console-shell">
+  <nav class="console-nav" aria-label="Konsol bölümleri">
+    <ul class="wrap">
+      <li><a href="#today">Bugün</a></li>
+      <li><a href="#queue">Sinyal kutusu</a></li>
+      <li><a href="#report-map">Bildirim haritası</a></li>
+      <li><a href="#citizen-requests">Talepler</a></li>
+      <li><a href="#rules">Kurallar</a></li>
+      <li><a href="#nx-organs">Karar motoru</a></li>
+      <li><a href="#approval-health">Sağlık</a></li>
+      <li><a href="#service-receipt">Maliyet</a></li>
     </ul>
-  </section>
+  </nav>
 
-  <section id="day" class="day" aria-labelledby="day-title"><h2 id="day-title">Günün kararları</h2></section>
-  <section id="approval-health" class="health" aria-labelledby="health-title"><h2 id="health-title">Onay sağlığı</h2></section>
+  <main class="wrap" id="main" tabindex="-1">
+    <h1 id="page-title" class="sr-only">Nabız konsol: simüle operatör</h1>
+    <section class="desk" aria-labelledby="desk-title">
+      <h2 id="desk-title" class="sr-only">Karar masası</h2>
+      <div class="console-grid">
+        <section id="queue" aria-labelledby="queue-title">
+          <div class="section-head">
+            <h2 id="queue-title">Sinyal kutusu</h2>
+            <button type="button" class="btn" id="simulate" data-fixture="metro_faulty_kartal">
+              <svg class="icon" aria-hidden="true"><use href="#i-bolt"></use></svg>Kayıtlı sinyali oynat
+            </button>
+          </div>
+          <p class="sr-only" id="queue-status" role="status"></p>
+          <h3>Onay bekleyen <span class="section-note" id="queue-arena-count"></span></h3>
+          <ol class="queue-list" id="queue-arena"><li class="queue-empty">yükleniyor</li></ol>
+          <details class="queue-reflex" open>
+            <summary><h3><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>Refleksle kapananlar</h3><span id="queue-reflex-count"></span></summary>
+            <ol class="queue-list" id="queue-reflex"><li class="queue-empty">yükleniyor</li></ol>
+          </details>
+        </section>
 
-  <div class="console-grid">
-    <section id="queue" aria-labelledby="queue-title">
+        <section class="decision" id="decision" aria-labelledby="decision-title" tabindex="-1">
+          <h2 id="decision-title">Karar kartı</h2>
+          <p class="status-line" id="console-status" role="status" aria-live="polite"></p>
+          <div id="decision-body"><p class="decision-empty">Onay bekleyen kart yok. Yeni sinyal gelince burada görünür.</p></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="day" class="day" aria-labelledby="day-title"><h2 id="day-title">Günün kararları</h2></section>
+
+    <details class="more system-more" id="system-more">
+      <summary><span>Sistem durumu</span><span id="system-summary" class="section-note">Durum okunuyor</span></summary>
+      <section id="today" aria-labelledby="stats-title">
+        <div class="section-head">
+          <h2 id="stats-title">Bugün</h2>
+          <span class="section-note">sayılar simülasyon; pilotta ölçülecek. Kişi bazında metrik yok.</span>
+        </div>
+        <ul class="stats" id="stats" aria-label="Zaman paneli">
+          <li class="stat"><span class="stat-value is-word">yükleniyor</span><span class="stat-label">zaman paneli</span></li>
+        </ul>
+      </section>
+      <section id="approval-health" class="health" aria-labelledby="health-title"><h2 id="health-title">Onay sağlığı</h2></section>
+    </details>
+
+    <section id="report-map" aria-labelledby="report-map-title"><h2 id="report-map-title">Bildirim haritası</h2></section>
+
+    <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
+
+    <section id="rules" aria-labelledby="rules-title">
       <div class="section-head">
-        <h2 id="queue-title">Sinyal kutusu</h2>
-        <button type="button" class="btn" id="simulate" data-fixture="metro_faulty_kartal">
-          <svg class="icon" aria-hidden="true"><use href="#i-bolt"></use></svg>Kayıtlı sinyali oynat
-        </button>
+        <h2 id="rules-title">Kurallar</h2>
+        <span class="section-note" id="rules-count"></span>
       </div>
-      <p class="sr-only" id="queue-status" role="status"></p>
-      <h3>Onay bekleyen <span class="section-note" id="queue-arena-count"></span></h3>
-      <ol class="queue-list" id="queue-arena"><li class="queue-empty">yükleniyor</li></ol>
-      <details class="queue-reflex" open>
-        <summary><h3><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>Refleksle kapananlar</h3><span id="queue-reflex-count"></span></summary>
-        <ol class="queue-list" id="queue-reflex"><li class="queue-empty">yükleniyor</li></ol>
-      </details>
+      <p class="status-line" id="rules-status" role="status" tabindex="-1"></p>
+      <ul class="rules" id="rules-list"><li class="section-note">yükleniyor</li></ul>
     </section>
 
-    <section class="decision" id="decision" aria-labelledby="decision-title" tabindex="-1">
-      <h2 id="decision-title">Karar kartı</h2>
-      <p class="status-line" id="console-status" role="status" aria-live="polite"></p>
-      <div id="decision-body"><p class="decision-empty">Sinyal kutusundan bir sinyal seçin. Kart kanıtı, veri tazeliğini,
-        seçenekleri, üç koltuğun görüşünü ve itiraz özetini gösterir; onay kanıt açılmadan verilmez.</p></div>
+    <section id="nx-organs" aria-labelledby="nx-organs-title">
+      <div class="section-head"><h2 id="nx-organs-title">Karar motoru (NEXUS)</h2>
+        <span class="section-note">Defterden okunur · kişi bazında metrik yok</span></div>
+      <p class="sr-only" id="nx-status" role="status" aria-live="polite"></p>
+      <div id="nx-organs-content"></div>
     </section>
-  </div>
 
-  <section id="report-map" aria-labelledby="report-map-title"><h2 id="report-map-title">Bildirim haritası</h2></section>
-
-  <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
-
-  <section id="rules" aria-labelledby="rules-title">
-    <div class="section-head">
-      <h2 id="rules-title">Kurallar</h2>
-      <span class="section-note" id="rules-count"></span>
-    </div>
-    <p class="status-line" id="rules-status" role="status" tabindex="-1"></p>
-    <ul class="rules" id="rules-list"><li class="section-note">yükleniyor</li></ul>
-  </section>
-
-  <section id="nx-organs" aria-labelledby="nx-organs-title">
-    <div class="section-head"><h2 id="nx-organs-title">NEXUS organları</h2>
-      <span class="section-note">Defterden canlı okunur · kişi bazında metrik yok</span></div>
-    <p class="sr-only" id="nx-status" role="status" aria-live="polite"></p>
-    <div id="nx-organs-content"></div>
-  </section>
-
-  <section aria-labelledby="drafts-title">
-    <div class="section-head">
-      <h2 id="drafts-title">Kural taslakları</h2>
-      <span class="section-note">aynı desende 30 günde en az 3 onay; benimseyen insan, süreli kural</span>
-    </div>
-    <ul class="drafts" id="drafts"><li class="section-note">yükleniyor</li></ul>
-    <p class="status-line" id="drafts-status" role="status"></p>
-  </section>
-
-  <dialog id="revoke-dialog" class="revoke-dialog" aria-labelledby="revoke-title" aria-describedby="revoke-desc">
-    <form id="revoke-form" novalidate>
-      <h2 id="revoke-title">Kuralı geri al</h2>
-      <p id="revoke-desc"><b id="revoke-rule"></b> hemen durur ve kendiliğinden geri gelmez. Aynı desen ancak bundan sonraki
-        onaylarla yeniden taslak olur. Karar deftere yazılır.</p>
-      <label for="revoke-reason">Gerekçe</label>
-      <textarea id="revoke-reason" name="reason" rows="3" maxlength="280" required aria-describedby="revoke-hint revoke-error"></textarea>
-      <span class="field-hint" id="revoke-hint"><span id="revoke-count">0</span>/280 · Deftere yazılır. Kişi adı yazmayın.</span>
-      <span class="field-error" id="revoke-error" role="alert" hidden>Gerekçe yazın.</span>
-      <div class="btn-row">
-        <button type="button" class="btn" id="revoke-cancel">Vazgeç</button>
-        <button type="submit" class="btn btn-danger">Geri al</button>
+    <section aria-labelledby="drafts-title">
+      <div class="section-head">
+        <h2 id="drafts-title">Kural taslakları</h2>
+        <span class="section-note">aynı desende 30 günde en az 3 onay; benimseyen insan, süreli kural</span>
       </div>
-    </form>
-  </dialog>
-</main>
+      <ul class="drafts" id="drafts"><li class="section-note">yükleniyor</li></ul>
+      <p class="status-line" id="drafts-status" role="status"></p>
+    </section>
+
+    <dialog id="revoke-dialog" class="revoke-dialog" aria-labelledby="revoke-title" aria-describedby="revoke-desc">
+      <form id="revoke-form" novalidate>
+        <h2 id="revoke-title">Kuralı geri al</h2>
+        <p id="revoke-desc"><b id="revoke-rule"></b> hemen durur ve kendiliğinden geri gelmez. Aynı desen ancak bundan sonraki
+          onaylarla yeniden taslak olur. Karar deftere yazılır.</p>
+        <label for="revoke-reason">Gerekçe</label>
+        <textarea id="revoke-reason" name="reason" rows="3" maxlength="280" required aria-describedby="revoke-hint revoke-error"></textarea>
+        <span class="field-hint" id="revoke-hint"><span id="revoke-count">0</span>/280 · Deftere yazılır. Kişi adı yazmayın.</span>
+        <span class="field-error" id="revoke-error" role="alert" hidden>Gerekçe yazın.</span>
+        <div class="btn-row">
+          <button type="button" class="btn" id="revoke-cancel">Vazgeç</button>
+          <button type="submit" class="btn btn-danger">Geri al</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+</div>
 
 <footer class="wrap">
   <div>

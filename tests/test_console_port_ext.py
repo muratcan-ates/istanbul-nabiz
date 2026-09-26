@@ -139,7 +139,7 @@ def test_the_console_nav_lists_eight_sections_in_order() -> None:
         "#today", "#queue", "#report-map", "#citizen-requests", "#rules", "#nx-organs", "#approval-health", "#service-receipt",
     ]  # fmt: skip
     assert [t for _, t in links] == [
-        "Bugün", "Sinyal kutusu", "Bildirim haritası", "Talepler", "Kurallar", "NEXUS", "Sağlık", "Maliyet",
+        "Bugün", "Sinyal kutusu", "Bildirim haritası", "Talepler", "Kurallar", "Karar motoru", "Sağlık", "Maliyet",
     ]  # fmt: skip
     queue_title = re.search(r'<h2 id="queue-title">([^<]+)</h2>', source)
     assert queue_title is not None and dict((h, t) for h, t in links)["#queue"] == queue_title.group(1)
@@ -161,7 +161,9 @@ def test_the_console_nav_stays_visible_below_the_topbar() -> None:
     assert padding is not None and "--console-nav-h" in padding.group(1)
     assert not re.search(r"section\[id\][^{]*\{[^}]*scroll-margin-top", css), "scroll-padding and scroll-margin would add up"
     script = (STATIC / "js" / "console.js").read_text(encoding="utf-8")
-    assert "ResizeObserver" in script and "--console-topbar-h" in script
+    desk = (STATIC / "js" / "console_desk.js").read_text(encoding="utf-8")
+    assert "from './console_desk.js'" in script
+    assert "ResizeObserver" in desk and "--console-topbar-h" in desk
 
 
 def test_panel_sections_are_not_precreated() -> None:
@@ -180,11 +182,13 @@ def test_the_rules_section_and_dialog_are_labelled() -> None:
     assert '<h2 id="rules-title">Kurallar</h2>' in source
     assert '<dialog id="revoke-dialog"' in source and 'maxlength="280"' in source
     assert '<link rel="modulepreload" href="/js/console_rules.js">' in source
+    assert '<link rel="modulepreload" href="/js/console_desk.js">' in source
     assert source.count('<script type="module" src="/js/console.js"></script>') == 1
     assert 'src="/js/console_rules.js"' not in source  # imported by console.js, never a second entry
     script = (STATIC / "js" / "console.js").read_text(encoding="utf-8")
     assert "from './console_rules.js'" in script
-    assert all(word in script for word in ("nabiz:decided", "nabiz:ledger-changed", "MutationObserver"))
+    assert all(word in script for word in ("nabiz:decided", "nabiz:ledger-changed"))
+    assert "MutationObserver" in (STATIC / "js" / "console_desk.js").read_text(encoding="utf-8")
     rules = (STATIC / "js" / "console_rules.js").read_text(encoding="utf-8")
     assert "showModal" in rules and "'close'" in rules and "'cancel'" in rules
 

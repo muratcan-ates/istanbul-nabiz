@@ -4,16 +4,26 @@
   display: grid;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-surface);
-  background: var(--surface-raised);
 }
 
 .day h2,
 .day h3,
 .day p { margin: 0; }
 .day > .section-note { color: var(--text-muted); }
+.day > .brief { width: min(100%, 40rem); max-width: 40rem; overflow-wrap: anywhere; }
+.brief-lead { display: grid; gap: var(--space-1); }
+.brief-value.is-empty { font-size: var(--text-md); line-height: var(--leading-body); }
+.brief-effects { display: grid; gap: var(--space-2); }
+.brief-effects h3 { font-size: var(--text-sm); }
+#brief-impact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.brief-impact p { min-width: 0; overflow-wrap: anywhere; }
+.brief-action { min-width: 0; }
+.brief-action > .btn { justify-self: start; }
+.brief-action .day-copy-row { justify-items: start; }
+.brief-action .status-line { margin: 0; }
+.brief-foot { color: var(--text-subtle); font-size: var(--text-sm); }
+.day-details { display: grid; gap: var(--space-3); min-width: 0; overflow-wrap: anywhere; }
+.day-details > .section-note { color: var(--text-muted); }
 .day-open { display: grid; gap: var(--space-2); margin: 0; padding-inline-start: var(--space-5); }
 .day-open li { overflow-wrap: anywhere; }
 .day-open li p { color: var(--text-muted); }
@@ -31,7 +41,7 @@
 .day-trace:empty { display: none; }
 
 @media (max-width: 40rem) {
-  .day { padding: var(--space-3); }
+  #brief-impact { grid-template-columns: minmax(0, 1fr); }
   .day-table thead {
     position: absolute;
     width: 1px;
