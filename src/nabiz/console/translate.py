@@ -97,7 +97,7 @@ class Translation:
         return STATUS_TR[self.status]
 
 
-def guess_language(text: str, chosen: str | None = None) -> tuple[str, LangSource]:
+def guess_request_language(text: str, chosen: str | None = None) -> tuple[str, LangSource]:
     """The language of ``text`` without a model: its script, then Turkish or English words, then the choice."""
     counts: dict[str, int] = {}
     for char in text:
@@ -225,7 +225,7 @@ async def request_to_turkish(
     A request the input guard stopped is never sent to the model (``withheld``). Turkish text needs
     no translation. The model's language wins when it answered; otherwise the guess stands.
     """
-    guessed, source = guess_language(text, chosen)
+    guessed, source = guess_request_language(text, chosen)
     if guarded:
         return Translation(None, "withheld"), guessed, source
     if guessed == "tr" and source in {"alfabe", "anahtar"}:

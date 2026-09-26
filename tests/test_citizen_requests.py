@@ -378,10 +378,10 @@ def test_categories_and_summaries() -> None:
 
 
 def test_guess_language_and_parse_reply() -> None:
-    assert translate.guess_language("Kadıköy vapuru kaçta?") == ("tr", "anahtar")
-    assert translate.guess_language("Where is the bus stop?") == ("en", "anahtar")
-    assert translate.guess_language("Где остановка?") == ("ru", "alfabe")
-    assert translate.guess_language("Wo ist das?", "en") == ("en", "secim")
+    assert translate.guess_request_language("Kadıköy vapuru kaçta?") == ("tr", "anahtar")
+    assert translate.guess_request_language("Where is the bus stop?") == ("en", "anahtar")
+    assert translate.guess_request_language("Где остановка?") == ("ru", "alfabe")
+    assert translate.guess_request_language("Wo ist das?", "en") == ("en", "secim")
     assert translate.parse_reply('```json\n{"lang": "de", "text": "Merhaba"}\n```') == ("de", "Merhaba")
     for bad in (None, "", "Merhaba", '{"lang": "german", "text": "x"}', '{"lang": "de", "text": ""}', '{"text": 3}'):
         assert translate.parse_reply(bad) is None

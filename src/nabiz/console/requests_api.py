@@ -125,7 +125,7 @@ def request_desk(app: FastAPI) -> RequestDesk:
     return desk
 
 
-def is_emergency(text: str | None) -> bool:
+def request_is_emergency(text: str | None) -> bool:
     return bool(text) and (policy.emergency_intent(text) or classify(text)["emergency"])
 
 
@@ -202,7 +202,7 @@ async def _new_request(desk: RequestDesk, text: str, chosen: str | None) -> NewR
     guard = verdict.reason if verdict.reason in {"injection", "hidden_text"} else None
     masked, count, kinds = mask_labels(text)
     translation, lang, source = await request_to_turkish(desk.translator, masked, chosen, guarded=guard is not None)
-    if translation.status == "model" and is_emergency(translation.text):
+    if translation.status == "model" and request_is_emergency(translation.text):
         return None
     return NewRequest(
         original_masked=masked, masked_count=count, masked_kinds=kinds, lang=lang, lang_source=source,
@@ -218,7 +218,7 @@ async def create_request(request: Request, body: CitizenRequestBody) -> JSONResp
     text, problem = usable_text(body.text)
     if text is None:
         return port_problem(400, "bad_request", problem or "")
-    if is_emergency(text):
+    if request_is_emergency(text):
         return emergency_answer(text)
     desk = request_desk(request.app)
     if not desk.limit.allow(request.client.host if request.client else "unknown"):
