@@ -1,0 +1,158 @@
+/* v1: bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v1';
+const SHELL_CACHE = 'nabiz-shell-' + VERSION;
+const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
+const BRIEF_PATH = '/api/brief';
+const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html'];
+const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/'];
+const STATIC_FILES = ['/icons.svg', '/manifest.webmanifest'];
+const OPERATOR_PREFIX = 'console';
+const NETWORK_TIMEOUT_MS = 4000;
+const SHELL = [
+  '/', '/index.html', '/offline.html', '/kvkk.html', '/manifest.webmanifest',
+  '/css/tokens.css', '/css/base.css', '/css/components.css', '/css/citizen.css',
+  '/css/a11y.css', '/css/map.css', '/css/nearby.css', '/css/voice.css', '/css/share.css',
+  '/js/citizen.js', '/js/home.js', '/js/api.js', '/js/config.js', '/js/cards.js', '/js/chat.js',
+  '/js/profile.js', '/js/provenance.js', '/js/history.js', '/js/a11y.js', '/js/disclosure.js',
+  '/js/feedback.js', '/js/format.js', '/js/icons.js', '/js/theme.js', '/js/journey.js',
+  '/js/nearby.js', '/js/voice.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
+  '/icons.svg', '/fonts/nabiz-sans-tr-v1.woff2', '/icons/nabiz.svg',
+  '/icons/nabiz-192.png', '/icons/nabiz-512.png', '/icons/nabiz-maskable-512.png',
+];
+
+function ruleFor(url, method, mode) {
+  if (method !== 'GET') return 'pass';
+  const parsed = new URL(url, self.location.origin);
+  if (parsed.origin !== self.location.origin) return 'pass';
+  const path = parsed.pathname;
+  if (path === BRIEF_PATH) return 'brief';
+  if (path.startsWith('/api/')) return 'pass';
+  if (PAGES.includes(path)) return 'page';
+  if (mode === 'navigate') return 'pass';
+  const fileName = path.slice(path.lastIndexOf('/') + 1);
+  if (fileName.startsWith(OPERATOR_PREFIX)) return 'pass';
+  if (STATIC_FILES.includes(path) || STATIC_PREFIXES.some((prefix) => path.startsWith(prefix))) return 'static';
+  return 'pass';
+}
+
+function markSaved(body, savedAt) {
+  const cards = Array.isArray(body && body.cards) ? body.cards.map((card) => {
+    const provenance = { ...(card.provenance || {}) };
+    if (provenance.observed_at) provenance.mode = 'recorded';
+    else {
+      provenance.mode = 'unknown';
+      provenance.age_s = null;
+    }
+    return {
+      ...card,
+      status: card.status === 'ok' ? 'stale' : card.status,
+      provenance,
+    };
+  }) : [];
+  return { ...body, cards, saved_at: savedAt, from_device: true };
+}
+
+function staleCaches(keys) {
+  return keys.filter((key) => key.startsWith('nabiz-') && key !== SHELL_CACHE && key !== BRIEF_CACHE);
+}
+
+function briefMissingMessage(onLine) {
+  return onLine === false
+    ? 'Bağlantı yok ve bu cihazda kayıtlı kart yok.'
+    : 'Sunucuya ulaşılamıyor ve bu cihazda kayıtlı kart yok.';
+}
+
+function notifyClient(clientId, message) {
+  if (!clientId) return;
+  self.clients.get(clientId).then((client) => {
+    if (client) client.postMessage(message);
+  }).catch(() => {});
+}
+
+async function networkFirst(request, cacheName, fallback) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
+  try {
+    const response = await fetch(request, { signal: controller.signal });
+    if (response.ok) {
+      try { await (await caches.open(cacheName)).put(request, response.clone()); } catch (_) { /* Keep the network response usable. */ }
+    }
+    return response;
+  } catch (_) {
+    const cache = await caches.open(cacheName);
+    const saved = await cache.match(request, { ignoreSearch: true });
+    if (saved) return saved;
+    return fallback ? await cache.match(fallback) || new Response('Bağlantı yok. 153', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    }) : Promise.reject(_);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function briefResponse(request, event) {
+  try {
+    const response = await fetch(request);
+    if (!response.ok) return response;
+    try {
+      const savedAt = new Date().toISOString();
+      const headers = new Headers(response.headers);
+      headers.set('X-Nabiz-Saved-At', savedAt);
+      const stored = new Response(await response.clone().arrayBuffer(), {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+      await (await caches.open(BRIEF_CACHE)).put(BRIEF_PATH, stored);
+      notifyClient(event.clientId, { type: 'nabiz:brief', source: 'network', saved_at: null });
+    } catch (_) { /* A cache failure does not replace a valid response. */ }
+    return response;
+  } catch (_) {
+    let saved;
+    try { saved = await (await caches.open(BRIEF_CACHE)).match(BRIEF_PATH); } catch (_) { saved = null; }
+    if (!saved) return new Response(JSON.stringify({ error: 'offline', message: briefMissingMessage(self.navigator.onLine) }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    try {
+      const savedAt = saved.headers.get('X-Nabiz-Saved-At');
+      const body = markSaved(await saved.json(), savedAt);
+      notifyClient(event.clientId, { type: 'nabiz:brief', source: 'saved', saved_at: savedAt });
+      return new Response(JSON.stringify(body), {
+        headers: { 'Content-Type': 'application/json', 'X-Nabiz-Saved-At': savedAt || '' },
+      });
+    } catch (_) {
+      return new Response(JSON.stringify({ error: 'offline', message: briefMissingMessage(self.navigator.onLine) }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+}
+
+if (typeof self !== 'undefined' && self.addEventListener) {
+  self.addEventListener('install', (event) => {
+    event.waitUntil((async () => {
+      const cache = await caches.open(SHELL_CACHE);
+      await Promise.all(SHELL.map((path) => cache.add(path).catch(() => {})));
+      await self.skipWaiting();
+    })());
+  });
+  self.addEventListener('activate', (event) => {
+    event.waitUntil((async () => {
+      const keys = await caches.keys();
+      await Promise.all(staleCaches(keys).map((key) => caches.delete(key)));
+      await self.clients.claim();
+    })());
+  });
+  self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const rule = ruleFor(request.url, request.method, request.mode);
+    if (rule === 'page') event.respondWith(networkFirst(request, SHELL_CACHE, '/offline.html'));
+    else if (rule === 'static') event.respondWith(networkFirst(request, SHELL_CACHE, null));
+    else if (rule === 'brief') event.respondWith(briefResponse(request, event));
+  });
+}
+
+if (typeof self !== 'undefined') self.nabizSw = { VERSION, ruleFor, markSaved, staleCaches, briefMissingMessage, SHELL };
