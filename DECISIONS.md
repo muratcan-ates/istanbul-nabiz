@@ -2494,3 +2494,24 @@ come from the cache, the robots snapshots and the code.
 
 - Lower sections still carry several filled buttons (map, stops, example sign-ins); making them secondary is left
   for a later pass. Scrolling the answer into view is E45's job.
+
+## 61. The answer card: one anatomy, the answer in view (E45, 26 Sep)
+
+### Decision
+
+- Every answer card follows one anatomy: author and source line, a freshness badge ("kayıtlı · saat"), the body,
+  then quiet actions. An ordinary answer card has no filled button; a refusal or unknown card has one primary action,
+  "153'e sor", beside "Bu nasıl bulundu?". The emergency card is unchanged.
+- The answer is brought into view when it arrives (instantly under reduced motion). "Durdur" appears only while an
+  answer is streaming; "Kopyala" copies the visible text with its source and freshness; at most two follow-up chips.
+- Service worker v13 carries `answer_actions.js`.
+
+## 62. The console: a decision desk first (E46, 26 Sep)
+
+### Decision
+
+- The signal inbox and the decision card are the first section. The card has one primary action, "Onayla", in a
+  sticky action bar (Onayla, Reddet, Düzenle, Ertele); "Reddet" is secondary and not red; reason codes open inline
+  only when a reason is needed. "Son karar" is renamed "Karar son tarihi".
+- A shift summary card (one number, three columns, effects, suggested action, source line) reads only the ledger.
+  System panels and the ledger drill sit in disclosures; the menu entry "NEXUS" reads "Karar motoru".
