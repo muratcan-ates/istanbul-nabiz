@@ -1,0 +1,14 @@
+.rm-controls { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.rm-controls .btn, .rm-row { min-height: var(--tap); }
+.rm-canvas { height: 320px; border: 1px solid var(--border); }
+.rm-row { width: 100%; min-width: 0; text-align: start; white-space: normal; overflow-wrap: anywhere; }
+.rm-row.is-closed { color: var(--text-muted); }
+.rm-note, .rm-empty { color: var(--text-muted); }
+.rm-list { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.rm-list > li { min-width: 0; }
+.rm-dot { stroke: var(--accent); fill: var(--accent-subtle); fill-opacity: 0.6; stroke-width: 2; }
+.rm-dot.is-conflict { stroke: var(--warn); stroke-dasharray: 4 3; }
+.rm-label { border-color: var(--border); color: var(--text); background: var(--surface); font-weight: var(--weight-semibold); }
+.rm-row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (min-width: 900px) { .rm-canvas { height: 400px; } }
+@media (forced-colors: active) { .rm-dot { stroke: CanvasText; } }
