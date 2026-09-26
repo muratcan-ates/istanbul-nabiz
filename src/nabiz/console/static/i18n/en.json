@@ -102,9 +102,9 @@
   "fixed.ai_notice": "I am the Istanbul city information assistant and I use artificial intelligence. I am not an official who makes decisions.",
   "dyn.who_user": "You",
   "dyn.who_assistant": "Assistant",
-  "dyn.answer_short": "SHORT ANSWER",
-  "dyn.how": "HOW TO",
-  "dyn.source": "SOURCE",
+  "dyn.answer_short": "Short answer",
+  "dyn.how": "How to",
+  "dyn.source": "Source",
   "dyn.no_source": "No source.",
   "dyn.open_source": "Open official source",
   "dyn.ask_153": "Ask 153",
@@ -319,5 +319,11 @@
   "dyn.handoff_tid": "Video call in Turkish Sign Language",
   "dyn.handoff_operator": "Send to an operator",
   "dyn.handoff_emergency": "Emergency: 112",
-  "dyn.handoff_close": "Close"
+  "dyn.handoff_close": "Close",
+  "dyn.copy": "Copy",
+  "dyn.copied": "Copied.",
+  "dyn.copy_failed": "Could not copy; you can select the text and copy it.",
+  "dyn.next_title": "You could also ask",
+  "dyn.stop": "Stop",
+  "dyn.stopped": "Answer stopped."
 }
