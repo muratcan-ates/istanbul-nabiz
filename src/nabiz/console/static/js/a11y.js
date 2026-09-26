@@ -85,8 +85,8 @@ function mountA11y() {
     textButton.className = 'btn';
     textButton.id = 'text-toggle';
     textButton.textContent = 'Büyük yazı';
-    const simpleButton = actions.querySelector('#simple-toggle');
-    actions.insertBefore(textButton, simpleButton || actions.firstChild);
+    const simpleButton = document.querySelector('#simple-toggle');
+    (simpleButton?.parentElement || actions).insertBefore(textButton, simpleButton || actions.firstChild);
   }
   let panelButton = document.querySelector('#a11y-toggle');
   if (!panelButton) {
@@ -97,7 +97,8 @@ function mountA11y() {
     panelButton.setAttribute('aria-expanded', 'false');
     panelButton.setAttribute('aria-controls', 'a11y-panel');
     panelButton.textContent = 'Erişilebilirlik';
-    actions.insertBefore(panelButton, actions.querySelector('#simple-toggle') || null);
+    const simpleButton = document.querySelector('#simple-toggle');
+    (simpleButton?.parentElement || actions).insertBefore(panelButton, simpleButton || null);
   }
   panelButton.setAttribute('aria-expanded', panelButton.getAttribute('aria-expanded') || 'false');
   panelButton.setAttribute('aria-controls', 'a11y-panel');
@@ -124,6 +125,13 @@ function mountA11y() {
     const topbar = document.querySelector('.topbar');
     if (topbar) topbar.insertAdjacentElement('afterend', panel);
     else actions.insertAdjacentElement('afterend', panel);
+  }
+
+  const quick = document.createElement('div');
+  quick.className = 'a11y-quick';
+  panel.querySelector('h2')?.insertAdjacentElement('afterend', quick);
+  for (const control of [textButton, document.querySelector('#simple-toggle'), document.querySelector('#theme-toggle')]) {
+    if (control) quick.appendChild(control);
   }
 
   const status = panel.querySelector('#a11y-status');
