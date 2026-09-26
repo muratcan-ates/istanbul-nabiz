@@ -192,6 +192,24 @@ def test_metrics_follow_the_eval_files(tmp_path) -> None:
     assert changed["display"] == "9,87 dk" and changed["value"] == 9.87
 
 
+def test_the_numbers_sheet_rows_follow_numbers_md(tmp_path) -> None:
+    numbers = REPO_ROOT / "eval" / "results" / "numbers.md"
+    text = numbers.read_text(encoding="utf-8")
+    passed = int(re.search(r"\| Tests passed \| (\d+) \|", text).group(1))
+    real = payload()
+    assert metric(real, "tests_passed")["value"] == passed
+    assert metric(real, "tests_passed")["display"] == f"{passed:,}".replace(",", ".")
+    assert metric(real, "tests_passed")["source"] == "eval/results/numbers.md"
+    assert metric(real, "tests_passed")["measured_on"] == re.search(r"Measured (\d{4}-\d{2}-\d{2})T", text).group(1)
+    assert metric(real, "eval_passed")["value"] == int(re.search(r"\| Eval scenarios passed \| (\d+) \|", text).group(1))
+
+    root, _, _ = results_copy(tmp_path)
+    assert metric(payload(root=root), "tests_passed")["status"] == "ölçülmedi"  # no sheet, no number
+    sheet = root / "eval" / "results" / "numbers.md"
+    sheet.write_text(text.replace(f"| Tests passed | {passed} |", "| Tests passed | 7 |"), encoding="utf-8")
+    assert metric(payload(root=root), "tests_passed")["display"] == "7"
+
+
 def test_a_metric_without_its_row_is_not_measured(tmp_path) -> None:
     root, eta, _ = results_copy(tmp_path)
     eta.write_text(

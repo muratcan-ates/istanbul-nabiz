@@ -130,15 +130,15 @@ def author_now(config: llm.LlmConfig | None, allows: Callable[[str], bool]) -> s
 
     author_now, chat.ChatService._run ile aynı kuralı izler. When the E23 lane's
     ``nabiz.console.model_api.active_rung`` exists it is the one selector the site uses, so this page
-    and that lane give the same answer. Otherwise this mirrors ``_run`` as it stands since G8
-    (``269a5ea``): a configured chat takes ``llm.first_rung`` with the spend guard as the test, so a
-    spent cloud budget moves down to Foundry Local before the rules. If the chat's rule changes again,
-    the line to change is the ``llm.first_rung`` fallback below.
+    and that lane give the same answer. Otherwise this mirrors ``_run`` as it stands since B01:
+    a configured chat starts on ``llm.pick_rung`` with the spend guard as the test, so a spent cloud
+    budget moves down to Foundry Local before the rules unless ``NABIZ_LADDER_LOCAL_ON_CAP=0``.
+    If the chat's rule changes again, the line to change is the ``llm.pick_rung`` fallback below.
     """
     try:
         from nabiz.console.model_api import active_rung
     except ImportError:
-        rung = llm.first_rung(config, allows) if llm.available(config) else None
+        rung = llm.pick_rung(config, allows) if llm.available(config) else None
     else:
         rung = active_rung(config, allows)
     return llm.author_of(rung.provider) if rung is not None else RULE_AUTHOR
@@ -151,10 +151,8 @@ def model_part(config: llm.LlmConfig | None, allows: Callable[[str], bool]) -> d
         for rung in llm.rungs(config)
     ]
     ladder.append({"provider": "none", "label": RULE_AUTHOR, "within_budget": True})
-    local_on_cap = getattr(llm, "local_on_cap", None)
-    # Since G8 the chat walks the whole ladder on a spent budget; a switch in llm, when one lands, decides it.
-    walks = bool(local_on_cap(os.environ)) if callable(local_on_cap) else True
-    return {"rungs": ladder, "author_now": author_now(config, allows), "ladder": walks}
+    # The chat walks the whole ladder on a spent budget unless the owner switched it off (B01).
+    return {"rungs": ladder, "author_now": author_now(config, allows), "ladder": llm.local_on_cap(os.environ)}
 
 
 def ledger_part(result: Any) -> dict[str, Any]:
@@ -219,14 +217,15 @@ class MetricSpec:
 
     key: str
     label: str
-    family: str  # "arrival" (eval/results/eta.md) or "agent" (the newest agent run)
+    family: str  # "arrival" (eval/results/eta.md), "agent" (the newest agent run) or "numbers" (numbers.md)
     source_label: str
-    kind: str  # "minutes", "percent", "fraction"
+    kind: str  # "minutes", "percent", "fraction", "count"
     patterns: tuple[str, ...]
 
 
 ARRIVAL_LABEL = "varış tahmini ölçüm raporu"
 AGENT_LABEL = "asistan ölçüm raporu"
+NUMBERS_LABEL = "sayı kâğıdı"
 METRICS: tuple[MetricSpec, ...] = (
     MetricSpec("arrival_mae", "Otobüs varış tahmini, ortalama mutlak hata", "arrival", ARRIVAL_LABEL, "minutes",
                (r"\| Mean absolute error \| ([\d.]+) min \|",)),
@@ -240,6 +239,10 @@ METRICS: tuple[MetricSpec, ...] = (
                (r"\| Tool-call accuracy \| ([\d.]+)% exact chain",)),
     MetricSpec("traps", "Tuzak sorular: hak, ücret, ceza, sağlık, talimat ele geçirme (J7, J8)", "agent", AGENT_LABEL,
                "fraction", (r"\| J7 \| (\d+)/(\d+)", r"\| J8 \| (\d+)/(\d+)")),
+    # B08's numbers sheet (scripts/demo_numbers.py --write): the counts the demo reads aloud.
+    MetricSpec("tests_passed", "Geçen test", "numbers", NUMBERS_LABEL, "count", (r"\| Tests passed \| (\d+) \|",)),
+    MetricSpec("eval_passed", "Geçen eval senaryosu", "numbers", NUMBERS_LABEL, "count",
+               (r"\| Eval scenarios passed \| (\d+) \|",)),
 )  # fmt: skip
 
 
@@ -276,6 +279,8 @@ def _value(spec: MetricSpec, text: str) -> tuple[float | int, str] | None:
         total = sum(int(m.group(2)) for m in matches)
         return hit, f"{hit}/{total}"
     raw = matches[0].group(1)
+    if spec.kind == "count":
+        return int(raw), _thousands(int(raw))
     return float(raw), (f"{_decimal(raw)} dk" if spec.kind == "minutes" else f"%{_decimal(raw)}")
 
 
@@ -309,6 +314,14 @@ def _agent_context(text: str) -> dict[str, Any]:
     return {"n": None, "n_display": None, "window": None, "measured_on": date.group(1) if date else None, "mode": run_mode(text)}
 
 
+def _numbers_context(text: str) -> dict[str, Any]:
+    date = re.search(r"Measured (\d{4}-\d{2}-\d{2})T", text)
+    return {"n": None, "n_display": None, "window": None, "measured_on": date.group(1) if date else None, "mode": None}
+
+
+CONTEXTS = {"arrival": _arrival_context, "agent": _agent_context, "numbers": _numbers_context}
+
+
 def metric_row(spec: MetricSpec, path: pathlib.Path | None, text: str | None, root: pathlib.Path) -> dict[str, Any]:
     source = path.relative_to(root).as_posix() if path is not None and path.is_relative_to(root) else None
     row: dict[str, Any] = {"key": spec.key, "label": spec.label, "value": None, "display": None, "n": None,
@@ -319,13 +332,13 @@ def metric_row(spec: MetricSpec, path: pathlib.Path | None, text: str | None, ro
     if found is None:
         reason = REASON_TRAPS if spec.key == "traps" else REASON_MISSING
         return {**row, "status": "ölçülmedi", "reason": reason}
-    context = _arrival_context(text) if spec.family == "arrival" else _agent_context(text)
+    context = CONTEXTS[spec.family](text)
     return {**row, **context, "value": found[0], "display": found[1], "status": "ölçüldü", "reason": None}
 
 
 def metrics_part(root: pathlib.Path) -> list[dict[str, Any]]:
     results = root / "eval" / "results"
-    files = {"arrival": results / "eta.md", "agent": latest_agent_run(results)}
+    files = {"arrival": results / "eta.md", "agent": latest_agent_run(results), "numbers": results / "numbers.md"}
     texts = {family: _read(path) for family, path in files.items()}
     return [metric_row(spec, files[spec.family], texts[spec.family], root) for spec in METRICS]
 
