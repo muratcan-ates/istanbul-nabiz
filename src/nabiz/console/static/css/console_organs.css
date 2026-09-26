@@ -1,0 +1,27 @@
+/* NEXUS organ map: shared console tokens keep every state legible without colour alone. */
+
+.nx-organs { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-3); padding: 0; list-style: none; }
+.nx-organ { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
+.nx-organ-title { display: flex; align-items: center; gap: var(--space-2); }
+.nx-organ-what, .nx-organ-detail, .nx-organ-last { color: var(--text-muted); font-size: var(--text-sm); }
+.nx-organ-count { font-weight: var(--weight-semibold); }
+.nx-organ-last { color: var(--text-subtle); }
+.nx-organ[data-state="broken"] { border-color: var(--bad); }
+.nx-organ[data-state="active"] { border-color: var(--ok); }
+.nx-metro-empty { border-style: dashed; }
+.nx-loop { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0; list-style: none; }
+.nx-loop li { display: flex; flex: 1 1 8rem; flex-direction: column; gap: var(--space-1); min-width: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--text-muted); font-size: var(--text-sm); }
+.nx-loop li::after { align-self: flex-end; content: "→"; color: var(--text-subtle); }
+.nx-loop li:last-child::after { content: ""; }
+.nx-loop-count { color: var(--text); font-size: var(--text-lg); font-weight: var(--weight-bold); }
+.nx-drill { display: grid; gap: var(--space-2); }
+.nx-drill-lead { color: var(--text-muted); font-size: var(--text-sm); }
+.nx-drill-card { margin-top: var(--space-2); }
+@media (prefers-reduced-motion: no-preference) { .nx-organ[data-state="active"] { animation: nx-organ-pulse 700ms ease-out 1; } }
+@keyframes nx-organ-pulse { from { box-shadow: 0 0 0 0 var(--ok); } to { box-shadow: 0 0 0 4px transparent; } }
+@media (max-width: 480px) {
+  .nx-organs { grid-template-columns: 1fr; }
+  .nx-loop { flex-direction: column; }
+  .nx-loop li::after { content: "↓"; }
+}
+@media (forced-colors: active) { .nx-organ, .nx-loop li, .nx-metro-empty { border: 1px solid CanvasText; } }
