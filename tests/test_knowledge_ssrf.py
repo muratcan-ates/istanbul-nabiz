@@ -37,16 +37,13 @@ SUBDOMAINS = (
     "uploads",
     "yuvamiz",
 )
-#: Seed hosts that stay out after Q1 = A and Q2 = E. Store apps, other utilities and the card's
-#: account subdomain are not reviewed sources; the last five rows are control records, not crawl seeds.
+#: Seed hosts that stay out after Q1 = A, Q2 = E and E26. Store apps, the central e-government portal and
+#: login/booking subdomains are not reviewed sources; the last five rows are control records, not crawl seeds.
 REJECTED_HOSTS = {
     "www.turkiye.gov.tr",
     "bireysel." + "istanbulkart" + ".istanbul",
-    "www." + "igdas" + ".istanbul",
     "online." + "spor" + ".istanbul",
     "event." + "spor" + ".istanbul",
-    "kultur" + ".istanbul",
-    "www." + "ihe" + ".istanbul",
     "apps.apple.com",
     "play.google.com",
     "www.iski.gov.tr",
@@ -62,15 +59,44 @@ def test_parsers_never_shell_out() -> None:
         assert needle not in text, needle
 
 
+#: E26: İBB affiliates' own public sites (İGDAŞ, Kültür AŞ, İstanbul Halk Ekmek), apex and www, exact.
+AFFILIATE_HOSTS = tuple(
+    prefix + name + ".istanbul" for name in ("igdas", "kultur", "ihe") for prefix in ("", "www.")
+)
+
+
 def test_seed_counts_after_q1() -> None:
     rows = parse_knowledge_sources(SOURCES)
     accepted = [row for row in rows if is_allowed_url(row.url)]
     rejected = [row for row in rows if not is_allowed_url(row.url)]
-    assert (len(rows), len(accepted), len(rejected)) == (73, 59, 14)
-    # mevzuat.gov.tr has two rows, so 14 rejected rows cover 13 hosts.
+    assert (len(rows), len(accepted), len(rejected)) == (330, 319, 11)
+    assert len({row.url for row in rows}) == len(rows), "duplicate URL in sources.txt"
+    crawl = [row for row in accepted if row.crawlable]
+    assert len(crawl) == 314
+    # mevzuat.gov.tr has two rows, so 11 rejected rows cover 10 hosts.
     assert {urlsplit(row.url).hostname for row in rejected} == REJECTED_HOSTS
     # Q2 = E: the card's public site is in, exact host only.
     assert "www." + "istanbulkart" + ".istanbul" in {urlsplit(row.url).hostname for row in accepted}
+
+
+def test_e26_section_is_crawlable_and_inside_the_allowlist() -> None:
+    lines = SOURCES.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("# ===== BÖLÜM 5: E26"))
+    e26 = {line.split("\t", 1)[0] for line in lines[start:] if line.startswith("https://")}
+    rows = [row for row in parse_knowledge_sources(SOURCES) if row.url in e26]
+    assert len(rows) == len(e26) == 257
+    assert all(row.crawlable and row.verified and is_allowed_url(row.url) for row in rows)
+
+
+@pytest.mark.parametrize("host", AFFILIATE_HOSTS)
+def test_affiliate_hosts_are_exact_and_redirect_safe(host: str) -> None:
+    assert is_allowed_url(f"https://{host}/")
+    # Exact entries, so a server-chosen hop may land on them too.
+    assert is_allowed_redirect(f"https://{host}/x")
+    # Not suffix domains: a subdomain or a look-alike stays out.
+    assert not is_allowed_url(f"https://intranet.{host}/")
+    assert not is_allowed_url(f"https://evil{host}/")
+    assert not is_allowed_url(f"https://{host}.evil.example/")
 
 
 def test_every_ibb_istanbul_seed_host_is_accepted() -> None:

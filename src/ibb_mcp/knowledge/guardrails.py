@@ -35,6 +35,14 @@ DEFAULT_ALLOWLIST = frozenset(
         "www." + "istanbulkart" + ".istanbul",
         "sehirhatlari.istanbul",
         "spor.istanbul",
+        # E26 (26 Sep, owner's request): İBB affiliates' own public sites, apex and www only.
+        # İGDAŞ (gas), Kültür AŞ and İstanbul Halk Ekmek; their subdomains are not reviewed.
+        "igdas" + ".istanbul",
+        "www." + "igdas" + ".istanbul",
+        "kultur" + ".istanbul",
+        "www." + "kultur" + ".istanbul",
+        "ihe" + ".istanbul",
+        "www." + "ihe" + ".istanbul",
     }
 )
 #: Municipal domains whose subdomains count as reviewed, when the domain itself is in the list.
