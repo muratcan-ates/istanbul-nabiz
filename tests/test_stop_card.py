@@ -355,7 +355,7 @@ def test_module_imports_stay_in_the_facade() -> None:
             assert "ibb_mcp.tools" not in imports and "nabiz.console.arrival" not in imports
 
 
-def test_console_app_serves_the_stop_card_once_wired(nabiz: Nabiz) -> None:
+def test_console_app_serves_the_stop_card(nabiz: Nabiz) -> None:
     from nabiz.console.app import build_console_app
 
     app = build_console_app(
@@ -364,8 +364,6 @@ def test_console_app_serves_the_stop_card_once_wired(nabiz: Nabiz) -> None:
         llm_config=llm.LlmConfig(),
         guard=SpendGuard(BudgetConfig(state_path=None)),
     )
-    if not any(getattr(route, "path", None) == "/d/{code}" for route in app.routes):
-        pytest.skip("app.py'ye henüz bağlanmadı (entegratör)")
     with TestClient(app) as client:
         response = client.get("/d/401351")
     assert response.status_code == 200

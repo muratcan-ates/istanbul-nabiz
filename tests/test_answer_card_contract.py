@@ -114,9 +114,12 @@ def test_tool_citations_carry_mode_and_age(
     assert metro["citations"]
     assert set(metro["citations"][0]) >= {"source", "url", "observed_at", "age_s", "mode"}
     assert metro["citations"][0]["mode"] == "recorded"
+    # Since the 26 Sep Metro equipment recording (93c16bf) the lift answer is recorded too; the
+    # no-recording case (mode "unknown", no age) lives in test_console_chat.
     station = _final_for(nabiz, "Kartal metro istasyonunda asansör var mı?")
-    assert station["citations"][0]["mode"] == "unknown"
-    assert station["citations"][0]["age_s"] is None
+    lift = [item for item in station["citations"] if item.get("source") == "metro_equipment"]
+    assert lift and all(item["mode"] == "recorded" for item in lift)
+    assert all(item["observed_at"] is not None for item in lift)
 
 
 def test_card_files_follow_the_page_rules() -> None:
