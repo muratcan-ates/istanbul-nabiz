@@ -5,8 +5,10 @@ import json
 
 from test_knowledge_store import seed_page
 
-from ibb_mcp.knowledge.answer import answer
+from ibb_mcp.knowledge.answer import answer, assess_evidence, evidence_thresholds, lexical_coverage
 from ibb_mcp.knowledge.embed import HashingEmbedder
+from ibb_mcp.knowledge.retrieve import Hit
+from ibb_mcp.knowledge.stopwords_tr import FOLDED_FUNCTION_WORDS_TR
 from ibb_mcp.knowledge.store import KnowledgeStore
 
 
@@ -74,3 +76,58 @@ def test_model_never_writes_url_or_quote_only_evidence_ids(tmp_path) -> None:
     )
     assert result.mode == "unknown"
     assert prompts and "untrusted evidence data" in prompts[0]
+
+
+# -- the evidence thresholds, measured 26 Sep (DECISIONS #36) -------------------------------------
+def _hit(quote: str, *, bm25: float | None = None, cosine: float | None = None, quote_id: str = "q1") -> Hit:
+    return Hit(
+        chunk_id="c1", quote_id=quote_id, url="https://www.iski.istanbul/abonelik", title="t", quote=quote, score=1.0,
+        fetched_at="2026-09-26T00:00:00+00:00", source_updated_at=None, institution="ISKI", page_number=None,
+        section_title=None, cosine=cosine, bm25=bm25,
+    )  # fmt: skip
+
+
+STATEMENT = "Gece Metrosu, Cuma'yı Cumartesi'ye ve Cumartesi'yi Pazar'a bağlayan gecelerde gerçekleştirilecektir."
+
+
+def test_a_stronger_bm25_match_is_better_evidence_not_worse() -> None:
+    """FTS5 scores are negative, and their magnitude grows with the match; the first version compared the
+    smallest magnitude against a ceiling, so on the real index nothing was sufficient."""
+    query = "Gece metrosu hangi günler çalışıyor?"
+    strong = assess_evidence([_hit(STATEMENT, bm25=17.2), _hit(STATEMENT, bm25=3.0, quote_id="q2")], query=query)
+    weak = assess_evidence([_hit(STATEMENT, bm25=9.0)], query=query)
+    assert strong.level == "sufficient" and strong.best_bm25 == 17.2
+    assert weak.level == "weak"
+
+
+def test_function_words_are_folded_before_coverage() -> None:
+    """"nasıl" folds to "nasil"; unfolded, it counted as a distinctive word and any "... nasıl yapılır?"
+    heading covered the question."""
+    unrelated = _hit("Spor okulu iade işlemleri nasıl yapılır diye sorulur.")
+    assert lexical_coverage("Pasaport başvurusu nasıl yapılır?", [unrelated]) == 0.0
+    assert {"nasil", "icin", "yapilir", "cok"} <= FOLDED_FUNCTION_WORDS_TR
+
+
+def test_the_first_quote_carries_the_verdict() -> None:
+    """Coverage is read on the first quote, the one an answer shows first; a better quote further down the
+    list does not lift a first quote that misses the question."""
+    query = "Gece metrosu hangi günler çalışıyor?"
+    off_topic = _hit("Spor salonu üyelik iade işlemleri şubelerden yapılır.", bm25=20.0)
+    assert assess_evidence([off_topic, _hit(STATEMENT, bm25=19.0, quote_id="q2")], query=query).level != "sufficient"
+    assert assess_evidence([_hit(STATEMENT, bm25=20.0), off_topic], query=query).level == "sufficient"
+
+
+def test_a_sensitive_question_with_weak_evidence_gets_no_quote(tmp_path, monkeypatch) -> None:
+    """A weak match on a fare question is not quoted: a wrong page's sentence would read like İBB's answer."""
+    monkeypatch.setenv("NABIZ_KNOWLEDGE_FTS_MIN", "1000")
+    store = make_store(tmp_path, "Su abonelik ücreti başvuru sırasında resmî kaynakta açıklanır.")
+    result = asyncio.run(answer("Su abonelik ücreti nedir?", store=store, embedder=None, sensitive=True))
+    assert result.mode == "unknown" and result.refused and not result.citations
+
+
+def test_the_thresholds_are_knobs_with_measured_defaults(monkeypatch) -> None:
+    for knob in ("MIN_COSINE", "FTS_MIN", "MIN_COVERAGE", "COVERAGE_CEILING"):
+        monkeypatch.delenv(f"NABIZ_KNOWLEDGE_{knob}", raising=False)
+    assert evidence_thresholds() == {"min_cosine": 0.35, "fts_min": 16.0, "min_coverage": 0.5, "coverage_ceiling": 0.27}
+    monkeypatch.setenv("NABIZ_KNOWLEDGE_FTS_MIN", "9")
+    assert evidence_thresholds()["fts_min"] == 9.0

@@ -11,7 +11,7 @@ from pydantic import Field
 
 from ibb_mcp.models import Provenance, ToolResult, utcnow
 
-from .answer import assess_evidence
+from .answer import assess_evidence, evidence_thresholds
 from .embed import Embedder
 from .retrieve import search
 from .store import KnowledgeStore
@@ -44,7 +44,7 @@ async def ibb_services_search(
     hits = await search(store, query, embedder=embedder, limit=limit)
     latest = max((dt.datetime.fromisoformat(hit.fetched_at.replace("Z", "+00:00")) for hit in hits), default=None)
     source_url = hits[0].url if hits else "data/knowledge/sources.txt"
-    evidence = assess_evidence(hits, query=query)
+    evidence = assess_evidence(hits, query=query, **evidence_thresholds())
     return ToolResult(
         data={
             "query": query,

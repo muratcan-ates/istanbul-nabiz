@@ -12,7 +12,9 @@ from ibb_mcp.knowledge.ingest import html_to_blocks
 from ibb_mcp.knowledge.store import KnowledgePage, KnowledgeStore
 
 
-def test_twenty_question_fixture_all_cited_quotes_verbatim_in_source(tmp_path) -> None:
+def test_twenty_question_fixture_all_cited_quotes_verbatim_in_source(tmp_path, monkeypatch) -> None:
+    # A one-page index scores BM25 near zero; the FTS floor is the real index's scale (DECISIONS #36).
+    monkeypatch.setenv("NABIZ_KNOWLEDGE_FTS_MIN", "0")
     root = pathlib.Path(__file__).parent / "fixtures/knowledge"
     page = html_to_blocks((root / "services.html").read_text(encoding="utf-8"))
     source = "\n\n".join(block.text for block in page.blocks)

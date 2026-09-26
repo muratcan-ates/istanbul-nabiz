@@ -557,6 +557,8 @@ def with_index(monkeypatch: pytest.MonkeyPatch, tmp_path: Any, *quotes: str) -> 
     for quote in quotes:
         seed_page(KnowledgeStore(store_path), quote)
     monkeypatch.setenv("NABIZ_KNOWLEDGE_DB", str(store_path))
+    # A one-page index scores BM25 near zero; the FTS floor is the real index's scale (DECISIONS #36).
+    monkeypatch.setenv("NABIZ_KNOWLEDGE_FTS_MIN", "0")
     monkeypatch.delenv("NABIZ_LLM_BASE_URL", raising=False)
     monkeypatch.delenv("NABIZ_LLM_API_KEY", raising=False)
 

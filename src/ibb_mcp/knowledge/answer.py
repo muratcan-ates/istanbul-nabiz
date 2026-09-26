@@ -15,7 +15,7 @@ from ibb_mcp.text import looks_like_instruction, normalize_tr
 from .embed import Embedder
 from .guardrails import clean_for_display, mask_personal, verify_evidence
 from .retrieve import Hit, search
-from .stopwords_tr import FUNCTION_WORDS_TR
+from .stopwords_tr import FOLDED_FUNCTION_WORDS_TR
 from .store import KnowledgeStore
 
 EvidenceLevel = Literal["sufficient", "weak", "out_of_scope"]
@@ -72,40 +72,55 @@ class KnowledgeAnswer:
         }
 
 
+#: Measured on the local index, 26 Sep (``scripts/knowledge_calibration.py``, DECISIONS #36): lexical only,
+#: no query embedding. The cosine floor is still unmeasured: the offline chat embeds no query.
+MIN_COSINE = 0.35
+FTS_MIN = 16.0
+MIN_COVERAGE = 0.5
+COVERAGE_CEILING = 0.27
+#: At most this many quotes answer a question.
+SHOWN_QUOTES = 3
+
+
+def _terms(text: str) -> set[str]:
+    return set(normalize_tr(text).split()) - FOLDED_FUNCTION_WORDS_TR
+
+
 def lexical_coverage(query: str, hits: Sequence[Hit]) -> float:
     """Fraction of distinctive query terms present in the best single quotation."""
-    tokens = set(normalize_tr(query).split()) - FUNCTION_WORDS_TR
+    tokens = _terms(query)
     if not tokens:
         return 0.0
-    return max(
-        (len(tokens & (set(normalize_tr(hit.quote).split()) - FUNCTION_WORDS_TR)) / len(tokens) for hit in hits),
-        default=0.0,
-    )
+    return max((len(tokens & _terms(hit.quote)) / len(tokens) for hit in hits), default=0.0)
 
 
 def assess_evidence(
     hits: Sequence[Hit],
     *,
     query: str,
-    min_cosine: float = 0.35,
-    fts_ceiling: float = 1.0,
-    coverage_ceiling: float = 0.27,
+    min_cosine: float = MIN_COSINE,
+    fts_min: float = FTS_MIN,
+    min_coverage: float = MIN_COVERAGE,
+    coverage_ceiling: float = COVERAGE_CEILING,
 ) -> RetrievalAssessment:
-    """Apply provisional, unmeasured dense, FTS and lexical thresholds."""
-    coverage = lexical_coverage(query, hits)
+    """The evidence level of a search, judged on its first quote: the one an answer shows first.
+
+    ``best_bm25`` is the strongest lexical match, the largest ``|bm25|`` (FTS5's score is negative and
+    larger in magnitude when the match is better; the first version compared the smallest one against a
+    ceiling, so on a real index nothing was ever sufficient). A lexical match is sufficient when it is
+    that strong and its first quote carries at least ``min_coverage`` of the question's distinctive words.
+    The ``fts_min`` scale belongs to this index: BM25 grows with the index's size.
+    """
+    coverage = lexical_coverage(query, hits[:1])
     cosine_values = [hit.cosine for hit in hits if hit.cosine is not None]
     bm25_values = [hit.bm25 for hit in hits if hit.bm25 is not None]
     best_cosine = max(cosine_values, default=None)
-    best_bm25 = min(bm25_values, default=None)
+    best_bm25 = max(bm25_values, default=None)
     if best_cosine is not None and best_cosine >= min_cosine:
         level: EvidenceLevel = "sufficient"
-    elif best_bm25 is not None and best_bm25 <= fts_ceiling and coverage >= 0.35:
+    elif best_bm25 is not None and best_bm25 >= fts_min and coverage >= min_coverage:
         level = "sufficient"
-    elif (
-        coverage < coverage_ceiling
-        and (best_cosine is None or best_cosine < min_cosine)
-        and (best_bm25 is None or best_bm25 > fts_ceiling)
-    ):
+    elif coverage < coverage_ceiling and (best_cosine is None or best_cosine < min_cosine):
         level = "out_of_scope"
     else:
         level = "weak"
@@ -123,9 +138,10 @@ def _env_float(name: str, default: float) -> float:
 def evidence_thresholds() -> dict[str, float]:
     """The thresholds :func:`answer` applies: the ``NABIZ_KNOWLEDGE_*`` knobs, else the defaults."""
     return {
-        "min_cosine": _env_float("NABIZ_KNOWLEDGE_MIN_COSINE", 0.35),
-        "fts_ceiling": _env_float("NABIZ_KNOWLEDGE_FTS_CEILING", 1.0),
-        "coverage_ceiling": _env_float("NABIZ_KNOWLEDGE_COVERAGE_CEILING", 0.27),
+        "min_cosine": _env_float("NABIZ_KNOWLEDGE_MIN_COSINE", MIN_COSINE),
+        "fts_min": _env_float("NABIZ_KNOWLEDGE_FTS_MIN", FTS_MIN),
+        "min_coverage": _env_float("NABIZ_KNOWLEDGE_MIN_COVERAGE", MIN_COVERAGE),
+        "coverage_ceiling": _env_float("NABIZ_KNOWLEDGE_COVERAGE_CEILING", COVERAGE_CEILING),
     }
 
 
@@ -135,16 +151,10 @@ def _source_text(hit: Hit) -> str:
 
 
 def _supported_claim(text: str, evidence: Sequence[Hit]) -> bool:
-    words = set(normalize_tr(text).split()) - FUNCTION_WORDS_TR
+    words = _terms(text)
     if not words:
         return False
-    return (
-        max(
-            (len(words & (set(normalize_tr(hit.quote).split()) - FUNCTION_WORDS_TR)) / len(words) for hit in evidence),
-            default=0.0,
-        )
-        >= 0.5
-    )
+    return max((len(words & _terms(hit.quote)) / len(words) for hit in evidence), default=0.0) >= 0.5
 
 
 def drop_unsupported_sentences(text: str, evidence: Sequence[Hit]) -> str:
@@ -235,16 +245,19 @@ async def answer(
     verdict = assess_evidence(hits, query=question, **evidence_thresholds())
     ids = [hit.quote_id for hit in hits]
     checked = verify_evidence(ids, hits, store=store, max_age_s=_env_float("NABIZ_KNOWLEDGE_FRESHNESS_SLA_S", 31_536_000))
-    if checked.blocked or verdict.level == "out_of_scope":
+    # A weak match is not quoted either: on a rights, fare or health question a wrong page's sentence
+    # reads like İBB's answer (26 Sep: an "İSPARK ücret tarifesi" question quoted a chimney-sweep tariff).
+    if checked.blocked or verdict.level != "sufficient":
         return _unknown(refused=sensitive)
+    # The first quote carried the verdict; the next ones join it only when they cover as much of the question.
+    floor = evidence_thresholds()["min_coverage"]
+    shown = [hits[0], *(hit for hit in hits[1:SHOWN_QUOTES] if lexical_coverage(question, [hit]) >= floor)]
     if sensitive:
-        source = hits[0]
+        source = shown[0]
         text = f"{_source_text(source)} Doğrulamak için 153 Çözüm Merkezi'ni ara."
         return KnowledgeAnswer("quote_only", mask_personal(clean_for_display(text)), (source,), author="kural", refused=True)
-    if verdict.level == "weak":
-        return _unknown()
     if generate is None:
-        selected = tuple(hits[:3])
+        selected = tuple(shown)
         text = "\n\n".join(_source_text(hit) for hit in selected)
         return KnowledgeAnswer("answer", _display_text(text), selected)
     return await _answer_generated(question, hits, store, generate)

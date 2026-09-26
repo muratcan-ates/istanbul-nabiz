@@ -1,6 +1,8 @@
 # Ported from DOU-Synapse apps/api/app/modules/retrieval/stopwords_tr.py (github.com/muratcan-ates/DOU-Synapse @ 2cbe1ea, MIT, Copyright (c) 2026 Muratcan Ates)  # noqa: E501
 """Turkish function words, compared after ``normalize_tr``."""
 
+from ibb_mcp.text import normalize_tr
+
 FUNCTION_WORDS_TR = frozenset(
     [
         "acaba",
@@ -121,3 +123,9 @@ FUNCTION_WORDS_TR = frozenset(
         "nereden",
     ]
 )
+
+#: The same words folded the way ``normalize_tr`` folds a question ("nasıl" -> "nasil"). A third of
+#: ``FUNCTION_WORDS_TR`` is written with Turkish letters and so never matched a folded token; the evidence
+#: coverage compares against this set. The FTS expression keeps the list as it was: on the 26 Sep
+#: measurement (DECISIONS #36) folding it there put the right page first for fewer questions.
+FOLDED_FUNCTION_WORDS_TR = frozenset(normalize_tr(word) for word in FUNCTION_WORDS_TR)
