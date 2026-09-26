@@ -7,10 +7,13 @@ chosen from the environment rather than compiled in:
   slow from here, and the collector had to start filling the lake on Day 0 — so the
   default is gzipped newline-delimited JSON, which needs nothing but the standard
   library. Nothing about the layout depends on that choice.
-* **This laptop with the ``collector`` extra installed.** ``deltalake`` + ``pyarrow``
-  turn the same rows into a Delta table: ACID commits make a retried timer idempotent
-  instead of a duplicate-row problem, and time travel answers "what did we know at
-  08:00?" when auditing a wrong ETA (DECISIONS.md §6).
+* **This laptop with the ``collector`` extra installed.** Still NDJSON.gz by default:
+  every reader in the app (:func:`read_rows`, the equipment and history readers) reads
+  NDJSON.gz only, so a Delta table would make new snapshots invisible to the product.
+  Delta is written only when ``NABIZ_LAKE_FORMAT=delta`` asks for it; then ``deltalake``
+  + ``pyarrow`` turn the same rows into a Delta table (ACID commits make a retried timer
+  idempotent, and time travel answers "what did we know at 08:00?" when auditing a wrong
+  ETA, DECISIONS.md §6), for a reader that knows Delta.
 * **Azure (Container Apps Jobs, or the Functions app).** ``AZURE_STORAGE_ACCOUNT``
   switches the whole thing to ADLS Gen2 via ``azure-storage-blob``, authenticating with
   the collector's managed identity.
@@ -155,21 +158,19 @@ def _delta_available() -> bool:
 def choose_backend() -> str:
     """Resolve the backend name from the environment.
 
-    ``NABIZ_LAKE_FORMAT`` forces ``delta`` or ``json`` locally; ``auto`` (the default)
-    uses Delta when its wheels are present. A forced ``delta`` without the wheels falls
-    back with a warning rather than failing the tick — losing a snapshot is worse than
-    losing a file format.
+    Locally ``auto`` (the default) and ``json`` write NDJSON.gz, whatever wheels are
+    installed: the app's readers read only NDJSON.gz. ``delta`` writes a Delta table when
+    ``deltalake`` and ``pyarrow`` are present; without them it falls back with a warning
+    rather than failing the tick (losing a snapshot is worse than losing a file format).
     """
     if os.getenv(ENV_ACCOUNT):
         return "blob"
     wanted = os.getenv(ENV_LAKE_FORMAT, "auto").strip().lower()
-    if wanted == "json":
+    if wanted != "delta":
         return "local-json"
-    if wanted in {"delta", "auto"}:
-        if _delta_available():
-            return "local-delta"
-        if wanted == "delta":
-            log.warning("%s=delta but deltalake/pyarrow are not installed; writing NDJSON.gz", ENV_LAKE_FORMAT)
+    if _delta_available():
+        return "local-delta"
+    log.warning("%s=delta but deltalake/pyarrow are not installed; writing NDJSON.gz", ENV_LAKE_FORMAT)
     return "local-json"
 
 
@@ -226,15 +227,17 @@ def _write_delta(source: str, rows: list[dict[str, Any]], stamp: dt.datetime) ->
 
     The partition columns are added to the rows so ``write_deltalake`` lays the files out
     under exactly the path :func:`partition_path` describes; the Delta log, not the file
-    name, is what makes a retried commit safe here.
+    name, is what makes a retried commit safe here. The rows go in as a ``pyarrow.Table``:
+    ``deltalake`` 1.x takes Arrow data, not a list of dicts.
     """
+    import pyarrow
     from deltalake import write_deltalake
 
     table_uri = str(lake_dir() / source)
     partitioned = [{**row, **_partition_columns(stamp)} for row in rows]
     write_deltalake(
         table_uri,
-        partitioned,
+        pyarrow.Table.from_pylist(partitioned),
         mode="append",
         partition_by=["year", "month", "day", "hour"],
     )

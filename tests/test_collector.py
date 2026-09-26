@@ -407,17 +407,26 @@ def test_lake_backend_follows_the_environment(monkeypatch: pytest.MonkeyPatch) -
     assert lake.choose_backend() == "blob"
 
 
-def test_lake_uses_delta_when_the_wheels_are_present(
-    lake_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+class FakeArrowTable:
+    """Stands in for ``pyarrow.Table``: remembers the rows ``from_pylist`` was given."""
+
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self.rows = rows
+
+    @classmethod
+    def from_pylist(cls, rows: list[dict[str, Any]]) -> FakeArrowTable:
+        return cls(rows)
+
+
+def test_lake_uses_delta_only_when_asked(lake_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, Any]] = []
 
     def write_deltalake(uri, data, **kwargs):
         calls.append({"uri": uri, "data": data, **kwargs})
 
-    install_fake_module(monkeypatch, "pyarrow")
+    install_fake_module(monkeypatch, "pyarrow", Table=FakeArrowTable)
     install_fake_module(monkeypatch, "deltalake", write_deltalake=write_deltalake)
-    monkeypatch.setenv(lake.ENV_LAKE_FORMAT, "auto")
+    monkeypatch.setenv(lake.ENV_LAKE_FORMAT, "delta")
 
     assert lake.choose_backend() == "local-delta"
     written = lake.write_rows("ispark_snapshot", [{"park_id": 1}], snapshot_ts=STAMP)
@@ -425,7 +434,37 @@ def test_lake_uses_delta_when_the_wheels_are_present(
     assert written.backend == "local-delta"
     assert calls[0]["partition_by"] == ["year", "month", "day", "hour"]
     assert calls[0]["mode"] == "append"
-    assert calls[0]["data"][0] == {"park_id": 1, "year": "2026", "month": "09", "day": "08", "hour": "07"}
+    # deltalake 1.x takes Arrow data, not a list of dicts ("'dict' object has no attribute 'schema'").
+    assert isinstance(calls[0]["data"], FakeArrowTable)
+    assert calls[0]["data"].rows[0] == {"park_id": 1, "year": "2026", "month": "09", "day": "08", "hour": "07"}
+
+
+@pytest.mark.parametrize("wanted", ["auto", "", "json", "AUTO"])
+def test_auto_writes_ndjson_even_with_the_delta_wheels(
+    lake_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch, wanted: str
+) -> None:
+    """The app's readers read NDJSON.gz only: a Delta table under auto would hide new snapshots."""
+    install_fake_module(monkeypatch, "pyarrow", Table=FakeArrowTable)
+    install_fake_module(monkeypatch, "deltalake", write_deltalake=lambda *a, **k: pytest.fail("Delta written"))
+    monkeypatch.setenv(lake.ENV_LAKE_FORMAT, wanted)
+
+    assert lake.choose_backend() == "local-json"
+    written = lake.write_rows("ispark_snapshot", [{"park_id": 1}], snapshot_ts=STAMP)
+    assert written.backend == "local-json"
+    assert lake.read_rows(written.path) == [{"park_id": 1}]
+
+
+def test_a_real_delta_write_takes_the_rows_as_an_arrow_table(
+    lake_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    deltalake = pytest.importorskip("deltalake")
+    pytest.importorskip("pyarrow")
+    monkeypatch.setenv(lake.ENV_LAKE_FORMAT, "delta")
+
+    written = lake.write_rows("ispark_snapshot", [{"park_id": 1}, {"park_id": 2}], snapshot_ts=STAMP)
+
+    assert written.backend == "local-delta"
+    assert deltalake.DeltaTable(written.path).to_pyarrow_table().num_rows == 2
 
 
 def test_lake_uploads_to_blob_when_a_storage_account_is_configured(
