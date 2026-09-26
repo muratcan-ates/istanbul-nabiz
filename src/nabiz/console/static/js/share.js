@@ -354,6 +354,8 @@ function askFromUrl() {
   const input = document.getElementById('chat-input');
   const form = document.getElementById('chat-form');
   if (!question?.trim() || !input || !form) return;
+  // A shared trip link opens the Yolculuğum card (trip.js), not a chat answer that could name another minute.
+  if (/^Yolculuk:/u.test(question.trim())) return;
   input.value = question;
   form.requestSubmit();
 }

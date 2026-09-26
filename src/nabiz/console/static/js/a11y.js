@@ -120,7 +120,7 @@ function mountA11y() {
       + '<div class="btn-row"><button type="button" class="btn" id="a11y-reset">Sıfırla</button>'
       + '<a href="/kvkk.html">Kişisel veriler ve gizlilik</a></div>'
       + '<p class="sr-only" id="a11y-status" role="status" aria-live="polite"></p>'
-      + '<p class="a11y-shortcuts">Kısayollar: Alt + Shift + B yazı boyutu, K kontrast, H hareket, S sade mod, E bu panel.</p>';
+      + '<p class="a11y-shortcuts">Kısayollar: Alt + Shift + B yazı boyutu, K kontrast, H hareket, S sade mod, E bu panel, O kolay okunur, D dinle.</p>';
     const topbar = document.querySelector('.topbar');
     if (topbar) topbar.insertAdjacentElement('afterend', panel);
     else actions.insertAdjacentElement('afterend', panel);

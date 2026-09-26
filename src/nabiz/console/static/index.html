@@ -9,6 +9,8 @@
 <meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b1628" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%232457aa%7Dpath%7Bstroke:%23fbfcfe%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%235285d9%7Dpath%7Bstroke:%23060f20%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/nabiz-192.png">
 <link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/base.css">
@@ -16,6 +18,10 @@
 <link rel="stylesheet" href="/css/citizen.css">
 <link rel="stylesheet" href="/css/a11y.css">
 <link rel="stylesheet" href="/css/map.css">
+<link rel="stylesheet" href="/css/progress.css">
+<link rel="stylesheet" href="/css/answer_card.css">
+<link rel="stylesheet" href="/css/personas.css">
+<link rel="stylesheet" href="/css/conversations.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/citizen.js">
 <link rel="modulepreload" href="/js/api.js">
@@ -31,19 +37,41 @@
 <link rel="modulepreload" href="/js/format.js">
 <link rel="modulepreload" href="/js/icons.js">
 <link rel="modulepreload" href="/js/theme.js">
+<link rel="modulepreload" href="/js/answer_card.js">
+<link rel="modulepreload" href="/js/tool_labels.js">
+<link rel="modulepreload" href="/js/conversations.js">
+<link rel="modulepreload" href="/js/conversations-ui.js">
+<link rel="modulepreload" href="/js/arrival_confidence.js">
+<link rel="modulepreload" href="/js/personas.js">
+<link rel="modulepreload" href="/js/trip.js">
+<link rel="modulepreload" href="/js/trip_view.js">
+<link rel="modulepreload" href="/js/pwa.js">
 <script type="module" src="/js/citizen.js"></script>
+<script type="module" src="/js/pwa.js"></script>
+<script type="module" src="/js/arrival_confidence.js"></script>
 <script type="module" src="/js/journey.js"></script>
 <script type="module" src="/js/nearby.js"></script>
 <script type="module" src="/js/voice.js"></script>
+<script type="module" src="/js/easy_read.js"></script>
 <script type="module" src="/js/share.js"></script>
+<script type="module" src="/js/my_stops.js"></script>
 <script type="module" src="/js/history.js"></script>
 <script type="module" src="/js/compare.js"></script>
 <script type="module" src="/js/map.js"></script>
+<script type="module" src="/js/map_layers.js"></script>
+<script type="module" src="/js/trip.js"></script>
 <!-- a11y.css and map.css are linked above (their modules skip a sheet already present); nearby.js,
      voice.js and share.js add their own sheets when they mount. Leaflet loads from /vendor on demand. -->
 <script type="module" src="/js/a11y.js"></script>
 <script type="module" src="/js/disclosure.js"></script>
 <script type="module" src="/js/feedback.js"></script>
+<!-- Wave-1 citizen modules (E01, E02, E14, E16, E20, E03): each watches the chat or its own mount point. -->
+<script type="module" src="/js/emergency.js"></script>
+<script type="module" src="/js/agency.js"></script>
+<script type="module" src="/js/pii_badge.js"></script>
+<script type="module" src="/js/char_counter.js"></script>
+<script type="module" src="/js/service_status.js"></script>
+<script type="module" src="/js/personas.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -70,6 +98,7 @@
       <a href="#asistan">Asistan</a>
       <a href="#profilim">Profilim</a>
       <a href="#hafizam">Hafızam</a>
+      <a href="/kolay.html">Kolay ekran</a>
     </nav>
     <div class="topbar-actions">
       <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
@@ -101,6 +130,7 @@
       <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a><span data-pending="tid" hidden>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz</span>.</p>
       <p id="chat-lang">Cevap dili: <button type="button" class="btn" id="chat-lang-en" aria-pressed="false">English</button></p>
     </form>
+    <div id="my-stops"></div>
     <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
     <div class="band" role="note">
       <p>Yanıtları bir yapay zekâ asistanı yazar ve İBB açık verisine dayandırır. Kaynak bulamazsam tahmin etmem.
@@ -172,6 +202,7 @@
       <h2 id="chat-title">Yanıtlar</h2>
       <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
       <p class="sr-only" id="chat-status" role="status"></p>
+      <aside id="convo-root" aria-label="Sohbetlerim"></aside>
     </section>
   </div>
 
@@ -263,6 +294,8 @@
     <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a><br>
     <a href="/console">İBB çalışanı konsolu (simüle operatör)</a><br>
     <a href="/kvkk.html">KVKK / Gizlilik</a><br>
+    <a href="/kolay.html">Kolay ekran (büyük düğmeler)</a><br>
+    <a href="/offline.html">Çevrimdışı sayfa</a><br>
     Yazı tipi: Source Sans 3 (OFL)<br>
     Simgeler: Tabler Icons (MIT)
   </p>

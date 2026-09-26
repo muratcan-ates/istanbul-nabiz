@@ -19,7 +19,7 @@ from conftest import REPO_ROOT
 
 STATIC = REPO_ROOT / "src" / "nabiz" / "console" / "static"
 WEB_STATIC = REPO_ROOT / "src" / "nabiz" / "web" / "static"
-PAGES = ("index.html", "console.html")
+PAGES = ("index.html", "console.html", "kolay.html")
 DASHES = (chr(0x2014), chr(0x2013))  # em dash, en dash
 
 #: The contract's field names (the API SÖZLEŞMESİ of the sprint brief), checked on every mock reply.

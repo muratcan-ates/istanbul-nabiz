@@ -1,9 +1,9 @@
-/* v1: bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v1';
+/* v2 (wave-1 modules and /kolay.html): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v2';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
-const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html'];
+const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html', '/kolay.html'];
 const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/'];
 const STATIC_FILES = ['/icons.svg', '/manifest.webmanifest'];
 const OPERATOR_PREFIX = 'console';
@@ -18,6 +18,15 @@ const SHELL = [
   '/js/nearby.js', '/js/voice.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
   '/icons.svg', '/fonts/nabiz-sans-tr-v1.woff2', '/icons/nabiz.svg',
   '/icons/nabiz-192.png', '/icons/nabiz-512.png', '/icons/nabiz-maskable-512.png',
+  // wave 1 (E01-E25): the citizen page's new modules and sheets, and the kolay page
+  '/kolay.html', '/css/kolay.css', '/js/kolay.js',
+  '/css/agency.css', '/css/answer_card.css', '/css/conversations.css', '/css/easy_read.css', '/css/emergency.css',
+  '/css/map_layers.css', '/css/my_stops.css', '/css/personas.css', '/css/progress.css', '/css/service_status.css',
+  '/css/trip.css', '/data/glossary_tr.json',
+  '/js/agency.js', '/js/answer_card.js', '/js/arrival_confidence.js', '/js/char_counter.js', '/js/conversations-ui.js',
+  '/js/conversations.js', '/js/easy_read.js', '/js/easy_read_listen.js', '/js/emergency.js', '/js/map_layers.js',
+  '/js/my_stops.js', '/js/personas.js', '/js/pii_badge.js', '/js/service_status.js', '/js/tool_labels.js',
+  '/js/transcript.js', '/js/trip.js', '/js/trip_view.js',
 ];
 
 function ruleFor(url, method, mode) {

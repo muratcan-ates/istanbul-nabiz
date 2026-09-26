@@ -319,10 +319,10 @@ def test_brief_missing_message_names_the_cause(tmp_path: Path) -> None:
 def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source = "const fs=require('node:fs'),vm=require('node:vm');const self={location:{origin:'https://x'},addEventListener(){}};"
     source += "vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),{self,URL});"
-    source += "const keys=['nabiz-shell-v0','nabiz-brief-v0','nabiz-shell-v1','nabiz-brief-v1','baska-site'];"
+    source += "const keys=['nabiz-shell-v1','nabiz-brief-v1','nabiz-shell-v2','nabiz-brief-v2','baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
-    assert result == {"version": "v1", "stale": ["nabiz-shell-v0", "nabiz-brief-v0"]}
+    assert result == {"version": "v2", "stale": ["nabiz-shell-v1", "nabiz-brief-v1"]}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """
