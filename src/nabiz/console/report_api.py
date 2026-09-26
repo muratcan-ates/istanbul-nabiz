@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from fastapi import APIRouter, Query, Request, Response
@@ -16,7 +16,7 @@ from nabiz.console.access import TurnLimiter
 from nabiz.console.operator import port_problem
 from nabiz.console.signals import origin_from
 from nexus_core import EvidenceItem, NexusEngine, Origin, Signal
-from nexus_core.signals import system_clock
+from nexus_core.signals import Severity, system_clock
 from nexus_core.state import SignalState
 from nexus_core.stats import ISTANBUL
 
@@ -29,6 +29,9 @@ REPORT_SOURCE = "Vatandaş bildirimi (Nabız)"
 FOLD_WINDOW = dt.timedelta(minutes=30)
 REPORTS_PER_MIN = 3
 REPORT_WAIT_S = 3.0
+#: A report at a station whose name carries this many lines (an interchange) is critical: the
+#: router's own ``critical`` trigger then seals it (E29). A design parameter, not a measurement.
+HUB_MIN_LINES = 2
 
 KIND_TR_TEXT = {"not_working": "asansör kapalıydı", "data_wrong": "kayıt yanlış görünüyor"}
 BUCKET_TR = {"now": "şimdi", "today": "bugün"}
@@ -98,6 +101,11 @@ def report_text(kind: str, bucket: str) -> str:
     return REPORT_TEXT[(kind, bucket)]
 
 
+def report_severity(lines: Sequence[str]) -> Severity:
+    """``critical`` at an interchange (same station name on ≥ 2 lines), else ``warning`` as in E24."""
+    return "critical" if len({line for line in lines if line}) >= HUB_MIN_LINES else "warning"
+
+
 def support_summary(state: SignalState, count: int) -> str:
     """Summarize the first observation and its current folded count for the operator."""
     payload = state.signal.payload
@@ -137,7 +145,7 @@ def report_signal(
     signal = Signal.create(
         kind=REPORT_KIND,
         entity_id=report_entity(station, kind),
-        severity="warning",
+        severity=report_severity(lines),
         observed_at=now,
         provenance=origin,
         payload=payload,
