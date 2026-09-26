@@ -18,6 +18,8 @@ from nabiz.console.operator import port_problem
 log = logging.getLogger(__name__)
 quick_routes = APIRouter()
 QUESTIONS_PATH = pathlib.Path(__file__).resolve().parents[3] / "data" / "knowledge" / "quick_questions.json"
+#: Chips shown without the knowledge index: a live tool answers, or the institution router (/api/agency) does.
+ALWAYS_SHOWN = frozenset({"live", "agency"})
 
 
 @lru_cache(maxsize=1)
@@ -40,7 +42,7 @@ def _payload(questions: dict, state: str, built_at: str | None, enabled: bool, s
     """Build the public response in catalog order, omitting empty categories."""
     grouped = {category["id"]: [] for category in questions["kategoriler"]}
     for item in questions["sorular"]:
-        if item["kind"] == "live" or item["id"] in shown:
+        if item["kind"] in ALWAYS_SHOWN or item["id"] in shown:
             grouped[item["kategori"]].append(
                 {
                     "id": item["id"],
@@ -61,11 +63,14 @@ def _payload(questions: dict, state: str, built_at: str | None, enabled: bool, s
         if grouped[category["id"]]
     ]
     live_count = sum(item["kind"] == "live" for item in questions["sorular"])
+    agency_count = sum(item["kind"] == "agency" for item in questions["sorular"])
     knowledge_count = sum(item["kind"] == "knowledge" for item in questions["sorular"])
     return {
         "categories": categories,
         "index": {"state": state, "built_at": built_at, "knowledge_enabled": enabled},
-        "counts": {"live": live_count, "knowledge_listed": knowledge_count, "knowledge_shown": len(shown)},
+        "counts": {
+            "live": live_count, "agency": agency_count, "knowledge_listed": knowledge_count, "knowledge_shown": len(shown),
+        },
     }
 
 

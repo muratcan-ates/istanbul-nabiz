@@ -13,6 +13,7 @@ from ibb_mcp.knowledge.store import KnowledgeStore
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import LlmConfig, NabizAgent
 from nabiz.console import quick_api
+from nabiz.console.agency_router import route as agency_route
 from nabiz.console.policy import emergency_intent, refuses_in_context
 from nabiz.console.quick_api import quick_routes
 
@@ -111,6 +112,15 @@ def test_live_questions_route_to_their_tool() -> None:
             assert agent.route(chip["soru_en"])[0] == chip["arac"]
 
 
+def test_agency_chips_reach_the_institution_router() -> None:
+    """The E02 İSKİ chip lives on as an agency chip: /api/agency names the institution, index or not."""
+    chips = [chip for chip in _catalog()["sorular"] if chip["kind"] == "agency"]
+    assert [chip["soru_tr"] for chip in chips] == ["İSKİ ve fatura işlemleri için nereye başvurabilirim?"]
+    for chip in chips:
+        for question in (chip["soru_tr"], chip["soru_en"]):
+            assert agency_route(question).agency == "iski", question
+
+
 def test_knowledge_questions_reach_the_knowledge_path() -> None:
     agent = NabizAgent(Nabiz(), config=LlmConfig(), system_prompt="test prompt")
     for chip in _catalog()["sorular"]:
@@ -131,9 +141,9 @@ def test_missing_index_returns_only_live_chips(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("NABIZ_QUICK_KNOWLEDGE", "1")
     response = _client().get("/api/quick")
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["categories"]] == ["ulasim"]
+    assert [item["id"] for item in response.json()["categories"]] == ["ulasim", "iski-fatura"]
     chips = _chips(response)
-    assert len(chips) == 4 and all(chip["kind"] == "live" for chip in chips.values())
+    assert sorted(chip["kind"] for chip in chips.values()) == ["agency", "live", "live", "live", "live"]
     assert response.json()["index"]["state"] == "missing"
 
 
@@ -144,9 +154,9 @@ def test_empty_index_returns_only_live_chips(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("NABIZ_QUICK_KNOWLEDGE", "1")
     response = _client().get("/api/quick")
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["categories"]] == ["ulasim"]
+    assert [item["id"] for item in response.json()["categories"]] == ["ulasim", "iski-fatura"]
     chips = _chips(response)
-    assert len(chips) == 4 and all(chip["kind"] == "live" for chip in chips.values())
+    assert sorted(chip["kind"] for chip in chips.values()) == ["agency", "live", "live", "live", "live"]
     assert response.json()["index"]["state"] == "empty"
 
 

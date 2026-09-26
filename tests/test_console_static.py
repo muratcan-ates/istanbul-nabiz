@@ -233,6 +233,11 @@ def test_the_home_screen_has_the_question_box_before_city_cards() -> None:
     assert 'role="button" tabindex="0"' in source and "button[data-seed]" in source
     assert "requestSubmit()" in source and "localStorage" not in source
     assert "İstanbul ulaşımı için resmî bilgi nerede?" in source
+    # E21's chips replace these once /api/quick answers; the İSKİ seed survives there as an agency chip (DECISIONS #43).
+    quick = json.loads((REPO_ROOT / "data/knowledge/quick_questions.json").read_text(encoding="utf-8"))
+    seeds = {chip["soru_tr"]: chip["kind"] for chip in quick["sorular"]}
+    assert "İSKİ ve fatura işlemleri için nereye başvurabilirim?" in source
+    assert seeds["İSKİ ve fatura işlemleri için nereye başvurabilirim?"] == "agency"
 
 
 def test_unknown_text_is_verbatim() -> None:

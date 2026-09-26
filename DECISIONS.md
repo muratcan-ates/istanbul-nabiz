@@ -2127,3 +2127,36 @@ personal data.
   (`nexus_port.DETAIL_STEPS`), the lift card's `data-station`/`data-lift`, the published card's "how" tool
   (`TOOL_BY_SIGNAL`), and a KVKK paragraph.
 - The 30-minute window and the per-minute limit are design parameters, not measurements.
+
+## 43. Pat diye sor çipleri (E21, 26 Eyl): live chips always, a knowledge chip only with its own page as evidence
+
+**Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep); merged from `gun3/pat-diye-sor-cipleri` and
+wired at the integration merge. The İSKİ chip decision below is the integrator's; the owner may overrule it.
+
+### Context
+
+The home screen's quick chips (E02, `js/home.js`) were fixed seed questions, some of which the rules answer with
+"bilmiyorum". E21 serves category cards from `GET /api/quick` (`data/knowledge/quick_questions.json`): four live
+transport chips always, and a knowledge chip only when the local index's verified answer cites that chip's own
+source page.
+
+### Decision
+
+- The knowledge gate stays **closed by default**: knowledge chips appear only with `NABIZ_QUICK_KNOWLEDGE=1` and a
+  ready index, and each only when `answer()` (lexical, no model, no embedding call) cites its page. The BM25 floor
+  of #36 is kept. No "Etkinlikler" card.
+- E02 conflict: `quick_chips.js` replaces `#quick-cards` once `/api/quick` answers, which dropped E02's
+  "İSKİ ve fatura işlemleri için nereye başvurabilirim?" chip. It is kept as a third chip kind, `agency`, in the
+  İSKİ/Fatura category: shown always, like a live chip, because the institution router (`/api/agency`, the
+  kurum-yönlendirici card) answers it without the index ("Bu, İSKİ'nin işi." with İSKİ's page and 153).
+  `home.js` keeps its six seed chips as the first paint and the fallback when `/api/quick` fails.
+- `quick_chips.js` also re-renders on `nabiz:lang` (the page language switch).
+
+### Consequences
+
+- Wiring at the merge: `quick_routes` in the app, `quick_chips.css`/`quick_chips.js` on the page (after `citizen.js`,
+  which stays the first module) and in the service worker shell (v8).
+- Tests: `tests/test_quick_api.py::test_agency_chips_reach_the_institution_router`; the missing/empty index tests now
+  expect the live chips plus the agency chip; `tests/test_console_static.py` pins that the İSKİ seed survives.
+- The rule path's own chat answer to the İSKİ question is still the "bilmiyorum" text; the agency card beside it is
+  what helps. A knowledge answer for it waits for the index to hold İSKİ pages (#37).

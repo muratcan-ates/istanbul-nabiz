@@ -96,6 +96,16 @@
       "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"
     },
     {
+      "id": "agency-iski-fatura",
+      "kategori": "iski-fatura",
+      "kind": "agency",
+      "soru_tr": "İSKİ ve fatura işlemleri için nereye başvurabilirim?",
+      "soru_en": "Where can I go for İSKİ and bill matters?",
+      "arac": "agency_router",
+      "kaynak": "src/nabiz/console/static/js/home.js (E02 chip); answered by /api/agency, independent of the index",
+      "source_url": null
+    },
+    {
       "id": "k-genel-06",
       "kategori": "iski-fatura",
       "kind": "knowledge",

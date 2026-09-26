@@ -42,6 +42,8 @@ const SHELL = [
   '/js/open_data.js', '/css/open_data.css',
   // DECISIONS #42 (E24): the one-tap lift report under the step-free card
   '/js/report.js', '/css/report.css',
+  // DECISIONS #43 (E21): the quick-question chips
+  '/js/quick_chips.js', '/css/quick_chips.css',
 ];
 
 function ruleFor(url, method, mode) {

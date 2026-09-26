@@ -3,6 +3,8 @@
 
 import { esc } from './format.js';
 
+// The first paint and the fallback: js/quick_chips.js replaces these with /api/quick's chips when it answers
+// (DECISIONS #43). The İSKİ question lives on there as an agency chip (data/knowledge/quick_questions.json).
 const QUICK_QUESTIONS = [
   ['Ulaşım', 'İstanbul ulaşımı için resmî bilgi nerede?'],
   ['İstanbulkart', 'İstanbulkart işlemleri için resmî bilgi nerede?'],

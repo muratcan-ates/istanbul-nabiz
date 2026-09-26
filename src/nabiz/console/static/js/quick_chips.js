@@ -53,4 +53,5 @@ if (host) {
     if (event.target.closest('#chat-lang-en')) setTimeout(() => render(last), 0);
   });
   window.addEventListener('storage', () => render(last));
+  window.addEventListener('nabiz:lang', () => render(last));
 }

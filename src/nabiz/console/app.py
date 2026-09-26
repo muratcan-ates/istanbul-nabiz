@@ -69,6 +69,7 @@ from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
+from nabiz.console.quick_api import quick_routes
 from nabiz.console.quota import MeteredGuard, QuotaBook
 from nabiz.console.quota_api import plan_turn, quota_routes
 from nabiz.console.report_api import report_routes
@@ -317,6 +318,8 @@ def build_console_app(
     app.include_router(report_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
+    # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).
+    app.include_router(quick_routes)
     app.include_router(open_data_routes)
     app.include_router(how_routes)
     app.include_router(map_layers_routes)
