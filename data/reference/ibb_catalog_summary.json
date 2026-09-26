@@ -1,0 +1,271 @@
+{
+ "captured_at_utc": "2026-09-26T10:38:20+00:00",
+ "datasets": 557,
+ "resources": 1115,
+ "datastore_datasets": 449,
+ "by_category": {
+  "Mobilite": 181,
+  "Yaşam": 146,
+  "Governance": 119,
+  "Çevre": 83,
+  "Ekonomi": 44,
+  "İnsan": 36,
+  "Enerji": 35,
+  "Security": 28,
+  "Bilgi ve İletişim Teknolojileri": 17
+ },
+ "by_format": {
+  "XLSX": 341,
+  "CSV": 107,
+  "PDF": 48,
+  "API": 41,
+  "GEOJSON": 36,
+  "XML": 9,
+  "XLS": 9,
+  "KML": 7,
+  "HTML": 7,
+  "TXT": 5,
+  "KMZ": 4,
+  "OGC WMS": 2,
+  "ZIP": 1
+ },
+ "by_organization": {
+  "Department of Information Technologies": 95,
+  "Ulaşım Dairesi Başkanlığı": 50,
+  "Metro Istanbul": 37,
+  "TÜİK": 31,
+  "Raylı Sistem Dairesi Başkanlığı": 25,
+  "Tarımsal Hizmetler Dairesi Başkanlığı": 22,
+  "Department of Environmental Protection and Development": 20,
+  "İtfaiye Dairesi Başkanlığı": 19,
+  "İSKİ": 18,
+  "Park ve Bahçeler Dairesi Başkanlığı": 13,
+  "İstanbul İstatistik Ofisi": 13,
+  "Basın Yayın Ve Halkla İlişkiler Dairesi Başkanlığı": 12,
+  "EPDK": 12,
+  "Sosyal Hizmetler Dairesi Başkanlığı": 12,
+  "İETT": 12,
+  "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı": 11,
+  "İSPARK Inc.": 10,
+  "Sağlık Dairesi Başkanlığı": 10,
+  "BELBİM Inc.": 10,
+  "Destek Hizmetleri Dairesi Başkanlığı": 9,
+  "Mali Hizmetler Dairesi Başkanlığı": 8,
+  "TCMB Elektronik Veri Dağıtım Sistemi": 8,
+  "Zabıta Dairesi Başkanlığı": 7,
+  "İGDAŞ": 7,
+  "Department of Human Resources and Education": 6,
+  "Kültür Dairesi Başkanlığı": 6,
+  "Gençlik ve Spor Hizmetleri Dairesi Başkanlığı": 6,
+  "İstanbul Enerji A.Ş.": 6,
+  "T.C. Hazine ve Maliye Bakanlığı": 6,
+  "Kültür ve Turizm Bakanlığı": 6,
+  "AĞAÇ VE PEYZAJ Inc.": 5,
+  "1. Legal Counselors": 4,
+  "Yol Bakım ve Altyapı Koordinasyon Dairesi Başkanlığı": 4,
+  "Devlet Hava Meydanları İşletmesi": 4,
+  "EPİAŞ": 3,
+  "Department of Public Works and Engineering": 3,
+  "Global Forest Watch": 3,
+  "Şehir Hatları Inc.": 3,
+  "Department of Real Estate Management": 3,
+  "Department of Earthquake Risk Management and Urban Improvement": 2,
+  "Yazı İşleri ve Kararlar Dairesi Başkanlığı": 2,
+  "World Bank Group": 1,
+  "İSTAÇ Inc.": 1,
+  "Springer Nature": 1,
+  "İSPER A.Ş.": 1,
+  "Gelir İdaresi Başkanlığı": 1,
+  "İSBAK Inc.": 1,
+  "BDDK": 1,
+  "İstanbul Halk Ekmek Inc.": 1,
+  "Department of Housing and Urban Development": 1,
+  "Afet İşleri Dairesi Başkanlığı": 1,
+  "Mezarlıklar Dairesi Başkanlığı": 1,
+  "Department of Mukhtar Affairs": 1,
+  "Department of Strategy Development": 1,
+  "Dış İlişkiler Dairesi Başkanlığı": 1
+ },
+ "recently_updated": [
+  {
+   "name": "yatay-trafik-isaretleme-calismalari",
+   "title": "Yatay Trafik İşaretleme Çalışmaları",
+   "organization": "Ulaşım Dairesi Başkanlığı",
+   "metadata_modified": "2026-09-16T10:37:35+00:00"
+  },
+  {
+   "name": "eski-eserlerde-koruma-uygulama-ve-denetim-calismalari",
+   "title": "Eski Eserlerde Koruma Uygulama ve Denetim Çalışmaları",
+   "organization": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+   "metadata_modified": "2026-09-15T08:19:57+00:00"
+  },
+  {
+   "name": "trafik-egitimi-verilen-okul-sayilari",
+   "title": "Trafik Eğitimi Verilen Okul Sayıları",
+   "organization": "Ulaşım Dairesi Başkanlığı",
+   "metadata_modified": "2026-09-02T13:23:28+00:00"
+  },
+  {
+   "name": "trafik-egitimi-verilen-ogrenci-sayilari",
+   "title": "Trafik Eğitimi Verilen Öğrenci Sayıları",
+   "organization": "Ulaşım Dairesi Başkanlığı",
+   "metadata_modified": "2026-09-02T09:24:56+00:00"
+  },
+  {
+   "name": "insaati-devam-eden-kentsel-acik-ve-yesil-alan",
+   "title": "Uygulaması Devam Eden Kentsel Açık ve Yeşil Alanlar",
+   "organization": "Park ve Bahçeler Dairesi Başkanlığı",
+   "metadata_modified": "2026-09-01T10:52:28+00:00"
+  },
+  {
+   "name": "tuketici-sikayetleri-cozumleme-faaliyetleri",
+   "title": "Tüketici Şikayetleri Çözümleme Faaliyetleri",
+   "organization": "Zabıta Dairesi Başkanlığı",
+   "metadata_modified": "2026-08-31T06:28:01+00:00"
+  },
+  {
+   "name": "kutuphanelerde-gerceklestirilen-etkinlik-sayisi-ve-katilimci-sayisi",
+   "title": "Kütüphanelerde Gerçekleştirilen Etkinlik Sayısı ve Katılımcı Sayısı",
+   "organization": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+   "metadata_modified": "2026-08-31T06:27:46+00:00"
+  },
+  {
+   "name": "ulasima-yonelik-alinan-karar-turu-ve-sayilari",
+   "title": "Ulaşıma Yönelik Alınan Karar Türü ve Sayıları",
+   "organization": "Ulaşım Dairesi Başkanlığı",
+   "metadata_modified": "2026-08-20T12:06:18+00:00"
+  },
+  {
+   "name": "kurban-satis-ve-kesim-noktalarinda-kesilen-kurban-sayilari",
+   "title": "Kurban Satış ve Kesim Noktalarında Kesilen Kurban Sayıları",
+   "organization": "Tarımsal Hizmetler Dairesi Başkanlığı",
+   "metadata_modified": "2026-08-17T07:51:58+00:00"
+  },
+  {
+   "name": "hayvansal-urunler-uretim-miktari",
+   "title": "Animal Products Production Quantity",
+   "organization": "TÜİK",
+   "metadata_modified": "2026-07-30T12:40:18+00:00"
+  },
+  {
+   "name": "basin-yayin-faaliyetleri",
+   "title": "Basın Yayın Faaliyetleri",
+   "organization": "Basın Yayın Ve Halkla İlişkiler Dairesi Başkanlığı",
+   "metadata_modified": "2026-07-27T11:25:56+00:00"
+  },
+  {
+   "name": "engellilere-yonelik-verilen-destekleyici-egitim-hizmetleri",
+   "title": "Engellilere Yönelik Verilen Destekleyici Eğitim Hizmetleri",
+   "organization": "Sosyal Hizmetler Dairesi Başkanlığı",
+   "metadata_modified": "2026-07-27T06:05:48+00:00"
+  },
+  {
+   "name": "alici-ortamlara-gore-sebekeden-desarj-edilen-atiksu-miktari-bin-m3-yil",
+   "title": "Alıcı Ortamlara Göre Şebekeden Deşarj Edilen Atıksu Miktarı (Bin M3/Yıl)",
+   "organization": "TÜİK",
+   "metadata_modified": "2026-07-17T10:15:23+00:00"
+  },
+  {
+   "name": "yayalastirilmis-yol-verisii",
+   "title": "Yayaylaştırılmış Yol Verisi",
+   "organization": "Ulaşım Dairesi Başkanlığı",
+   "metadata_modified": "2026-07-10T07:12:25+00:00"
+  },
+  {
+   "name": "vetakademi-kapsaminda-egitim-verilen-kisi-sayisi",
+   "title": "VetAkademi Kapsamında Eğitim Verilen Kişi Sayısı",
+   "organization": "Tarımsal Hizmetler Dairesi Başkanlığı",
+   "metadata_modified": "2026-06-22T10:57:42+00:00"
+  },
+  {
+   "name": "sehir-hatlari-a-s-denizyolu-tasimaciligi",
+   "title": "Şehir Hatları A.Ş. Denizyolu Taşımacılığı",
+   "organization": "Şehir Hatları Inc.",
+   "metadata_modified": "2026-06-17T07:17:42+00:00"
+  },
+  {
+   "name": "yangin-onlem-faaliyetleri",
+   "title": "Yangın Önleme Faaliyetleri Raporları",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-06-12T08:26:21+00:00"
+  },
+  {
+   "name": "itfai-olaylar-ambulans-cikis-nedenleri",
+   "title": "İtfai Olaylar Ambulans Çıkış Nedenleri",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-06-12T07:19:45+00:00"
+  },
+  {
+   "name": "muzelerimiz-ve-ziyaretci-sayilari",
+   "title": "Müzelerimiz ve Ziyaretçi Sayıları",
+   "organization": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+   "metadata_modified": "2026-06-11T11:53:27+00:00"
+  },
+  {
+   "name": "cankurtaran-ekipleri-mudahale-istatistikleri",
+   "title": "Cankurtaran Ekipleri Müdahale İstatistikleri",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-22T08:27:01+00:00"
+  },
+  {
+   "name": "ibb-kutuphaneleri-kitap-sayilari",
+   "title": "İBB Kütüphaneleri Kitap Sayıları",
+   "organization": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-22T08:22:27+00:00"
+  },
+  {
+   "name": "ortalama-varis-suresi",
+   "title": "İtfai Olaylar Ortalama Varış Süresi",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-20T11:51:12+00:00"
+  },
+  {
+   "name": "sinyalizasyon-sistem-calismalari",
+   "title": "Sinyalizasyon Sistem Çalışmaları",
+   "organization": "Ulaşım Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-14T12:28:18+00:00"
+  },
+  {
+   "name": "itfaiye-egitimleri-ve-ilkyardim-calismalari",
+   "title": "İtfaiye Eğitimleri ve İlkyardım Çalışmaları",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-14T11:14:56+00:00"
+  },
+  {
+   "name": "itfai-istatistikler-yangin",
+   "title": "İtfai İstatistikler-yangın",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-14T08:22:34+00:00"
+  },
+  {
+   "name": "itfaiye-olaylar",
+   "title": "İtfai Olaylar",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-07T11:32:32+00:00"
+  },
+  {
+   "name": "genc-universiteli-egitim-yardimi",
+   "title": "Genç Üniversiteli Eğitim Yardımı",
+   "organization": "Sosyal Hizmetler Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-06T05:53:29+00:00"
+  },
+  {
+   "name": "yangin-olmayan-diger-itfai-olaylar",
+   "title": "Yangın Olmayan Diğer İtfai Olaylar",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-04T12:33:28+00:00"
+  },
+  {
+   "name": "tuketici-haklari-kapsaminda-bilgilendirme-ve-egitim-calismalari",
+   "title": "Tüketici Hakları Kapsamında Bilgilendirme ve Eğitim Çalışmaları",
+   "organization": "Zabıta Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-04T11:00:16+00:00"
+  },
+  {
+   "name": "baca-temizleme-ve-denetleme-faaliyetleri",
+   "title": "Baca Temizleme ve Denetleme Faaliyetleri",
+   "organization": "İtfaiye Dairesi Başkanlığı",
+   "metadata_modified": "2026-05-04T08:42:53+00:00"
+  }
+ ]
+}
