@@ -189,6 +189,22 @@ def _short(url: str | None) -> str:
     return canonical(url) if url else "·"
 
 
+def _chat_lines(before: dict[str, Any], after: dict[str, Any]) -> list[str]:
+    """The ``/api/chat`` modes of both runs, when both were run with ``--chat``."""
+    if not all(row.get("chat") for run in (before, after) for row in run["rows"]):
+        return []
+    counts = [Counter(row["chat"]["mode"] for row in run["rows"]) for run in (before, after)]
+    modes = sorted(set(counts[0]) | set(counts[1]))
+    return [
+        "",
+        "Sohbet (`/api/chat`, çevrimdışı, model yok) modları, aynı 198 soru:",
+        "",
+        "| Sohbet modu | önce | sonra |",
+        "|---|---:|---:|",
+        *(f"| {mode} | {counts[0].get(mode, 0)} | {counts[1].get(mode, 0)} |" for mode in modes),
+    ]
+
+
 def report(before_path: str, after_path: str, md_path: str) -> int:
     before = json.loads(Path(before_path).read_text(encoding="utf-8"))
     after = json.loads(Path(after_path).read_text(encoding="utf-8"))
@@ -198,7 +214,10 @@ def report(before_path: str, after_path: str, md_path: str) -> int:
         "",
         "`scripts/knowledge_calibration.py` çıktısından üretildi; elle sayı yazılmadı. Dizin: yerel",
         "`data/knowledge/knowledge.db`. Arama modelsiz ve gömmesiz (`embedder=None`): çevrimdışı sohbet sorgu",
-        "gömmesi yapmaz, bu yüzden kosinüs sütunu yok. Hassaslık `policy.refuses` ile, sohbetin kararıyla aynı.",
+        "gömmesi yapmaz, bu yüzden kosinüs sütunu yok. Hassaslık `policy.refuses` ile, sohbetin kararıyla aynı",
+        "(`hassas` sütunu); `seed-hassas` kümesi araştırma tohumunun kendi `sensitive` işaretidir. `seed` ve",
+        "`seed-hassas` araştırma tohumunun 150 sorusu (depo dışında); öteki kümeler `eval/knowledge_calibration.jsonl`.",
+        "Altın dışı kaynak her zaman yanlış değildir (ör. aynı kurumun başka sayfası); negatif kümedeki her cevap yanlıştır.",
         "",
         f"Önce eşikler: `{json.dumps(before['thresholds'])}` · Sonra eşikler: `{json.dumps(after['thresholds'])}`",
         "",
@@ -228,11 +247,12 @@ def report(before_path: str, after_path: str, md_path: str) -> int:
         f"| … ilk kaynağı altın URL | {total_b['answered_cites_gold']} | {total_a['answered_cites_gold']} |",
         f"| … ilk kaynağı altın dışı | {total_b['answered_cites_other']} | {total_a['answered_cites_other']} |",
         f"| Negatif kümede cevap (yanlış pozitif) | {total_b['negative_answered']} | {total_a['negative_answered']} |",
+        *_chat_lines(before, after),
         "",
         "## Soru başına",
         "",
         "`bm25` ilk sonucun FTS5 puanının mutlak değeri (büyük = daha iyi eşleşme); `kapsam` sorunun ayırt edici",
-        "kelimelerinden en iyi alıntıda geçenlerin oranı; `altın` ilk sonucun sorunun altın URL'lerinden biri olup",
+        "kelimelerinden ilk alıntıda geçenlerin oranı (sonra koşusu); `altın` ilk sonucun sorunun altın URL'lerinden biri olup",
         "olmadığı (`·` altın yok). Sohbet sütunu `--chat` koşusunda `/api/chat`'in modu ve kuralıdır.",
         "",
         "| id | soru | hassas | ilk sonuç | bm25 | kapsam | altın | önce seviye/mod | sonra seviye/mod | sohbet (sonra) |",
