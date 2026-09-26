@@ -83,7 +83,7 @@ body a.skip-link { background: var(--kolay-btn); color: var(--kolay-btn-ink); }
 .kolay-card-host { display: grid; gap: 1rem; min-width: 0; padding: 0; list-style: none; }
 .kolay-card-host > li { min-width: 0; padding: 1.25rem; border: 2px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--kolay-ink); overflow-wrap: anywhere; }
 .kolay-answer .chat-text { max-width: none; font-size: var(--kolay-answer-size); line-height: 1.45; }
-.kolay-q { padding-block-end: .75rem; border-bottom: 1px solid var(--border); font-size: 1.125rem; font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
+.kolay-q { margin: 0; font-size: 1.125rem; font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
 .kolay-progress, .kolay-source, .kolay-author, .kolay-arrival-note { max-width: none; font-size: 1rem; line-height: 1.5; }
 .kolay-final { display: grid; gap: .75rem; margin-block-start: 1rem; }
 .kolay-final:empty { display: none; }
