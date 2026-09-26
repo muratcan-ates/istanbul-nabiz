@@ -83,7 +83,7 @@ def test_pure_helpers_in_node() -> None:
         "if (pickVoice([{ lang: 'tr' }]).lang !== 'tr') throw new Error('Turkish fallback not selected');"
         "if (pickVoice([]) !== null) throw new Error('empty voices must return null');"
         "if (!recognitionMessage('not-allowed').includes('yazarak')) throw new Error('fallback text missing');"
-        "if (confirmPrompt('otobüs kaçta') !== 'Seni şöyle anladım: \"otobüs kaçta\"') "
+        "if (confirmPrompt('otobüs kaçta') !== 'Sizi şöyle anladım: \"otobüs kaçta\"') "
         "throw new Error('confirmation prompt differs');"
     )
     result = subprocess.run(
