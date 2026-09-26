@@ -288,13 +288,19 @@ def test_unknown_and_refused_cards_are_the_fixed_sentence(
     monkeypatch.delenv("NABIZ_LLM_API_KEY", raising=False)
     final = _final_for(nabiz, "Otopark cezası ne kadar?")
     refused = _render(tmp_path, final)
-    unknown = _render(tmp_path, {"mode": "unknown", "answer_text": "SUNUCU_METNI"})
+    unknown = _render(tmp_path, {
+        "mode": "unknown", "answer_text": "SUNUCU_METNI", "how": {"rule_id": "output", "chain": [], "checks": {}}
+    })
+    unknown_without_how = _render(tmp_path, {"mode": "unknown", "answer_text": "SUNUCU_METNI"})
     assert REFUSAL_TEXT in html_lib.unescape(refused) and 'data-card="refused"' in refused
     assert UNKNOWN_TEXT in html_lib.unescape(unknown) and 'data-card="unknown"' in unknown
     for html in (refused, unknown):
         assert 'class="ac-fixed" data-er-skip' in html
         assert 'href="tel:153"' in html and 'class="chat-foot"' in html
+        assert "Bu nasıl bulundu?" in html
         assert "quote-box" not in html and "SUNUCU_METNI" not in html
+    assert "Kural: refusal" in refused and "Kural: output" in unknown
+    assert "Bu nasıl bulundu?" not in unknown_without_how
 
 
 def test_emergency_final_is_left_to_the_old_card(tmp_path: Path) -> None:

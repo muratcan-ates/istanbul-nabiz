@@ -260,9 +260,9 @@ def test_ai_notice_appears_once_per_page_session() -> None:
     assert "chat-ai-notice" not in source
 
 
-def test_unknown_and_emergency_answers_do_not_show_provenance_panels() -> None:
+def test_the_emergency_answer_shows_the_how_panel_and_the_legacy_unknown_path_does_not() -> None:
     source = read("js/chat.js")
     unknown_path = source[source.index("const unknown ="):source.index("return html;", source.index("const unknown ="))]
     assert "if (!unknown)" in unknown_path
     emergency_path = source[source.index("if (mode === 'redirect'"):source.index("const unknown =")]
-    assert "howPanel" not in emergency_path
+    assert "howPanel(how, turnId)" in emergency_path

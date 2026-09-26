@@ -100,12 +100,12 @@ function actionRow(citations) {
   return `<div class="btn-row ac-actions">${official}<a class="btn btn-primary ac-call153" href="tel:153">153'e sor</a></div>`;
 }
 
-function fixedCard(mode) {
+function fixedCard(mode, how, turnId) {
   const text = mode === 'unknown' ? UNKNOWN_TEXT : REFUSAL_TEXT;
   return `<section class="answer-card is-unknown" data-card="${mode}" aria-label="Doğrulanmış kaynak bulunamadı">`
     + `<p class="ac-fixed" data-er-skip>${esc(text)}</p>`
     + '<div class="btn-row ac-actions"><a class="btn btn-primary ac-call153" href="tel:153">153\'e sor</a></div>'
-    + '</section><p class="chat-foot"><span>cevabı yazan: <b>kural</b></span></p>';
+    + `</section><p class="chat-foot"><span>cevabı yazan: <b>kural</b></span></p>${howPanel(how, turnId || mode)}`;
 }
 
 function renderAnswerCard(data, { turnId = '', now = Date.now() } = {}) {
@@ -113,11 +113,11 @@ function renderAnswerCard(data, { turnId = '', now = Date.now() } = {}) {
   const mode = payload.mode || (payload.refused ? 'refused' : 'answer');
   if (mode === 'redirect' && payload.emergency === true) return '';
   if (!['answer', 'quote_only', 'refused', 'unknown'].includes(mode)) return '';
-  if (mode === 'refused' || mode === 'unknown') return fixedCard(mode);
+  if (mode === 'refused' || mode === 'unknown') return fixedCard(mode, payload.how, turnId);
 
   const citations = Array.isArray(payload.citations) ? payload.citations.filter(Boolean) : [];
   const quoted = citations.filter((item) => typeof item.quote === 'string' && item.quote.trim());
-  if (mode === 'quote_only' && quoted.length === 0) return fixedCard('refused');
+  if (mode === 'quote_only' && quoted.length === 0) return fixedCard('refused', payload.how, turnId);
 
   const answer = payload.answer_text ?? payload.answer ?? '';
   const showShort = mode === 'answer' && (quoted.length === 0 || payload.author !== 'kural');
