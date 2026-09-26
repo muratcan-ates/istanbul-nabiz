@@ -2477,3 +2477,20 @@ come from the cache, the robots snapshots and the code.
 - The web page's JS/total payload target rises by 153 B, in the open, because the generated tokens file is shared
   byte-for-byte with the console.
 - The screens themselves change in E44 (citizen), E45 (answer card) and E46 (console); E43 changes button states only.
+
+## 60. The citizen page: the composer is the hero (E44, 26 Sep)
+
+### Decision
+
+- The first screen has one primary action, "Sor": a composer card (question, microphone, send) under a short
+  headline, with three suggestion chips and "Daha fazla soru". The chat renders directly under the composer, not
+  thousands of pixels further down.
+- Tips, answer language and account sections sit in disclosures; the top bar keeps one "Erişilebilirlik" menu, the
+  language switch and the "Resmî İBB hizmeti değildir" notice, which stays visible at 375 px with no sideways scroll.
+- On phones, when the composer scrolls out of view, a single "Sor" pill appears at the bottom centre
+  (IntersectionObserver, no scroll listener) and brings the composer back; it hides while the composer is visible.
+
+### Consequences
+
+- Lower sections still carry several filled buttons (map, stops, example sign-ins); making them secondary is left
+  for a later pass. Scrolling the answer into view is E45's job.
