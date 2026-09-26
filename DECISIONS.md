@@ -2297,3 +2297,81 @@ come without a model.
 - `kvkk.html` and the consent text stay Turkish legal text; an English version needs a legal review.
 - `quick_chips.js` reads the language from the profile, not the page; `model_strip.js` prints the server's Turkish
   note without `lang="tr"`. Both are open.
+
+## 52. From a citizen report to a signal: interchange critical, triage context, no assignment (E29, 26 Sep)
+
+### Decision
+
+- No new signal kind and no new rule: E24's `citizen_report` still goes to a person through R-10. A report at a
+  station whose name carries two or more lines (an interchange) is `critical`, so the router's own `critical`
+  trigger seals it; every other report stays `warning` as in E24. `critical_kinds` is not touched.
+- The console card gets a read-only "Önceliklendirme (öneri)" part (`GET /api/console/report-triage`, operator
+  only): priority from the sealed `critical`/`repeat` reasons, the folded report count (3 or more is medium) and a
+  direct contradiction with the lift record; computed on read, never written to the ledger.
+- The agency is a suggestion from the fixed `agency_router` table ("metro istasyonu asansör"); Nabız assigns no work
+  to any team, agency or person, and the card has no assign or send button.
+- `citizen_report` (a report, "bildirim") and the operator-translation `citizen_request` (a question, "talep") stay
+  apart: triage neither reads nor counts request rows.
+
+### Consequences
+
+- An interchange is "same name, two or more lines"; walking distance is not checked, looser than
+  `equipment_signals.transfer_hubs`. The `repeat` window is the widest mission value (336 h); if another mission
+  changes it, this priority changes too. `SUPPORT_MANY = 3` is a design parameter, not measured.
+- `critical` reports still never become rule drafts (`NEVER_DRAFTED` is by kind).
+
+## 53. The console report map (E28, 26 Sep)
+
+### Decision
+
+- "Bildirim haritası" in `/console` (`GET /api/console/report-map?window=30m|24h`, operator only): reports and
+  folded supports counted per station from the ledger, sorted, with a record conflict marked as its own tag (and a
+  dashed circle on the map). The list is always there; the Leaflet map opens on demand from `/vendor/leaflet/`.
+- The person's location is never used: a dot is the station's gazetteer coordinate. No heat or cluster plugin, the
+  Leaflet core is enough; no new third-party code, so NOTICE.md is unchanged. The windows (30 min, 24 h) are design
+  parameters.
+- A row with a card awaiting approval is a button that opens that card; a decided card's row says "karar verildi".
+
+### Consequences
+
+- A station whose gazetteer name differs from İBB's spelling falls into `unplaced` (not measured how many). The
+  ledger is scanned in full on every read (10 000 rows not measured). Console files are never in the service worker.
+
+## 54. What became of my report (E33, 26 Sep)
+
+### Decision
+
+- A citizen's report has a short code derived from its card (`sha256` of the signal id, never stored); everyone
+  whose report folds into the same card sees the same code, a report after the decision gets a new one.
+  `GET /api/report/code` and `GET /api/report/outcome/{code}` read only: no ledger write, no quota.
+- Four outcomes in the server's sentence: Onay bekliyor, Onaylandı, Yayımlanmadı, Süresi doldu. The operator, the
+  operator's reason, the card id and timestamps never reach the citizen.
+- "Bildirimlerim (bu cihazda)" under the step-free card keeps `{code, at}` for 30 days in `nabiz.report-codes.v1`,
+  asks every 20 s only while the tab is visible, and reuses `request_status.js`'s `parseStored` and `POLL_MS`. A
+  voice report (E27) joins the same list through `nabiz:report-sent`.
+- Service worker v11 (report.js changed; `request_status.js` was already in the shell). `kvkk.html` names
+  `nabiz.report.v1` (E24's mark) and `nabiz.report-codes.v1`.
+
+### Consequences
+
+- Whoever knows a code can read that card's outcome; the code names the card, not the person. A card not yet
+  sealed when the server restarts may answer 404 and leaves the device after two minutes. The status sentences
+  stay Turkish on the English page.
+
+## 55. Report by voice (E27, 26 Sep)
+
+### Decision
+
+- The voice flow says "Sizi şöyle anladım" and hands the transcript to a cancellable `nabiz:voice-transcript` event.
+- `voice_intent.js` reads the intent on the device, without a model: emergency first (a copy of the server's
+  emergency terms, kept equal by a test), then a lift report at a known station, then a fixed agency keyword.
+- A lift report reuses E24's confirm step and sends only E24's three fields (station, kind, bucket); the spoken
+  sentence never enters any request. Other work shows the agency card with "kayıt açılmadı", sending only the fixed
+  keyword. A question falls back to "Doğru / Düzelt".
+- `voice_intent.js` and `voice_report.js` are in the service worker shell (v11); `kvkk.html` says the sentence
+  stays on the device.
+
+### Consequences
+
+- The browser's speech provider may still hear the sentence (as before). Recognition stays `tr-TR` on the English
+  page; the real recognition rate for station names is not measured.

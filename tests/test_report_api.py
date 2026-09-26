@@ -360,20 +360,29 @@ def test_bildirim_journeys_replay(report_client) -> None:
         for line in (REPO_ROOT / "eval" / "journeys.bildirim.jsonl").read_text(encoding="utf-8").splitlines()
     ]
 
+    code = ""
     for scenario in scenarios:
         request = scenario["request"]
         response = client.request(
             request["method"],
-            request["path"],
+            request["path"].replace("{code}", code),
             json=request.get("json"),
+            params=request.get("params"),
         )
         actual = {"status": response.status_code}
         body = response.json()
         for key in ("error", "folded", "support_count"):
             if key in body:
                 actual[key] = body[key]
+        # E33: the code read in one step is the one the next step asks about; no operator field reaches it.
+        code = body.get("code", code)
+        actual["has_code"] = bool(body.get("code"))
+        actual["outcome"] = body.get("status")
+        actual["no_operator_fields"] = not {"signal_id", "operator", "reason", "decided_at"} & set(body)
         states = citizen_states(engine)
         actual["cards"] = len(states)
+        if "severity" in scenario["expect"]:
+            actual["severity"] = states[-1].signal.severity
         if "card_status" in scenario["expect"]:
             actual["card_status"] = states[-1].status
         if "path" in scenario["expect"]:
