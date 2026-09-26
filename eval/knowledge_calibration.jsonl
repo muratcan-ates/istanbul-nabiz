@@ -20,10 +20,27 @@
 {"id": "h-20", "group": "hafifletiyor", "row": "S122", "question": "Kadıköy'de boş otopark var mı?", "expect": "tool", "gold_urls": []}
 {"id": "d-01", "group": "demo", "row": "", "question": "Öğrenci kartı vizesi nasıl yapılır?", "expect": "knowledge", "gold_urls": ["https://www.istanbulkart.istanbul/duyurular/detay?id=2768"]}
 {"id": "d-02", "group": "demo", "row": "S55", "question": "İSKİ su kesintisi nereden öğrenilir?", "expect": "unknown", "gold_urls": []}
-{"id": "d-03", "group": "demo", "row": "S70", "question": "Doğalgaz açma randevusu nasıl alınır?", "expect": "unknown", "gold_urls": []}
+{"id": "d-03", "group": "demo", "row": "S70", "question": "Doğalgaz açma randevusu nasıl alınır?", "expect": "unknown", "gold_urls": ["https://igdas.istanbul/gaz-acma-randevusu"]}
 {"id": "d-04", "group": "demo", "row": "S77", "question": "insanla görüşmek istiyorum", "expect": "handoff", "gold_urls": []}
 {"id": "d-05", "group": "demo", "row": "S74", "question": "gaz kaçağı var", "expect": "emergency", "gold_urls": []}
 {"id": "d-06", "group": "demo", "row": "S74", "question": "Doğalgaz kaçağı var galiba, koku geliyor", "expect": "emergency", "gold_urls": []}
+{"id": "n-15", "group": "kurum-sayfasi", "question": "Doğalgaz faturası nereden ödenir?", "gold_urls": ["https://igdas.istanbul/veznelerimiz/", "https://igdas.istanbul/sabit-odeme-sistemi"]}
+{"id": "n-16", "group": "kurum-sayfasi", "question": "Doğalgaz aboneliği nasıl yapılır?", "gold_urls": ["https://www.igdas.istanbul/abonelik-sozlesmesi"]}
+{"id": "k-01", "group": "kurum-sayfasi", "question": "İSKİ su aboneliğini iptal etmek için hangi belgeler gerekir?", "gold_urls": ["https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-iptal-islemleri/"]}
+{"id": "k-02", "group": "kurum-sayfasi", "question": "İSKİ'de abonelik isim değişikliği nasıl yapılır?", "gold_urls": ["https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-isim-degisikligi/"]}
+{"id": "k-03", "group": "kurum-sayfasi", "question": "Yabancı uyruklu biri İSKİ su aboneliğini nasıl açar?", "gold_urls": ["https://iski.istanbul/abone-hizmetleri/abone-rehberi/yabanci-uyruklu-kisilerin-abonelik-islemleri"]}
+{"id": "k-04", "group": "kurum-sayfasi", "question": "ALO 185'e hangi kanallardan ulaşabilirim?", "gold_urls": ["https://iski.istanbul/iletisim/alo-185/"]}
+{"id": "k-05", "group": "kurum-sayfasi", "question": "İSKİ veznelerinin adresleri ve çalışma saatleri nedir?", "gold_urls": ["https://iski.istanbul/abone-hizmetleri/oedeme-kanallari/vezneler/tum-vezneler"]}
+{"id": "k-06", "group": "kurum-sayfasi", "question": "İstanbul'da içme suyu nasıl arıtılıyor?", "gold_urls": ["https://iski.istanbul/kurumsal/hakkimizda/icme-suyu-kalitesi/icilebilir-su-seruveni"]}
+{"id": "k-07", "group": "kurum-sayfasi", "question": "İGDAŞ güvence bedeli iadesini nereden alabilirim?", "gold_urls": ["https://www.igdas.istanbul/para-iade-noktalari/"]}
+{"id": "k-08", "group": "kurum-sayfasi", "question": "Doğalgaz faturasındaki kalemler ne anlama geliyor?", "gold_urls": ["https://www.igdas.istanbul/faturada-ne-nedir"]}
+{"id": "k-09", "group": "kurum-sayfasi", "question": "Doğalgazımı geçici olarak kapattırmak istiyorum, ne yapmalıyım?", "gold_urls": ["https://www.igdas.istanbul/gecici-dogal-gaz-acmakapama/"]}
+{"id": "k-10", "group": "kurum-sayfasi", "question": "Doğalgaz sabit ödeme sistemi nedir?", "gold_urls": ["https://igdas.istanbul/sabit-odeme-sistemi"]}
+{"id": "k-11", "group": "kurum-sayfasi", "question": "Haliç vapur hattının sefer saatleri nedir?", "gold_urls": ["https://sehirhatlari.istanbul/tr/seferler/ic-hatlar/istanbul-ici-hatlar/halic-hatti-37"]}
+{"id": "k-12", "group": "kurum-sayfasi", "question": "Şehir Hatları vapurunda kaybettiğim eşyayı nasıl bulurum?", "gold_urls": ["https://sehirhatlari.istanbul/tr/bilgiler/yolculuk-kurallari-249"]}
+{"id": "k-13", "group": "kurum-sayfasi", "question": "Deniz taksi nasıl çağrılır?", "gold_urls": ["https://sehirhatlari.istanbul/tr/ibb-deniz-taksi-sikca-sorulan-sorular"]}
+{"id": "k-14", "group": "kurum-sayfasi", "question": "Şehir Hatları vapurlarında engelli yolcular için hangi hizmetler var?", "gold_urls": ["https://sehirhatlari.istanbul/tr/bilgiler/erisilebilirlik-ve-sehir-hatlari-251"]}
+{"id": "k-15", "group": "kurum-sayfasi", "question": "Kış tarifesinde vapur seferlerinde ne değişti?", "gold_urls": ["https://www.sehirhatlari.istanbul/tr/duyurular/kis-tarifesinde-yapilan-yeni-duzenlemeler-2278"]}
 {"id": "n-01", "group": "negatif", "row": "", "question": "yarın hava nasıl", "expect": "unknown", "gold_urls": []}
 {"id": "n-02", "group": "negatif", "row": "", "question": "en iyi kebapçı nerede", "expect": "unknown", "gold_urls": []}
 {"id": "n-03", "group": "negatif", "row": "", "question": "Galatasaray maçı kaçta başlıyor?", "expect": "unknown", "gold_urls": []}
@@ -38,11 +55,13 @@
 {"id": "n-12", "group": "negatif", "row": "", "question": "Pasaport başvurusu nasıl yapılır?", "expect": "unknown", "gold_urls": []}
 {"id": "n-13", "group": "negatif", "row": "", "question": "Askerlik yoklaması nereden yapılır?", "expect": "unknown", "gold_urls": []}
 {"id": "n-14", "group": "negatif", "row": "", "question": "Elektrik faturası neden bu kadar yüksek geldi?", "expect": "unknown", "gold_urls": []}
-{"id": "n-15", "group": "negatif", "row": "", "question": "Doğalgaz faturası nereden ödenir?", "expect": "unknown", "gold_urls": []}
-{"id": "n-16", "group": "negatif", "row": "", "question": "Doğalgaz aboneliği nasıl yapılır?", "expect": "unknown", "gold_urls": []}
 {"id": "n-17", "group": "negatif", "row": "", "question": "Dolar bugün kaç TL?", "expect": "unknown", "gold_urls": []}
 {"id": "n-18", "group": "negatif", "row": "", "question": "Ev kirası bu yıl ne kadar artar?", "expect": "unknown", "gold_urls": []}
 {"id": "n-19", "group": "negatif", "row": "", "question": "Baş ağrısına hangi ilaç iyi gelir?", "expect": "unknown", "gold_urls": []}
 {"id": "n-20", "group": "negatif", "row": "", "question": "Kredi kartı borcumu nasıl yapılandırırım?", "expect": "unknown", "gold_urls": []}
 {"id": "n-21", "group": "negatif", "row": "", "question": "Yapay zekâ işimi elimden alır mı?", "expect": "unknown", "gold_urls": []}
 {"id": "n-22", "group": "negatif", "row": "", "question": "Ankara'ya en ucuz uçak bileti hangi gün?", "expect": "unknown", "gold_urls": []}
+{"id": "n-23", "group": "negatif", "question": "Elektrik aboneliği nasıl yapılır?", "gold_urls": []}
+{"id": "n-24", "group": "negatif", "question": "Elektrik kesintisi ne zaman bitecek?", "gold_urls": []}
+{"id": "n-25", "group": "negatif", "question": "Cep telefonu faturası nasıl ödenir?", "gold_urls": []}
+{"id": "n-26", "group": "negatif", "question": "Uçak bileti iptali nasıl yapılır?", "gold_urls": []}
