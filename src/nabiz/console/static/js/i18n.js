@@ -1,4 +1,5 @@
 import { answerLanguage, readProfile } from './profile.js';
+import { setCatalogs } from './i18n_text.js';
 export const LANGS = Object.freeze(['tr', 'en']);
 export const STORAGE_KEY = 'nabiz.lang.v1';
 export const BINDINGS = Object.freeze([
@@ -7,6 +8,7 @@ export const BINDINGS = Object.freeze([
   ['.topbar-nav', 'page.nav_label', 'aria'],
   ['.topbar-nav a[href="#asistan"]', 'page.nav_assistant', 'text'],
   ['.topbar-nav a[href="#profilim"]', 'page.nav_profile', 'text'],
+  ['.topbar-nav a[href="#takip"]', 'page.nav_follow', 'text'],
   ['.topbar-nav a[href="#hafizam"]', 'page.nav_memory', 'text'],
   ['#simple-toggle', 'page.simple_toggle', 'text'],
   ['.topbar-role span', 'band.not_official', 'text'],
@@ -64,6 +66,19 @@ export const BINDINGS = Object.freeze([
   ['footer a[href="/console"]', 'page.footer_console', 'text'],
   ['footer a[href="/kvkk.html"]', 'page.footer_kvkk', 'text'],
   ['#privacy-band p', 'privacy.band', 'segments'],
+  ['#account-title', 'page.account_title', 'text'],
+  ['#hesap .section-note', 'page.account_note', 'text'],
+  ['#hesap > p', 'page.account_prompt', 'text'],
+  ['#follow-title', 'page.follow_title', 'text'],
+  ['#takip .section-note', 'page.follow_note', 'text'],
+  ['#takip > .field-hint', 'page.follow_hint', 'text'],
+  ['#follow-empty', 'page.follow_empty', 'text'],
+  ['#acik-veri-title', 'page.open_data_title', 'text'],
+  ['#acik-veri .section-note', 'page.open_data_note', 'text'],
+  ['label[for="acik-veri-q"]', 'page.open_data_label', 'text'],
+  ['#acik-veri-q', 'page.open_data_placeholder', 'placeholder'],
+  ['#acik-veri-form > button', 'page.open_data_search', 'text'],
+  ['#acik-veri-chips', 'page.open_data_categories', 'aria'],
 ]);
 const EXCLUDED = '.chat-msg.is-user .chat-text, blockquote.quote-exact, .quote-box blockquote, input, textarea, #cards, #arrival, #alternative, #compare-result, #quick-cards, figcaption.quote-src';
 const textOriginals = new Map(), attributeOriginals = new Map(), catalogPromises = new Map();
@@ -256,6 +271,7 @@ async function applyLanguage(language, { sync = false, persist = false, update =
   const [fallback, catalog] = await Promise.all([fetchCatalog('tr'), fetchCatalog(language)]);
   if (activeLanguage !== language) return;
   activeFallback = fallback; activeCatalog = catalog; restoreOriginals(); applyBindings(fallback, catalog);
+  setCatalogs(language, catalog, fallback);
   visitDynamic(document.body, fallback, catalog); frameQuotes(language, catalog, fallback);
   setAnswerNote(language, catalog, fallback); setPressed(group, language);
   window.dispatchEvent(new CustomEvent('nabiz:lang', { detail: { lang: language } }));

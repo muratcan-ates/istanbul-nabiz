@@ -9,6 +9,7 @@
 
 import { get, post } from './api.js';
 import { esc } from './format.js';
+import { onLang, t } from './i18n_text.js';
 
 const STORAGE_KEY = 'nabiz.requests.v1';
 const KEEP_DAYS = 30;
@@ -17,56 +18,10 @@ const POLL_MS = 20_000;
 const MAX_CHARS = 1000;
 const STYLESHEET = '/css/operator_requests.css';
 const OFFER_MODES = /^guard_/;
-
-const TEXT = {
-  tr: {
-    offer: 'Bu soruyu bir İBB operatörüne sorabilirsiniz. Acil durumlar için 112.',
-    offerButton: 'Operatöre sor',
-    formTitle: 'Operatöre ilet',
-    question: 'Operatöre gidecek soru',
-    lang: 'Sorunun dili',
-    langs: { auto: 'Otomatik algıla', tr: 'Türkçe', en: 'English' },
-    consent: 'Sorunuz ve seçtiğiniz dil İBB operatörüne iletilecek. Kişisel veriler maskelenir.',
-    send: 'Operatöre ilet',
-    cancel: 'Vazgeç',
-    needConsent: 'Göndermek için onay kutusunu işaretleyin.',
-    empty: 'Soru boş olamaz.',
-    sending: 'Gönderiliyor.',
-    emergency: "Bu acil bir durum olabilir. İBB operatörü 112'nin yerine geçmez: lütfen hemen 112'yi arayın.",
-    waitingTitle: (code) => `Operatöre iletildi · #${code} · bekleniyor`,
-    answeredTitle: 'İBB operatörü yanıtladı',
-    yourQuestion: 'Sorunuz (maskeli)',
-    turkish: 'Türkçesi',
-    noTranslation: 'Çeviri şu an yok: operatör sorunuzu yazdığınız haliyle görecek.',
-    remove: 'Kartı bu cihazdan kaldır',
-    gone: 'Bu talep bulunamadı ya da 30 günlük süresi doldu.',
-  },
-  en: {
-    offer: 'You can ask an İBB operator this question. For emergencies, call 112.',
-    offerButton: 'Ask an operator',
-    formTitle: 'Send to an operator',
-    question: 'Question for the operator',
-    lang: 'Language of the question',
-    langs: { auto: 'Detect automatically', tr: 'Türkçe', en: 'English' },
-    consent: 'Your question and the language you chose will be sent to an İBB operator. Personal data is masked.',
-    send: 'Send to operator',
-    cancel: 'Cancel',
-    needConsent: 'Tick the consent box to send.',
-    empty: 'The question cannot be empty.',
-    sending: 'Sending.',
-    emergency: 'This may be an emergency. An İBB operator does not replace 112: please call 112 now.',
-    waitingTitle: (code) => `Sent to an operator · #${code} · waiting`,
-    answeredTitle: 'An İBB operator replied',
-    yourQuestion: 'Your question (masked)',
-    turkish: 'In Turkish',
-    noTranslation: 'No translation right now: the operator will read your question as you wrote it.',
-    remove: 'Remove this card from this device',
-    gone: 'This request was not found or its 30 days have passed.',
-  },
-};
+const TURKISH_LANGUAGE_NAME = 'Türkçe';
+const ENGLISH_LANGUAGE_NAME = 'English';
 
 const pageLang = (doc) => ((doc && doc.documentElement && doc.documentElement.lang) === 'en' ? 'en' : 'tr');
-const words = (doc) => TEXT[pageLang(doc)];
 
 /** Stored codes, newest last, dropping anything malformed or older than 30 days. */
 function parseStored(raw, now = Date.now()) {
@@ -88,47 +43,47 @@ function writeCodes(storage, items) {
 }
 
 function offerMarkup(doc) {
-  const t = words(doc);
-  return `<div class="op-offer" data-op="offer"><p>${esc(t.offer)}</p>`
-    + `<button type="button" class="btn" data-op="open">${esc(t.offerButton)}</button></div>`;
+  return `<div class="op-offer" data-op="offer"><p>${esc(t('ui.req.offer', 'Bu soruyu bir İBB operatörüne sorabilirsiniz. Acil durumlar için 112.'))}</p>`
+    + `<button type="button" class="btn" data-op="open">${esc(t('ui.req.offer_button', 'Operatöre sor'))}</button></div>`;
 }
 
 function formMarkup(question, doc) {
-  const t = words(doc);
-  const options = Object.entries(t.langs).map(([value, label]) => `<option value="${value}">${esc(label)}</option>`).join('');
+  const auto = t('ui.req.lang_auto', 'Otomatik algıla');
+  const options = `<option value="auto">${esc(auto)}</option><option value="tr">${esc(TURKISH_LANGUAGE_NAME)}</option>`
+    + `<option value="en">${esc(ENGLISH_LANGUAGE_NAME)}</option>`;
   return '<section class="op-card" role="region" aria-labelledby="op-form-title">'
-    + `<h3 id="op-form-title">${esc(t.formTitle)}</h3>`
-    + `<label for="op-question">${esc(t.question)}</label>`
+    + `<h3 id="op-form-title">${esc(t('ui.req.form_title', 'Operatöre ilet'))}</h3>`
+    + `<label for="op-question">${esc(t('ui.req.question', 'Operatöre gidecek soru'))}</label>`
     + `<textarea id="op-question" maxlength="${MAX_CHARS}" rows="4">${esc(String(question || '').slice(0, MAX_CHARS))}</textarea>`
-    + `<label for="op-lang">${esc(t.lang)}</label><select id="op-lang">${options}</select>`
-    + `<p class="op-consent"><input type="checkbox" id="op-consent"><label for="op-consent">${esc(t.consent)}</label></p>`
+    + `<label for="op-lang">${esc(t('ui.req.language', 'Sorunun dili'))}</label><select id="op-lang">${options}</select>`
+    + `<p class="op-consent"><input type="checkbox" id="op-consent"><label for="op-consent">${esc(t('ui.req.consent', 'Sorunuz ve seçtiğiniz dil İBB operatörüne iletilecek. Kişisel veriler maskelenir.'))}</label></p>`
     + '<div class="op-actions">'
-    + `<button type="button" class="btn btn-primary" data-op="send">${esc(t.send)}</button>`
+    + `<button type="button" class="btn btn-primary" data-op="send">${esc(t('ui.req.send', 'Operatöre ilet'))}</button>`
     + '<a class="btn btn-danger" href="tel:112">112</a>'
-    + `<button type="button" class="btn" data-op="cancel">${esc(t.cancel)}</button></div>`
+    + `<button type="button" class="btn" data-op="cancel">${esc(t('ui.req.cancel', 'Vazgeç'))}</button></div>`
     + '<p class="op-status" role="status" aria-live="polite"></p></section>';
 }
 
 /** The request card: waiting, or the reply in the visitor's language with its Turkish text folded away. */
 function cardMarkup(view, doc) {
-  const t = words(doc);
-  const reply = view && view.reply;
   const code = esc(view.code);
-  let body = `<p class="op-meta">${esc(t.yourQuestion)}</p><blockquote class="op-quote">${esc(view.question || '')}</blockquote>`;
-  if (!reply) {
-    const missing = view.translation_note ? `<p class="op-meta">${esc(t.noTranslation)}</p>` : '';
+  let body = `<p class="op-meta">${esc(t('ui.req.your_question', 'Sorunuz (maskeli)'))}</p>`
+    + `<blockquote class="op-quote" lang="${esc(view.lang || 'tr')}">${esc(view.question || '')}</blockquote>`;
+  if (!view.reply) {
+    const missing = view.translation_note
+      ? `<p class="op-meta">${esc(t('ui.req.no_translation', 'Çeviri şu an yok: operatör sorunuzu yazdığınız haliyle görecek.'))}</p>` : '';
     return `<section class="op-card" data-code="${code}" aria-labelledby="op-title-${code}">`
-      + `<h3 id="op-title-${code}">${esc(t.waitingTitle(view.code))}</h3>${body}${missing}`
-      + `<p class="op-meta">${esc(view.note || '')}</p>`
+      + `<h3 id="op-title-${code}">${esc(t('ui.req.waiting_title', 'Operatöre iletildi · #{code} · bekleniyor', { code: view.code }))}</h3>${body}${missing}`
+      + `<p class="op-meta" lang="tr">${esc(view.note || '')}</p>`
       + `<div class="op-actions"><a class="btn btn-danger" href="tel:112">112</a>`
-      + `<button type="button" class="btn" data-op="remove">${esc(t.remove)}</button></div></section>`;
+      + `<button type="button" class="btn" data-op="remove">${esc(t('ui.req.remove', 'Kartı bu cihazdan kaldır'))}</button></div></section>`;
   }
-  body = `<p lang="${esc(reply.lang)}">${esc(reply.text)}</p>`;
-  if (reply.text_tr) body += `<details><summary>${esc(t.turkish)}</summary><p lang="tr">${esc(reply.text_tr)}</p></details>`;
+  body = `<p lang="${esc(view.reply.lang)}">${esc(view.reply.text)}</p>`;
+  if (view.reply.text_tr) body += `<details><summary>${esc(t('ui.req.turkish', 'Türkçesi'))}</summary><p lang="tr">${esc(view.reply.text_tr)}</p></details>`;
   return `<section class="op-card is-answered" data-code="${code}" aria-labelledby="op-title-${code}">`
-    + `<h3 id="op-title-${code}">${esc(t.answeredTitle)} · #${code}</h3>${body}`
-    + `<p class="op-label" lang="tr">${esc(reply.label)}</p><p class="op-meta" lang="tr">${esc(view.simulated || '')}</p>`
-    + `<div class="op-actions"><button type="button" class="btn" data-op="remove">${esc(t.remove)}</button></div></section>`;
+    + `<h3 id="op-title-${code}">${esc(t('ui.req.answered_title', 'İBB operatörü yanıtladı'))} · #${code}</h3>${body}`
+    + `<p class="op-label" lang="tr">${esc(view.reply.label)}</p><p class="op-meta" lang="tr">${esc(view.simulated || '')}</p>`
+    + `<div class="op-actions"><button type="button" class="btn" data-op="remove">${esc(t('ui.req.remove', 'Kartı bu cihazdan kaldır'))}</button></div></section>`;
 }
 
 /** Answers the assistant could not give: the unknown and refusal cards (is-refused) and the guard cards. */
@@ -152,11 +107,21 @@ function addStylesheet(doc) {
   doc.head.append(sheet);
 }
 
+function formSnapshot(form) {
+  return {
+    question: form.querySelector('#op-question').value,
+    language: form.querySelector('#op-lang').value,
+    consent: form.querySelector('#op-consent').checked,
+    focused: form.contains(form.ownerDocument.activeElement) ? form.ownerDocument.activeElement.id : '',
+  };
+}
+
 function mountRequests(doc, storage = globalThis.localStorage) {
   const log = doc && doc.querySelector('#chat-log');
   if (!log) return null;
   addStylesheet(doc);
   const cards = new Map();
+  const views = new Map();
   let timer = null;
 
   const holder = (html) => {
@@ -168,6 +133,7 @@ function mountRequests(doc, storage = globalThis.localStorage) {
   };
 
   function show(view) {
+    views.set(view.code, view);
     const li = cards.get(view.code) || holder('');
     li.innerHTML = cardMarkup(view, doc);
     li.hidden = false;
@@ -180,6 +146,7 @@ function mountRequests(doc, storage = globalThis.localStorage) {
     writeCodes(storage, readCodes(storage).filter((item) => item.code !== code));
     cards.get(code)?.remove();
     cards.delete(code);
+    views.delete(code);
   }
 
   async function refresh(code) {
@@ -201,16 +168,15 @@ function mountRequests(doc, storage = globalThis.localStorage) {
   }
 
   async function send(form) {
-    const t = words(doc);
     const status = form.querySelector('.op-status');
     const text = form.querySelector('#op-question').value.trim();
-    if (!text) { status.textContent = t.empty; return; }
-    if (!form.querySelector('#op-consent').checked) { status.textContent = t.needConsent; return; }
-    status.textContent = t.sending;
+    if (!text) { status.textContent = t('ui.req.empty', 'Soru boş olamaz.'); return; }
+    if (!form.querySelector('#op-consent').checked) { status.textContent = t('ui.req.need_consent', 'Göndermek için onay kutusunu işaretleyin.'); return; }
+    status.textContent = t('ui.req.sending', 'Gönderiliyor.');
     try {
       const view = await post('/api/requests', { text, lang: form.querySelector('#op-lang').value, consent: true });
       if (view.emergency) {
-        form.closest('li').innerHTML = `<p class="callout callout-warn" role="alert">${esc(t.emergency)}</p>`;
+        form.closest('li').innerHTML = `<p class="callout callout-warn" role="alert">${esc(t('ui.req.emergency', "Bu acil bir durum olabilir. İBB operatörü 112'nin yerine geçmez: lütfen hemen 112'yi arayın."))}</p>`;
         doc.dispatchEvent(new CustomEvent('nabiz:emergency', { detail: { lang: pageLang(doc), hazard: view.hazard } }));
         return;
       }
@@ -222,6 +188,7 @@ function mountRequests(doc, storage = globalThis.localStorage) {
       poll();
     } catch (err) {
       status.textContent = err.message;
+      status.lang = 'tr';
     }
   }
 
@@ -230,6 +197,22 @@ function mountRequests(doc, storage = globalThis.localStorage) {
     const li = holder(formMarkup(question, doc));
     li.id = 'op-form';
     li.querySelector('#op-question').focus();
+  }
+
+  function redraw() {
+    for (const [code, view] of views) show(view);
+    const form = doc.querySelector('#op-form .op-card');
+    if (form) {
+      const snapshot = formSnapshot(form);
+      form.innerHTML = formMarkup(snapshot.question, doc).replace(/^<section[^>]*>|<\/section>$/g, '');
+      form.querySelector('#op-lang').value = snapshot.language;
+      form.querySelector('#op-consent').checked = snapshot.consent;
+      if (snapshot.focused) form.querySelector(`#${snapshot.focused}`)?.focus();
+    }
+    log.querySelectorAll('.op-offer').forEach((offer) => {
+      offer.insertAdjacentHTML('afterend', offerMarkup(doc));
+      offer.remove();
+    });
   }
 
   log.addEventListener('click', (event) => {
@@ -242,6 +225,7 @@ function mountRequests(doc, storage = globalThis.localStorage) {
     if (action === 'remove') forget(control.closest('.op-card').dataset.code);
   });
   doc.addEventListener('nabiz:operator-request', (event) => openForm((event.detail && event.detail.question) || ''));
+  onLang(redraw);
 
   const offer = () => {
     log.querySelectorAll('li.chat-msg.is-assistant[aria-busy="false"]:not([data-op-seen])').forEach((shell) => {
@@ -266,6 +250,4 @@ function mountRequests(doc, storage = globalThis.localStorage) {
 
 if (typeof document !== 'undefined') mountRequests(document);
 
-export {
-  STORAGE_KEY, POLL_MS, TEXT, parseStored, offerMarkup, formMarkup, cardMarkup, wantsOffer, mountRequests,
-};
+export { STORAGE_KEY, POLL_MS, parseStored, offerMarkup, formMarkup, cardMarkup, wantsOffer, mountRequests };
