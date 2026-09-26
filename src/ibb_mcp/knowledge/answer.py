@@ -120,6 +120,15 @@ def _env_float(name: str, default: float) -> float:
     return value if value >= 0 else default
 
 
+def evidence_thresholds() -> dict[str, float]:
+    """The thresholds :func:`answer` applies: the ``NABIZ_KNOWLEDGE_*`` knobs, else the defaults."""
+    return {
+        "min_cosine": _env_float("NABIZ_KNOWLEDGE_MIN_COSINE", 0.35),
+        "fts_ceiling": _env_float("NABIZ_KNOWLEDGE_FTS_CEILING", 1.0),
+        "coverage_ceiling": _env_float("NABIZ_KNOWLEDGE_COVERAGE_CEILING", 0.27),
+    }
+
+
 def _source_text(hit: Hit) -> str:
     """Citation line with the fetch date used by the source contract."""
     return f"{hit.quote}\nKaynak: {hit.url} ({hit.fetched_at[:10]})."
@@ -223,14 +232,7 @@ async def answer(
     hits = [hit for hit in await search(store, question, embedder=embedder, limit=8) if not looks_like_instruction(hit.quote)]
     if not hits:
         return _unknown(refused=sensitive)
-    thresholds = (
-        _env_float("NABIZ_KNOWLEDGE_MIN_COSINE", 0.35),
-        _env_float("NABIZ_KNOWLEDGE_FTS_CEILING", 1.0),
-        _env_float("NABIZ_KNOWLEDGE_COVERAGE_CEILING", 0.27),
-    )
-    verdict = assess_evidence(
-        hits, query=question, min_cosine=thresholds[0], fts_ceiling=thresholds[1], coverage_ceiling=thresholds[2]
-    )
+    verdict = assess_evidence(hits, query=question, **evidence_thresholds())
     ids = [hit.quote_id for hit in hits]
     checked = verify_evidence(ids, hits, store=store, max_age_s=_env_float("NABIZ_KNOWLEDGE_FRESHNESS_SLA_S", 31_536_000))
     if checked.blocked or verdict.level == "out_of_scope":
