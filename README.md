@@ -69,8 +69,8 @@ day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status
 | City agent | **working without a model** (keyword routing and templated answers); the model path has never been evaluated on a real model | `src/nabiz/agent/` |
 | Infrastructure | **written, never deployed**: Bicep + `azd`, one `Dockerfile` for server and jobs (never built) | `infra/`, `azure.yaml`, `Dockerfile`, [docs/deploy.md](docs/deploy.md) |
 | CI | **green on `main` since 23 Sep** (`1599c40`, then `d59b5a8`; last run `76fda61` on 25 Sep, success, re-checked 26 Sep in the GitHub Actions run list), after 13 red runs from 8 to 22 Sep, 10 of them because three tests read the gitignored GTFS export ([docs/ENGINEERING.md](docs/ENGINEERING.md) §1). Lint, tests, the MCP smoke test, guardrails, the architecture fences, the web budget and the authorship gate; `make ci-local` runs the same list on a clean copy. `main` is not protected yet | `.github/workflows/ci.yml` |
-| Tests | **2163 passed**, 1 failed, 1 skipped, 3 xfailed of 2168 collected, offline, sprint mode (DECISIONS #29), on 26 Sep. The failure is `tests/test_network_guard.py::test_a_client_built_outside_ctx_is_refused_too`: in the cloud container that measured this, an HTTPS proxy refuses the request before the test's network guard sees it | `tests/` · `eval/results/numbers.md` |
-| Eval harness | **72 scenarios** (J1–J12) in `eval/journeys.jsonl`: 60 run offline in deterministic mode, 49/60 passed, 12 agent-only skipped; 100 knowledge questions validated, retrieval not measured offline. Of the failures on 26 Sep, 5 (J2, J11) read the gitignored GTFS export, absent from the measuring container, and 6 (J9) expect `lift_status` "unknown" while the tool now reads the 26 Sep Metro equipment recording | `eval/` · `eval/results/numbers.md` |
+| Tests | **2965 passed**, 0 failed, 3 skipped, 3 xfailed of 2971 collected, offline, sprint mode (DECISIONS #29), on 26 Sep, on the owner's machine after the cloud PRs were merged (DECISIONS #32) | `tests/` · `eval/results/numbers.md` |
+| Eval harness | **72 scenarios** (J1–J12) in `eval/journeys.jsonl`: 60 run offline in deterministic mode, 60/60 passed, 12 agent-only skipped; 100 knowledge questions validated, retrieval not measured offline | `eval/` · `eval/results/numbers.md` |
 | Product app | citizen page `/` and simulated operator console `/console` on :8090, **working locally**, not deployed | `src/nabiz/console/`, `make console` |
 | NEXUS decision library | signals, TOML missions, reflexes, escalation, Arena, approval, hash-chained ledger, rule drafts; **working in tests** | `src/nexus_core/`, `tests/test_nexus_core_*.py` |
 
@@ -84,12 +84,12 @@ bir sayı sunumda söylenmez.
 | Otobüs varış tahmininin ortalama mutlak hatası (ölçüldü; henüz iyi değil) | **12,94 dk** (n = 1.351) | `eval/results/eta.md` · `make eta` · 8–22 Eyl verisi |
 | Modelsiz ajan cevaplarında kaynağıyla eşleşen sayı (şablon cevap, model yok) | **126/126** | `eval/results/20260908T082619Z-agent-offline.md` · 8 Eyl |
 | MCP aracı | **17** | `eval/results/numbers.md` · `scripts/demo_numbers.py --write` · 26 Eyl |
-| Test | **2.163 geçti** (2.168 toplandı) | same |
-| Eval senaryosu | **49/60** geçti (72 senaryo; 12 tanesi yalnız ajan modunda, atlandı) | same |
+| Test | **2.965 geçti** (2.971 toplandı) | same |
+| Eval senaryosu | **60/60** geçti (72 senaryo; 12 tanesi yalnız ajan modunda, atlandı) | same |
 | Bilgi soru seti | 100 soru, şema doğrulandı; isabet ölçülmedi | same |
 
-Yeni satır aynı kurala uyar; sitede aynı sayılar `/nasil.html` sayfasında `eval/results/numbers.json`'dan okunur
-(entegrasyondan sonra).
+Yeni satır aynı kurala uyar; sitede test ve eval sayıları `/nasil.html` sayfasında `eval/results/numbers.md`'den
+okunur.
 
 ## Architecture
 
@@ -446,8 +446,8 @@ onarımı, varış tahmini motoru, 17 araç ve **MCP sunucusu** (stdio gerçek b
 durumsuz, çağıran başına bütçeli, `/healthz`'li), web sayfası, durumsuz uyarı motoru, modelsiz çalışan ajan.
 Toplayıcı bugün sahibinin dizüstünde çalışıyor; hedef, çevrimdışı test edilmiş beş zamanlanmış Container Apps
 Job'u (DECISIONS #10). `main`'deki CI 8–22 Eylül arasında 13 koşunun 13'ünde kırmızıydı; 23 Eylül'den beri
-yeşil. Testler: 2.163 geçti, 1 kaldı (2.168 toplandı; çevrimdışı, sprint modu); eval:
-72 senaryodan 60 tanesi koştu, 49 tanesi geçti; 100 bilgi sorusu doğrulandı
+yeşil. Testler: 2.965 geçti, 0 kaldı (2.971 toplandı; çevrimdışı, sprint modu); eval:
+72 senaryodan 60 tanesi koştu, 60 tanesi geçti; 100 bilgi sorusu doğrulandı
 (`eval/results/numbers.md`). Web sayfasının yeni tasarımı ("Nabız çizgisi") onaylandı ve [docs/design/DESIGN.md](docs/design/DESIGN.md)
 dosyasında yazılı; henüz uygulanmadı. Günlük plan [docs/SPRINT.md](docs/SPRINT.md), kurallar
 [AGENTS.md](AGENTS.md), mühendislik [docs/ENGINEERING.md](docs/ENGINEERING.md), tehdit modeli
