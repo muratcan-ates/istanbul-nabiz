@@ -1,5 +1,5 @@
-/* v5 (DECISIONS #35: Arabic removed, only the tr/en catalogues): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v5';
+/* v6 (DECISIONS #36: quota strip, example account, follows): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v6';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -31,6 +31,8 @@ const SHELL = [
   '/nasil.html', '/css/how.css', '/js/how.js', '/css/handoff.css', '/js/handoff.js',
   // E06: the page language switch and the Turkish and English catalogues
   '/js/i18n.js', '/i18n/tr.json', '/i18n/en.json',
+  // DECISIONS #36: the quota strip, the example account and the follows
+  '/css/account.css', '/js/identity.js', '/js/account_view.js', '/js/account.js', '/js/quota_strip.js', '/js/follow.js',
 ];
 
 function ruleFor(url, method, mode) {

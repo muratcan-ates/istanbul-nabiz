@@ -32,6 +32,7 @@
       <li><a href="#kvkk-proje">Proje ve hizmet</a></li>
       <li><a href="#kvkk-cihaz">Cihazda kalan bilgiler</a></li>
       <li><a href="#kvkk-sunucu">Sunucuya giden bilgiler</a></li>
+      <li><a href="#kvkk-hesap">Hesap ve takip (açık rıza)</a></li>
       <li><a href="#kvkk-model">Yapay zekâ hizmeti</a></li>
       <li><a href="#kvkk-ses">Sesle yazma</a></li>
       <li><a href="#kvkk-toplanmayan">Toplanmayan bilgiler</a></li>
@@ -44,7 +45,7 @@
     <p class="sr-only" role="status" aria-live="polite">Gizlilik bilgileri sayfası.</p>
 
     <h2 id="kvkk-kisa">Kısa özet</h2>
-    <p>Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Sunucuda kişisel veri saklanmaz; sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.</p>
+    <p>Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesap bağlamadıkça sunucuda kişisel veri saklanmaz; sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.</p>
     <p>Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
     <p>Bu sayfa bugünkü teknik davranışın tam metnidir.</p>
 
@@ -71,6 +72,9 @@
           <tr><td>Duraklarım: kayıtlı hat ve durak çiftleri</td><td><code>nabiz.my-stops.v1</code></td><td>Duraklarım şeridinde Kaldır.</td></tr>
           <tr><td>Duraklarım önerisi için sorulan durak sayaçları</td><td><code>nabiz.my-stops.asked.v1</code></td><td>Öneride Hayır deyin ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Sohbetlerim: bu cihazdaki sohbetler (30 gün)</td><td><code>nabiz-conversations</code>, <code>nabiz.conversations.v1</code></td><td>Sohbetlerim panelinde Sil ya da Hepsini sil.</td></tr>
+          <tr><td>Günlük soru kotası için rastgele cihaz kimliği (kişisel veri değil)</td><td><code>nabiz.device.v1</code></td><td>Hesabımı ve verilerimi sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Örnek hesabın giriş anahtarı ve gösterilen bilgileri</td><td><code>nabiz.account.v1</code></td><td>Hesap bağla bölümünde Hesabımı ve verilerimi sil.</td></tr>
+          <tr><td>Hesapsız takip edilen konular (en çok 3) ve gösterilmiş değişiklikler</td><td><code>nabiz.follows.v1</code>, <code>nabiz.follows.seen.v1</code></td><td>Takip ettiklerim bölümünde Takibi bırak ya da Hesabımı ve verilerimi sil.</td></tr>
           <tr><td>Çevrimdışı kayıtlı şehir kartları ve çevrimdışı süre notu</td><td><code>nabiz-brief-v2</code>, <code>nabiz.pwa.offlineSince</code>, <code>nabiz.pwa.iosHintClosed</code></td><td>Profilim bölümünde Profili sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
         </tbody>
       </table>
@@ -78,8 +82,25 @@
 
     <h2 id="kvkk-sunucu">Sunucuya giden bilgiler</h2>
     <p>Profil paylaşımını onaylarsanız yalnız seçtiğiniz işlevsel ihtiyaç anahtarları istekle gönderilir. Şehir kartı isteklerinde kayıtlı istasyon ve hat adları kullanılabilir.</p>
-    <p>Sohbet için yazdığınız soru ve konuşmadaki önceki sorular sunucuya gider; sohbet soruları sunucu günlüğüne yazılmaz. Sunucuda kişisel veri saklanmaz.</p>
+    <p>Sohbet için yazdığınız soru ve konuşmadaki önceki sorular sunucuya gider; sohbet soruları sunucu günlüğüne yazılmaz. Hesap bağlamadıkça sunucuda kişisel veri saklanmaz; hesap bağlarsanız ne saklandığı aşağıda, Hesap ve takip bölümündedir.</p>
+    <p>Günlük soru kotası için tarayıcınızın ürettiği rastgele cihaz kimliği ve bağlantı adresiniz yalnız tuzlanmış özet (hash) olarak, sunucu belleğinde ve o gün için tutulur; diske yazılmaz, günlüğe yazılmaz, sunucu yeniden başlayınca silinir.</p>
     <p>İsteğe bağlı geri bildirimde yalnız rastgele cevap kimliği, oy ve seçilen neden kodu gönderilir. Soru, cevap, ad, hesap, IP adresi ve tarayıcı bilgisi uygulama günlüğüne yazılmaz.</p>
+
+    <h2 id="kvkk-hesap">Hesap ve takip (açık rıza)</h2>
+    <p>Hesap bağlamak isteğe bağlıdır. Hesapsız kullanımda her şey bu cihazda kalır. Hesap bağlama bugün bir gösterimdir: İBB, İstanbulkart ya da Google hesabına gerçekten bağlanılmaz, SMS gönderilmez, e-posta adresi doğrulanmaz. Her örnek giriş ekranında bu bant görünür: Örnek hesap · gerçek İBB/İstanbulkart bağlantısı yok · entegrasyon İBB izni gerektirir.</p>
+    <div class="kvkk-table" role="region" aria-label="Hesapta saklanan bilgiler tablosu" tabindex="0">
+      <table>
+        <thead><tr><th>Soru</th><th>Cevap</th></tr></thead>
+        <tbody>
+          <tr><td>Hangi veri</td><td>E-posta adresiniz, hangi örnek girişi seçtiğiniz, kota katmanınız, açık rıza zamanı ve rıza metninin sürümü, takip ettiğiniz konular (hat, istasyon adı ya da anahtar kelime) ve bu konularda son görülen kamuya açık İBB kaydı. Konum, kimlik, telefon ve sağlık bilgisi istenmez ve saklanmaz. Giriş anahtarı yalnız özet (hash) olarak saklanır.</td></tr>
+          <tr><td>Neden</td><td>Daha yüksek günlük soru hakkı ve takip ettiğiniz konularda önemli bir değişiklik (yeni arıza, arıza giderildi, hat duyurusu, bilgi arşivinde yeni kaynak) olduğunda günde en çok bir özet e-posta hazırlamak.</td></tr>
+          <tr><td>Hukuki dayanak</td><td>Hesap bağlarken işaretlediğiniz açık rıza. Rıza kutusu işaretlenmezse sunucuya hiçbir şey yazılmaz.</td></tr>
+          <tr><td>Ne kadar süre</td><td>Hesabınızı silene ya da 12 ay kullanmayana kadar. E-posta önizlemeleri en çok 30 gün tutulur.</td></tr>
+          <tr><td>Kim görür</td><td>Yalnız bu cihazdaki giriş anahtarıyla siz ve sunucuyu işleten proje sahibi. Kimseyle paylaşılmaz. E-postalar bugün gönderilmez; sunucudaki outbox klasörüne önizleme olarak yazılır ve Profilim altında görünür. Gerçek gönderim için Azure Communication Services kullanılacaktır; bu adım proje sahibinin onayını bekler.</td></tr>
+          <tr><td>Nasıl silinir</td><td>Hesap bağla bölümündeki Hesabımı ve verilerimi sil düğmesi tek dokunuşla sunucudaki hesap kaydını, takip konularını ve e-posta önizlemelerini, bu tarayıcıdaki tüm Nabız verilerini siler. E-postadaki Takibi bırak bağlantısı tek bir konuyu bırakır.</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <h2 id="kvkk-model">Yapay zekâ hizmeti</h2>
     <p>Yapay zekâ hizmeti ayarlıysa yazdığınız soru, konuşmadaki önceki sorular ve gerekli araç sonuçları model sağlayıcısına gider. Sağlayıcı yurt dışında olabilir. Profiliniz, adınız ve e-posta adresiniz bu istekle gönderilmez.</p>
@@ -89,10 +110,11 @@
     <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir.</p>
 
     <h2 id="kvkk-toplanmayan">Toplanmayan bilgiler</h2>
-    <p>Uygulama kamera görüntüsü, konum geçmişi, ses kaydı, kişi skoru, çerez veya hesap bilgisi toplamaz.</p>
+    <p>Uygulama kamera görüntüsü, konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
 
     <h2 id="kvkk-silme">Bilgileri silme</h2>
     <p>Profilinizi Profilim bölümündeki Profili sil düğmesiyle, hafıza öğelerini Hafızam bölümündeki Tümünü sil düğmesiyle kaldırabilirsiniz. Erişilebilirlik panelindeki Sıfırla tercihleri başlangıç değerlerine döndürür. Geri bildirim sayaçlarını silmek için tarayıcı ayarlarından bu siteye ait verileri temizleyin.</p>
+    <p>Örnek hesap bağladıysanız Hesap bağla bölümündeki Hesabımı ve verilerimi sil düğmesi hem sunucudaki kaydı hem bu cihazdaki verileri siler.</p>
     <p>Tarayıcı verisini temizlemek bu cihazdaki yerel kayıtları siler. Daha önce yazılmış sorular veya başka yerde alınmış kopyalar bu işlemle geri alınamaz.</p>
 
     <h2 id="kvkk-iletisim">İletişim</h2>

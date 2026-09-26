@@ -176,6 +176,10 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       });
       finalEl.appendChild(box);
     }
+    // DECISIONS #36: js/follow.js draws "Takip edilecek konu: M2 · onayla" into this answer.
+    if (data.follow_suggestion) {
+      document.dispatchEvent(new CustomEvent('nabiz:follow-suggestion', { detail: { suggestion: data.follow_suggestion, host: finalEl } }));
+    }
     shell.setAttribute('aria-busy', 'false');
     say(data.emergency ? 'Acil iletişim bilgileri gösterildi.'
       : data.refused || mode === 'unknown' ? 'Asistan doğrulanmış kaynak bulamadı; 153 ve resmî sayfaya yönlendirdi.' : 'Yanıt hazır.');

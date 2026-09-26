@@ -89,7 +89,7 @@
   "page.footer_kvkk": "KVKK / Privacy",
   "privacy.band": [
     "Privacy.",
-    "Your profile stays on your phone or computer; it is not sent to the server. No voice recording is kept. No personal data is stored on the server; your question is not logged. Your personal data is not sent to the model abroad; only the question you write is sent. Do not write personal information such as your Turkish ID number, card number or health documents in your question.",
+    "Your profile stays on your phone or computer; it is not sent to the server. No voice recording is kept. Unless you link an account, no personal data is stored on the server; your question is not logged. Your personal data is not sent to the model abroad; only the question you write is sent. Do not write personal information such as your Turkish ID number, card number or health documents in your question.",
     "Personal data and privacy: full text (in Turkish)"
   ],
   "note.answer_lang": "Answers come in English when the language model is on. Without it, most answers come in Turkish.",
