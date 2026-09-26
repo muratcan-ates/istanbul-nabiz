@@ -48,6 +48,9 @@ GTFS_MINI_DIR = FIXTURES_DIR / "gtfs_mini"
 # gitignored). The suite sees no index unless a test seeds its own, so an owner's ingest run
 # cannot change what the chat tests expect. The file named here never exists.
 os.environ["NABIZ_KNOWLEDGE_DB"] = str(TESTS_DIR / "no-knowledge-index.db")
+# The same for the İBB Open Data catalogue (data/reference/ibb_catalog.json, gitignored, written by
+# the owner's `make capture-catalog`): a test that needs one writes its own and points here.
+os.environ["NABIZ_IBB_CATALOG"] = str(TESTS_DIR / "no-ibb-catalog.json")
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))

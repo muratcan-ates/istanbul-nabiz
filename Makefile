@@ -36,7 +36,7 @@ AUTHORSHIP_RANGE ?=
 .DEFAULT_GOAL := help
 .PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit lane-gates architecture \
         architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console console-offline eval eval-knowledge numbers eval-record eval-live fixtures places \
-        sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
+        sequences capture-catalog collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
 
 help:  ## show this list
@@ -131,6 +131,9 @@ eval-live:  ## NETWORK WRITES eval/results and latest.md: same harness against l
 
 fixtures:  ## NETWORK WRITES tests/fixtures: re-record them from İBB — spends İETT budget, run rarely
 	$(PY) scripts/capture_fixtures.py
+
+capture-catalog:  ## NETWORK OWNER WRITES data/reference/ibb_catalog*.json: every data.ibb.gov.tr dataset, at most 3 calls, >= 6.5 s apart
+	NABIZ_OFFLINE= $(PY) scripts/capture_ibb_catalog.py --live
 
 places:  ## WRITES data/reference/places.csv: rebuild it from the recorded fixtures (no network)
 	$(PY) scripts/build_places.py
