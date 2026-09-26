@@ -12,6 +12,7 @@
  *  - Ramps step evenly in OKLab lightness (0.075 per step), so 400 -> 500 looks as far as 700 -> 800.
  *  - Neutrals share hue 260 at low chroma: cool blue-ink greys, never warm.
  *  - ONE accent, analogous cyan at 222 degrees. It means "now / live / focus" and nothing else.
+ *    The separate tulip moment colour (h 352.8 light, 348.9 dark) is restricted to NABIZ-DILI.md §3.5.
  *  - Lightness encodes quantity (the pulse line's pen pressure); hue encodes only categories a
  *    source defines (Metro line colours, AQI bands). Warm hues are reserved for warn, bad and AQI.
  *
@@ -146,6 +147,10 @@
   --accent-subtle: var(--accent-50);
   --on-accent: var(--neutral-1000);
   --focus-ring: var(--accent-600);
+
+  /* moment: tulip event colour, restricted to NABIZ-DILI.md §3.5 */
+  --moment: #a52a6b; /* oklch(0.497 0.169 352.8) */
+  --moment-subtle: #feeff4; /* oklch(0.965 0.017 355.1) */
 
   /* status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone */
   --ok: #007650; /* oklch(0.500 0.109 162.3) */
@@ -302,6 +307,10 @@
     --on-accent: var(--neutral-1000);
     --focus-ring: var(--accent-300);
 
+    /* moment: tulip event colour, restricted to NABIZ-DILI.md §3.5 */
+    --moment: #e58ab8; /* oklch(0.742 0.124 348.9) */
+    --moment-subtle: #38212c; /* oklch(0.281 0.039 349.8) */
+
     /* status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone */
     --ok: #7deabd; /* oklch(0.860 0.120 164.9) */
     --ok-wash: #0b2c20; /* oklch(0.265 0.045 165.8) */
@@ -396,6 +405,10 @@
   --accent-subtle: var(--accent-950);
   --on-accent: var(--neutral-1000);
   --focus-ring: var(--accent-300);
+
+  /* moment: tulip event colour, restricted to NABIZ-DILI.md §3.5 */
+  --moment: #e58ab8; /* oklch(0.742 0.124 348.9) */
+  --moment-subtle: #38212c; /* oklch(0.281 0.039 349.8) */
 
   /* status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone */
   --ok: #7deabd; /* oklch(0.860 0.120 164.9) */

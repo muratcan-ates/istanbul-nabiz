@@ -113,6 +113,9 @@
   --on-accent: var(--neutral-1000);
   --focus-ring: var(--accent-600);
 
+  --moment: #a52a6b;
+  --moment-subtle: #feeff4;
+
   --ok: #007650;
   --ok-wash: #dff7ea;
   --warn: #955e00;
@@ -246,6 +249,9 @@
     --on-accent: var(--neutral-1000);
     --focus-ring: var(--accent-300);
 
+    --moment: #e58ab8;
+    --moment-subtle: #38212c;
+
     --ok: #7deabd;
     --ok-wash: #0b2c20;
     --warn: #f9ba5f;
@@ -328,6 +334,9 @@
   --accent-subtle: var(--accent-950);
   --on-accent: var(--neutral-1000);
   --focus-ring: var(--accent-300);
+
+  --moment: #e58ab8;
+  --moment-subtle: #38212c;
 
   --ok: #7deabd;
   --ok-wash: #0b2c20;

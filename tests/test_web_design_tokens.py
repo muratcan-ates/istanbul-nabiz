@@ -67,7 +67,7 @@ def test_every_contrast_pair_passes_in_both_themes() -> None:
     report, _ = verify_tokens.verify(served, annotated)
     assert report["problems"] == []
     # The counts docs/design/DESIGN.md §3 quotes.
-    assert report["counts"] == {"palette_required": 178, "palette_pass": 178, "added_required": 76, "added_pass": 76}
+    assert report["counts"] == {"palette_required": 178, "palette_pass": 178, "added_required": 80, "added_pass": 80}
     assert report["served_equals_annotated"] and report["dark_blocks_identical"]
 
 
