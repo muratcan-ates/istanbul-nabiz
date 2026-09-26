@@ -51,6 +51,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Awaitable
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
@@ -291,6 +292,28 @@ async def tick(name: str, ctx, settings: Settings, state: dict) -> int:
     return written
 
 
+async def until_stopped(stopping: asyncio.Event, work: Awaitable[int]) -> bool:
+    """Run one tick, but give it up the moment a stop is asked for.
+
+    A tick can wait minutes on İBB (the polite client's gaps, retries, a slow source), and the
+    stop event used to be read only between ticks, so SIGTERM from ``make collect-stop`` went
+    unheard and the process needed ``kill -9``. The in-flight tick is cancelled instead: its
+    snapshot is lost, which the next run's first tick makes up. True when the tick finished.
+    """
+    task = asyncio.ensure_future(work)
+    waiter = asyncio.ensure_future(stopping.wait())
+    try:
+        await asyncio.wait({task, waiter}, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        waiter.cancel()
+    if task.done():
+        return True
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+    return False
+
+
 async def run(once: bool = False) -> int:
     settings = Settings.from_env()
     ctx = build_collector_context(settings)
@@ -307,8 +330,12 @@ async def run(once: bool = False) -> int:
         while not stopping.is_set():
             now = _now()
             for name, interval in INTERVALS_S.items():
+                if stopping.is_set():
+                    break
                 if now >= due[name]:
-                    await tick(name, ctx, settings, state)
+                    if not await until_stopped(stopping, tick(name, ctx, settings, state)):
+                        log.info("stop asked during the %s tick; it was cancelled", name)
+                        break
                     due[name] = _now() + interval
             _save_state(state)
             if once:
