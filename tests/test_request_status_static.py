@@ -14,11 +14,17 @@ CSS = STATIC / "css" / "operator_requests.css"
 CONSENT = "Sorunuz ve seçtiğiniz dil İBB operatörüne iletilecek. Kişisel veriler maskelenir."
 
 
-def run(tmp_path, body: str, module: str = "js/request_status.js", name: str = "rs"):
+def run(tmp_path, body: str, module: str = "js/request_status.js", name: str = "rs", lang: str = "tr"):
     """Import a module that reads ``window`` at load time, after stubbing it."""
     url = json.dumps((STATIC / module).as_uri())
+    i18n_url = json.dumps((STATIC / "js" / "i18n_text.js").as_uri())
+    tr = json.dumps(json.loads((STATIC / "i18n" / "tr.json").read_text(encoding="utf-8")), ensure_ascii=False)
+    en = json.dumps(json.loads((STATIC / "i18n" / "en.json").read_text(encoding="utf-8")), ensure_ascii=False)
     stub = "globalThis.window = { location: { search: '', origin: 'http://localhost' } };\n"
-    prelude = f"{stub}const {name} = await import({url});\n"
+    selected = en if lang == "en" else tr
+    setup = f"i18n.setCatalogs({json.dumps(lang)}, {selected}, {tr});\n"
+    prelude = f"{stub}const i18n = await import({i18n_url});\n" + setup
+    prelude += f"const {name} = await import({url});\n"
     return node_json(tmp_path, {}, prelude + body)
 
 
@@ -47,7 +53,7 @@ def test_the_consent_form_says_the_sentence_and_caps_the_text(tmp_path) -> None:
     assert "&lt;i&gt;soru&lt;/i&gt;" in html and 'href="tel:112"' in html
     for value in ("auto", "tr", "en"):
         assert f'<option value="{value}">' in html
-    english = run(tmp_path, f"console.log(JSON.stringify(rs.formMarkup('', {doc('en')})));")
+    english = run(tmp_path, f"console.log(JSON.stringify(rs.formMarkup('', {doc('en')})));", lang="en")
     assert "Personal data is masked." in english
 
 

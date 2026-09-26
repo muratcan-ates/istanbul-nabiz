@@ -6,40 +6,119 @@ import { del, get, post } from './api.js';
 import { clearAll } from './conversations.js';
 import { clearAccount, clearDeviceData, readAccount, writeAccount } from './identity.js';
 import { consentBlock, outboxList, providerCard, signedInView, tierTable } from './account_view.js';
+import { esc } from './format.js';
+import { onLang, t } from './i18n_text.js';
 
 const changed = () => document.dispatchEvent(new CustomEvent('nabiz:account-changed'));
+const views = new WeakMap();
+const statusMessages = new WeakMap();
 
-function say(root, text, bad = false) {
+function renderStatus(root) {
   const line = root.querySelector('#acct-status');
-  line.textContent = text;
-  line.classList.toggle('is-bad', bad);
+  const message = statusMessages.get(root);
+  if (!message) return;
+  if (message.kind === 'server') {
+    line.textContent = message.text;
+    line.lang = 'tr';
+  } else if (message.kind === 'connected') {
+    const marker = '__nabiz_provider__';
+    const value = t('ui.acct.connected', '{provider}: örnek hesap bağlandı. Doğrulama e-postası gönderilmedi.', { provider: marker });
+    line.innerHTML = value.split(marker).map(esc).join(`<span lang="tr">${esc(message.provider)}</span>`);
+    line.removeAttribute('lang');
+  } else {
+    line.textContent = t('ui.acct.deleted', 'Hesabın ve verilerin silindi: sunucudaki kayıt, takip konuları, e-posta önizlemeleri ve bu tarayıcıdaki Nabız verileri.');
+    line.removeAttribute('lang');
+  }
+  line.classList.toggle('is-bad', message.kind === 'server');
 }
 
-async function renderSignedIn(root) {
+function sayServer(root, text) {
+  statusMessages.set(root, { kind: 'server', text });
+  renderStatus(root);
+}
+
+function sayConnected(root, provider) {
+  statusMessages.set(root, { kind: 'connected', provider });
+  renderStatus(root);
+}
+
+function sayDeleted(root) {
+  statusMessages.set(root, { kind: 'deleted' });
+  renderStatus(root);
+}
+
+function captureFields(body) {
+  const fields = [...body.querySelectorAll('input, textarea, select')].map((field) => ({
+    id: field.id,
+    name: field.name,
+    value: field.value,
+    checked: field.type === 'checkbox' ? field.checked : undefined,
+  }));
+  const active = body.contains(document.activeElement) ? document.activeElement : null;
+  return { fields, activeId: active && active.id, start: active && active.selectionStart, end: active && active.selectionEnd };
+}
+
+function restoreFields(body, snapshot) {
+  for (const saved of snapshot.fields) {
+    const field = (saved.id && body.querySelector(`#${CSS.escape(saved.id)}`))
+      || (saved.name && [...body.querySelectorAll('[name]')].find((item) => item.name === saved.name));
+    if (!field) continue;
+    if (saved.checked !== undefined) field.checked = saved.checked;
+    else field.value = saved.value;
+  }
+  if (!snapshot.activeId) return;
+  const active = body.querySelector(`#${CSS.escape(snapshot.activeId)}`);
+  active?.focus();
+  if (active && snapshot.start !== null && snapshot.start !== undefined && typeof active.setSelectionRange === 'function') {
+    active.setSelectionRange(snapshot.start, snapshot.end);
+  }
+}
+
+function draw(root, preserve = false) {
   const body = root.querySelector('#acct-body');
+  const state = views.get(root);
+  if (!body || !state) return;
+  const snapshot = preserve ? captureFields(body) : null;
+  if (state.kind === 'signed-in') {
+    body.innerHTML = `${signedInView(state.view)}<h3>${t('ui.acct.outbox_title', 'Gönderilecek e-posta önizlemesi')}</h3>`
+      + `<p class="field-hint">${t('ui.acct.outbox_note', 'E-postalar gönderilmez; bu sunucunun outbox klasörüne yazılır ve burada görünür.')}</p>`
+      + outboxList(state.previews);
+  } else if (state.kind === 'signed-out') {
+    body.innerHTML = tierTable(state.info.tiers, 'cihaz') + consentBlock(state.info.consent)
+      + `<div class="acct-cards">${state.info.providers.map((provider) => providerCard(provider, state.info.sms_example_code)).join('')}</div>`;
+  } else if (state.kind === 'error') {
+    body.innerHTML = '';
+  }
+  if (snapshot) restoreFields(body, snapshot);
+}
+
+async function loadSignedIn(root) {
   try {
     const view = await get('/api/account');
     const outbox = await get('/api/account/outbox');
-    body.innerHTML = `${signedInView(view)}<h3>Gönderilecek e-posta önizlemesi</h3>`
-      + '<p class="field-hint">E-postalar gönderilmez; bu sunucunun outbox klasörüne yazılır ve burada görünür.</p>'
-      + outboxList(outbox.previews);
+    views.set(root, { kind: 'signed-in', view, previews: outbox.previews });
+    draw(root);
   } catch (err) {
-    if (err.status === 401) { clearAccount(); changed(); return renderSignedOut(root); }
-    body.innerHTML = '';
-    say(root, err.message, true);
+    if (err.status === 401) {
+      clearAccount();
+      changed();
+      return loadSignedOut(root);
+    }
+    views.set(root, { kind: 'error' });
+    draw(root);
+    sayServer(root, err.message);
   }
-  return undefined;
 }
 
-async function renderSignedOut(root) {
-  const body = root.querySelector('#acct-body');
+async function loadSignedOut(root) {
   try {
     const info = await get('/api/account/providers');
-    body.innerHTML = tierTable(info.tiers, 'cihaz') + consentBlock(info.consent)
-      + `<div class="acct-cards">${info.providers.map((p) => providerCard(p, info.sms_example_code)).join('')}</div>`;
+    views.set(root, { kind: 'signed-out', info });
+    draw(root);
   } catch (err) {
-    body.innerHTML = '';
-    say(root, err.message, true);
+    views.set(root, { kind: 'error' });
+    draw(root);
+    sayServer(root, err.message);
   }
 }
 
@@ -53,11 +132,11 @@ async function signIn(root, form) {
   try {
     const res = await post('/api/account/signin', payload);
     writeAccount({ token: res.token, email: res.account.email, provider_label: res.account.provider_label, tier: res.account.tier });
-    say(root, `${res.account.provider_label}: örnek hesap bağlandı. Doğrulama e-postası gönderilmedi.`);
+    sayConnected(root, res.account.provider_label);
     changed();
-    await renderSignedIn(root);
+    await loadSignedIn(root);
   } catch (err) {
-    say(root, err.message, true);
+    sayServer(root, err.message);
   }
 }
 
@@ -65,11 +144,11 @@ async function deleteEverything(root) {
   try {
     await del('/api/account');
   } catch (err) {
-    if (err.status !== 401) { say(root, err.message, true); return; }
+    if (err.status !== 401) { sayServer(root, err.message); return; }
   }
   clearDeviceData();
   await clearAll().catch(() => {});
-  say(root, 'Hesabın ve verilerin silindi: sunucudaki kayıt, takip konuları, e-posta önizlemeleri ve bu tarayıcıdaki Nabız verileri.');
+  sayDeleted(root);
   changed();
   window.setTimeout(() => window.location.reload(), 1500);
 }
@@ -86,7 +165,8 @@ function mountAccount() {
   root.addEventListener('click', (evt) => {
     if (evt.target.closest('#acct-delete')) deleteEverything(root);
   });
-  if (readAccount()) renderSignedIn(root); else renderSignedOut(root);
+  if (readAccount()) loadSignedIn(root); else loadSignedOut(root);
+  onLang(() => { draw(root, true); renderStatus(root); });
 }
 
 mountAccount();
