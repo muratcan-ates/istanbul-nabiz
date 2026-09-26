@@ -78,6 +78,29 @@ def test_one_unresolved_turn_does_not_offer_two_in_a_row_do(tmp_path) -> None:
     ) == [None, "unresolved", None]
 
 
+def test_the_server_and_the_page_read_the_same_person_phrases() -> None:
+    """``policy.PERSON_PHRASES`` answers a request for a person on the server; the page opens its card on the
+    same list. Two lists that drift would open the card on one turn and not on the next."""
+    import re
+
+    from nabiz.console.policy import PERSON_PHRASES
+
+    block = re.search(r"const PERSON_PHRASES = Object\.freeze\(\[(.*?)\]\);", JS.read_text(encoding="utf-8"), re.S)
+    assert block is not None
+    assert tuple(re.findall(r"'([^']+)'", block.group(1))) == PERSON_PHRASES
+
+
+def test_the_server_recognises_the_page_s_requests_and_non_requests() -> None:
+    from nabiz.console.policy import asks_for_person
+
+    positive = ["insanla görüşmek istiyorum", "İnsanla konuşmak istiyorum", "Bir temsilciye bağlar mısın?", "153'e bağla",
+                "Gerçek bir kişiyle görüşmek istiyorum", "I want to talk to a human", "Temsilciyle görüşmek istiyorum"]
+    negative = ["500T 34 dakika sonra mı gelir? 153'ü aradım", "İnsanlar metroda neden bekliyor?", "Bir insanın hakkı ne?",
+                "Muhtar temsilcisi kim?", "M2 çalışıyor mu?", "153 nedir?", "Kadıköy'de otopark var mı?"]  # fmt: skip
+    assert [asks_for_person(text) for text in positive] == [True] * len(positive)
+    assert [asks_for_person(text) for text in negative] == [False] * len(negative)
+
+
 def test_layer_handoff_rule_opens_the_card(tmp_path) -> None:
     u = user("anlamadım")
     assert offer(tmp_path, [[u, reply(rule_id="layer:handoff")], [u, reply(rule_id="layer:clarify")]]) == ["layer", None]

@@ -154,6 +154,23 @@ _FALLEN_PERSON = re.compile(
     r"|esim|kardesim|arkadasim|oglum|kizim|bebegim|yolcu|raya|raylara)\b|\bkalkamiyor"
 )
 
+# -- a request for a person, the same phrases as js/handoff.js (PERSON_PHRASES, CONNECT_153) ----------
+#: A test holds the two lists equal. "kişi" and "temsilci" count only in the forms listed, so "bir
+#: insanın hakkı" or "muhtar temsilcisi" is not a request for a person.
+PERSON_PHRASES = (
+    "insanla", "bir insan", "gerçek kişi", "gerçek kişiyle", "gerçek bir kişi", "gerçek bir kişiyle",
+    "canlı destek", "temsilci", "temsilciye", "temsilciyle", "temsilciden", "yetkiliyle", "operatörle",
+    "talk to a human", "talk to a person", "real person", "representative",
+)  # fmt: skip
+_PERSON_RE = re.compile(r"(?<![^\W\d_])(?:" + "|".join(map(re.escape, PERSON_PHRASES)) + r")(?![^\W\d_])")
+#: A bare "153" is not a request ("153'ü aradım"); "153'e bağla" is.
+_CONNECT_153 = re.compile(r"153\S*\s+(?:ile\s+)?(?:bağla|bağlan|görüş|konuş|aktar)")
+
+HANDOFF_TEXT = (
+    "İnsanla görüşmek için 153 Çözüm Merkezi'ni arayabilirsin; aramayı sen yaparsın, Nabız kimseyi arayamaz. "
+    "Görevliye sorununu, varsa hat, durak ya da ilçe adıyla kısaca anlat. Acil bir durumdaysan 112'yi ara."
+)
+
 REFUSAL_TEXT = (
     "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: "
     "yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. "
@@ -206,6 +223,12 @@ def emergency_intent(message: str) -> bool:
     if _URGENT.search(text) and _URGENT_COMPANY.search(text):
         return True
     return bool(_FELL.search(text) and _FALLEN_PERSON.search(text))
+
+
+def asks_for_person(message: str) -> bool:
+    """Does the person ask to talk to a human? The chat then answers with the handoff, not the index."""
+    lowered = message.replace("I", "ı").replace("İ", "i").lower()
+    return any(_PERSON_RE.search(text) or _CONNECT_153.search(text) for text in (lowered, message.lower()))
 
 
 def emergency_hazard(message: str) -> str | None:

@@ -116,6 +116,10 @@ def test_early_verdict_is_pure(monkeypatch: pytest.MonkeyPatch) -> None:
         patched.setattr(pathlib.Path, "open", no_files)
         again = [chat_pipeline.early_verdict(message, earlier) for message, earlier in cases]
     assert first == again == ["emergency", "sensitive", None, "sensitive"]
+    assert chat_pipeline.early_verdict("insanla görüşmek istiyorum", []) == "handoff"
+    trace = chat_pipeline.TurnTrace()
+    chat_pipeline.early_verdict("insanla görüşmek istiyorum", [], trace)
+    assert [(step["name"], step["status"]) for step in trace.chain][-1] == ("katman", "cevapladi")
 
 
 def test_final_is_the_last_event(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:

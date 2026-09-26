@@ -29,7 +29,7 @@ from nabiz.agent import llm
 from nabiz.console import chat as chat_module
 from nabiz.console.app import build_console_app
 from nabiz.console.budget import BudgetConfig, SpendGuard
-from nabiz.console.policy import NEEDS, REFUSAL_TEXT, memory_suggestion, refuses
+from nabiz.console.policy import HANDOFF_TEXT, NEEDS, REFUSAL_TEXT, memory_suggestion, refuses
 
 CLOUD = llm.LlmConfig(base_url="http://model.invalid/v1", model="fake-model", provider="openai_compatible")
 LOCAL = llm.LlmConfig(base_url="http://localhost:5273/v1", model="fake-local", provider="foundry_local")
@@ -372,6 +372,21 @@ def test_a_gas_emergency_names_the_gas_hazard_and_no_other_does(nabiz: Nabiz) ->
     assert gas["emergency"] is True and gas["hazard"] == "gas"
     assert fire["emergency"] is True and fire["hazard"] is None
     assert plain["hazard"] is None
+
+
+@pytest.mark.parametrize("question", ["insanla görüşmek istiyorum", "Temsilciyle görüşmek istiyorum", "153'e bağla"])
+def test_a_request_for_a_person_gets_the_handoff_not_the_index(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, tmp_path: Any, question: str
+) -> None:
+    with_index(monkeypatch, tmp_path, SERVICE_QUOTE)
+    fake = FakeModel()
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        stream, final = ask(client, question)
+    assert final["mode"] == "handoff" and final["how"]["rule_id"] == "layer:handoff" and final["author"] == "kural"
+    assert final["answer"] == HANDOFF_TEXT and "153" in final["answer"] and "112" in final["answer"]
+    assert final["citations"] == [] and final["refused"] is False and final["emergency"] is False
+    assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
 
 
 @pytest.mark.parametrize("question", ["Doğalgaz faturası nereden ödenir?", "Doğalgaz aboneliği nasıl yapılır?"])

@@ -45,7 +45,7 @@ HISTORY_TURNS_KEPT = 8
 HISTORY_CHARS_KEPT = 600
 _WORDS_PER_TOKEN_EVENT = 3
 
-EarlyVerdict = Literal["emergency", "guard", "sensitive"]
+EarlyVerdict = Literal["emergency", "guard", "sensitive", "handoff"]
 #: The turn's stages in order. Wired: girdi (E16), acil, hassas, maske (E14), arac_bilgi, cikti; katman
 #: (E15) and dil (E06) are still B01b's.
 STAGES = ("girdi", "acil", "hassas", "maske", "katman", "dil", "arac_bilgi", "cikti")
@@ -131,6 +131,11 @@ def early_verdict(
         if sensitive:
             trace.mark("cevapladi")
             return "sensitive"
+    if policy.asks_for_person(message):
+        # Recorded only when it answers, so every other turn's chain stays as it was.
+        with trace.step("katman"):
+            trace.mark("cevapladi")
+        return "handoff"
     return None
 
 
@@ -270,6 +275,13 @@ def output_guard(
     trace.checks["cikti"] = False
     trace.mark("cevapladi", "cikti")
     return guard_events("output", verdict.reason, UNKNOWN_TEXT, started, trace)
+
+
+def handoff_events(suggestion: Any, started: float, trace: TurnTrace | None = None) -> list[str]:
+    """A request for a person: the fixed pointer to 153, and ``layer:handoff`` so the page opens its
+    "İnsanla görüş" card (js/handoff.js). No index search, no tool, no model."""
+    fields = FinalFields(refused=False, how=empty_how(started, rule_id="layer:handoff", trace=trace), mode="handoff")
+    return answer_events(policy.HANDOFF_TEXT, [], "kural", suggestion, fields)
 
 
 def emergency_events(suggestion: Any, started: float, trace: TurnTrace | None = None, *, hazard: str | None = None) -> list[str]:

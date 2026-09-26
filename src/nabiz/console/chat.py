@@ -302,6 +302,8 @@ class ChatService:
             return pipeline.emergency_events(suggestion, started, trace, hazard=emergency_hazard(checked.text))
         if verdict == "guard":
             return pipeline.guard_events("input", checked.reason, checked.message or "", started, trace)
+        if verdict == "handoff":
+            return pipeline.handoff_events(suggestion, started, trace)
         if verdict == "sensitive":
             quoted = await self._from_knowledge(masked, sensitive=True, suggestion=suggestion, started=started, trace=trace)
             return quoted or pipeline.traced_refusal(suggestion, started, trace)
