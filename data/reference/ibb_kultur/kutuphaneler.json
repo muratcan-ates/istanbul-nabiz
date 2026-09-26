@@ -1,0 +1,765 @@
+{
+ "captured_at": "2026-09-26T12:29:08+00:00",
+ "package_id": "ibb-kutuphaneleri-lokasyon-calisma-gun-ve-saatleri",
+ "resource_id": "2ee4476c-9984-43de-96de-7aeda4da9aee",
+ "resource_last_modified": "2026-02-12T12:11:17.167819",
+ "license_id": "ibb-license",
+ "license_title": "Istanbul Metropolitan Municipality Open Data License",
+ "fields": [
+  {
+   "id": "_id",
+   "type": "int"
+  },
+  {
+   "id": "Kutuphane Adi",
+   "type": "text"
+  },
+  {
+   "id": "Ilce Adi",
+   "type": "text"
+  },
+  {
+   "id": "Acilis Yili",
+   "type": "text"
+  },
+  {
+   "id": "Adres",
+   "type": "text"
+  },
+  {
+   "id": "Telefon",
+   "type": "text"
+  },
+  {
+   "id": "Calisma Saatleri",
+   "type": "text"
+  },
+  {
+   "id": "Calisma Gunleri",
+   "type": "text"
+  }
+ ],
+ "total": 72,
+ "records": [
+  {
+   "_id": 1,
+   "Kutuphane Adi": "Atatürk Kitaplığı (Merkez Kütüphane)",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "1981",
+   "Adres": "Miralay Şefik Bey Sok. No: 6 Taksim, Beyoğlu - İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-22:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 2,
+   "Kutuphane Adi": "Kadın Eserleri Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "1990",
+   "Adres": "Fener Mah. Mürselpaşa Cad. No: 8 Haliç - Fatih - İstanbul",
+   "Telefon": "0 (212) 534 95 50",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 3,
+   "Kutuphane Adi": "Eyüp Sultan Kütüphanesi",
+   "Ilce Adi": "Eyüpsultan",
+   "Acilis Yili": "1999",
+   "Adres": "Merkez Mah. Kızıl Mescit Sok. No: 14 Eyüp - İstanbul",
+   "Telefon": "0 (212) 417 33 96\nDahili:663808",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 4,
+   "Kutuphane Adi": "Ahmet Süheyl Ünver Kütüphanesi",
+   "Ilce Adi": "Ümraniye",
+   "Acilis Yili": "2002",
+   "Adres": "Alemdağ Cad. Haldun Alagaş Spor Kompleksi, Ümraniye - İstanbul",
+   "Telefon": "0 (216) 634 44 22",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 5,
+   "Kutuphane Adi": "Osman Nuri Ergin Kütüphanesi",
+   "Ilce Adi": "Güngören",
+   "Acilis Yili": "2002",
+   "Adres": "Genç Osman Mah. Çinçin Deresi Cad. No: 78 Güngören - İstanbul",
+   "Telefon": "0 (212) 562 50 87-663812",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 6,
+   "Kutuphane Adi": "İdris Güllüce Kütüphanesi",
+   "Ilce Adi": "Tuzla",
+   "Acilis Yili": "2006",
+   "Adres": "Aydınlı Yolu Üzeri Oto Sanayi Sitesi Karşısı No: 20 İçmeler - Tuzla - İstanbul",
+   "Telefon": "0 (216) 586 57 21",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 7,
+   "Kutuphane Adi": "Muallim Cevdet Kütüphanesi",
+   "Ilce Adi": "Kartal",
+   "Acilis Yili": "2006",
+   "Adres": "Kordonboyu Mah. Ankara Cad. No: 142 Kartal - İstanbul",
+   "Telefon": "0 (216) 517 22 98--105766",
+   "Calisma Saatleri": "7/24",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 8,
+   "Kutuphane Adi": "Halil İnalcık Kütüphanesi",
+   "Ilce Adi": "Kartal",
+   "Acilis Yili": "2007",
+   "Adres": "Orhantepe Mah. Bağdat Cad. No: 130 Kartal - İstanbul",
+   "Telefon": "0 (216) 586 57 44",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 9,
+   "Kutuphane Adi": "Sesli Kütüphane",
+   "Ilce Adi": "Eyüpsultan",
+   "Acilis Yili": "2007",
+   "Adres": "Merkez Mah. Sultan Reşat Cad. Boyacı Sok. No: 6 Eyüp - İstanbul",
+   "Telefon": "0 (212) 417 19 25",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 10,
+   "Kutuphane Adi": "Erdem Bayazıt Kütüphanesi",
+   "Ilce Adi": "Eyüpsultan",
+   "Acilis Yili": "2008",
+   "Adres": "Yeşilpınar Mah. Adnan Menderes Cad. Sevgi Sok. No: 1 Alibeyköy Spor ve Kültür Merkezi, Eyüp - İstanbul",
+   "Telefon": "0 (212) 625 71 22 \n0 (212) 625 73 19",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 11,
+   "Kutuphane Adi": "Metin And Kütüphanesi",
+   "Ilce Adi": "K.Çekmece",
+   "Acilis Yili": "2008",
+   "Adres": "Gültepe Mah. Bağlar Cad. No: 57 Sefaköy - İstanbul",
+   "Telefon": "0 (212) 580 70 10-663918/663819",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 12,
+   "Kutuphane Adi": "Ahmet Kabaklı Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2011",
+   "Adres": "Hırka-i Şerif Mah. Akşemseddin Cad. No: 66/3 İBB Ali Emiri Efendi Kültür Merkezi, Fatih - İstanbul",
+   "Telefon": "0212 249 95 65\n0212 249 09 45\nDahili: 663800",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 13,
+   "Kutuphane Adi": "Rasim Özdenören Kütüphanesi",
+   "Ilce Adi": "Başakşehir",
+   "Acilis Yili": "2012",
+   "Adres": "Başakşehir Mah. Mimar Sinan Cad. Ilgaz Sok. 2.Etap Başakşehir Kültür Merkezi, Başakşehir - İstanbul",
+   "Telefon": "0 (212) 486 29 71",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 14,
+   "Kutuphane Adi": "Okçular Tekkesi Kütüphanesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2013",
+   "Adres": "Keçecipiri Mahallesi Fatih Sultan Minberi Cad. No: 1 Beyoğlu/İstanbul",
+   "Telefon": "0 (212) 254 66 54-123/124",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 15,
+   "Kutuphane Adi": "Fatma Aliye Kütüphanesi",
+   "Ilce Adi": "Çekmeköy",
+   "Acilis Yili": "2014",
+   "Adres": "Alemdağ Mah. Reşadiye Cad. 145. Sok. No: 2 Alemdağ Kültür Merkezi, Çekmeköy - İstanbul",
+   "Telefon": "0 (216) 586 56 28",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 16,
+   "Kutuphane Adi": "Nasrettin Hoca Çocuk Kütüphanesi",
+   "Ilce Adi": "Bağcılar",
+   "Acilis Yili": "2014",
+   "Adres": "Merkez Mah. 5. Sok. No: 6 Bağcılar - İstanbu",
+   "Telefon": "0 (212) 435 36 14",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 17,
+   "Kutuphane Adi": "Hacı Bektaşi Veli Kütüphanesi",
+   "Ilce Adi": "Sultangazi",
+   "Acilis Yili": "2015",
+   "Adres": "Esentepe Mah. Hoca Ahmet Yesevi Cad. 2383 Sok. No: 2 Hoca Ahmet Yesevi Kültür Merkezi, Sultangazi - İstanbul",
+   "Telefon": "0 (212) 594 06 13\n0 (212) 594 06 14\nDahili: 666365",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 18,
+   "Kutuphane Adi": "İlhan Varank Kütüphanesi",
+   "Ilce Adi": "Sultanbeyli",
+   "Acilis Yili": "2017",
+   "Adres": "Mehmet Akif Ersoy Mah. Kadıköy Sok. No: 17/1 Sultanbeyli - İstanbul",
+   "Telefon": "0 (216) 496 13 71",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 19,
+   "Kutuphane Adi": "Ayşe Hatun Halk Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2020",
+   "Adres": "Neslişah Mahallesi Neyzenler Sokak no:16 Fatih- İstanbul",
+   "Telefon": "0 (212) 249 95 65 \n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 20,
+   "Kutuphane Adi": "Atatürk Müzesi Kütüphanesi",
+   "Ilce Adi": "Şişli",
+   "Acilis Yili": "2020",
+   "Adres": "Meşrutiyet, Halaskargazi Cd. No:140, 34363 Şişli/İstanbul",
+   "Telefon": "0 (212) 233 47 23",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 21,
+   "Kutuphane Adi": "Afife Batur Kütüphanesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2021",
+   "Adres": "Hasanpaşa, İkbaliye Sk. No:39, 34722 Kadıköy/İstanbul",
+   "Telefon": "0216 585 57 10",
+   "Calisma Saatleri": "7/24",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 22,
+   "Kutuphane Adi": "Ahmed Arif Halk Kütüphanesi",
+   "Ilce Adi": "Sultangazi",
+   "Acilis Yili": "2021",
+   "Adres": "75. yıl mah. Lütfi Aykaç Blv. 1327/1 Sokak No:10 Sultangazi / İstanbul",
+   "Telefon": "0 (212) 449 90 10",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 23,
+   "Kutuphane Adi": "Mecidiyeköy Ödünç Kütüphane",
+   "Ilce Adi": "Şişli",
+   "Acilis Yili": "2021",
+   "Adres": "Mecidiyeköy Meydanı, Şişli",
+   "Telefon": "0216 586 57 86\n0212 249 09 45",
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 24,
+   "Kutuphane Adi": "Sezai Karakoç Kütüphanesi",
+   "Ilce Adi": "Güngören",
+   "Acilis Yili": "2021",
+   "Adres": "Güngören Kültür ve Yaşam Merkezi, Gençosman Mah. Doğanay Sokak No:1",
+   "Telefon": "0 (212) 249 95 65-663869 \n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 25,
+   "Kutuphane Adi": "Rıfat Ilgaz Kütüphanesi",
+   "Ilce Adi": "Arnavutköy",
+   "Acilis Yili": "2021",
+   "Adres": "Arnavutköy mahallesi Eski Edirne Caddesi No:1187",
+   "Telefon": "0 (212) 249 95 65-663865\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 26,
+   "Kutuphane Adi": "Fakir Baykurt Kütüphanesi",
+   "Ilce Adi": "Avcılar",
+   "Acilis Yili": "2021",
+   "Adres": "Yeşilkent Mahallesi Kazım Karabekir Caddesi No:180 Avcılar/İstanbul",
+   "Telefon": "0 (212) 249 95 65 \n0 (212) 249 09 45\nDahili:663882",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 27,
+   "Kutuphane Adi": "Özgen Berkol Doğan Kütüphanesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2022",
+   "Adres": "Caferağa Mahallesi Safa Sokak No:20 Kadıköy, Istanbul",
+   "Telefon": "0216 349 31 31",
+   "Calisma Saatleri": "10:00-19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 28,
+   "Kutuphane Adi": "Kütüphane Troleybüs",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2022",
+   "Adres": "Süleymaniye, Prof. Dr. Cavit Orhan Tütengil Sokak No:4, Fatih/İstanbul",
+   "Telefon": "0 (212) 249 95 65 \n0 (212) 249 09 45\nDahili:9040",
+   "Calisma Saatleri": "09.00- 19.00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 29,
+   "Kutuphane Adi": "Evliya Çelebi Kütüphanesi",
+   "Ilce Adi": "Bayrampaşa",
+   "Acilis Yili": "2022",
+   "Adres": "Büyük İstanbul Otogarı A1 Kız Kulesi Esenler/İstanbul",
+   "Telefon": "0 (212) 249 95 65 \n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 30,
+   "Kutuphane Adi": "Gülten Akın Kütüphanesi",
+   "Ilce Adi": "Esenyurt",
+   "Acilis Yili": "2022",
+   "Adres": "Kıraç Mahallesi Gazi caddesi No:81/A Esenyurt/İstanbul",
+   "Telefon": "0 (212) 249 95 65 \n0 (212) 249 09 45\nDahili: 9077",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 31,
+   "Kutuphane Adi": "Peyami Safa Kütüphanesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2022",
+   "Adres": "Yahya Kemal Mahallesi Bahriye caddesi No:24 Kasımpaşa-Beyoğlu/İstanbul",
+   "Telefon": "2 (212) 249 95 65-663826\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 32,
+   "Kutuphane Adi": "Yaşar Kemal Kütüphanesi",
+   "Ilce Adi": "Sancaktepe",
+   "Acilis Yili": "2022",
+   "Adres": "Meclis Mahalesi Semih Sancar Caddesi İlknur Sokak no:1 Sancaktepe/İstanbul",
+   "Telefon": "0216 586 57 77",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 33,
+   "Kutuphane Adi": "Sabahattin Eyüboğlu Kütüphanesi",
+   "Ilce Adi": "Avcılar",
+   "Acilis Yili": "2022",
+   "Adres": "Mustafa Kemal Paşa Mahallesi, Firuzköy Bulvarı No:89 /Avcılar",
+   "Telefon": "0 (212) 249 95 65-667645\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 34,
+   "Kutuphane Adi": "İPA İstanbul Kitaplığı",
+   "Ilce Adi": "Bakırköy",
+   "Acilis Yili": "2022",
+   "Adres": "Basınköy, Valilik Yolu Cd. No:2, 34153 Bakırköy/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili:663867",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Pazartesi-Cumartesi"
+  },
+  {
+   "_id": 35,
+   "Kutuphane Adi": "Atilla İlhan Kütüphanesi",
+   "Ilce Adi": "Küçükçekmece",
+   "Acilis Yili": "2022",
+   "Adres": "Cennet, Yavuz Selim Cd. 34 C, 34290 Küçükçekmece/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili: 663884",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 36,
+   "Kutuphane Adi": "Moda İskelesi Kütüphanesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2022",
+   "Adres": "Caferağa, Moda Cd. No:175, 34710 Kadıköy/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili:663839",
+   "Calisma Saatleri": "09:00-22:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 37,
+   "Kutuphane Adi": "Hasan Hüseyin Korkmazgil Kütüphanesi",
+   "Ilce Adi": "Eyüpsultan",
+   "Acilis Yili": "2022",
+   "Adres": "Akşemsettin, Cengiz Topel Cd. No:26, 34070 Eyüpsultan/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili:667648",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 38,
+   "Kutuphane Adi": "Hasan İzzettin Dinamo Kütüphanesi",
+   "Ilce Adi": "Pendik",
+   "Acilis Yili": "2022",
+   "Adres": "Batı Mah. Erol Kaya cad. No:95/ Pendik",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili:663827",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 39,
+   "Kutuphane Adi": "Sevgi Soysal Kütüphanesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2022",
+   "Adres": "Kocatepe, Aydede Cd. No:2, 34437 Beyoğlu/İstanbul",
+   "Telefon": "0 (212) 249 95 65-663831 \n 0 (212) 249 09 45",
+   "Calisma Saatleri": "7/24",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 40,
+   "Kutuphane Adi": "Cemil Meriç Kütüphanesi",
+   "Ilce Adi": "Arnavutköy",
+   "Acilis Yili": "2022",
+   "Adres": "Yunus Emre Mah., Erdener Sok. F Blok, Arnavutköy/ Boğazköy Kültür ve Yaşam Merkezi",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili:663865",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 41,
+   "Kutuphane Adi": "Kara Surları Mevlanakapı Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2022",
+   "Adres": "Fatih İlçesi, Mevlanakapı Caddesi, Melek Hatun Mahallesi, No:1",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 42,
+   "Kutuphane Adi": "Feza Gürsey Kütüphanesi",
+   "Ilce Adi": "Beykoz",
+   "Acilis Yili": "2022",
+   "Adres": "Göksu Cd. 50-54, Göksu, 34815 Beykoz/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 43,
+   "Kutuphane Adi": "Sabahattin Ali Kütüphanesi",
+   "Ilce Adi": "Başakşehir",
+   "Acilis Yili": "2022",
+   "Adres": "Altınşehir Mah. Osmanlı Cd. No: 49 / Başakşehir",
+   "Telefon": "0 (212) 249 95 65-667646 \n 0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 44,
+   "Kutuphane Adi": "Cendere Sanat Kitaplığı",
+   "Ilce Adi": "Sarıyer",
+   "Acilis Yili": "2022",
+   "Adres": "Huzur Mah. Cendere Cad. No:128",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 45,
+   "Kutuphane Adi": "İsmail Hakkı Tonguç Kütüphanesi",
+   "Ilce Adi": "Esenyurt",
+   "Acilis Yili": "2022",
+   "Adres": "Sultaniye Mah. 618. Sk. No:1 Esenyurt/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n 0 (212) 249 09 45\nDahili:667649",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 46,
+   "Kutuphane Adi": "Muzaffer İzgü Kütüphanesi",
+   "Ilce Adi": "Maltepe",
+   "Acilis Yili": "2022",
+   "Adres": "Fevzi Çakmak Cd. 31-35, Gülsuyu, 34848/Maltepe",
+   "Telefon": "0 (212) 249 95 65--663866 \n 0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 47,
+   "Kutuphane Adi": "Suat Derviş Kütüphanesi",
+   "Ilce Adi": "Bayrampaşa",
+   "Acilis Yili": "2022",
+   "Adres": "Tuna Cd. 104-106, Muratpaşa, 34040 Bayrampaşa/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 48,
+   "Kutuphane Adi": "Kazı Evi Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2023",
+   "Adres": "İskender Paşa, Kavalalı Sk., 34080 Fatih/İstanbul",
+   "Telefon": "0 (212) 249 95 650 (212) 249 09 45",
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 49,
+   "Kutuphane Adi": "Sâmiha Ayverdi Kütüphanesi",
+   "Ilce Adi": "Bayrampaşa",
+   "Acilis Yili": "2023",
+   "Adres": "Cevatpaşa, Eski Edirne Asf. No:385, 34045 Bayrampaşa/İstanbul",
+   "Telefon": "0212 449 90 10",
+   "Calisma Saatleri": "09:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 50,
+   "Kutuphane Adi": "Habitat Kütüphane",
+   "Ilce Adi": "Şişli",
+   "Acilis Yili": "2023",
+   "Adres": "Merkez mah. Abide-i Hürriyet Cad. No:211",
+   "Telefon": "212 312 67 71-6771",
+   "Calisma Saatleri": "10:00-22:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 51,
+   "Kutuphane Adi": "Beşiktaş İskele Kütüphanesi",
+   "Ilce Adi": "Beşiktaş",
+   "Acilis Yili": "2023",
+   "Adres": "Sinanpaşa, İskele Cd. No:16, 34353 Beşiktaş/İstanbul",
+   "Telefon": "0212 312 67 72-6772",
+   "Calisma Saatleri": "09:00-22:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 52,
+   "Kutuphane Adi": "Metin Altıok Kütüphanesi",
+   "Ilce Adi": "Küçükçekmece",
+   "Acilis Yili": "2023",
+   "Adres": "Atatürk Mah. İkitelli Cad. No:140 Küçükçekmece",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09.00- 21.00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 53,
+   "Kutuphane Adi": "Necati Cumalı Kütüphanesi",
+   "Ilce Adi": "Tuzla",
+   "Acilis Yili": "2023",
+   "Adres": "Anadolu Yakası, Postane, 34940 Tuzla/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 54,
+   "Kutuphane Adi": "Kadıköy İskelesi Kütüphanesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2023",
+   "Adres": "Caferağa, 34710 Kadıköy/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-22:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 55,
+   "Kutuphane Adi": "Salah Birsel Kütüphanesi",
+   "Ilce Adi": "Üsküdar",
+   "Acilis Yili": "2023",
+   "Adres": "Kısıklı, Bosna Blv 39-31, 34692 Üsküdar/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 56,
+   "Kutuphane Adi": "Naile Akıncı Kütüphanesi",
+   "Ilce Adi": "Eyüpsultan",
+   "Acilis Yili": "2023",
+   "Adres": "Eyüp Merkez, Eski Feshane Cad., 34050 Eyüpsultan",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-20:00",
+   "Calisma Gunleri": "Pazartesi-Cumartesi"
+  },
+  {
+   "_id": 57,
+   "Kutuphane Adi": "Taş Mektep Kütüphanesi",
+   "Ilce Adi": "Adalar",
+   "Acilis Yili": "2023",
+   "Adres": "Kadıyoran Caddesi, Büyükada",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 58,
+   "Kutuphane Adi": "Ahmet Bedevi Kütüphanesi",
+   "Ilce Adi": "Sarıyer",
+   "Acilis Yili": "2023",
+   "Adres": "Ptt Evleri, Hacı Osman Bayırı Cd., 34453 Sarıyer/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 59,
+   "Kutuphane Adi": "Baruthane Kütüphane",
+   "Ilce Adi": "Bakırköy",
+   "Acilis Yili": "2024",
+   "Adres": "Ataköy 2-5-6. Kısım Mahallesi, Rauf Orbay Caddesi Bakırköy/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 60,
+   "Kutuphane Adi": "Bulgur Palas Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "Aksaray, Kargı Çk. No:5, 34096 Fatih/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 61,
+   "Kutuphane Adi": "Kara Surları Berlgradkapı Kitaplığı",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "Mevlanakapı, Kale Dibi Sk. No:14, Fatih/İST.",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 62,
+   "Kutuphane Adi": "Bakırköy Ödünç Kütüphane",
+   "Ilce Adi": "Bakırköy",
+   "Acilis Yili": "2024",
+   "Adres": "Zuhuratbaba, 34147 Bakırköy/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 63,
+   "Kutuphane Adi": "Çubuklu Silolar Kütüphanesi",
+   "Ilce Adi": "Beykoz",
+   "Acilis Yili": "2024",
+   "Adres": "Çubuklu Mah, Şehit Ersin Güner Cad, Beykoz/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 64,
+   "Kutuphane Adi": "Gaziosmanpaşa Meydan Kütüphanesi",
+   "Ilce Adi": "Gaziosmanpaşa",
+   "Acilis Yili": "2024",
+   "Adres": "Merkez Mah. 3. Selvi Çk. 15, 34245 Gaziosmanpaşa/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-19:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 65,
+   "Kutuphane Adi": "Maltepe Ödünç Kütüphane",
+   "Ilce Adi": "Maltepe",
+   "Acilis Yili": "2024",
+   "Adres": "Altayçeşme mah. Cumhuriyet Meydanı Alt Geçidi, 34843 , Maltepe / İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 66,
+   "Kutuphane Adi": "Saraçhane Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "İBB Merkez Binası-Kemal Paşa, 15 Temmuz Şehitleri Cd. No:5  Fatih/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "09:00-17:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 67,
+   "Kutuphane Adi": "Müze Gazhane Sesli Kütüphane",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2024",
+   "Adres": "Hasanpaşa Mah. Kurbağalıdere Cad. No:125  Kadıköy / İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "7/24",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 68,
+   "Kutuphane Adi": "Turhan Selçuk Kütüphanesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2025",
+   "Adres": "Caferağa Mah. Cem Sk. No:6 Kadıköy / istanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00 - 21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 69,
+   "Kutuphane Adi": "Dudullu Ödünç Kütüphanesi",
+   "Ilce Adi": "Ümraniye",
+   "Acilis Yili": "2025",
+   "Adres": "Yukarı Dudullu Ümraniye/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 70,
+   "Kutuphane Adi": "Casa Botter Kütüphanesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2025",
+   "Adres": "İstiklal Caddesi No:235, Beyoğlu",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 71,
+   "Kutuphane Adi": "Tasarım Müzesi Kütüphanesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2025",
+   "Adres": "Süleymaniye, Mimar Sinan Cd., 34116 Fatih/İstanbul",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 72,
+   "Kutuphane Adi": "Kuyumcular Hanı Kütüphanesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2025",
+   "Adres": "Arap Camii Mah. Tersane Cad.No:77 Beyoğlu/ist",
+   "Telefon": "0 (212) 249 95 65\n0 (212) 249 09 45",
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  }
+ ]
+}

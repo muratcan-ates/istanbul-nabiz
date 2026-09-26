@@ -40,6 +40,7 @@ Kullanılan kaynaklar:
 | Metro hat durumu ve istasyon bilgisi | Metro İstanbul | `api.ibb.gov.tr/MetroIstanbul` |
 | Trafik yoğunluk indeksi | İBB Trafik Kontrol Merkezi | `api.ibb.gov.tr/tkmservices` |
 | Hava kalitesi ölçümleri | İBB Çevre Koruma ve Kontrol Dairesi | `api.ibb.gov.tr/havakalitesi` |
+| Kütüphane ve müze çalışma gün ve saatleri (kayıt, 12.02.2026; indirildi 26.09.2026) | İBB Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı | `data.ibb.gov.tr`, depoda `data/reference/ibb_kultur/` |
 
 Bu uçların hiçbiri kayıt, API anahtarı veya kimlik doğrulaması gerektirmez; hiçbir erişim
 kısıtlaması aşılmamıştır.
