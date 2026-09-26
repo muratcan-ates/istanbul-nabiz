@@ -7,6 +7,7 @@ the İBB tools run offline on the recorded fixtures (``conftest.offline_settings
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import json
 import logging
@@ -105,7 +106,7 @@ def ask(client: TestClient, message: str, *, needs: list[str] | None = None, his
     # DECISIONS #36: every final carries the day's quota; a follow request adds its suggestion.
     assert set(final[1]) - {"follow_suggestion"} == {
         "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
-        "guard", "hazard", "masked_count", "masked_kinds", "quota",
+        "guard", "hazard", "lang", "masked_count", "masked_kinds", "quota",
     }
     tokens = "".join(data["text"] for kind, data in stream if kind == "token")
     assert tokens == final[1]["answer"], "the token events must add up to the final answer"
@@ -388,6 +389,92 @@ def test_a_request_for_a_person_gets_the_handoff_not_the_index(
     assert final["answer"] == HANDOFF_TEXT and "153" in final["answer"] and "112" in final["answer"]
     assert final["citations"] == [] and final["refused"] is False and final["emergency"] is False
     assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
+
+
+@pytest.mark.parametrize(
+    ("question", "lang", "hazard"),
+    [("помогите, пожар", "ru", None), ("Hilfe, mein Vater hat einen Herzinfarkt", "de", None),
+     ("کمک کنید آتش سوزی", "fa", None), ("النجدة حريق", "ar", None), ("ayuda, accidente de coche", "es", None),
+     ("au secours, il ne respire pas", "fr", None), ("допоможіть, пожежа", "uk", None), ("Fuga di gas in cucina", "it", "gas"),
+     ("Yangın çıktı", "tr", None), ("There is a gas leak", "en", "gas")],
+)  # fmt: skip
+def test_a_foreign_emergency_opens_the_card_in_its_language_before_any_model(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, question: str, lang: str, hazard: str | None
+) -> None:
+    fake = FakeModel()
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        stream, final = ask(client, question)
+    assert final["mode"] == "redirect" and final["emergency"] is True
+    assert final["lang"] == lang and final["hazard"] == hazard and final["how"]["rule_id"] is None
+    # 112 first: no model, no tool, and no operator queue (the redirect is the whole turn).
+    assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
+    assert [kind for kind, _ in stream] == ["session_started", "final"]
+
+
+def test_a_non_emergency_final_carries_no_card_language(nabiz: Nabiz) -> None:
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, "fire sale at the bazaar")
+    assert final["emergency"] is False and final["lang"] is None and final["mode"] != "redirect"
+
+
+def test_the_model_layer_opens_the_card_the_rules_missed(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeModel(reply('{"emergency": true, "gas": false, "lang": "zh"}'))
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        stream, final = ask(client, "救命！我爸爸晕倒了")
+    assert final["emergency"] is True and final["mode"] == "redirect" and final["lang"] == "en"
+    assert final["how"]["rule_id"] == "acil:model" and len(fake.calls) == 1 and fake.calls[0]["tools"] is None
+    assert [step["name"] for step in final["how"]["chain"]].count("acil") == 2
+    assert not any(kind == "tool" for kind, _ in stream)
+
+
+@pytest.mark.parametrize("failure", [llm.LlmError("endpoint said no"), reply('{"emergency": false, "lang": "ru"}')])
+def test_a_model_layer_failure_or_no_lets_the_turn_go_on(
+    nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, failure: Any
+) -> None:
+    fake = FakeModel(failure, reply(tool_calls=[tool_call("metro_status")]), reply(PLAIN_ANSWER))
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        _, final = ask(client, "Метро сегодня работает?")
+    assert final["emergency"] is False and final["mode"] == "answer" and final["author"] == "model"
+    assert len(fake.calls) == 3, "one check, then the turn's own two calls"
+
+
+def test_a_model_layer_timeout_lets_the_turn_go_on(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    from nabiz.console import emergency_model
+
+    answers = [reply(tool_calls=[tool_call("metro_status")]), reply(PLAIN_ANSWER)]
+
+    async def chat(config: llm.LlmConfig, messages: Any, tools: Any = None, **kw: Any) -> dict[str, Any]:
+        if tools is None:
+            await asyncio.sleep(5)
+        return answers.pop(0)
+
+    monkeypatch.setattr(emergency_model, "TIMEOUT_S", 0.05)
+    monkeypatch.setattr(llm, "chat", chat)
+    guard = unlimited()
+    with client_for(nabiz, CLOUD, guard) as client:
+        _, final = ask(client, "Метро сегодня работает?")
+    assert final["emergency"] is False and final["mode"] == "answer" and answers == []
+
+
+def test_at_the_ceiling_the_model_layer_is_not_asked(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeModel()
+    monkeypatch.setattr(llm, "chat", fake)
+    guard = SpendGuard(BudgetConfig(daily_calls=3, state_path=None))
+    guard.record(CLOUD.provider, {}, 3)
+    with client_for(nabiz, CLOUD, guard) as client:
+        _, final = ask(client, "Метро сегодня работает?")
+    assert fake.calls == [] and final["emergency"] is False and final["author"] == "kural"
+
+
+def test_a_turkish_or_english_question_never_gets_the_model_check(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeModel(reply(tool_calls=[tool_call("metro_status")]), reply(PLAIN_ANSWER))
+    monkeypatch.setattr(llm, "chat", fake)
+    with client_for(nabiz, CLOUD) as client:
+        _, final = ask(client, "Is the metro running today?")
+    assert final["author"] == "model" and len(fake.calls) == 2 and all(call["tools"] for call in fake.calls)
 
 
 @pytest.mark.parametrize("question", ["Doğalgaz faturası nereden ödenir?", "Doğalgaz aboneliği nasıl yapılır?"])

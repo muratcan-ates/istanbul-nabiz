@@ -16,7 +16,9 @@ own data.
 
 **An emergency comes first** (:func:`emergency_intent`): the page shows 112 before any model,
 tool or refusal. "acil" and "düştü" count only with company ("acil yardım", "annem düştü"); a gas
-leak or smell ("gaz kaçağı", "doğalgaz kokusu") counts alone.
+leak or smell ("gaz kaçağı", "doğalgaz kokusu") counts alone. After the Turkish rules come the fixed
+rules of the other card languages (:mod:`~nabiz.console.emergency_lang`, DECISIONS #37): "помогите,
+пожар" stops the chat the same way, and :func:`emergency_card` names the language the card speaks.
 
 **Needs are functional constraints, nothing else.** The page may send a few profile keys
 ("step_free", "stroller" …). Only the keys in :data:`NEEDS` pass, as one line of constraint
@@ -35,6 +37,7 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 
 from ibb_mcp.text import normalize_tr
+from nabiz.console import emergency_lang
 
 #: Profile keys the server accepts, with the constraint each becomes for the model.
 NEEDS: dict[str, str] = {
@@ -128,8 +131,9 @@ _PRICE = re.compile(r"₺|\b\d+(?:[.,]\d+)?\s*(?:tl|lira)\b", re.IGNORECASE)
 # An emergency bypasses the model, the tools and the refusal rule: the page shows 112 at once.
 # A missed emergency costs more than a false alarm, but "acil" and "düştü" alone are everyday
 # words ("acil durum toplanma alanı", "fiyat düştü"), so those two count only with company.
-#: Word stems, matched at a word's start (the first vocabulary; "polis merkezi" still redirects).
-EMERGENCY_TERMS = {"acil": ("yangin", "ambulans", "polis", "siddet", "kalp", "bayildi", "fire", "ambulance")}
+#: Word stems, matched at a word's start (the first vocabulary; "polis merkezi" still redirects). English
+#: ("fire", "ambulance") moved to emergency_lang with its masks: "fire sale at the bazaar" is not a fire.
+EMERGENCY_TERMS = {"acil": ("yangin", "ambulans", "polis", "siddet", "kalp", "bayildi")}
 #: Whole words: "kaza" must not catch "kazan dairesi".
 _EMERGENCY_WORDS = ("kaza", "kazasi", "yarali", "yaralilar", "kanama", "kalp krizi", "intihar", "saldiri")
 #: Verb stems from a word boundary, so the person endings pass ("boğuluyorum", "yaralandık").
@@ -213,8 +217,7 @@ def refuses_in_context(question: str, earlier_user_messages: Sequence[str]) -> b
     return len(text.split()) <= 8 and any(cue in text for cue in _FOLLOW_UP)
 
 
-def emergency_intent(message: str) -> bool:
-    """Is this an emergency? Decided before any model, tool or refusal is reached."""
+def _turkish_emergency(message: str) -> bool:
     text = normalize_tr(message)
     if any(word.startswith(EMERGENCY_TERMS["acil"]) for word in text.split()):
         return True
@@ -225,6 +228,21 @@ def emergency_intent(message: str) -> bool:
     return bool(_FELL.search(text) and _FALLEN_PERSON.search(text))
 
 
+def emergency_intent(message: str) -> bool:
+    """Is this an emergency? Decided before any model, tool or refusal is reached: the Turkish rules,
+    then the other card languages' rules. Both are fixed words; no model is ever waited for."""
+    return _turkish_emergency(message) or emergency_lang.rule_match(message) is not None
+
+
+def emergency_card(message: str) -> dict[str, str | None]:
+    """The card for an emergency the rules found: ``lang``, the language the message is written in among
+    those whose rules fired (Turkish when only the Turkish rules did), and ``hazard``."""
+    hit = emergency_lang.rule_match(message)
+    langs = (hit.langs if hit else frozenset()) | ({"tr"} if _turkish_emergency(message) else frozenset())
+    lang = emergency_lang.pick_card_lang(message, langs) if langs else "tr"
+    return {"lang": lang, "hazard": emergency_hazard(message)}
+
+
 def asks_for_person(message: str) -> bool:
     """Does the person ask to talk to a human? The chat then answers with the handoff, not the index."""
     lowered = message.replace("I", "ı").replace("İ", "i").lower()
@@ -232,9 +250,12 @@ def asks_for_person(message: str) -> bool:
 
 
 def emergency_hazard(message: str) -> str | None:
-    """``"gas"`` when an emergency is a gas leak or smell, else ``None``. The page adds İGDAŞ's 187 line
-    to the 112 card for it; 112 stays the first action whatever this says."""
-    return "gas" if _GAS_RE.search(normalize_tr(message)) else None
+    """``"gas"`` when an emergency is a gas leak or smell, in Turkish or a card language, else ``None``.
+    The page adds İGDAŞ's 187 line to the 112 card for it; 112 stays the first action whatever this says."""
+    if _GAS_RE.search(normalize_tr(message)):
+        return "gas"
+    hit = emergency_lang.rule_match(message)
+    return "gas" if hit is not None and hit.gas else None
 
 
 def names_a_price(text: str) -> bool:

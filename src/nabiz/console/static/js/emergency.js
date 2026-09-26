@@ -1,48 +1,9 @@
+import { CARD_TEXT, REVIEWED_LANGS, RTL_LANGS, TR_BLOCK, UNVERIFIED_LABEL } from './emergency_text.js';
+
 export const EMERGENCY_EVENT = 'nabiz:emergency';
-
-export const CARD_TEXT = Object.freeze({
-  tr: Object.freeze({
-    title: 'Acil durum olabilir',
-    desc: 'Sohbeti durdurdum. Bu site yardım çağıramaz; aramayı siz yapın.',
-    live: 'Acil durum olabilir. 112\'yi arayın.',
-    call: '112\'yi ara',
-    locate: 'Konumumu göster',
-    copy: 'Kopyala',
-    line153: '153 Çözüm Merkezi (acil olmayan konular)',
-    gas: 'Gaz kaçağı: İGDAŞ 187 Doğal Gaz Acil Hattı',
-    back: 'Acil değil, geri dön',
-    foot: 'Resmî İBB hizmeti değildir. Nabız bağımsız bir projedir. Konumunuz yalnız bu cihazda kalır.',
-  }),
-  en: Object.freeze({
-    title: 'This may be an emergency',
-    desc: 'I stopped the chat. This site cannot call for help; make the call yourself.',
-    live: 'This may be an emergency. Call 112.',
-    call: 'Call 112',
-    locate: 'Show my location',
-    copy: 'Copy',
-    line153: '153 Solution Centre (non-emergency matters)',
-    gas: 'Gas leak: İGDAŞ 187 natural gas emergency line',
-    back: 'Not an emergency, go back',
-    foot: 'Not an official İBB service. Nabız is an independent project. Your location stays on this device only.',
-  }),
-});
-
-const LOCATION_TEXT = Object.freeze({
-  tr: Object.freeze({
-    waiting: 'Konum alınıyor.',
-    shown: 'Konumunuz: {coords}. Bu sayıları 112\'ye okuyabilirsiniz.',
-    copied: 'Panoya kopyalandı: {coords}.',
-    copyfail: 'Kopyalanamadı. Sayıları ekrandan okuyun: {coords}.',
-    denied: 'Konum alınamadı. Adresinizi 112\'ye söyleyin.',
-  }),
-  en: Object.freeze({
-    waiting: 'Getting your location.',
-    shown: 'Your location: {coords}. You can read these numbers to 112.',
-    copied: 'Copied to the clipboard: {coords}.',
-    copyfail: 'Could not copy. Read the numbers from the screen: {coords}.',
-    denied: 'Could not get your location. Tell 112 your address.',
-  }),
-});
+// The card's text lives in emergency_text.js (a copy of the server's emergency_text.py). The page itself
+// stays Turkish or English (DECISIONS #35); only this card speaks the detected language (DECISIONS #37).
+export { CARD_TEXT };
 
 let activeDocument = null;
 let previousInert = new Map();
@@ -51,27 +12,45 @@ let locationRequested = false;
 
 export function pickLang(value) {
   const code = String(value ?? '').trim().toLowerCase().slice(0, 2);
-  return code === 'en' ? code : 'tr';
+  return Object.hasOwn(CARD_TEXT, code) ? code : 'tr';
 }
 
-function htmlLang(lang) {
-  return lang === 'en' ? ' lang="en"' : '';
+function textDir(lang) {
+  return RTL_LANGS.includes(lang) ? 'rtl' : 'ltr';
+}
+
+// Every translation but Turkish and English is unchecked by a native reader: the card says so, in Turkish.
+function draftLabel(lang) {
+  if (REVIEWED_LANGS.includes(lang)) return '';
+  return `<p class="emergency-draft" lang="tr" dir="ltr">${UNVERIFIED_LABEL}</p>`;
+}
+
+// The large Turkish block is on every card: the person shows it to anyone nearby.
+function turkishBlock(gas) {
+  const gasLine = gas ? `<p class="emergency-tr-gas">${TR_BLOCK.gas}</p>` : '';
+  return `<div class="emergency-tr" id="emergency-tr" lang="tr" dir="ltr" tabindex="-1">`
+    + `<p class="emergency-tr-plea">${TR_BLOCK.plea}</p>${gasLine}</div>`;
 }
 
 // 187 is İGDAŞ's natural gas emergency line, named in İBB's 2025 activity report
 // (uploads.ibb.istanbul/uploads/2025_Faaliyet_Raporu_68f4b037e0.pdf, "187 Doğal Gaz Acil Hattı").
 // It is shown only for a gas hazard and only after the 112 button (DECISIONS #36).
 export function cardMarkup(lang = 'tr', hazard = null) {
-  const text = CARD_TEXT[pickLang(lang)];
-  const gas = hazard === 'gas' ? `<a class="emergency-gas" href="tel:187">${text.gas}</a>` : '';
-  return `<section class="emergency-card" id="emergency-card" role="alertdialog" aria-modal="true" aria-labelledby="emergency-title" aria-describedby="emergency-desc"${htmlLang(pickLang(lang))}>`
-    + `<h2 id="emergency-title">${text.title}</h2><p id="emergency-desc">${text.desc}</p>`
+  const code = pickLang(lang);
+  const text = CARD_TEXT[code];
+  const gas = hazard === 'gas';
+  const gasLink = gas ? `<a class="emergency-gas" href="tel:187">${text.gas}</a>` : '';
+  return `<section class="emergency-card" id="emergency-card" role="alertdialog" aria-modal="true" aria-labelledby="emergency-title" aria-describedby="emergency-desc" lang="${code}" dir="${textDir(code)}">`
+    + `<h2 id="emergency-title">${text.title}</h2>${draftLabel(code)}`
+    + `<p id="emergency-desc">${text.show}</p><p class="emergency-note">${text.note}</p>`
     + '<p class="emergency-live" aria-live="assertive"></p>'
     + `<a class="emergency-call" href="tel:112">${text.call}</a>`
-    + gas
+    + gasLink
     + `<button type="button" class="emergency-locate" data-act="locate">${text.locate}</button>`
     + '<p class="emergency-location" role="status"></p>'
     + `<button type="button" class="emergency-copy" data-act="copy" hidden>${text.copy}</button>`
+    + turkishBlock(gas)
+    + `<button type="button" class="emergency-grow" data-act="grow" aria-pressed="false" aria-controls="emergency-tr">${text.grow}</button>`
     + `<a class="emergency-153" href="tel:153">${text.line153}</a>`
     + `<button type="button" class="emergency-back" data-act="back">${text.back}</button>`
     + `<p class="emergency-foot">${text.foot}</p></section>`;
@@ -84,10 +63,14 @@ export function formatCoords(lat, lon) {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
 }
 
+// Coordinates read left to right in every card: inside an Arabic or Persian sentence they are isolated,
+// or the bidi algorithm could show "28.97612 ,41.01235" to someone reading them to 112.
 export function locationMessage(kind, coords, lang = 'tr') {
-  const text = LOCATION_TEXT[pickLang(lang)][kind] || LOCATION_TEXT.tr.denied;
+  const code = pickLang(lang);
+  const text = CARD_TEXT[code][kind] || CARD_TEXT.tr.denied;
   const safeCoords = coords == null ? '' : coords;
-  return text.replace('{coords}', safeCoords);
+  const shown = safeCoords && RTL_LANGS.includes(code) ? `⁦${safeCoords}⁩` : safeCoords;
+  return text.replace('{coords}', shown);
 }
 
 function filled(value) {
@@ -206,6 +189,18 @@ async function copyLocation(card, lang) {
   }
 }
 
+// "Show the Turkish larger": the Turkish block fills the width in very large letters, and scrolls into view
+// so the person can turn the phone to whoever is next to them. Pressed again, it returns to its size.
+export function toggleTurkish(card) {
+  const button = card.querySelector('[data-act="grow"]');
+  const grown = !card.classList.contains('is-grown');
+  card.classList.toggle('is-grown', grown);
+  button?.setAttribute('aria-pressed', String(grown));
+  const block = card.querySelector('.emergency-tr');
+  if (grown && typeof block?.scrollIntoView === 'function') block.scrollIntoView({ block: 'start' });
+  return grown;
+}
+
 function wireCard(card, lang) {
   card.addEventListener('keydown', (event) => trapFocus(card, event));
   card.addEventListener('click', (event) => {
@@ -214,6 +209,7 @@ function wireCard(card, lang) {
     if (action.dataset.act === 'back') closeEmergency();
     if (action.dataset.act === 'locate') locate(card, lang);
     if (action.dataset.act === 'copy') void copyLocation(card, lang);
+    if (action.dataset.act === 'grow') toggleTurkish(card);
   });
 }
 

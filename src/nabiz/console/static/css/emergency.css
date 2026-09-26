@@ -86,6 +86,30 @@
   clip-path: inset(50%);
 }
 
+/* The card's own text direction (dir="rtl" for Arabic and Persian) follows the logical properties above;
+   the Turkish block is always ltr. It is the part a helper reads, so it is the largest text on the card. */
+.emergency-card .emergency-tr {
+  padding: var(--space-3, 0.75rem);
+  border: 3px solid var(--emergency-ink);
+  border-radius: var(--radius-2, 0.5rem);
+  text-align: center;
+}
+
+.emergency-card .emergency-tr p {
+  font-size: clamp(1.5rem, 7vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.emergency-card.is-grown .emergency-tr p {
+  font-size: clamp(2.5rem, 13vw, 5rem);
+}
+
+.emergency-card .emergency-draft {
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
 .emergency-card .emergency-foot {
   margin-block-start: auto;
   padding-block-start: var(--space-3, 0.75rem);
