@@ -33,6 +33,7 @@ from ibb_mcp.sources.metro_equipment import (
     GROUP_UNAVAILABLE,
     LOCATION_EMPTY,
     NO_RECORDED_DATA,
+    STATION_UNKNOWN,
     SUMMARY_DETAIL_MISMATCH,
     SUMMARY_FIXTURE_PREFIX,
     SUMMARY_UNREADABLE,
@@ -366,3 +367,50 @@ async def test_the_recorded_snapshot_reads_offline() -> None:
     ctx = SourceContext.create(client=PoliteClient(transport=httpx.MockTransport(_refuse)), settings=offline_settings())
     snap, provenance = await MetroEquipmentSource(ctx).snapshot()
     assert snap.available and provenance.observed_at < dt.datetime.now(dt.UTC)
+
+
+# -- the shape the first recording showed (2026-09-26) ----------------------------------
+def test_rows_wrapped_in_one_object_are_lifted_out() -> None:
+    """``Data: [{"Lines": [], "Stations": [], "Equipments": [...]}]``: the rows are the equipment."""
+    wrapped = envelope([{"Lines": [], "Stations": [], "Equipments": [record(), record(station="Pendik")]}])
+    parsed = [EquipmentRecord.from_raw(row) for row in unwrap(wrapped, source="t")]
+    assert [r.station_name for r in parsed] == ["Kartal", "Pendik"]
+    lifts = {"Name": "Asansörler", "GroupName": "Asansör", "Active": 1, "Inactive": 2}
+    stations_row = {"Name": "İstasyonlar", "GroupName": "İstasyon", "Active": 3, "Inactive": 4}
+    summary = envelope([{"EquipmentServiceStatus": [lifts], "StationServiceStatus": [stations_row]}])
+    [row] = parse_summary(unwrap(summary, source="t"))
+    assert (row.group, row.active, row.inactive) == ("Asansör", 1, 2)
+
+
+def test_a_record_without_a_station_is_kept_and_marked_unknown_not_invented() -> None:
+    raw = record()
+    raw["StationName"], raw["StationId"] = "", None
+    parsed = EquipmentRecord.from_raw(raw)
+    assert parsed.station_name is None and STATION_UNKNOWN in parsed.uncertainty()
+    assert parsed.describe().startswith("İstasyonu İBB kaydında belirtilmemiş (M4):")
+    assert match_station(parsed, stations()) is None
+
+
+RECORDED_20260926 = (FIXTURES_DIR / "metro_faulty_equipments_20260926.json").exists()
+
+
+@pytest.mark.skipif(not RECORDED_20260926, reason="the 2026-09-26 recording is not in this checkout")
+async def test_the_26_september_recording_reads_as_recorded() -> None:
+    """What İBB returned at 05:15 on 2026-09-26: 9 lifts, 38 escalators, 8 walkways out of use.
+
+    The summary counts only "Arıza" (5, 21, 4), as on 2026-09-24, so the mismatch is said out loud.
+    """
+    ctx = SourceContext.create(client=PoliteClient(transport=httpx.MockTransport(_refuse)), settings=offline_settings())
+    snap, provenance = await MetroEquipmentSource(ctx).snapshot()
+    by_group = {group: [r for r in snap.records if r.group == group] for group in EQUIPMENT_GROUPS}
+    assert {g: len(rows) for g, rows in by_group.items()} == {"Asansör": 9, "Yürüyen Merdiven": 38, "Yürüyen Bant": 8}
+    assert all(r.station_name for r in snap.records) and all(r.status_class != "unknown" for r in snap.records)
+    summary = {row.group: (row.inactive, row.detail_count, row.detail_by_type) for row in snap.summary}
+    assert summary["Asansör"] == (5, 9, {"Revizyon": 4, "Arıza": 5})
+    assert summary["Yürüyen Merdiven"] == (21, 38, {"Arıza": 21, "Revizyon": 7, "Çalıştırılmıyor": 10})
+    assert summary["Yürüyen Bant"] == (4, 8, {"Çalıştırılmıyor": 4, "Arıza": 4})
+    assert SUMMARY_DETAIL_MISMATCH in snap.uncertainty and NO_RECORDED_DATA not in snap.uncertainty
+    lifts = {(r.station_name, r.line_name) for r in by_group["Asansör"]}
+    assert ("Etiler", "M6") in lifts and ("Sanayi Mahallesi", "M2") in lifts
+    assert not any(name == "Kartal" for name, _ in lifts)
+    assert provenance.observed_at == dt.datetime(2026, 9, 26, 2, 15, 44, tzinfo=dt.UTC)

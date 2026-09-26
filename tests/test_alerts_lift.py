@@ -162,11 +162,23 @@ async def test_build_context_reads_only_the_asked_groups(tmp_path) -> None:
     assert context.lift.groups_read == ("Asansör",)
 
 
-async def test_no_recording_is_reported_as_unavailable_not_all_clear(ctx) -> None:
-    result = await check_alerts(ctx, {"rules": [{"kind": "lift_outage", "stations": ["Kartal"]}]})
-    assert ctx.settings.fixtures_dir == FIXTURES_DIR
+async def test_no_recording_is_reported_as_unavailable_not_all_clear(tmp_path) -> None:
+    write_recordings(tmp_path, {}, summary=None)  # the station list only, no equipment answer
+    result = await check_alerts(offline_ctx(tmp_path), {"rules": [{"kind": "lift_outage", "stations": ["Kartal"]}]})
     assert result["alerts"] == []
     assert result["unavailable"]["metro_equipment"] == "Metro ekipman kaydı yok; asansör durumu doğrulanamadı."
+
+
+async def test_the_recording_of_26_september_clears_kartal_and_warns_for_etiler() -> None:
+    """The committed 2026-09-26 recording: no lift record at Kartal, one lift fault at Etiler (M6)."""
+    kartal = await check_alerts(offline_ctx(FIXTURES_DIR), {"rules": [{"kind": "lift_outage", "stations": ["Kartal"]}]})
+    assert kartal["alerts"] == [] and "metro_equipment" not in kartal["unavailable"]
+    etiler = await check_alerts(offline_ctx(FIXTURES_DIR), {"rules": [{"kind": "lift_outage", "stations": ["Etiler"]}]})
+    [alert] = etiler["alerts"]
+    assert alert["severity"] == "warning"
+    assert alert["message_tr"].startswith("Etiler (M6): asansör kullanılamıyor, İBB kaydındaki durum: Arıza.")
+    assert "çalışıyor" not in alert["message_tr"]
+    assert "summary_detail_mismatch" in alert["uncertainty"]
 
 
 async def test_stale_live_data_is_said_out_loud(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:

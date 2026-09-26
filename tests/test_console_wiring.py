@@ -48,9 +48,13 @@ def unlimited() -> SpendGuard:
 
 
 def recordings(tmp_path: pathlib.Path, *, lifts: bool = True) -> pathlib.Path:
-    """The committed fixtures plus Metro equipment records made here (test values)."""
+    """The committed fixtures plus Metro equipment records made here (test values).
+
+    The recorded Metro equipment answers are left out: this folder holds only the records made
+    here, so the scenario does not change when a newer recording is committed.
+    """
     folder = tmp_path / "fixtures"
-    shutil.copytree(FIXTURES_DIR, folder, ignore=shutil.ignore_patterns("gtfs_mini"))
+    shutil.copytree(FIXTURES_DIR, folder, ignore=shutil.ignore_patterns("gtfs_mini", "metro_faulty_equipment*"))
     if lifts:
         details = {
             "Asansör": [record(station="Kartal", line="M4", code="TEST-ASN-01", date="2026-09-20T08:00:00")],

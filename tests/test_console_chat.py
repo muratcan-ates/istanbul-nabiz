@@ -10,12 +10,13 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import shutil
 from collections.abc import Iterator
 from typing import Any
 
 import httpx
 import pytest
-from conftest import offline_settings, refuse_network
+from conftest import FIXTURES_DIR, offline_settings, refuse_network
 from fastapi.testclient import TestClient
 from test_knowledge_store import seed_page
 
@@ -568,11 +569,29 @@ def test_with_an_index_but_no_quote_a_refused_question_keeps_the_refusal(
     assert final["mode"] == "refused" and final["answer"] == REFUSAL_TEXT and final["citations"] == []
 
 
-def test_an_unread_lift_record_shows_no_age(nabiz: Nabiz) -> None:
-    """The recorded fixtures hold no lift record: the answer says so and states no age."""
-    with client_for(nabiz, llm.LlmConfig()) as client:
+def test_an_unread_lift_record_shows_no_age(tmp_path: Any) -> None:
+    """With no Metro equipment recording (set up here), the answer says so and states no age."""
+    folder = tmp_path / "fixtures"
+    shutil.copytree(FIXTURES_DIR, folder, ignore=shutil.ignore_patterns("gtfs_mini", "metro_faulty_equipment*"))
+    settings = dataclasses.replace(offline_settings(), fixtures_dir=folder)
+    client = PoliteClient(transport=httpx.MockTransport(refuse_network))
+    unrecorded = Nabiz(SourceContext.create(client=client, cache=TTLCache(), settings=settings))
+    with client_for(unrecorded, llm.LlmConfig()) as client:
         _, final = ask(client, "Kartal metro istasyonunda asansör var mı?")
     assert "doğrulanamadı" in final["answer"] and "Verinin yaşı" not in final["answer"]
     cited = [item for item in final["citations"] if item.get("source") == "metro_equipment"]
     assert cited and all(item["observed_at"] is None and item["age_s"] is None for item in cited)
     assert all(item["mode"] == "unknown" for item in cited)
+
+
+def test_a_recorded_lift_answer_is_stamped_with_its_recording_time_and_stays_honest(nabiz: Nabiz) -> None:
+    """The 2026-09-26 recording has no lift record at Kartal: "no fault recorded", never "it works", never "canlı"."""
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, "Kartal metro istasyonunda asansör var mı?")
+    answer = final["answer"]
+    assert answer.startswith("İBB kaydında Kartal istasyonu için asansör arızası yok.")
+    assert "kanıtlamaz" in answer and "çalışıyor" not in answer and "doğrulanamadı" not in answer
+    assert "Veri: kayıtlı · 26.09 05:15." in answer
+    assert "Verinin yaşı" not in answer and "canlı" not in answer.lower()
+    cited = [item for item in final["citations"] if item.get("source") == "metro_equipment"]
+    assert cited and all(item["observed_at"] and item["mode"] == "recorded" for item in cited)
