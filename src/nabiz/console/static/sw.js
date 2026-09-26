@@ -1,4 +1,4 @@
-/* v6 (DECISIONS #36: quota strip, example account, follows): bump VERSION when this worker's behavior or shell changes. */
+/* v6 (DECISIONS #36: quota strip, example account, follows; operatör-çeviri: the request card and its sheet join the shell): bump VERSION when this worker's behavior or shell changes. */
 const VERSION = 'v6';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
@@ -33,6 +33,8 @@ const SHELL = [
   '/js/i18n.js', '/i18n/tr.json', '/i18n/en.json',
   // DECISIONS #36: the quota strip, the example account and the follows
   '/css/account.css', '/js/identity.js', '/js/account_view.js', '/js/account.js', '/js/quota_strip.js', '/js/follow.js',
+  // operatör-çeviri: the request card (its /api/requests reads always go to the network)
+  '/js/request_status.js', '/css/operator_requests.css',
 ];
 
 function ruleFor(url, method, mode) {

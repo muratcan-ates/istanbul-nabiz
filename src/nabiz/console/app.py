@@ -70,6 +70,7 @@ from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
 from nabiz.console.quota import MeteredGuard, QuotaBook
 from nabiz.console.quota_api import plan_turn, quota_routes
+from nabiz.console.requests_api import request_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.stop_card import stop_card_router
 
@@ -325,6 +326,8 @@ def build_console_app(
     app.include_router(stop_card_router)
     app.include_router(quota_routes)
     app.include_router(account_routes)
+    # Operatöre aktar + çeviri: /api/requests for visitors, /api/console/requests behind the console's door.
+    app.include_router(request_routes)
     # Last, so every /api route wins the match ahead of the page's files.
     if CONSOLE_STATIC_DIR.is_dir():
         app.mount("/", StaticFiles(directory=CONSOLE_STATIC_DIR, html=True), name="static")

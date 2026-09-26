@@ -75,6 +75,8 @@
           <tr><td>Günlük soru kotası için rastgele cihaz kimliği (kişisel veri değil)</td><td><code>nabiz.device.v1</code></td><td>Hesabımı ve verilerimi sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Örnek hesabın giriş anahtarı ve gösterilen bilgileri</td><td><code>nabiz.account.v1</code></td><td>Hesap bağla bölümünde Hesabımı ve verilerimi sil.</td></tr>
           <tr><td>Hesapsız takip edilen konular (en çok 3) ve gösterilmiş değişiklikler</td><td><code>nabiz.follows.v1</code>, <code>nabiz.follows.seen.v1</code></td><td>Takip ettiklerim bölümünde Takibi bırak ya da Hesabımı ve verilerimi sil.</td></tr>
+
+          <tr><td>Operatöre ilettiğiniz taleplerin kodları (30 gün)</td><td><code>nabiz.requests.v1</code></td><td>Talep kartında Kartı bu cihazdan kaldır.</td></tr>
           <tr><td>Çevrimdışı kayıtlı şehir kartları ve çevrimdışı süre notu</td><td><code>nabiz-brief-v2</code>, <code>nabiz.pwa.offlineSince</code>, <code>nabiz.pwa.iosHintClosed</code></td><td>Profilim bölümünde Profili sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
         </tbody>
       </table>
@@ -82,8 +84,9 @@
 
     <h2 id="kvkk-sunucu">Sunucuya giden bilgiler</h2>
     <p>Profil paylaşımını onaylarsanız yalnız seçtiğiniz işlevsel ihtiyaç anahtarları istekle gönderilir. Şehir kartı isteklerinde kayıtlı istasyon ve hat adları kullanılabilir.</p>
-    <p>Sohbet için yazdığınız soru ve konuşmadaki önceki sorular sunucuya gider; sohbet soruları sunucu günlüğüne yazılmaz. Hesap bağlamadıkça sunucuda kişisel veri saklanmaz; hesap bağlarsanız ne saklandığı aşağıda, Hesap ve takip bölümündedir.</p>
+    <p>Sohbet için yazdığınız soru ve konuşmadaki önceki sorular sunucuya gider; sohbet soruları sunucu günlüğüne yazılmaz. Hesap bağlamadıkça ya da operatöre talep iletmedikçe sunucuda kişisel veri saklanmaz; hesap bağlarsanız ne saklandığı aşağıda, Hesap ve takip bölümündedir; operatöre ilettiğiniz talepler için aşağıdaki paragrafa bakın.</p>
     <p>Günlük soru kotası için tarayıcınızın ürettiği rastgele cihaz kimliği ve bağlantı adresiniz yalnız tuzlanmış özet (hash) olarak, sunucu belleğinde ve o gün için tutulur; diske yazılmaz, günlüğe yazılmaz, sunucu yeniden başlayınca silinir.</p>
+    <p>Operatöre ilet isteğe bağlıdır ve yalnız onay kutusunu işaretleyip gönderdiğinizde çalışır. Sorunuz ve seçtiğiniz dil sunucuya gider; telefon, TC kimlik, IBAN, kart numarası, e-posta ve plaka maskelenir. Maskeli soru, Türkçe çevirisi, konu tahmini ve operatörün cevabı sunucuda ayrı bir tabloda 30 gün saklanır, sonra silinir. Adres veya ad gibi bilgiler otomatik maskelenmeyebilir; bunları yazmayın. Karar defterine sorunuzun metni yazılmaz; cevabın maskeli kısa özeti yazılır. Acil durumlar operatöre iletilmez; 112 gösterilir.</p>
     <p>İsteğe bağlı geri bildirimde yalnız rastgele cevap kimliği, oy ve seçilen neden kodu gönderilir. Soru, cevap, ad, hesap, IP adresi ve tarayıcı bilgisi uygulama günlüğüne yazılmaz.</p>
 
     <h2 id="kvkk-hesap">Hesap ve takip (açık rıza)</h2>
@@ -103,7 +106,7 @@
     </div>
 
     <h2 id="kvkk-model">Yapay zekâ hizmeti</h2>
-    <p>Yapay zekâ hizmeti ayarlıysa yazdığınız soru, konuşmadaki önceki sorular ve gerekli araç sonuçları model sağlayıcısına gider. Sağlayıcı yurt dışında olabilir. Profiliniz, adınız ve e-posta adresiniz bu istekle gönderilmez.</p>
+    <p>Yapay zekâ hizmeti ayarlıysa yazdığınız soru, konuşmadaki önceki sorular ve gerekli araç sonuçları model sağlayıcısına gider. Operatöre ilettiğiniz sorunun maskeli metni ve operatörün cevabı da çeviri için aynı sağlayıcıya gider. Sağlayıcı yurt dışında olabilir. Profiliniz, adınız ve e-posta adresiniz bu istekle gönderilmez.</p>
     <p>Sorunuzun metninde kendiniz kişisel bilgi paylaşabilirsiniz. Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
 
     <h2 id="kvkk-ses">Sesle yazma</h2>

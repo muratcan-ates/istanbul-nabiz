@@ -33,12 +33,15 @@
 <link rel="modulepreload" href="/js/console_day.js">
 <link rel="modulepreload" href="/js/console_organs.js">
 <link rel="modulepreload" href="/js/console_kill.js">
+<link rel="modulepreload" href="/js/requests_console.js">
 <script type="module" src="/js/console.js"></script>
 <!-- Wave-1 panels (E17-E20): each fills its own section; the placeholders below fix their order. -->
 <script type="module" src="/js/console_health.js"></script>
 <script type="module" src="/js/console_day.js"></script>
 <script type="module" src="/js/console_organs.js"></script>
 <script type="module" src="/js/console_kill.js"></script>
+<!-- Operatöre aktar + çeviri: the citizen requests queue fills #citizen-requests. -->
+<script type="module" src="/js/requests_console.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -81,6 +84,7 @@
   <ul class="wrap">
     <li><a href="#today">Bugün</a></li>
     <li><a href="#queue">Sinyal kutusu</a></li>
+    <li><a href="#citizen-requests">Talepler</a></li>
     <li><a href="#rules">Kurallar</a></li>
     <li><a href="#nx-organs">NEXUS</a></li>
     <li><a href="#approval-health">Sağlık</a></li>
@@ -127,6 +131,8 @@
         seçenekleri, üç koltuğun görüşünü ve itiraz özetini gösterir; onay kanıt açılmadan verilmez.</p></div>
     </section>
   </div>
+
+  <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
 
   <section id="rules" aria-labelledby="rules-title">
     <div class="section-head">
