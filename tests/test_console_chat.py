@@ -104,7 +104,7 @@ def ask(client: TestClient, message: str, *, needs: list[str] | None = None, his
     assert final[0] == "final"
     assert set(final[1]) == {
         "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
-        "guard", "masked_count", "masked_kinds",
+        "guard", "hazard", "masked_count", "masked_kinds",
     }
     tokens = "".join(data["text"] for kind, data in stream if kind == "token")
     assert tokens == final[1]["answer"], "the token events must add up to the final answer"
@@ -362,6 +362,16 @@ def test_the_wider_emergency_vocabulary_redirects_before_the_model(
     with client_for(nabiz, CLOUD) as client:
         _, final = ask(client, question)
     assert final["mode"] == "redirect" and final["emergency"] is True and fake.calls == []
+
+
+def test_a_gas_emergency_names_the_gas_hazard_and_no_other_does(nabiz: Nabiz) -> None:
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, gas = ask(client, "gaz kaçağı var")
+        _, fire = ask(client, "Yangın çıktı")
+        _, plain = ask(client, "M2 metro hattında arıza var mı?")
+    assert gas["emergency"] is True and gas["hazard"] == "gas"
+    assert fire["emergency"] is True and fire["hazard"] is None
+    assert plain["hazard"] is None
 
 
 @pytest.mark.parametrize("question", ["Doğalgaz faturası nereden ödenir?", "Doğalgaz aboneliği nasıl yapılır?"])

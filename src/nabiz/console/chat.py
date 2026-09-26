@@ -3,7 +3,7 @@
     event: tool   data {"name", "status": "start"|"end"}      live, as the agent calls İBB tools
     event: token  data {"text"}                                the answer, in order
     event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion",
-                        "refused", "how", "mode", "steps", "emergency", "guard",
+                        "refused", "how", "mode", "steps", "emergency", "guard", "hazard",
                         "masked_count", "masked_kinds"}
 
 **The answer streams after it is checked.** :class:`~nabiz.agent.NabizAgent` verifies every
@@ -71,7 +71,7 @@ from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
 from nabiz.console.pii_guard import mask, mask_turn, pii_final_fields
-from nabiz.console.policy import functional_needs, memory_suggestion, names_a_price
+from nabiz.console.policy import emergency_hazard, functional_needs, memory_suggestion, names_a_price
 
 log = logging.getLogger("nabiz.console.chat")
 
@@ -299,7 +299,7 @@ class ChatService:
         """The verdicts read the checked, unmasked text; a quote for a refused question is looked up masked."""
         verdict = pipeline.early_verdict(checked.text, earlier, trace, input_ok=checked.ok)
         if verdict == "emergency":
-            return pipeline.emergency_events(suggestion, started, trace)
+            return pipeline.emergency_events(suggestion, started, trace, hazard=emergency_hazard(checked.text))
         if verdict == "guard":
             return pipeline.guard_events("input", checked.reason, checked.message or "", started, trace)
         if verdict == "sensitive":

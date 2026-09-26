@@ -197,9 +197,12 @@ def test_lines_are_only_112_and_153() -> None:
     result["lines"].clear()
     assert classify("Yangın çıktı")["lines"] == ["112", "153"]
     assert classify("Acil değil")["lines"] == []
-    forbidden = re.compile(r"\b(?:155|187|110)\b")
+    forbidden = re.compile(r"\b(?:155|110)\b")
     for path in (PYTHON, JS, CSS):
         assert not forbidden.search(path.read_text(encoding="utf-8")), path
+    # 187 (İGDAŞ gas emergency) has a source in the index (DECISIONS #36) and lives only in the gas link.
+    assert "187" not in PYTHON.read_text(encoding="utf-8") and "187" not in CSS.read_text(encoding="utf-8")
+    assert JS.read_text(encoding="utf-8").count('href="tel:187"') == 1
     assert EMERGENCY_LINES == ("112", "153")
 
 
@@ -300,6 +303,19 @@ def test_card_markup_has_the_actions(tmp_path: Path) -> None:
     # DECISIONS #35: Arabic is not a card language any more; it falls back to Turkish like any other code.
     assert arabic == tr and 'dir="rtl"' not in arabic
     assert unknown == tr
+
+
+def test_the_gas_card_adds_187_after_112_and_no_other_card_does(tmp_path: Path) -> None:
+    values = node_json(
+        "console.log(JSON.stringify([emergency.cardMarkup('tr', 'gas'), emergency.cardMarkup('en', 'gas'), "
+        "emergency.cardMarkup('tr', null), emergency.cardMarkup('tr', 'fire')]));",
+        tmp_path,
+    )
+    gas_tr, gas_en, plain, other = values
+    assert re.findall(r'href="(tel:[^"]+)"', gas_tr) == ["tel:112", "tel:187", "tel:153"]
+    assert "İGDAŞ 187 Doğal Gaz Acil Hattı" in gas_tr and "İGDAŞ 187" in gas_en
+    assert re.findall(r'href="(tel:[^"]+)"', plain) == ["tel:112", "tel:153"]
+    assert other == plain
 
 
 def test_format_coords_and_messages(tmp_path: Path) -> None:

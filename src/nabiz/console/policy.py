@@ -142,6 +142,8 @@ _EMERGENCY_STEMS = (
     "dogalgaz kacag", "dogalgaz kaciyor", "dogalgaz koku", "dogalgaz sizinti",
 )  # fmt: skip
 _EMERGENCY_RE = re.compile(r"\b(?:" + "|".join(_EMERGENCY_WORDS) + r")\b|\b(?:" + "|".join(_EMERGENCY_STEMS) + ")")
+#: The gas phrases among the stems: the emergency card then also names İGDAŞ's gas emergency line.
+_GAS_RE = re.compile(r"\b(?:" + "|".join(stem for stem in _EMERGENCY_STEMS if "gaz " in stem) + ")")
 #: "acil" is an emergency only next to one of these ("acil yardım", "acil, biri düştü").
 _URGENT = re.compile(r"\bacil\b")
 _URGENT_COMPANY = re.compile(r"\b(?:yardim|ambulans|dustu|kaza\b|kazasi\b|yarali|doktor|hastane)")
@@ -204,6 +206,12 @@ def emergency_intent(message: str) -> bool:
     if _URGENT.search(text) and _URGENT_COMPANY.search(text):
         return True
     return bool(_FELL.search(text) and _FALLEN_PERSON.search(text))
+
+
+def emergency_hazard(message: str) -> str | None:
+    """``"gas"`` when an emergency is a gas leak or smell, else ``None``. The page adds İGDAŞ's 187 line
+    to the 112 card for it; 112 stays the first action whatever this says."""
+    return "gas" if _GAS_RE.search(normalize_tr(message)) else None
 
 
 def names_a_price(text: str) -> bool:

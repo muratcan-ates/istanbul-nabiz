@@ -151,7 +151,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       // js/emergency.js also watches the class; the event carries the answer language for its card.
       if (typeof document !== 'undefined') {
         const lang = data.lang || new URLSearchParams(window.location.search).get('lang') || document.documentElement.lang || 'tr';
-        document.dispatchEvent(new CustomEvent('nabiz:emergency', { detail: { lang } }));
+        document.dispatchEvent(new CustomEvent('nabiz:emergency', { detail: { lang, hazard: data.hazard } }));
       }
     }
     // The sourced answer card (js/answer_card.js) draws answers, quotes and the fixed cards; the

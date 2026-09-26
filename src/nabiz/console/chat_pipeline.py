@@ -69,6 +69,7 @@ class FinalFields:
     steps: list[str] | None = None
     emergency: bool = False
     guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
+    hazard: str | None = None  # "gas" on a gas emergency: the 112 card also shows İGDAŞ's 187 line
 
 
 def sse(event: str, data: dict[str, Any]) -> str:
@@ -207,6 +208,7 @@ def final_body(
         "steps": fields.steps,
         "emergency": fields.emergency,
         "guard": fields.guard,
+        "hazard": fields.hazard,
     }
 
 
@@ -270,7 +272,8 @@ def output_guard(
     return guard_events("output", verdict.reason, UNKNOWN_TEXT, started, trace)
 
 
-def emergency_events(suggestion: Any, started: float, trace: TurnTrace | None = None) -> list[str]:
-    """The emergency redirect: one ``final`` with no text; the page shows 112 itself."""
-    fields = FinalFields(refused=False, how=empty_how(started, rule_id=None, trace=trace), mode="redirect", emergency=True)
+def emergency_events(suggestion: Any, started: float, trace: TurnTrace | None = None, *, hazard: str | None = None) -> list[str]:
+    """The emergency redirect: one ``final`` with no text; the page shows 112 itself (and 187 for gas)."""
+    how = empty_how(started, rule_id=None, trace=trace)
+    fields = FinalFields(refused=False, how=how, mode="redirect", emergency=True, hazard=hazard)
     return [sse("final", final_body("", [], "kural", suggestion, fields))]

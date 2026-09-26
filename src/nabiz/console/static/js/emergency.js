@@ -9,6 +9,7 @@ export const CARD_TEXT = Object.freeze({
     locate: 'Konumumu göster',
     copy: 'Kopyala',
     line153: '153 Çözüm Merkezi (acil olmayan konular)',
+    gas: 'Gaz kaçağı: İGDAŞ 187 Doğal Gaz Acil Hattı',
     back: 'Acil değil, geri dön',
     foot: 'Resmî İBB hizmeti değildir. Nabız bağımsız bir projedir. Konumunuz yalnız bu cihazda kalır.',
   }),
@@ -20,6 +21,7 @@ export const CARD_TEXT = Object.freeze({
     locate: 'Show my location',
     copy: 'Copy',
     line153: '153 Solution Centre (non-emergency matters)',
+    gas: 'Gas leak: İGDAŞ 187 natural gas emergency line',
     back: 'Not an emergency, go back',
     foot: 'Not an official İBB service. Nabız is an independent project. Your location stays on this device only.',
   }),
@@ -56,12 +58,17 @@ function htmlLang(lang) {
   return lang === 'en' ? ' lang="en"' : '';
 }
 
-export function cardMarkup(lang = 'tr') {
+// 187 is İGDAŞ's natural gas emergency line, named in İBB's 2025 activity report
+// (uploads.ibb.istanbul/uploads/2025_Faaliyet_Raporu_68f4b037e0.pdf, "187 Doğal Gaz Acil Hattı").
+// It is shown only for a gas hazard and only after the 112 button (DECISIONS #36).
+export function cardMarkup(lang = 'tr', hazard = null) {
   const text = CARD_TEXT[pickLang(lang)];
+  const gas = hazard === 'gas' ? `<a class="emergency-gas" href="tel:187">${text.gas}</a>` : '';
   return `<section class="emergency-card" id="emergency-card" role="alertdialog" aria-modal="true" aria-labelledby="emergency-title" aria-describedby="emergency-desc"${htmlLang(pickLang(lang))}>`
     + `<h2 id="emergency-title">${text.title}</h2><p id="emergency-desc">${text.desc}</p>`
     + '<p class="emergency-live" aria-live="assertive"></p>'
     + `<a class="emergency-call" href="tel:112">${text.call}</a>`
+    + gas
     + `<button type="button" class="emergency-locate" data-act="locate">${text.locate}</button>`
     + '<p class="emergency-location" role="status"></p>'
     + `<button type="button" class="emergency-copy" data-act="copy" hidden>${text.copy}</button>`
@@ -210,7 +217,7 @@ function wireCard(card, lang) {
   });
 }
 
-export function openEmergency(lang) {
+export function openEmergency(lang, hazard = null) {
   const doc = activeDocument || (typeof document === 'undefined' ? null : document);
   if (!doc?.body) return;
   const current = doc.getElementById('emergency-card');
@@ -221,7 +228,7 @@ export function openEmergency(lang) {
   const message = emergencyMessage(doc);
   const selectedLang = resolveLang(doc, lang, message);
   const holder = doc.createElement('div');
-  holder.innerHTML = cardMarkup(selectedLang);
+  holder.innerHTML = cardMarkup(selectedLang, hazard);
   const card = holder.firstElementChild;
   doc.body.appendChild(card);
   setBackgroundInert(doc, card);
@@ -266,7 +273,10 @@ export function mountEmergency(doc) {
   doc.__nabizEmergencyMounted = true;
   activeDocument = doc;
   addStylesheet(doc);
-  doc.addEventListener(EMERGENCY_EVENT, (event) => openEmergency(resolveLang(doc, event.detail?.lang, emergencyMessage(doc))));
+  doc.addEventListener(EMERGENCY_EVENT, (event) => openEmergency(
+    resolveLang(doc, event.detail?.lang, emergencyMessage(doc)),
+    event.detail?.hazard,
+  ));
   const log = doc.getElementById('chat-log');
   if (!log) return;
   markExistingMessages(log);
