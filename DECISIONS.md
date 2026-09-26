@@ -1557,3 +1557,52 @@ list for the shared files it did not own. GitHub's merge button was not used; th
   `knowledge` extra (network). Mission rules reviewed on 25 Sep read as stale from 2 Oct (B05).
 - The web budget still does not cover the console's citizen page (#31); `provenance.js`, `handoff.js` and
   `how.js` added to that graph.
+
+## 33. Bilgi katmanı kaynak envanteri 21 → ~280 (E26, 26 Eyl): the knowledge seed grows to 330 rows
+
+**Date:** 2026-09-26 · **Status:** Accepted for `gun2/entegrasyon`; the owner runs the ingest and reviews before anything is pushed
+
+### Context
+
+The knowledge index was seeded from `data/knowledge/sources.txt`: 73 rows, of which 59 passed the single
+allowlist after B06 (Q1 = A, Q2 = E) and 54 were crawl seeds, roughly 21 of them on pages that had actually
+opened in the reports. The E26 epic (`gun3/kaynak-envanteri`) opened and read 257 new official HTML pages on
+26 Sep and wrote them to `data/knowledge/sources.expanded.txt` (same six-column TSV) with a category table,
+host list and question coverage in `data/knowledge/SOURCES-EXPANDED.md`.
+
+### Decision
+
+- **One file, one more section.** The 257 rows are appended to `sources.txt` as "BÖLÜM 5: E26 web
+  doğrulaması (26.09.2026)", format kept, no URL repeated (0 overlaps with sections 1–4). The ingest script
+  keeps reading one file (`--sources` default unchanged); `sources.expanded.txt` stays as E26's record.
+  The section header resets the parser's section, so the "crawl tohumu DEĞİL" flag of section 4 does not
+  leak into section 5; a test pins that all 257 rows are crawlable, verified and inside the allowlist.
+- **Counts.** 330 rows; 319 inside the allowlist, 11 outside; 314 crawlable rows inside the allowlist
+  (the other five inside are section 4 `robots.txt` control records).
+- **Hosts.** Every E26 host was already accepted: the `*.ibb.gov.tr` and `*.ibb.istanbul` suffix rule (Q1)
+  covers `ataturkkitapligi`, `itfaiye`, `sosyalhizmetler`, `binatespiti`, `cevre`, `depremzemin`,
+  `imarmudurlugu`, `saglik`; `www.istanbulkart.istanbul` is Q2; `iett`, `www.metro`, `sehirhatlari`, `spor`
+  were exact entries. On the owner's request six exact hosts of İBB affiliates join `guardrails.DEFAULT_ALLOWLIST`:
+  `igdas.istanbul`, `www.igdas.istanbul` (İGDAŞ), `kultur.istanbul`, `www.kultur.istanbul` (Kültür AŞ),
+  `ihe.istanbul`, `www.ihe.istanbul` (İstanbul Halk Ekmek). Apex and `www` only, not suffixes: their
+  subdomains stay unreviewed. This turns the seed's `www.igdas.istanbul`, `kultur.istanbul` and
+  `www.ihe.istanbul` rows (all marked ERİŞİLEMEDİ, so still reported as unverified) into crawl attempts.
+- **Still refused (not removed from the list; ingest reports them as `robots`).** 6 crawlable rows:
+  `apps.apple.com`, `play.google.com` (store listings), `www.turkiye.gov.tr` (central e-government, not İBB),
+  `bireysel.istanbulkart.istanbul`, `online.spor.istanbul`, `event.spor.istanbul` (login/booking
+  subdomains; Q2 kept the card's subdomains out). Plus 5 control records outside the list
+  (`www.iski.gov.tr`, two `www.mevzuat.gov.tr`, `docs.ckan.org`, `www.rfc-editor.org`), never fetched.
+- **Robots.** E26 could not open any host's `robots.txt`; that is "unknown", not "allowed". Ingest reads
+  `robots.txt` per host before any uncached page and obeys it, so a disallowed path is skipped at run time.
+
+### Consequences and open risks
+
+- **Gaps.** E26 maps 66 of 150 questions (42 direct, 24 limited/dated); **84 are not covered**: İSKİ (timeouts),
+  İGDAŞ, İSPARK, cemeteries, Halk Ekmek, Kent Lokantası, most İstanbulkart card operations, education and
+  disaster-by-address questions. The affiliate hosts above only allow a try; their pages were not reviewed.
+- Coverage is lopsided: 106 of 257 rows are on `ataturkkitapligi.ibb.gov.tr`. With the 2 s per-host
+  interval a cold ingest of 314 URLs takes tens of minutes.
+- Several E26 notes are dated (e.g. 30.06.2026 vize, 01.08–31.12.2026 itfaiye tariff); freshness checks
+  in the evidence path still apply.
+- Gates (26 Sep, sprint flag): `make lint` pass; `make guardrails` 14 checks 0 failed (1 existing WARN);
+  full `pytest tests` 2974 passed, 1 skipped, 3 xfailed; `make eval-knowledge` 100 records PASS (offline).
