@@ -29,6 +29,7 @@ from nabiz.console.accounts import ACCOUNT_FOLLOW_LIMIT, EXAMPLE_BAND, EXAMPLE_S
 from nabiz.console.app import build_console_app
 from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.email_sender import OutboxEmailSender
+from nabiz.console.emergency_text import CARD_TEXT
 from nabiz.console.quota import TIERS, MeteredGuard, QuotaBook, Tier, address_key, tiers_from_env
 
 DOMAIN = "example.com"
@@ -259,3 +260,34 @@ def test_an_unused_account_is_purged_after_a_year(tmp_path: pathlib.Path) -> Non
     assert store.purge_inactive() == []
     now[0] += dt.timedelta(days=2)
     assert store.purge_inactive() == [account.id]
+
+
+@pytest.mark.parametrize(
+    ("message", "lang"),
+    [
+        (EMERGENCY, "tr"),
+        ("Evde gaz kaçağı var, gaz kokusu geliyor", "tr"),
+        ("النجدة حريق", "ar"),
+        ("Вызовите скорую, человек без сознания", "ru"),
+        ("Hilfe, mein Vater hat einen Herzinfarkt", "de"),
+    ],
+)
+def test_an_emergency_in_any_card_language_passes_a_spent_quota_and_limiter(
+    nabiz: Nabiz, tmp_path: pathlib.Path, message: str, lang: str
+) -> None:
+    """Integration of hesap-kota-takip and acil-çok-dil: with the daily quota spent and the per-minute limiter
+    answering 429, an emergency in Turkish (rules) or a visitor language (the multilingual rules) still gets 200,
+    the 112 card in its own language, and is not counted. The redirect's final has no text: the page draws the
+    card from ``final.lang`` (``emergency_text``)."""
+    client, app = make_client(nabiz, tmp_path, book=QuotaBook(tiers(questions=1)))
+    with client:
+        app.state.chat_limiter = TurnLimiter(1)
+        chat(client, "M2 çalışıyor mu?")
+        limited = client.post("/api/chat", json={"message": "M2 çalışıyor mu?"}, headers={"X-Nabiz-Device": DEVICE})
+        assert limited.status_code == 429
+        final = chat(client, message)
+        status = client.get("/api/quota", headers={"X-Nabiz-Device": DEVICE}).json()
+    assert final["emergency"] is True and final["mode"] == "redirect", final
+    assert final["lang"] == lang and "112" in CARD_TEXT[lang]["call"], "the page opens the 112 card in this language"
+    assert final["quota"]["counted"] is False
+    assert status["questions_left"] == 0 and status["questions_limit"] == 1, "the emergency took nothing"
