@@ -123,36 +123,42 @@ class ModelSeats:
         self.guard = guard
         self.author = llm.author_of(config.provider)
 
-    async def _seat(self, role: str, signal: Signal, evidence: Sequence[EvidenceItem]) -> Opinion | None:
+    async def _seat(self, role: str, signal: Signal, evidence: Sequence[EvidenceItem]) -> tuple[Opinion | None, str | None]:
+        """One seat's opinion, and the rung that wrote it (the ladder may have moved the call down)."""
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT.format(role=role, brief=ROLE_BRIEFS[role])},
             {"role": "user", "content": evidence_block(signal, evidence)},
         ]
         if not self.guard.reserve(self.config.provider, 1):
-            return None  # the Arena's ceiling is reached: this seat abstains
+            return None, None  # the Arena's ceiling is reached: this seat abstains
         try:
             response = await llm.chat(self.config, messages)
         except llm.LlmError as exc:
             log.warning("arena seat %s: model call failed: %s", role, type(exc).__name__)
             self.guard.record(self.config.provider, {}, 1)
-            return None
+            return None, None
         else:
             self.guard.record(self.config.provider, response.get("usage") or {}, 1)
         finally:
             self.guard.release(self.config.provider, 1)
-        return parse_opinion(role, response.get("content"), signal, evidence)
+        return parse_opinion(role, response.get("content"), signal, evidence), response.get("provider")
 
-    async def _all(self, signal: Signal, evidence: Sequence[EvidenceItem]) -> list[Opinion]:
+    async def _all(self, signal: Signal, evidence: Sequence[EvidenceItem]) -> list[tuple[Opinion, str | None]]:
         found = await asyncio.gather(*(self._seat(role, signal, evidence) for role in SEAT_ROLES))
-        return [opinion for opinion in found if opinion is not None]
+        return [(opinion, provider) for opinion, provider in found if opinion is not None]
 
     def opinions(self, signal: Signal, evidence: Sequence[EvidenceItem]) -> list[Opinion]:
         if not llm.available(self.config) or not self.guard.allows(self.config.provider):
             raise llm.LlmUnavailable("model yok ya da günlük tavan doldu")
-        opinions = asyncio.run(self._all(signal, evidence))
-        if not opinions:
+        written = asyncio.run(self._all(signal, evidence))
+        if not written:
             raise llm.LlmError("üç koltuk da geçerli bir görüş yazmadı")
-        return opinions
+        # The card's author is the rung that wrote the opinions: "yerel model" only when every
+        # valid one came from Foundry Local. The core reads ``author`` after this call returns;
+        # the instance is shared, so two Arena runs at once could swap labels (not handled here).
+        cloud = sorted({provider or self.config.provider for _, provider in written} - {"foundry_local"})
+        self.author = llm.author_of(cloud[0] if cloud else "foundry_local")
+        return [opinion for opinion, _ in written]
 
 
 def arena_port(config: llm.LlmConfig | None, guard: SpendGuard) -> Any:
