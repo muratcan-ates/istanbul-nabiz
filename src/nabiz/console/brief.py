@@ -19,6 +19,7 @@ is written by a template, so every card's author is "kural".
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import re
 import time
@@ -27,6 +28,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
+from ibb_mcp.models import utcnow
+from nabiz.console import notice_age
 from nabiz.console.arrival import BY_TIMETABLE, arrival_view
 from nabiz.console.cards import Status, card, freshness_status, how_view, iso_now, number_tr, provenance_view, unknown_provenance
 from nexus_core.arena import UNCERTAINTY_TEXT
@@ -104,7 +107,26 @@ async def metro_status_card(nabiz: Any, lines: Sequence[str], fresh: Freshness) 
                            elapsed_s=time.perf_counter() - started)
     notices = [n for n in result.data.get("lines") or [] if not wanted or (n.get("line_name") or "").upper() in wanted]
     if notices:
-        body = " ".join(f"{n.get('line_name') or ''}: {n.get('description') or ''}".strip() for n in notices[:3])
+        history = {}
+        try:
+            history = notice_age.metro_history(notice_age.cached_rows(notice_age.METRO_SOURCE, now=utcnow()))
+        except Exception as exc:  # noqa: BLE001 - arşiv okunamazsa kart yalnız İBB cümlesiyle çıkar
+            log.warning("notice archive unreadable: %s", type(exc).__name__)
+        parts = []
+        for item in notices[:3]:
+            line = item.get("line_name") or ""
+            description = item.get("description") or ""
+            raw_updated = item.get("updated_at")
+            try:
+                updated_at = (
+                    dt.datetime.fromisoformat(raw_updated.replace("Z", "+00:00"))
+                    if isinstance(raw_updated, str) else None
+                )
+            except ValueError:
+                updated_at = None
+            extra = notice_age.since_text(updated_at, history.get(notice_age.notice_key(line, description)))
+            parts.append(f"{line}: {description}".strip() + (f" {extra}" if extra else ""))
+        body = " ".join(parts)
         content: Status = "warning"
     else:
         body, content = "Bildirilmiş arıza ya da çalışma duyurusu yok.", "ok"
@@ -114,7 +136,7 @@ async def metro_status_card(nabiz: Any, lines: Sequence[str], fresh: Freshness) 
                 provenance=provenance, how=_how("metro_status", provenance, status, time.perf_counter() - started))
 
 
-async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> list[dict[str, Any]]:
+async def station_cards(step_free: Any, station: str, needs: Sequence[str], *, nabiz: Any = None) -> list[dict[str, Any]]:
     """The lift card for one saved station, and the alternative card when it is needed and known."""
     started = time.perf_counter()
     try:
@@ -129,6 +151,15 @@ async def station_cards(step_free: Any, station: str, needs: Sequence[str]) -> l
         # said as such, never a current "no fault".
         status = "stale"
         body = last_known(body, status)
+    if lift == "out_of_service" and nabiz is not None:
+        try:
+            equipment = await nabiz.metro_equipment_status(station=station, group="Asansör")
+        except (*_UNREADABLE, ValueError) as exc:
+            log.warning("lift date source unreadable: %s", type(exc).__name__)
+        else:
+            sentences = notice_age.equipment_sentences(equipment.data or {}, station, now=utcnow())
+            if sentences:
+                body += " " + " ".join(sentences)
     provenance = view.get("provenance") or unknown_provenance("metro_equipment")
     elapsed = time.perf_counter() - started
     cards = [card("metro_equipment", station, title=f"{station} asansör", body=body, status=status,
@@ -229,7 +260,7 @@ async def build_brief(
     pairs = [line for line in lines if ":" in line]
     cards = [await metro_status_card(nabiz, metro_lines, fresh)]
     for station in stations:
-        cards += await station_cards(step_free, station, needs)
+        cards += await station_cards(step_free, station, needs, nabiz=nabiz)
     if published is not None:
         cards.extend(await published.published(stations=stations))
     for pair in pairs:
