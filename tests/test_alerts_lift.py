@@ -209,3 +209,14 @@ async def test_stale_live_data_is_said_out_loud(tmp_path, monkeypatch: pytest.Mo
     assert "stale_data" in observation.uncertainty
     assert alert is not None
     assert alert.message_tr.startswith("Son bilinen durum, doğrulanamadı: ")
+
+
+def test_identical_record_lines_are_said_once_with_their_count() -> None:
+    from ibb_mcp.alerts.lift import _collapse_repeats
+
+    same = "Taksim (M2): asansör kullanılamıyor."
+    lines = [same, same, "Şişli: yürüyen merdiven kullanılamıyor."]
+    assert _collapse_repeats(lines, "İBB kaydında {n} ayrı kayıt") == [
+        "Taksim (M2): asansör kullanılamıyor. (İBB kaydında 2 ayrı kayıt.)",
+        "Şişli: yürüyen merdiven kullanılamıyor.",
+    ]
