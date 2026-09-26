@@ -3,7 +3,7 @@
     event: tool   data {"name", "status": "start"|"end"}      live, as the agent calls İBB tools
     event: token  data {"text"}                                the answer, in order
     event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion",
-                        "refused", "how", "mode", "steps", "emergency", "guard", "hazard",
+                        "refused", "how", "mode", "steps", "emergency", "guard", "hazard", "lang",
                         "masked_count", "masked_kinds"}
 
 **The answer streams after it is checked.** :class:`~nabiz.agent.NabizAgent` verifies every
@@ -70,8 +70,9 @@ from nabiz.console import text_guard
 from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
+from nabiz.console.emergency_model import model_emergency
 from nabiz.console.pii_guard import mask, mask_turn, pii_final_fields
-from nabiz.console.policy import emergency_hazard, functional_needs, memory_suggestion, names_a_price
+from nabiz.console.policy import emergency_card, functional_needs, memory_suggestion, names_a_price
 
 log = logging.getLogger("nabiz.console.chat")
 
@@ -299,7 +300,9 @@ class ChatService:
         """The verdicts read the checked, unmasked text; a quote for a refused question is looked up masked."""
         verdict = pipeline.early_verdict(checked.text, earlier, trace, input_ok=checked.ok)
         if verdict == "emergency":
-            return pipeline.emergency_events(suggestion, started, trace, hazard=emergency_hazard(checked.text))
+            return pipeline.emergency_events(suggestion, started, trace, **emergency_card(checked.text))
+        if verdict in {None, "sensitive"} and checked.ok and (card := await model_emergency(masked, self.config, self.guard)):
+            return pipeline.model_emergency_events(card, suggestion, started, trace)
         if verdict == "guard":
             return pipeline.guard_events("input", checked.reason, checked.message or "", started, trace)
         if verdict == "handoff":

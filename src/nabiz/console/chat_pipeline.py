@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from ibb_mcp.knowledge.answer import UNKNOWN_TEXT
 from nabiz.console import policy, text_guard
+from nabiz.console.emergency_model import MODEL_RULE_ID
 
 if TYPE_CHECKING:
     from nabiz.agent.agent import AgentAnswer
@@ -70,6 +71,7 @@ class FinalFields:
     emergency: bool = False
     guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
     hazard: str | None = None  # "gas" on a gas emergency: the 112 card also shows İGDAŞ's 187 line
+    lang: str | None = None  # an emergency's card language (DECISIONS #37); None on every other turn
 
 
 def sse(event: str, data: dict[str, Any]) -> str:
@@ -214,6 +216,7 @@ def final_body(
         "emergency": fields.emergency,
         "guard": fields.guard,
         "hazard": fields.hazard,
+        "lang": fields.lang,
     }
 
 
@@ -284,8 +287,25 @@ def handoff_events(suggestion: Any, started: float, trace: TurnTrace | None = No
     return answer_events(policy.HANDOFF_TEXT, [], "kural", suggestion, fields)
 
 
-def emergency_events(suggestion: Any, started: float, trace: TurnTrace | None = None, *, hazard: str | None = None) -> list[str]:
-    """The emergency redirect: one ``final`` with no text; the page shows 112 itself (and 187 for gas)."""
-    how = empty_how(started, rule_id=None, trace=trace)
-    fields = FinalFields(refused=False, how=how, mode="redirect", emergency=True, hazard=hazard)
+def emergency_events(
+    suggestion: Any,
+    started: float,
+    trace: TurnTrace | None = None,
+    *,
+    hazard: str | None = None,
+    lang: str | None = None,
+    rule_id: str | None = None,
+) -> list[str]:
+    """The emergency redirect: one ``final`` with no text; the page shows 112 itself (and 187 for gas), in
+    ``lang``. No operator queue: 112 comes first. ``rule_id`` is ``None`` for the rules, set for the model."""
+    how = empty_how(started, rule_id=rule_id, trace=trace)
+    fields = FinalFields(refused=False, how=how, mode="redirect", emergency=True, hazard=hazard, lang=lang or "tr")
     return [sse("final", final_body("", [], "kural", suggestion, fields))]
+
+
+def model_emergency_events(card: Mapping[str, str | None], suggestion: Any, started: float, trace: TurnTrace) -> list[str]:
+    """The same redirect when the model layer (not the rules) found the emergency: a second "acil" step
+    in the chain, answered, and ``how.rule_id`` saying so. The card and its text are the rules' own."""
+    with trace.step("acil"):
+        trace.mark("cevapladi")
+    return emergency_events(suggestion, started, trace, rule_id=MODEL_RULE_ID, lang=card.get("lang"), hazard=card.get("hazard"))
