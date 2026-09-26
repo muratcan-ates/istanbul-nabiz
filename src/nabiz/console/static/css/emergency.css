@@ -1,0 +1,110 @@
+.emergency-open {
+  overflow: hidden;
+}
+
+.emergency-card {
+  --emergency-bg: var(--bad-wash);
+  --emergency-ink: var(--text);
+  --emergency-call-bg: var(--bad);
+  --emergency-call-ink: var(--neutral-0);
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3, 0.75rem);
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-y: auto;
+  padding: var(--space-4, 16px);
+  background: var(--emergency-bg);
+  color: var(--emergency-ink);
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.emergency-card * {
+  box-sizing: border-box;
+}
+
+.emergency-card h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  line-height: 1.2;
+}
+
+.emergency-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.emergency-card a,
+.emergency-card button {
+  max-width: 100%;
+  min-height: 48px;
+  padding: var(--space-3, 0.75rem);
+  border: 2px solid var(--emergency-ink);
+  border-radius: var(--radius-2, 0.5rem);
+  color: var(--emergency-ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.emergency-card button {
+  background: var(--emergency-bg);
+  cursor: pointer;
+}
+
+.emergency-card .emergency-call {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  background: var(--emergency-call-bg);
+  color: var(--emergency-call-ink);
+  font-size: 1.5rem;
+  text-decoration: none;
+}
+
+.emergency-card :focus-visible {
+  outline: 3px solid var(--emergency-ink);
+  outline-offset: 3px;
+}
+
+.emergency-card [hidden] {
+  display: none;
+}
+
+.emergency-card .emergency-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.emergency-card .emergency-foot {
+  margin-block-start: auto;
+  padding-block-start: var(--space-3, 0.75rem);
+  border-block-start: 1px solid var(--emergency-ink);
+  font-size: 0.875rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .emergency-card {
+    --emergency-bg: var(--bad-wash);
+    --emergency-ink: var(--text);
+    --emergency-call-bg: var(--neutral-0);
+    --emergency-call-ink: var(--bad-wash);
+  }
+}
+
+:root[data-theme="dark"] .emergency-card {
+  --emergency-bg: var(--bad-wash);
+  --emergency-ink: var(--text);
+  --emergency-call-bg: var(--neutral-0);
+  --emergency-call-ink: var(--bad-wash);
+}
