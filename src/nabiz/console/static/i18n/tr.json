@@ -109,9 +109,9 @@
   "fixed.ai_notice": "Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum. Resmî karar veren bir görevli değilim.",
   "dyn.who_user": "Siz",
   "dyn.who_assistant": "Asistan",
-  "dyn.answer_short": "KISA CEVAP",
-  "dyn.how": "NASIL YAPILIR",
-  "dyn.source": "KAYNAK",
+  "dyn.answer_short": "Kısa cevap",
+  "dyn.how": "Nasıl yapılır",
+  "dyn.source": "Kaynak",
   "dyn.no_source": "Kaynak yok.",
   "dyn.open_source": "Resmî kaynağı aç",
   "dyn.ask_153": "153'e sor",
@@ -326,5 +326,11 @@
   "dyn.handoff_tid": "TİD görüntülü görüşme",
   "dyn.handoff_operator": "Operatöre ilet",
   "dyn.handoff_emergency": "Acil durum: 112",
-  "dyn.handoff_close": "Kapat"
+  "dyn.handoff_close": "Kapat",
+  "dyn.copy": "Kopyala",
+  "dyn.copied": "Kopyalandı.",
+  "dyn.copy_failed": "Kopyalanamadı; metni seçip kopyalayabilirsiniz.",
+  "dyn.next_title": "Şunu da sorabilirsiniz",
+  "dyn.stop": "Durdur",
+  "dyn.stopped": "Yanıt durduruldu."
 }

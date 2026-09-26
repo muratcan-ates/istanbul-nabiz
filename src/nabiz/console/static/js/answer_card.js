@@ -1,11 +1,13 @@
 import { quoteBox } from './transcript.js';
 import { esc, has, int, num, shortAge } from './format.js';
+import { icon } from './icons.js';
 import { AUTHOR_TR, ageText, howPanel, modeOf, sourceLabel, sourceLink } from './provenance.js';
 
 const REFUSAL_TEXT = "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak. Acil bir durumdaysan 112'yi ara.";
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
 const STALE_DAYS = 365;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const beatenPayloads = new WeakSet();
 const INSTITUTIONS = {
   IBB: 'İBB',
   IBB_OPEN_DATA: 'İBB Açık Veri Portalı',
@@ -60,17 +62,25 @@ function sourceLine(citation, { inQuoteBox = false } = {}) {
   return `<p class="ac-source-line">${sourceLink(citation)}</p>`;
 }
 
-function kindTag(citation) {
+function freshnessMode(citation) {
+  const mode = modeOf(citation);
+  return mode === 'unknown' && citation && citation.mode === 'old' ? 'old' : mode;
+}
+
+function kindTag(citation, { beat = false } = {}) {
   if (citation && citation.source === 'local:knowledge') {
     return '<span class="ac-kind is-page">Resmî sayfadan alıntı</span>';
   }
-  const mode = modeOf(citation);
+  const mode = freshnessMode(citation);
   let label = 'Veri yaşı bilinmiyor';
   if (mode === 'live') label = `Canlı veri · ${shortAge(citation.age_s)}`;
   if (mode === 'old') label = `Ölçüm · ${ageText(citation)}`;
   if (mode === 'recorded') label = `Kayıtlı veri · ${ageText(citation)}`;
   if (mode === 'schedule') label = 'Tarifeye göre';
-  return `<span class="ac-kind is-${mode}">${esc(label)}</span>`;
+  const state = mode === 'live' ? 'current' : ['recorded', 'old', 'schedule'].includes(mode) ? 'recorded' : 'unverified';
+  const dot = mode === 'live' ? '<span class="fresh-dot" aria-hidden="true"></span>' : '';
+  const beatClass = beat && mode === 'live' ? ' is-beat' : '';
+  return `<span class="ac-kind fresh is-${state}${beatClass}">${dot}${esc(label)}</span>`;
 }
 
 function isStale(citation, now = Date.now()) {
@@ -86,18 +96,19 @@ function staleNotice(citation, now) {
     : '';
 }
 
-function sourceItem(citation, now) {
+function sourceItem(citation, now, { beat = false } = {}) {
   return `<li class="ac-source">${sourceLine(citation, { inQuoteBox: Boolean(citation.quote) })}`
-    + `${kindTag(citation)}${staleNotice(citation, now)}</li>`;
+    + `${kindTag(citation, { beat })}${staleNotice(citation, now)}</li>`;
 }
 
 function actionRow(citations) {
   const page = citations.find((item) => item.source === 'local:knowledge'
     && typeof item.url === 'string' && /^https?:\/\//i.test(item.url));
   const official = page
-    ? `<a class="btn ac-official" href="${esc(page.url)}" target="_blank" rel="noopener noreferrer">Resmî kaynağı aç</a>`
+    ? `<a class="btn btn-quiet ac-official" href="${esc(page.url)}" target="_blank" rel="noopener noreferrer">Resmî kaynağı aç${icon('external-link')}</a>`
     : '';
-  return `<div class="btn-row ac-actions">${official}<a class="btn btn-primary ac-call153" href="tel:153">153'e sor</a></div>`;
+  return `<div class="btn-row ac-actions">${official}<button type="button" class="btn btn-quiet ac-copy" data-ac-copy>Kopyala</button>`
+    + '<a class="btn btn-quiet ac-call153" href="tel:153">153\'e sor</a></div>';
 }
 
 function fixedCard(mode, how, turnId) {
@@ -123,21 +134,31 @@ function renderAnswerCard(data, { turnId = '', now = Date.now() } = {}) {
   const showShort = mode === 'answer' && (quoted.length === 0 || payload.author !== 'kural');
   const steps = mode === 'answer' && Array.isArray(payload.steps) ? payload.steps : [];
   const cardType = mode === 'quote_only' ? 'quote' : 'answer';
-  let html = `<section class="answer-card" data-card="${cardType}" aria-label="Kaynaklı cevap">`;
+  const beatLive = !beatenPayloads.has(payload) && citations.some((item) => freshnessMode(item) === 'live');
+  if (beatLive) beatenPayloads.add(payload);
+  let html = `<section class="answer-card" data-card="${cardType}"${beatLive ? ' data-beaten="true"' : ''} aria-label="Kaynaklı cevap">`;
   if (showShort) {
-    html += `<section class="answer-short ac-short"><h3>KISA CEVAP</h3><p data-er-target>${esc(answer)}</p></section>`;
+    html += '<section class="answer-short ac-short"><h3 class="eyebrow">Kısa cevap</h3>'
+      + `<p data-er-target>${esc(answer)}</p></section>`;
   }
   if (quoted.length) {
     const box = quoteBox(quoted).replaceAll('class="quote-text"', 'class="quote-text quote-exact"');
     html += `<div class="ac-quote" data-er-skip>${box}</div>`;
   }
   if (steps.length) {
-    html += `<section class="ac-steps"><h3>NASIL YAPILIR</h3><ol>${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>`;
+    html += '<section class="ac-steps"><h3 class="eyebrow">Nasıl yapılır</h3>'
+      + `<ol class="ac-steps-list">${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>`;
   }
-  html += '<section class="ac-sources"><h3>KAYNAK</h3>';
-  html += citations.length
-    ? `<ul class="ac-source-list">${citations.map((item) => sourceItem(item, now)).join('')}</ul>`
-    : '<p>Kaynak yok.</p>';
+  html += '<section class="ac-sources"><h3 class="eyebrow">Kaynak</h3>';
+  let beatUsed = false;
+  if (citations.length) {
+    const items = citations.map((item) => {
+      const beat = beatLive && !beatUsed && freshnessMode(item) === 'live';
+      if (beat) beatUsed = true;
+      return sourceItem(item, now, { beat });
+    });
+    html += `<ul class="ac-source-list">${items.join('')}</ul>`;
+  } else html += '<p>Kaynak yok.</p>';
   html += `</section>${actionRow(citations)}</section>`;
 
   const first = citations[0];

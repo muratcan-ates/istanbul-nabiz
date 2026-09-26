@@ -1,7 +1,7 @@
-/* v12 (E30: culture.js and culture.css, libraries and museums open now; gun2/entegrasyon already shipped v11 with
-   E27's voice report modules, v10 with E40's i18n_text.js and v9 with E35's lazy map module): bump VERSION when
-   this worker's behavior or shell changes. */
-const VERSION = 'v12';
+/* v13 (E45: answer_actions.js; v12 added E30 culture.js and culture.css, libraries and museums open now;
+   gun2/entegrasyon already shipped v11 with E27's voice report modules, v10 with E40's i18n_text.js and v9 with
+   E35's lazy map module): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v13';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -25,7 +25,7 @@ const SHELL = [
   '/css/agency.css', '/css/answer_card.css', '/css/conversations.css', '/css/easy_read.css', '/css/emergency.css',
   '/css/map_layers.css', '/css/my_stops.css', '/css/personas.css', '/css/progress.css', '/css/service_status.css',
   '/css/trip.css', '/data/glossary_tr.json',
-  '/js/agency.js', '/js/answer_card.js', '/js/arrival_confidence.js', '/js/char_counter.js', '/js/conversations-ui.js',
+  '/js/agency.js', '/js/answer_card.js', '/js/answer_actions.js', '/js/arrival_confidence.js', '/js/char_counter.js', '/js/conversations-ui.js',
   '/js/conversations.js', '/js/easy_read.js', '/js/easy_read_listen.js', '/js/emergency.js', '/js/map_layers.js',
   '/js/my_stops.js', '/js/personas.js', '/js/pii_badge.js', '/js/service_status.js', '/js/tool_labels.js',
   '/js/transcript.js', '/js/trip.js', '/js/trip_view.js',
