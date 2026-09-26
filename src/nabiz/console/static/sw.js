@@ -40,6 +40,14 @@ const SHELL = [
   '/js/emergency_text.js',
   // DECISIONS #41: the İBB Açık Veri section
   '/js/open_data.js', '/css/open_data.css',
+  // DECISIONS #42 (E24): the one-tap lift report under the step-free card
+  '/js/report.js', '/css/report.css',
+  // DECISIONS #43 (E21): the quick-question chips
+  '/js/quick_chips.js', '/css/quick_chips.css',
+  // DECISIONS #44 (E23): the citizen's model note (the console receipt strip is a console file, never cached)
+  '/js/model_strip.js',
+  // E35: the escalator and walkway helpers map_layers.js imports lazily
+  '/js/map_equipment.js',
 ];
 
 function ruleFor(url, method, mode) {
