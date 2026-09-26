@@ -1,0 +1,128 @@
+.answer-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-4);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  overflow-wrap: anywhere;
+}
+
+.answer-card h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.answer-short,
+.ac-sources,
+.ac-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.answer-short p,
+.ac-source-line,
+.ac-fixed {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ac-quote {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ac-source-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-source {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.ac-source-line a {
+  color: var(--link);
+  overflow-wrap: anywhere;
+}
+
+.ac-kind {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: var(--tap);
+  padding-inline: var(--space-3);
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-round);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.ac-kind.is-page {
+  color: var(--info);
+  background: var(--info-wash);
+}
+
+.ac-stale {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--warn);
+  background: var(--warn-wash);
+  border-inline-start: 3px solid var(--warn);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+}
+
+.ac-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ac-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--tap);
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.ac-actions .btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .answer-card,
+  .ac-source,
+  .ac-kind {
+    border-color: CanvasText;
+  }
+}
