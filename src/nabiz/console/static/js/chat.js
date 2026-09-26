@@ -137,6 +137,8 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     const mode = data.mode || (data.refused ? 'refused' : 'answer');
     textEl.hidden = true;
     textEl.textContent = '';
+    // The rule that answered, for modules that watch the log (handoff.js reads layer:handoff here).
+    shell.dataset.ruleId = (data.how && data.how.rule_id) || '';
     if (data.refused || mode === 'unknown') shell.classList.add('is-refused');
     if (mode === 'redirect' && data.emergency === true) {
       shell.classList.add('is-emergency');
