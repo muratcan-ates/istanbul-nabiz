@@ -13,6 +13,7 @@ nothing above this module may name a provider. Everything speaks the OpenAI-comp
     NABIZ_LLM_API_KEY    empty for Foundry Local
     NABIZ_LLM_MODEL      gpt-4.1-mini · phi-4-mini · qwen2.5-7b
     NABIZ_FOUNDRY_LOCAL_URL optional dynamic local endpoint
+    NABIZ_LADDER_LOCAL_ON_CAP  "0" keeps a capped turn off the local rung (default: on)
 
 If no cloud endpoint is set, we discover Foundry Local or use its default port; if neither
 is available, the provider is ``none`` and the agent falls back to deterministic mode. A
@@ -51,6 +52,8 @@ Provider = Literal["azure_openai", "foundry_local", "openai_compatible", "none"]
 FOUNDRY_LOCAL_URL = "http://127.0.0.1:5273/v1"
 FOUNDRY_LOCAL_HOST = ("127.0.0.1", 5273)
 _LOCAL_URL_RE = re.compile(r"https?://(localhost|127\.0\.0\.1):(\d+)")
+#: Switches off dropping a capped turn to the next rung (Foundry Local); read by :func:`local_on_cap`.
+LOCAL_ON_CAP_ENV = "NABIZ_LADDER_LOCAL_ON_CAP"
 
 #: Both spellings are accepted: DECISIONS #5 writes ``LLM_BASE_URL``, ``.env.example``
 #: writes ``NABIZ_LLM_BASE_URL``. The prefixed name wins so a shell-wide LLM_* export for
@@ -150,6 +153,25 @@ def rungs(config: LlmConfig | None) -> tuple[LlmConfig, ...]:
 def first_rung(config: LlmConfig | None, allows: Callable[[str], bool]) -> LlmConfig | None:
     """Return the first configured provider accepted by a caller's spend guard."""
     return next((rung for rung in rungs(config) if allows(rung.provider)), None)
+
+
+def local_on_cap(env: Mapping[str, str] | None = None) -> bool:
+    """Whether a turn the first rung has no room for may drop to a later rung; on unless switched off."""
+    env = os.environ if env is None else env
+    return (env.get(LOCAL_ON_CAP_ENV) or "").strip().lower() not in {"0", "false", "no"}
+
+
+def pick_rung(
+    config: LlmConfig | None, allows: Callable[[str], bool], *, env: Mapping[str, str] | None = None
+) -> LlmConfig | None:
+    """The rung a turn starts on: the first one (its fallbacks kept) when ``allows`` it, else the first
+    later rung it allows, unless :data:`LOCAL_ON_CAP_ENV` is off; ``None`` means the rules answer."""
+    configured = rungs(config)
+    if not configured:
+        return None
+    if allows(configured[0].provider):
+        return configured[0]
+    return first_rung(config, allows) if local_on_cap(env) else None
 
 
 def author_of(provider: str | None) -> str:
