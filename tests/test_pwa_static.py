@@ -327,7 +327,7 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source += "'nabiz-shell-v3','nabiz-brief-v3','nabiz-shell-v4','nabiz-brief-v4','nabiz-shell-v5','nabiz-brief-v5',"
     source += "'nabiz-shell-v6','nabiz-brief-v6','nabiz-shell-v7','nabiz-brief-v7','nabiz-shell-v8','nabiz-brief-v8',"
     source += "'nabiz-shell-v9','nabiz-brief-v9','nabiz-shell-v10','nabiz-brief-v10','nabiz-shell-v11','nabiz-brief-v11',"
-    source += "'nabiz-shell-v12','nabiz-brief-v12',"
+    source += "'nabiz-shell-v12','nabiz-brief-v12','nabiz-shell-v13','nabiz-brief-v13',"
     source += "'baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
@@ -336,11 +336,12 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
         "nabiz-shell-v4", "nabiz-brief-v4", "nabiz-shell-v5", "nabiz-brief-v5", "nabiz-shell-v6", "nabiz-brief-v6",
         "nabiz-shell-v7", "nabiz-brief-v7", "nabiz-shell-v8", "nabiz-brief-v8", "nabiz-shell-v9", "nabiz-brief-v9",
         "nabiz-shell-v10", "nabiz-brief-v10", "nabiz-shell-v11", "nabiz-brief-v11",
+        "nabiz-shell-v12", "nabiz-brief-v12",
     ]
     # v7: the 26 Sep integration (DECISIONS #38-#41); v8: its second round; v9: E35's lazy map module (gun2);
     # v10: E40's i18n_text.js in the shell; v11: E27's voice report modules, E33's report list;
-    # v12: E30's culture.js and culture.css.
-    assert result == {"version": "v12", "stale": stale}
+    # v12: E30's culture.js and culture.css; v13: E45's answer_actions.js and the new answer card.
+    assert result == {"version": "v13", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """
