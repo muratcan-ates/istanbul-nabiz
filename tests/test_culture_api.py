@@ -229,6 +229,8 @@ def test_one_district_spelled_two_ways_is_listed_once(monkeypatch: pytest.Monkey
     api = client()
     districts = api.get("/api/culture").json()["districts"]
     assert "Küçükçekmece" in districts and "K.Çekmece" not in districts
+    # Turkish alphabetical order: Ş after S, Ü after U.
+    assert districts.index("Sultangazi") < districts.index("Şişli") < districts.index("Tuzla") < districts.index("Ümraniye")
     assert len(districts) == len(set(districts))
     for requested in ("Küçükçekmece", "K.Çekmece"):
         body = api.get("/api/culture", params={"district": requested}).json()
@@ -364,3 +366,32 @@ def test_the_section_mounts_and_speaks_the_page_language(tmp_path: Path) -> None
     assert 'href="tel:02122499565"' in values["row"] and 'lang="tr"' in values["row"]
     if "ui.culture.open_until" in json.loads(catalogs["en"]):
         assert values["en"][1].endswith("Wednesday 09:00")
+
+
+def test_kultur_journeys_replay() -> None:
+    """eval/journeys.kultur.jsonl against the real capture; only fields that do not depend on the hour."""
+    load_venues.cache_clear()
+    api = client()
+    scenarios = [
+        json.loads(line) for line in (REPO_ROOT / "eval" / "journeys.kultur.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert scenarios
+    for scenario in scenarios:
+        request = scenario["request"]
+        response = api.request(request["method"], request["path"], params=request.get("params"))
+        body = response.json()
+        counts = body.get("counts") or {}
+        texts = " ".join(response_texts(body)).casefold()
+        actual = {
+            "status": response.status_code,
+            "error": body.get("error"),
+            "district": body.get("district"),
+            "total": counts.get("total"),
+            "unknown": counts.get("unknown"),
+            "kinds": body.get("kinds"),
+            "every_row_has_state": all(row["state"] in {"open", "closed", "unknown"} for row in body.get("venues", [])),
+            "no_occupancy": "kalabalık" not in texts and "boş yer" not in texts and texts.count("doluluk") == 1,
+        }
+        for field, expected in scenario["expect"].items():
+            assert actual[field] == expected, (scenario["id"], field)
+    load_venues.cache_clear()

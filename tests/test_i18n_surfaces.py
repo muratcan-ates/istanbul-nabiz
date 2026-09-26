@@ -9,6 +9,7 @@ from test_static_a11y import STATIC, node_json
 
 MODULES = (
     "account.js", "account_view.js", "follow.js", "quota_strip.js", "request_status.js", "requests_console.js", "open_data.js",
+    "culture.js",
 )
 JS_DIR = STATIC / "js"
 I18N = STATIC / "i18n"

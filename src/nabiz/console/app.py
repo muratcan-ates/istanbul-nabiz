@@ -53,6 +53,7 @@ from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.compare_api import compare_routes
+from nabiz.console.culture_api import culture_routes
 from nabiz.console.day_api import day_routes
 from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
@@ -333,6 +334,8 @@ def build_console_app(
     app.include_router(open_data_routes)
     app.include_router(how_routes)
     app.include_router(map_layers_routes)
+    # E30: İBB libraries and museums open now by their recorded hours, for a district the visitor picks.
+    app.include_router(culture_routes)
     app.include_router(agency_routes)
     app.include_router(operator_routes)
     # E23: which model rung answers today (no keys, no probe) and the console's service receipts and spend.

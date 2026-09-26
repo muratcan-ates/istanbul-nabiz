@@ -34,6 +34,9 @@ WEEKDAY_RANGE = re.compile(r"([a-z]+)\s*-\s*([a-z]+)")
 #: The library capture spells one district two ways ("K.Çekmece" beside "Küçükçekmece"); the selector
 #: shows the district once and both spellings match it. The record itself is not rewritten.
 DISTRICT_ALIASES = {fold_tr("K.Çekmece"): "Küçükçekmece"}
+#: The selector lists districts in Turkish alphabetical order (Ç after C, Ş after S, Ü after U).
+TR_ALPHABET = "abcçdefgğhıijklmnoöprsştuüvwxyz"
+TR_LOWER = str.maketrans({"I": "ı", "İ": "i", "â": "a", "Â": "a", "î": "i", "Î": "i", "û": "u", "Û": "u"})
 
 NOTES = (
     "Doluluk bilgisi yok: İBB kütüphane ve müze doluluğunu açık veri olarak yayımlamıyor.",
@@ -160,6 +163,11 @@ def district_name(raw: str | None) -> str | None:
     return DISTRICT_ALIASES.get(fold_tr(raw), raw)
 
 
+def turkish_order(name: str) -> tuple[int, ...]:
+    """Sort key for Turkish alphabetical order; a character outside the alphabet sorts after it."""
+    return tuple(TR_ALPHABET.find(char) if char in TR_ALPHABET else 100 + ord(char) for char in name.translate(TR_LOWER).lower())
+
+
 def _schedule(venue: Venue) -> tuple[frozenset[int] | None, tuple[dt.time, dt.time] | Literal["always"] | None]:
     days = parse_days(venue.days_text)
     hours = parse_hours(venue.hours_text) or parse_hours(venue.days_text)
@@ -277,7 +285,7 @@ async def culture(
     for item in all_venues:
         if (name := district_name(item.district)) is not None:
             districts_by_key.setdefault(fold_tr(name), name)
-    districts = sorted(districts_by_key.values(), key=lambda name: (fold_tr(name), name))
+    districts = sorted(districts_by_key.values(), key=turkish_order)
     canonical = districts_by_key.get(fold_tr(district_name(district))) if district else None
     if district and districts and canonical is None:
         return port_problem(422, "unknown_district", display_text("Bu ilçe adı kayıtlarda yok."))

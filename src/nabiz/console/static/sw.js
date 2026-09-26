@@ -1,7 +1,7 @@
-/* v11 (E27: the voice report modules; E33: report.js lists this device's reports; gun2/entegrasyon already shipped
-   v10 with E40's i18n_text.js and v9 with E35's lazy map module): bump VERSION when this worker's behavior or
-   shell changes. */
-const VERSION = 'v11';
+/* v12 (E30: culture.js and culture.css, libraries and museums open now; gun2/entegrasyon already shipped v11 with
+   E27's voice report modules, v10 with E40's i18n_text.js and v9 with E35's lazy map module): bump VERSION when
+   this worker's behavior or shell changes. */
+const VERSION = 'v12';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -51,6 +51,8 @@ const SHELL = [
   '/js/map_equipment.js',
   // E27: report by voice (the E28/E29 console files are console_* and never cached)
   '/js/voice_intent.js', '/js/voice_report.js',
+  // E30: libraries and museums open now (the answers come from /api/culture and are never cached)
+  '/js/culture.js', '/css/culture.css',
 ];
 
 function ruleFor(url, method, mode) {

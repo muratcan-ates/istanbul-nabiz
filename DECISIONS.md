@@ -2427,3 +2427,32 @@ come from the cache, the robots snapshots and the code.
 - `iski.istanbul` is still closed if its robots.txt times out twice in the next run.
 - www.ibb.gov.tr answered 401 for robots.txt; under the RFC rule its row is now requested.
 - Cached robots files never expire (RFC 9309 §2.4 says 24 hours); unchanged here.
+
+## 57. Is the library or museum open now: İBB's recorded hours, no occupancy, no map (E30, 26 Sep)
+
+### Decision
+
+- The citizen page gets "Kütüphane ve müze: şu an açık mı?" under Yakınımda. The answer comes only from two İBB
+  Open Data Portal datasets (libraries 72, museums 48 records; resource last modified 12 Feb 2026), read once on
+  26 Sep and stored verbatim in `data/reference/ibb_kultur/` under the İBB Açık Veri Lisansı (NOTICE.md names
+  the source). No request leaves the server for this section.
+- `GET /api/culture` computes open or closed in İstanbul time from the record's day and hour fields only.
+  Unrecognised or empty fields say "Çalışma saati kayıtta yok"; nothing is guessed. Public holidays and special
+  closures are not in the record, and every answer says so and asks the visitor to call first.
+- No occupancy: İBB does not publish it, and the section says that in words. No "boş", "kalabalık" or percentage.
+- The datasets carry no coordinates, so "nearest" means the district the visitor picks, and nothing is put on the
+  map. The district goes only as the request parameter, is not logged, and is remembered on the device
+  (`nabiz.culture.v1`, listed in kvkk.html).
+- The library capture spells one district "K.Çekmece" and "Küçükçekmece"; the selector lists it once and both
+  spellings match. The stored record is not changed.
+- Labels follow the page language (`ui.culture.*` in tr/en); names, addresses and phones stay Turkish.
+  `culture.js` and `culture.css` are in the service worker shell (v12).
+
+### Consequences
+
+- The hours are as of February 2026 and may have changed; 3 of 72 libraries and 10 of 48 museums have no hours.
+- The chat does not use this endpoint yet. Offline (deterministic, 26 Sep smoke) "Kadıköy'de kütüphane açık mı?"
+  resolves Kadıköy as a place and lists piers, which does not answer the question. Routing it to `/api/culture`
+  is agent work for a later epic (open).
+- A map layer or a true "nearest" needs a coordinate source or a geocoding decision, with its licence
+  (open: owner).
