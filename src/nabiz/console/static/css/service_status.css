@@ -1,0 +1,151 @@
+.service-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--bad);
+  background: var(--bad-wash);
+  color: var(--text);
+}
+
+.service-status[hidden] {
+  display: none;
+}
+
+.service-status-text {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+.service-status-call {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--space-4);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+
+.chat-pause {
+  margin-block-end: var(--space-5);
+}
+
+.chat-pause-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  min-width: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.chat-pause-switch:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.chat-pause-track {
+  position: relative;
+  flex: 0 0 52px;
+  block-size: 28px;
+  border-radius: var(--radius-round);
+  background: var(--ok);
+}
+
+.chat-pause-track::after {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-start: 4px;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-round);
+  background: var(--surface);
+  content: "";
+}
+
+.chat-pause-switch[aria-checked="false"] .chat-pause-track {
+  background: var(--bad);
+}
+
+.chat-pause-switch[aria-checked="false"] .chat-pause-track::after {
+  inset-inline-start: 28px;
+}
+
+.chat-pause-badge {
+  white-space: nowrap;
+}
+
+.chat-pause-dialog {
+  width: min(32rem, calc(100% - 2rem));
+  max-width: 100%;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.chat-pause-dialog::backdrop {
+  background: var(--surface-inverse);
+  opacity: .6;
+}
+
+.chat-pause-dialog form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.chat-pause-dialog textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 6rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.chat-pause-dialog textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.chat-pause-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.chat-pause-actions button {
+  min-height: var(--tap);
+  min-width: 44px;
+}
+
+@media (max-width: 320px) {
+  .service-status {
+    padding-inline: var(--space-2);
+  }
+
+  .service-status-call {
+    padding-inline: var(--space-2);
+  }
+
+  .chat-pause-dialog {
+    padding: var(--space-3);
+  }
+}
