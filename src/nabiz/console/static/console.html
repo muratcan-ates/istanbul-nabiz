@@ -20,6 +20,7 @@
 <link rel="modulepreload" href="/js/api.js">
 <link rel="modulepreload" href="/js/config.js">
 <link rel="modulepreload" href="/js/console-cards.js">
+<link rel="modulepreload" href="/js/console_rules.js">
 <link rel="modulepreload" href="/js/cards.js">
 <link rel="modulepreload" href="/js/provenance.js">
 <link rel="modulepreload" href="/js/format.js">
@@ -64,9 +65,20 @@
     gelir. <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
 </div>
 
+<nav class="console-nav" aria-label="Konsol bölümleri">
+  <ul class="wrap">
+    <li><a href="#today">Bugün</a></li>
+    <li><a href="#queue">Sinyal kutusu</a></li>
+    <li><a href="#rules">Kurallar</a></li>
+    <li><a href="#nx-organs">NEXUS</a></li>
+    <li><a href="#approval-health">Sağlık</a></li>
+    <li><a href="#service-receipt">Maliyet</a></li>
+  </ul>
+</nav>
+
 <main class="wrap" id="main" tabindex="-1">
   <h1 id="page-title" class="sr-only">Nabız konsol: simüle operatör</h1>
-  <section aria-labelledby="stats-title">
+  <section id="today" aria-labelledby="stats-title">
     <div class="section-head">
       <h2 id="stats-title">Bugün</h2>
       <span class="section-note">sayılar simülasyon; pilotta ölçülecek. Kişi bazında metrik yok.</span>
@@ -101,6 +113,15 @@
     </section>
   </div>
 
+  <section id="rules" aria-labelledby="rules-title">
+    <div class="section-head">
+      <h2 id="rules-title">Kurallar</h2>
+      <span class="section-note" id="rules-count"></span>
+    </div>
+    <p class="status-line" id="rules-status" role="status" tabindex="-1"></p>
+    <ul class="rules" id="rules-list"><li class="section-note">yükleniyor</li></ul>
+  </section>
+
   <section aria-labelledby="drafts-title">
     <div class="section-head">
       <h2 id="drafts-title">Kural taslakları</h2>
@@ -109,6 +130,22 @@
     <ul class="drafts" id="drafts"><li class="section-note">yükleniyor</li></ul>
     <p class="status-line" id="drafts-status" role="status"></p>
   </section>
+
+  <dialog id="revoke-dialog" class="revoke-dialog" aria-labelledby="revoke-title" aria-describedby="revoke-desc">
+    <form id="revoke-form" novalidate>
+      <h2 id="revoke-title">Kuralı geri al</h2>
+      <p id="revoke-desc"><b id="revoke-rule"></b> hemen durur ve kendiliğinden geri gelmez. Aynı desen ancak bundan sonraki
+        onaylarla yeniden taslak olur. Karar deftere yazılır.</p>
+      <label for="revoke-reason">Gerekçe</label>
+      <textarea id="revoke-reason" name="reason" rows="3" maxlength="280" required aria-describedby="revoke-hint revoke-error"></textarea>
+      <span class="field-hint" id="revoke-hint"><span id="revoke-count">0</span>/280 · Deftere yazılır. Kişi adı yazmayın.</span>
+      <span class="field-error" id="revoke-error" role="alert" hidden>Gerekçe yazın.</span>
+      <div class="btn-row">
+        <button type="button" class="btn" id="revoke-cancel">Vazgeç</button>
+        <button type="submit" class="btn btn-danger">Geri al</button>
+      </div>
+    </form>
+  </dialog>
 </main>
 
 <footer class="wrap">
