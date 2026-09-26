@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -25,6 +26,11 @@ LIFT_RECORD_TEXT = {
 NOTE_UNREAD = "Asansör kaydı yok: Metro İstanbul ekipman kaydı okunamadı, asansör durumu doğrulanamadı."
 NOTE_EMPTY = "İBB kaydında kullanılamayan asansör yok. Bu, asansörlerin kullanılabilir olduğunu kanıtlamaz."
 NOTE_STALE = "Veri bayat: gösterilen, son bilinen durumdur."
+MOVING_GROUPS = ("Yürüyen Merdiven", "Yürüyen Bant")
+MOVING_TYPES = frozenset({"escalator", "moving_walkway"})
+TYPE_TR = {"escalator": "yürüyen merdiven", "moving_walkway": "yürüyen bant"}
+NOTE_MOVING_UNREAD = "Yürüyen merdiven ve bant kaydı okunamadı; durumları doğrulanamadı."
+NOTE_MOVING_EMPTY = "İBB kaydında kullanılamayan yürüyen merdiven ya da bant yok. Bu, kullanılabilir oldukları anlamına gelmez."
 _GAZETTEER_URL = "local:data/reference/places.csv"
 _SAFE_STATUSES = {"Arıza", "Revizyon", "Çalıştırılmıyor", "bilinmiyor"}
 
@@ -75,13 +81,15 @@ def _place_index(places: list[Any]) -> dict[str, Any]:
     return index
 
 
-async def _filtered_station_place(nabiz: Any, record: dict[str, Any], index: dict[str, Any]) -> Any | None:
+async def _filtered_station_place(
+    nabiz: Any, record: dict[str, Any], index: dict[str, Any], *, group: str = "Asansör"
+) -> Any | None:
     """Use only the façade's station-filtered records as evidence for a fallback match."""
     name = str(record.get("station") or "").strip()
     if not name:
         return None
     try:
-        result = await nabiz.metro_equipment_status(station=name, group="Asansör")
+        result = await nabiz.metro_equipment_status(station=name, group=group)
         data = result.data if isinstance(result.data, dict) else {}
         rows = [row for row in data.get("records", []) if isinstance(row, dict)]
         code = str(record.get("code") or "").strip()
@@ -97,14 +105,18 @@ async def _filtered_station_place(nabiz: Any, record: dict[str, Any], index: dic
         return None
 
 
-async def read_lifts(nabiz: Any, *, offline: bool) -> LiftRead:
-    """Read the façade once, placing only records the same façade associates to stations."""
+async def read_equipment(
+    nabiz: Any, *, offline: bool, group: str | None, types: frozenset[str]
+) -> LiftRead:
+    """Read selected façade groups once and place their records on gazetteer points."""
     try:
-        result = await nabiz.metro_equipment_status(group="Asansör")
+        result = await nabiz.metro_equipment_status(group=group) if group else await nabiz.metro_equipment_status()
         data = result.data if isinstance(result.data, dict) else {}
-        readable = data.get("available") is True and "Asansör" in (data.get("groups_read") or [])
+        groups_read = data.get("groups_read") or []
+        required_groups = (group,) if group else MOVING_GROUPS
+        readable = data.get("available") is True and all(item in groups_read for item in required_groups)
     except Exception as exc:  # noqa: BLE001 - an unread source is an unknown, not a server error
-        log.warning("map lift read failed: %s", type(exc).__name__)
+        log.warning("map equipment read failed: %s", type(exc).__name__)
         return LiftRead(False, (), unknown_provenance("metro_equipment"), False, (), None, None)
 
     if not readable:
@@ -121,20 +133,19 @@ async def read_lifts(nabiz: Any, *, offline: bool) -> LiftRead:
     provenance = provenance_view(result.provenance, offline=offline)
     places = _places(nabiz)
     index = _place_index(places)
-    raw_records = [
-        row for row in data.get("records", [])
-        if isinstance(row, dict) and row.get("equipment_type") == "elevator"
-    ]
-    resolved: dict[str, Any | None] = {}
+    raw_records = [row for row in data.get("records", []) if isinstance(row, dict) and row.get("equipment_type") in types]
+    resolved: dict[tuple[str, str], Any | None] = {}
     resolve_count = 0
     records: list[dict[str, Any]] = []
     for raw in raw_records:
         station_name = str(raw.get("station") or "").strip()
-        key = _station_key(station_name)
-        place = index.get(key)
-        if place is None and key and key not in resolved and resolve_count < MAX_RESOLVE:
+        station_key = _station_key(station_name)
+        record_group = str(raw.get("group") or group or "Asansör")
+        key = (station_key, record_group)
+        place = index.get(station_key)
+        if place is None and station_key and key not in resolved and resolve_count < MAX_RESOLVE:
             resolve_count += 1
-            resolved[key] = await _filtered_station_place(nabiz, raw, index)
+            resolved[key] = await _filtered_station_place(nabiz, raw, index, group=record_group)
         if place is None:
             place = resolved.get(key)
         record = dict(raw)
@@ -154,6 +165,11 @@ async def read_lifts(nabiz: Any, *, offline: bool) -> LiftRead:
         display_text(data["date_label"]) if isinstance(data.get("date_label"), str) else None,
         display_text(data["disclaimer"]) if isinstance(data.get("disclaimer"), str) else None,
     )
+
+
+async def read_lifts(nabiz: Any, *, offline: bool) -> LiftRead:
+    """Keep the original elevator endpoint on the shared equipment reader."""
+    return await read_equipment(nabiz, offline=offline, group="Asansör", types=frozenset({"elevator"}))
 
 
 def _station_id(name: str, seen: dict[str, int]) -> str:
@@ -261,6 +277,86 @@ async def lifts_collection(nabiz: Any, *, offline: bool) -> dict[str, Any]:
     }
 
 
+def _equipment_date_order(value: Any) -> float:
+    if not isinstance(value, str) or not value:
+        return 0
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.timestamp()
+
+
+def _equipment_feature(record: dict[str, Any], ordinal: int) -> dict[str, Any]:
+    equipment_type = record.get("equipment_type")
+    prefix = "esc" if equipment_type == "escalator" else "walk"
+    status = record.get("status_type")
+    status = display_text(status if status in _SAFE_STATUSES else "Belirsiz kayıt")
+    text = record.get("text")
+    text = display_text(text if isinstance(text, str) and text.strip() else "İBB kaydındaki ekipman kaydı.")
+    location = record.get("location")
+    return {
+        "type": "Feature",
+        "id": f"{prefix}-{ordinal}",
+        "geometry": record.get("geometry"),
+        "properties": {
+            "kind": "equipment",
+            "equipment_type": equipment_type,
+            "station": display_text(str(record.get("map_station") or "Bilinmeyen istasyon")),
+            "line": display_text(str(record.get("line") or "")),
+            "status": status,
+            "status_class": display_text(str(record.get("status_class") or "unknown")),
+            "ibb_date": record.get("ibb_date"),
+            "location": display_text(str(location)) if location else None,
+            "text": text,
+            "placed": record.get("placed") is True,
+            "not_operated": record.get("status_class") == "not_operated",
+        },
+    }
+
+
+async def equipment_collection(nabiz: Any, *, offline: bool) -> dict[str, Any]:
+    """Build the escalator and moving-walkway collection with stable ids and safe empty states."""
+    equipment = await read_equipment(nabiz, offline=offline, group=None, types=MOVING_TYPES)
+    records = sorted(
+        equipment.records,
+        key=lambda row: (
+            fold_tr(str(row.get("map_station") or row.get("station") or "")),
+            str(row.get("equipment_type") or ""),
+            -_equipment_date_order(row.get("ibb_date")),
+            str(row.get("text") or ""),
+        ),
+    )
+    counts = {"escalator": 0, "moving_walkway": 0}
+    features = []
+    for record in records:
+        equipment_type = record.get("equipment_type")
+        if equipment_type not in counts:
+            continue
+        counts[equipment_type] += 1
+        features.append(_equipment_feature(record, counts[equipment_type]))
+    note = (
+        NOTE_MOVING_UNREAD if not equipment.readable else
+        NOTE_STALE if equipment.stale else
+        NOTE_MOVING_EMPTY if not features else None
+    )
+    return {
+        "type": "FeatureCollection",
+        "count": len(features),
+        "counts": counts,
+        "equipment_record": "read" if equipment.readable else "unread",
+        "stale": equipment.stale,
+        "features": features,
+        "note": display_text(note) if note else None,
+        "provenance": equipment.provenance,
+        "uncertainty": list(equipment.uncertainty),
+        "date_label": equipment.date_label,
+        "disclaimer": equipment.disclaimer,
+    }
+
+
 @map_layers_routes.get("/api/map/stations")
 async def map_stations(request: Request) -> dict[str, Any]:
     """Expose rail stations and their evidence-backed lift record state."""
@@ -271,3 +367,9 @@ async def map_stations(request: Request) -> dict[str, Any]:
 async def map_lifts(request: Request) -> dict[str, Any]:
     """Expose Metro İstanbul's recorded unusable lifts without failing the page."""
     return await lifts_collection(request.app.state.nabiz, offline=offline_flag(request))
+
+
+@map_layers_routes.get("/api/map/equipment")
+async def map_equipment(request: Request) -> dict[str, Any]:
+    """Expose Metro İstanbul's recorded escalators and moving walkways."""
+    return await equipment_collection(request.app.state.nabiz, offline=offline_flag(request))

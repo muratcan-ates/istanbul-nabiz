@@ -3,40 +3,39 @@ const SHOW_ON_MAP_EVENT = 'nabiz:show-on-map';
 const KINDS = new Set(['place', 'station', 'park', 'bus', 'air']);
 const DEFAULT_LAYERS = ['stations', 'lifts'];
 const UNREAD_NOTE = 'Asansör kaydı yok: Metro İstanbul ekipman kaydı okunamadı, asansör durumu doğrulanamadı.';
+const EQUIPMENT_TYPES = { escalators: 'escalator', walkways: 'moving_walkway' };
+const EQUIPMENT_LABELS = { escalator: 'yürüyen merdiven', moving_walkway: 'yürüyen bant' };
+let mapEquipment = null;
 function validCoordinate(point) {
-  return Boolean(point) && Number.isFinite(point.lat) && point.lat >= -90 && point.lat <= 90
-    && Number.isFinite(point.lon) && point.lon >= -180 && point.lon <= 180;
+  return Boolean(point) && Number.isFinite(point.lat) && point.lat >= -90 && point.lat <= 90 && Number.isFinite(point.lon)
+    && point.lon >= -180 && point.lon <= 180;
 }
 
 function validDetail(detail) {
   const value = detail && typeof detail === 'object' ? detail : {};
-  const points = (Array.isArray(value.points) ? value.points : []).slice(0, 20).map((point, index) => {
-    if (!validCoordinate(point) || typeof point.label !== 'string') return null;
-    return {
-      lat: point.lat, lon: point.lon, label: point.label.slice(0, 80) || 'Konum',
-      kind: KINDS.has(point.kind) ? point.kind : 'place',
+  const points = (Array.isArray(value.points) ? value.points : []).slice(0, 20).map((point, index) => (
+    !validCoordinate(point) || typeof point.label !== 'string' ? null : {
+      lat: point.lat, lon: point.lon, label: point.label.slice(0, 80) || 'Konum', kind: KINDS.has(point.kind) ? point.kind : 'place',
       card: typeof point.card === 'string' && /^[\w-]{1,64}$/.test(point.card) ? point.card : 'ml-point-' + index,
-    };
-  }).filter(Boolean);
-  const requested = Array.isArray(value.layers) ? value.layers.filter((item) => DEFAULT_LAYERS.includes(item)) : [];
+    }
+  )).filter(Boolean);
+  const allLayers = [...DEFAULT_LAYERS, 'escalators', 'walkways'];
+  const requested = Array.isArray(value.layers) ? value.layers.filter((item) => allLayers.includes(item)) : [];
   const layers = new Set(requested.length ? requested : DEFAULT_LAYERS);
-  const focus = validCoordinate(value.focus) ? { lat: value.focus.lat, lon: value.focus.lon } : null;
-  const source = typeof value.source === 'string' && value.source ? value.source.slice(0, 16) : 'event';
-  return { points, layers, focus, source };
+  return { points, layers, focus: validCoordinate(value.focus) ? { lat: value.focus.lat, lon: value.focus.lon } : null,
+    source: typeof value.source === 'string' && value.source ? value.source.slice(0, 16) : 'event' };
 }
 
 function distanceM(a, b) {
-  const rad = (degrees) => degrees * Math.PI / 180;
-  const lat1 = rad(a.lat), lat2 = rad(b.lat), dLat = lat2 - lat1, dLon = rad(b.lon - a.lon);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const rad = (degrees) => degrees * Math.PI / 180, lat1 = rad(a.lat), lat2 = rad(b.lat);
+  const dLat = lat2 - lat1, dLon = rad(b.lon - a.lon), h = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return Math.round(6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
 }
 function nearestFirst(features, focus) {
   if (!validCoordinate(focus)) return [...features];
-  return features.map((feature, index) => ({
-    feature, index, distance: distanceM(
-      { lat: feature.geometry.coordinates[1], lon: feature.geometry.coordinates[0] }, focus,
-    ),
+  return features.map((feature, index) => ({ feature, index,
+    distance: distanceM({ lat: feature.geometry.coordinates[1], lon: feature.geometry.coordinates[0] }, focus),
   })).sort((a, b) => a.distance - b.distance || a.index - b.index).map((row) => row.feature);
 }
 
@@ -49,85 +48,90 @@ function rowText(feature, { ageLabel = '', distance = null } = {}) {
     parts.push(metres > 1000 ? (metres / 1000).toFixed(1).replace('.', ',') + ' km' : metres + ' m');
   }
   if (p.lift_record !== 'unread') {
-    if (p.text) parts.push(p.text);
-    if (ageLabel) parts.push(ageLabel);
+    if (p.text) parts.push(p.text); if (ageLabel) parts.push(ageLabel);
   }
   return parts.join(' · ');
 }
 
-function rowsOf(value) {
-  return Array.isArray(value) ? value : value && Array.isArray(value.features) ? value.features : [];
-}
+function rowsOf(value) { return Array.isArray(value) ? value : value && Array.isArray(value.features) ? value.features : []; }
 function coordinates(feature) {
   const pair = feature && feature.geometry && feature.geometry.coordinates;
-  return Array.isArray(pair) && pair.length === 2 && pair.every(Number.isFinite)
-    ? { lon: pair[0], lat: pair[1] } : null;
+  return Array.isArray(pair) && pair.length === 2 && pair.every(Number.isFinite) ? { lon: pair[0], lat: pair[1] } : null;
 }
 function featurePoint(feature, card, p = {}) {
   const position = coordinates(feature);
-  return position
-    ? { lat: position.lat, lon: position.lon, kind: 'station', label: p.name || p.station || 'İstasyon', card }
-    : null;
+  return position ? { lat: position.lat, lon: position.lon, kind: 'station', label: p.name || p.station || 'İstasyon', card } : null;
 }
 
-function featuresToPoints(stations, lifts, { layers = DEFAULT_LAYERS, focus = null, near = 8, extra = [] } = {}) {
+function featuresToPoints(
+  stations, lifts, { layers = DEFAULT_LAYERS, focus = null, near = 8, extra = [], equipment = null } = {},
+) {
   const enabled = new Set(layers instanceof Set ? layers : layers || DEFAULT_LAYERS);
-  const stationFeatures = rowsOf(stations), liftsByStation = new Map();
-  rowsOf(lifts).forEach((feature) => {
-    const p = feature.properties || {};
-    if (p.placed && !liftsByStation.has(p.station)) liftsByStation.set(p.station, feature);
+  const stationFeatures = rowsOf(stations), typesByStation = new Map(), equipmentByStation = new Map();
+  rowsOf(equipment).forEach((feature) => {
+    const p = feature.properties || {}, layer = Object.keys(EQUIPMENT_TYPES).find((key) => EQUIPMENT_TYPES[key] === p.equipment_type);
+    if (!layer || !enabled.has(layer) || p.placed !== true || !p.station) return;
+    if (!typesByStation.has(p.station)) typesByStation.set(p.station, new Set());
+    typesByStation.get(p.station).add(p.equipment_type);
+    if (!equipmentByStation.has(p.station)) equipmentByStation.set(p.station, feature);
   });
+  const liftsByStation = rowsOf(lifts).reduce((map, feature) => {
+    const { station, placed } = feature.properties || {};
+    if (placed && !map.has(station)) map.set(station, feature);
+    return map;
+  }, new Map());
   let selected = stationFeatures.filter((feature) => {
     const status = (feature.properties || {}).lift_record;
-    return enabled.has('stations') || (enabled.has('lifts') && status === 'recorded_fault');
+    const name = (feature.properties || {}).name;
+    return enabled.has('stations') || (enabled.has('lifts') && status === 'recorded_fault') || typesByStation.has(name);
   });
   if (validCoordinate(focus)) selected = nearestFirst(selected, focus).slice(0, Math.max(0, near));
-  const points = selected.map((feature) => {
-    const p = feature.properties || {};
+  return [...extra, ...selected.map((feature) => {
+    const p = feature.properties || {}, name = p.name;
     const broken = enabled.has('lifts') && p.lift_record === 'recorded_fault';
-    const lift = liftsByStation.get(p.name);
-    const point = featurePoint(feature, broken && lift ? 'ml-' + lift.id : 'ml-' + feature.id, p);
+    const lift = liftsByStation.get(name), equipmentFeature = equipmentByStation.get(name);
+    const card = broken && lift ? 'ml-' + lift.id
+      : !broken && equipmentFeature ? 'ml-' + equipmentFeature.id : 'ml-' + feature.id;
+    const point = featurePoint(feature, card, p);
+    const types = typesByStation.get(name);
+    if (point && !broken && types && types.size) {
+      const label = types.size > 1 ? 'yürüyen merdiven ve bant' : EQUIPMENT_LABELS[types.values().next().value];
+      point.label += ' · ' + label + ' kaydı';
+    }
     if (point && broken) point.broken = true;
     return point;
-  }).filter(Boolean);
-  return [...extra, ...points];
+  }).filter(Boolean)];
 }
 
-function withCard(points, card, stations, lifts, { layers = DEFAULT_LAYERS, ageLabel = '' } = {}) {
+function withCard(points, card, stations, lifts, { layers = DEFAULT_LAYERS, ageLabel = '', equipment = null } = {}) {
   if (points.some((point) => point.card === card)) return points;
   const station = rowsOf(stations).find((feature) => 'ml-' + feature.id === card);
   if (station) {
     const p = station.properties || {}, point = featurePoint(station, card, p);
     if (!point) return points;
-    if (p.lift_record === 'recorded_fault' && new Set(layers).has('lifts')) {
-      point.broken = true;
-      point.age = ageLabel;
-    }
+    if (p.lift_record === 'recorded_fault' && new Set(layers).has('lifts')) { point.broken = true; point.age = ageLabel; }
     return [...points, point];
   }
-  const lift = rowsOf(lifts).find((feature) => 'ml-' + feature.id === card), p = lift && lift.properties;
-  if (!lift || !p || p.placed !== true) return points;
-  const point = featurePoint(lift, card, p);
+  const lift = rowsOf(lifts).find((feature) => 'ml-' + feature.id === card);
+  const feature = lift || rowsOf(equipment).find((row) => 'ml-' + row.id === card), p = feature && feature.properties;
+  if (!feature || !p || p.placed !== true) return points;
+  const point = featurePoint(feature, card, p);
   if (!point) return points;
   point.label = p.station || point.label;
-  if (p.status) point.broken = true;
+  if (lift && p.status) point.broken = true;
   point.age = ageLabel;
   return [...points, point];
 }
 
-function stationRows(features, focus) {
-  return validCoordinate(focus) ? nearestFirst(features, focus) : [...features];
-}
-
+function stationRows(features, focus) { return validCoordinate(focus) ? nearestFirst(features, focus) : [...features]; }
 function mountMapLayers(doc) {
   if (!doc) return;
-  const ready = doc.readyState === 'loading'
-    ? new Promise((resolve) => doc.addEventListener('DOMContentLoaded', resolve, { once: true }))
-    : Promise.resolve();
+  const ready = doc.readyState === 'loading' ? new Promise((resolve) => doc.addEventListener('DOMContentLoaded', resolve, { once: true })) : Promise.resolve();
   ready.then(async () => {
-    const [mapApi, api, provenance, icons] = await Promise.all([
-      import('./map.js'), import('./api.js'), import('./provenance.js'), import('./icons.js'),
+    const [mapApi, api, provenance, icons, equipment] = await Promise.all([
+      import('./map.js'), import('./api.js'), import('./provenance.js'), import('./icons.js'), import('./map_equipment.js'),
     ]);
+    mapEquipment = equipment;
     mapApi.initMap();
     const mapSection = doc.getElementById('harita');
     if (!mapSection || doc.getElementById('harita-katmanlari')) return;
@@ -137,34 +141,22 @@ function mountMapLayers(doc) {
       doc.head.append(link);
     }
     const template = doc.createElement('template');
-    template.innerHTML = '<section id="harita-katmanlari" aria-labelledby="map-layers-title">'
-      + '<div class="section-head"><h2 id="map-layers-title" tabindex="-1">Raylı sistem istasyonları ve asansör kayıtları</h2></div>'
-      + '<p class="map-layers-intro">Metro, tramvay ve füniküler istasyonları. Asansör bilgisi Metro İstanbul\'un arıza kaydından gelir. Kayıtta olmayan bir asansörün kullanılabilir olduğu doğrulanmış değildir.</p>'
-      + '<div class="map-layers-actions"><button type="button" class="btn btn-primary" id="map-layers-show"><span>Haritada göster</span></button>'
-      + '<fieldset class="map-layers-toggles"><legend>Katmanlar</legend>'
-      + '<label><input type="checkbox" id="map-layers-stations-toggle" checked> İstasyonlar</label>'
-      + '<label><input type="checkbox" id="map-layers-lifts-toggle" checked> Asansör kayıtları</label></fieldset></div>'
-      + '<p class="status-line" id="map-layers-status" role="status"></p><div id="map-layers-lists" hidden>'
-      + '<h3 id="map-layers-lifts-title">Asansör kayıtları</h3><ol id="map-layers-lifts" class="map-layers-list" aria-labelledby="map-layers-lifts-title"></ol>'
-      + '<h3 id="map-layers-stations-title">İstasyonlar</h3><ol id="map-layers-stations" class="map-layers-list" aria-labelledby="map-layers-stations-title"></ol>'
-      + '<details id="map-layers-more"><summary></summary><ol id="map-layers-stations-more" class="map-layers-list" start="21"></ol></details>'
-      + '<p class="map-layers-foot"></p></div></section>';
+    template.innerHTML = mapEquipment.layersTemplate();
     const section = template.content.firstElementChild;
     section.querySelector('#map-layers-show').insertAdjacentHTML('afterbegin', icons.icon('map-pin'));
     mapSection.after(section);
     const $ = (selector) => section.querySelector(selector);
     const status = $('#map-layers-status'), listWrap = $('#map-layers-lists');
-    const liftsList = $('#map-layers-lifts'), stationsList = $('#map-layers-stations');
-    const moreDetails = $('#map-layers-more'), moreList = $('#map-layers-stations-more');
+    const liftsList = $('#map-layers-lifts'), stationsList = $('#map-layers-stations'), equipmentList = $('#map-layers-equipment');
+    const equipmentOffList = $('#map-layers-equipment-off'), moreDetails = $('#map-layers-more'), moreList = $('#map-layers-stations-more');
     const liftsTitle = $('#map-layers-lifts-title'), stationsTitle = $('#map-layers-stations-title');
+    const equipmentTitle = $('#map-layers-equipment-title'), equipmentOffTitle = $('#map-layers-equipment-off-title');
     const stationsToggle = $('#map-layers-stations-toggle'), liftsToggle = $('#map-layers-lifts-toggle');
+    const escalatorsToggle = $('#map-layers-escalators-toggle'), walkwaysToggle = $('#map-layers-walkways-toggle');
     const foot = $('.map-layers-foot');
-    let currentStations = null, currentLifts = null, currentPoints = [];
+    let currentStations = null, currentLifts = null, currentEquipment = null, currentPoints = [];
     let currentDetail = validDetail({ source: 'button' }), cachedAt = 0, cachedValue = null, requestNumber = 0;
-
-    function activeLayers() {
-      return [stationsToggle.checked && 'stations', liftsToggle.checked && 'lifts'].filter(Boolean);
-    }
+    function activeLayers() { return [stationsToggle.checked && 'stations', liftsToggle.checked && 'lifts', escalatorsToggle.checked && 'escalators', walkwaysToggle.checked && 'walkways'].filter(Boolean); }
     function addEmpty(list, message, className) {
       const item = doc.createElement('li');
       item.className = className; item.textContent = message; list.append(item);
@@ -174,7 +166,7 @@ function mountMapLayers(doc) {
         const item = doc.createElement('li'), button = doc.createElement('button');
         const card = prefix + feature.id, p = feature.properties || {};
         button.type = 'button'; button.className = 'map-layers-row'; button.dataset.card = card;
-        button.textContent = rowText(feature, options(feature));
+        button.textContent = p.kind === 'equipment' ? mapEquipment.equipmentRowText(feature) : rowText(feature, options(feature));
         item.id = card; item.className = 'map-layers-item';
         if (p.lift_record === 'recorded_fault' || p.status) item.classList.add('is-fault');
         if (p.placed === false) item.classList.add('is-unplaced');
@@ -182,43 +174,49 @@ function mountMapLayers(doc) {
       });
     }
     function render() {
-      if (!currentStations || !currentLifts) return;
+      if (!currentStations || !currentLifts || !currentEquipment) return;
       const layers = activeLayers();
       currentDetail = { ...currentDetail, layers: new Set(layers) };
       const age = currentLifts.lift_record === 'read' ? provenance.ageText(currentLifts.provenance) : '';
+      const equipmentRows = mapEquipment.splitNotOperated(mapEquipment.equipmentFeatures(currentEquipment, layers));
+      const equipmentActive = layers.includes('escalators') || layers.includes('walkways');
       currentPoints = featuresToPoints(currentStations, currentLifts, {
-        layers: currentDetail.layers, focus: currentDetail.focus, near: 8, extra: currentDetail.points,
+        layers: currentDetail.layers, focus: currentDetail.focus, near: 8, extra: currentDetail.points, equipment: currentEquipment,
       });
       currentPoints.forEach((point) => { if (point.broken) point.age = age; });
-      if (currentPoints.length) mapApi.showOnMap(currentPoints);
-      else if (!layers.length) mapApi.showOnMap([]);
+      if (currentPoints.length || !layers.length) mapApi.showOnMap(currentPoints);
       else mapApi.hideMap();
       listWrap.hidden = false;
-      liftsTitle.hidden = !layers.includes('lifts'); liftsList.hidden = !layers.includes('lifts');
-      stationsTitle.hidden = !layers.includes('stations'); stationsList.hidden = !layers.includes('stations');
+      liftsTitle.hidden = liftsList.hidden = !layers.includes('lifts');
+      stationsTitle.hidden = stationsList.hidden = !layers.includes('stations');
+      equipmentTitle.hidden = !equipmentActive; equipmentList.hidden = !equipmentActive;
+      equipmentOffTitle.hidden = !equipmentActive || !equipmentRows.notOperated.length;
+      equipmentOffList.hidden = !equipmentActive || !equipmentRows.notOperated.length;
       const ordered = stationRows(currentStations.features, currentDetail.focus);
       moreDetails.hidden = !layers.includes('stations') || ordered.length <= 20;
-      liftsList.replaceChildren(); stationsList.replaceChildren(); moreList.replaceChildren();
+      [liftsList, equipmentList, equipmentOffList, stationsList, moreList].forEach((list) => list.replaceChildren());
       if (currentLifts.note && currentLifts.features.length) addEmpty(liftsList, currentLifts.note, 'map-layers-note');
       if (currentLifts.features.length) addRows(liftsList, currentLifts.features, () => ({}), 'ml-');
       else addEmpty(liftsList, currentLifts.note || 'Asansör kaydı yok.', 'map-layers-empty');
-      const distanceOptions = (feature) => ({
-        ageLabel: age,
-        distance: validCoordinate(currentDetail.focus) ? distanceM(
-          { lat: feature.geometry.coordinates[1], lon: feature.geometry.coordinates[0] }, currentDetail.focus,
-        ) : null,
-      });
+      if (currentEquipment.note && currentEquipment.features.length) addEmpty(equipmentList, currentEquipment.note, 'map-layers-note');
+      if (equipmentRows.active.length) addRows(equipmentList, equipmentRows.active, () => ({}), 'ml-');
+      else if (!equipmentRows.notOperated.length) addEmpty(equipmentList, currentEquipment.note || 'Bu başlık altında kayıt yok.', 'map-layers-empty');
+      if (equipmentRows.notOperated.length) addRows(equipmentOffList, equipmentRows.notOperated, () => ({}), 'ml-');
+      const distanceOptions = (feature) => ({ ageLabel: age, distance: validCoordinate(currentDetail.focus)
+        ? distanceM({ lat: feature.geometry.coordinates[1], lon: feature.geometry.coordinates[0] }, currentDetail.focus) : null });
       addRows(stationsList, ordered.slice(0, 20), distanceOptions, 'ml-');
       addRows(moreList, ordered.slice(20), distanceOptions, 'ml-');
       $('summary').textContent = 'Tüm istasyonlar (' + currentStations.count + ')';
       foot.textContent = currentLifts.disclaimer || 'Resmî İBB hizmeti değildir. Konumunuz yalnız bu cihazda kullanılır.';
       const count = currentPoints.filter((point) => point.kind === 'station').length;
-      if (currentDetail.focus) {
-        status.textContent = 'Size en yakın ' + count + ' istasyon haritada; liste mesafeye göre sıralı.'
-          + (currentLifts.lift_record === 'unread' ? ' Asansör kaydı okunamadı; asansör durumu doğrulanamadı.' : '');
-      } else if (currentLifts.lift_record === 'unread') {
-        status.textContent = count + ' istasyon haritada. Asansör kaydı okunamadı; asansör durumu doğrulanamadı.';
-      } else status.textContent = count + ' istasyon haritada. Asansör kaydı: ' + currentLifts.count + ' kayıt · ' + age + '.';
+      const heading = currentDetail.focus ? 'Size en yakın istasyonlar gösteriliyor; liste mesafeye göre sıralı. ' : '';
+      const liftCount = currentLifts.lift_record === 'read' ? 'Asansör kaydı: ' + currentLifts.count
+        : 'Asansör kaydı okunamadı; asansör durumu doğrulanamadı';
+      status.textContent = currentEquipment.equipment_record === 'unread'
+        ? heading + count + ' istasyon haritada. ' + liftCount + ' · ' + currentEquipment.note
+        : heading + count + ' istasyon haritada. ' + liftCount
+          + ' · Yürüyen merdiven: ' + currentEquipment.counts.escalator + ' · Yürüyen bant: '
+          + currentEquipment.counts.moving_walkway + ' · ' + (age || provenance.ageText(currentEquipment.provenance)) + '.';
       status.classList.remove('is-bad');
     }
     async function fetchLayers() {
@@ -234,25 +232,29 @@ function mountMapLayers(doc) {
           disclaimer: null,
         };
       }
+      let equipmentResult, equipmentFailed = false;
+      try { equipmentResult = await api.get('/api/map/equipment'); }
+      catch { equipmentFailed = true; equipmentResult = mapEquipment.unreadEquipment(); }
       const stations = liftFailed ? {
         ...stationResult, lift_record: 'unread',
         features: stationResult.features.map((feature) => ({
           ...feature, properties: { ...feature.properties, lift_record: 'unread', text: 'Asansör kaydı okunamadı' },
         })),
       } : stationResult;
-      const value = { stations, lifts: liftsResult };
-      if (!liftFailed) { cachedAt = Date.now(); cachedValue = value; }
+      const value = { stations, lifts: liftsResult, equipment: equipmentResult };
+      if (!liftFailed && !equipmentFailed) { cachedAt = Date.now(); cachedValue = value; }
       return value;
     }
     async function show(detail) {
       const sequence = ++requestNumber;
       currentDetail = detail;
       stationsToggle.checked = detail.layers.has('stations'); liftsToggle.checked = detail.layers.has('lifts');
+      escalatorsToggle.checked = detail.layers.has('escalators'); walkwaysToggle.checked = detail.layers.has('walkways');
       status.classList.remove('is-bad'); status.textContent = 'Harita katmanları yükleniyor.';
       try {
         const value = await fetchLayers();
         if (sequence !== requestNumber) return;
-        currentStations = value.stations; currentLifts = value.lifts; render();
+        currentStations = value.stations; currentLifts = value.lifts; currentEquipment = value.equipment; render();
         if (detail.source !== 'button') {
           section.scrollIntoView({ block: 'start' });
           $('#map-layers-title').focus({ preventScroll: true });
@@ -270,6 +272,7 @@ function mountMapLayers(doc) {
       const next = withCard(currentPoints, card, currentStations, currentLifts, {
         layers: currentDetail.layers,
         ageLabel: currentLifts.lift_record === 'read' ? provenance.ageText(currentLifts.provenance) : '',
+        equipment: currentEquipment.features,
       });
       if (next !== currentPoints) { currentPoints = next; mapApi.showOnMap(next); }
       mapApi.highlightMarker(card);
@@ -286,7 +289,7 @@ function mountMapLayers(doc) {
       event.preventDefault(); buttons[next].focus();
     });
     $('#map-layers-show').addEventListener('click', () => show(validDetail({ source: 'button', layers: activeLayers() })));
-    [stationsToggle, liftsToggle].forEach((toggle) => toggle.addEventListener('change', () => {
+    [stationsToggle, liftsToggle, escalatorsToggle, walkwaysToggle].forEach((toggle) => toggle.addEventListener('change', () => {
       currentDetail = { ...currentDetail, layers: new Set(activeLayers()) }; render();
     }));
     doc.addEventListener(SHOW_ON_MAP_EVENT, (event) => show(validDetail(event.detail)));
@@ -294,7 +297,4 @@ function mountMapLayers(doc) {
 }
 
 if (typeof document !== 'undefined') mountMapLayers(document);
-export {
-  SHOW_ON_MAP_EVENT, validDetail, distanceM, nearestFirst, rowText,
-  featuresToPoints, withCard, mountMapLayers,
-};
+export { SHOW_ON_MAP_EVENT, validDetail, distanceM, nearestFirst, rowText, featuresToPoints, withCard, mountMapLayers };

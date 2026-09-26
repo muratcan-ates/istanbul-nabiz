@@ -352,7 +352,11 @@ async def test_empty_gazetteer_returns_a_clear_station_note() -> None:
 
 
 def test_map_layers_js_contract() -> None:
-    source = (STATIC / "js" / "map_layers.js").read_text(encoding="utf-8")
+    sources = [
+        (STATIC / "js" / "map_layers.js").read_text(encoding="utf-8"),
+        (STATIC / "js" / "map_equipment.js").read_text(encoding="utf-8"),
+    ]
+    source = "\n".join(sources)
     required = [
         "nabiz:show-on-map",
         "import('./map.js')",
@@ -362,6 +366,7 @@ def test_map_layers_js_contract() -> None:
         "initMap",
         "'/api/map/stations'",
         "'/api/map/lifts'",
+        "'/api/map/equipment'",
         'id="harita-katmanlari"',
         "ArrowDown",
     ]
@@ -381,10 +386,10 @@ def test_map_layers_js_contract() -> None:
         "\u2014",
         "\u2013",
     ]
-    assert not [phrase for phrase in forbidden if phrase.casefold() in source.casefold()]
-    assert not re.search(r"\bETA\b", source, re.I)
-    assert "from './" not in source
-    assert len(source.splitlines()) <= 300
+    assert not [phrase for phrase in forbidden if any(phrase.casefold() in item.casefold() for item in sources)]
+    assert all(not re.search(r"\bETA\b", item, re.I) for item in sources)
+    assert all("from './" not in item for item in sources)
+    assert all(len(item.splitlines()) <= 300 for item in sources)
     icon_names = set(re.findall(r"icon\('([^']+)'\)", source))
     icon_source = (STATIC / "icons.svg").read_text(encoding="utf-8")
     assert icon_names

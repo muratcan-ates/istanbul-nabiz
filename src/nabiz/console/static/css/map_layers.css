@@ -28,6 +28,17 @@
   min-height: 44px;
   align-items: center;
   gap: var(--space-2);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.map-layers-toggles label:has(input:checked) {
+  border-color: var(--focus-ring);
+  font-weight: var(--weight-bold);
+}
+.map-layers-toggles label:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .map-layers-toggles input { margin: 0; }
 .map-layers-list {
@@ -38,6 +49,7 @@
   padding-inline-start: var(--space-5);
 }
 .map-layers-item { min-width: 0; }
+.map-layers-subhead { margin-block: var(--space-4) var(--space-2); }
 .map-layers-row {
   box-sizing: border-box;
   width: 100%;
@@ -88,4 +100,9 @@
   #harita-katmanlari { padding: var(--space-3); }
   .map-layers-actions { align-items: stretch; }
   .map-layers-toggles { gap: var(--space-2); }
+}
+
+@media (forced-colors: active) {
+  .map-layers-toggles label:has(input:checked) { border-color: CanvasText; }
+  .map-layers-toggles label:focus-within { outline-color: Highlight; }
 }
