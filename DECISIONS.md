@@ -1737,3 +1737,107 @@ question quoting an activity-report line).
   architecture 0 failed (existing WARNs: eta.py, gtfs.py, agent.py module size and eta.py complexity, none
   grown here), guardrails 14 checks 0 failed; `make eval` 60/60; `make eval-knowledge` PASS 100 records;
   `make web-budget` 12 PASS 1 TARGET 0 FAIL.
+
+## 37. Çok dilli acil kartı (acil-çok-dil, 26 Eyl): the 112 card speaks the visitors' languages, the page does not
+
+**Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep) — supersedes #35 for the emergency card only
+
+### Context
+
+#35 took Arabic out of the page and left it as input only: an Arabic plea stopped the chat, then the card
+showed Turkish or English. A visitor who reads neither gets a card they cannot use at the one moment it
+matters. The owner asked for the page to stay Turkish and English while the emergency check and the 112
+card work in the languages of the visitors İstanbul receives most.
+
+**Source for the language list.** İstanbul İl Kültür ve Turizm Müdürlüğü, *İstanbul Turizm İstatistikleri
+Raporu, Aralık 2025*, table "2025 Yılı Giriş Yapan Yabancı Ziyaretçilerin Milliyetlerine Göre Dağılımı"
+(pp. 10-11; total 18,972,699 foreign visitors entering through İstanbul's border gates in 2025; source line
+"Kültür ve Turizm Bakanlığı, Yatırım ve İşletmeler Genel Müdürlüğü"). PDF:
+`istanbul.ktb.gov.tr/Eklenti/144393,aralik-2025-t-rizm-istatistik-rapor-pdf.pdf`, listed on
+`istanbul.ktb.gov.tr/TR-393782/istanbul-turizm-istatistikleri---2025.html`; read 26 Sep 2026. 2025 is the
+latest full year there.
+
+**Method.** Each country counted once, under its main language (Belgium under Dutch, Switzerland under German,
+Canada under English, Algeria and Morocco under Arabic; Kazakhstan and Uzbekistan under their own languages,
+not Russian). Sums of the table's own numbers:
+
+| # | Language | 2025 visitors | Share | Largest countries |
+|---|---|---|---|---|
+| 1 | Arabic | 3,000,487 | 15.8% | Saudi Arabia 642,034, Iraq 368,839, Algeria 329,806 (18 countries) |
+| 2 | English | 2,346,266 | 12.4% | USA 1,060,056, UK 758,573, Canada 224,385 |
+| 3 | Russian | 2,118,702 | 11.2% | Russia 2,022,246, Belarus 96,456 |
+| 4 | German | 1,896,901 | 10.0% | Germany 1,516,972, Austria 204,138, Switzerland 175,791 |
+| 5 | Persian | 983,180 | 5.2% | Iran 910,996, Afghanistan 52,312, Tajikistan 19,872 |
+| 6 | Spanish | 691,932 | 3.6% | Spain 369,059, Mexico 100,661, Colombia 74,417 |
+| 7 | French | 672,999 | 3.5% | France |
+| 8 | Italian | 578,448 | 3.0% | Italy |
+| 9 | Dutch | 563,339 | 3.0% | Netherlands, Belgium |
+| 10 | Uzbek | 511,306 | 2.7% | Uzbekistan |
+| 11 | Chinese | 490,282 | 2.6% | China, Taiwan, Hong Kong |
+| 15 | Ukrainian | 234,630 | 1.2% | Ukraine |
+
+### Decision
+
+- **Card languages (10, Turkish included):** `tr` (always, and the base of every card), `en`, `ar`, `ru`, `de`,
+  `fa`, `es`, `fr`, `it`, `uk`. The statistic put **Italian** into the first eight, so it joins the brief's
+  candidate list. **Ukrainian is kept although it ranks 15th**: it was on the owner's list and in the smoke
+  set; it is said here rather than dressed up as a statistic. Dutch, Uzbek and Chinese are next by the numbers
+  and are left to the model layer (a Dutch or Uzbek message is not caught by the rules).
+- **Layer order; an emergency never waits for a model.** (1) The Turkish rules (#36, unchanged but for the two
+  English stems "fire" and "ambulance", which moved to the English rules and their masks: "fire sale at the
+  bazaar" is not a fire). (2) The fixed rules of the other nine card languages
+  (`console/emergency_vocab.py` data, `console/emergency_lang.py` engine), synchronous, before the input guard
+  and the refusal rule, inside `policy.emergency_intent`. Per language: terms (fire, ambulance, police, accident,
+  heart attack, not breathing, bleeding, drowning, unconscious, injured, under the rubble), gas terms (the card
+  adds 187), "help" pleas (alone, shouted or next to a person or a call, the Turkish person-context rule), gated
+  words ("urgent", "emergency", "earthquake", "fell": only with company or shouted), masks and negations.
+  Masks and negations apply across languages ("لا يوجد حريق" must not fire under the Persian rules, "by
+  accident" not under the French ones). Text is folded once: NFKC, case, accents, Arabic and Persian letter
+  forms (أإآ, ة/ه, ى/ي, ی/ي, ک/ك), the zero-width non-joiner. (3) **The model layer**
+  (`console/emergency_model.py`), only when the rules found nothing, the input guard passed, the message is
+  **not Turkish or English** by `guess_language` (the reading of "kural dışı bir dil" chosen here: the two
+  product languages have the deepest rules and carry every ordinary question, so asking there would spend the
+  ceiling on "Metro çalışıyor mu?"; a Russian message the Russian rules missed is still asked),
+  `NABIZ_EMERGENCY_MODEL` is not `0` and a rung has room under today's ceiling (`SpendGuard.reserve`, one call).
+  One JSON classification (`emergency`, `gas`, `lang`), `temperature=0`, **1.5 s** for the whole call. A
+  timeout, an error, a full ceiling or an unreadable answer is "no verdict", silently; the call is still counted.
+  A "yes" opens the same card with `how.rule_id: "acil:model"`; a language the card does not speak maps to a
+  near one (az, tk to Turkish; uz, kk, ky, tg, be to Russian) or English.
+- **Server:** every `final` now carries `lang` (the card language on an emergency, `null` otherwise) beside
+  `emergency` and `hazard`. The emergency is not handed to the operator queue: 112 first.
+- **Card** (`js/emergency.js`, text in `js/emergency_text.js`, a copy of `console/emergency_text.py` held equal by
+  `tests/test_emergency_multilingual.py`): full screen, in the detected language, `dir="rtl"` on the card only
+  for Arabic and Persian (the page's own `lang` and `dir` never change); "Call 112 now", "Show this screen to
+  someone near you", the 112 button (focused on open, 64 px), 187 after it only for gas, "Show my location" (the
+  existing on-device flow; coordinates are isolated left to right inside RTL text), then the large Turkish block
+  **"LÜTFEN YARDIM EDİN · 112'Yİ ARAYIN"** (+ **"GAZ KAÇAĞI · 187"** for gas) on every card, and a "show the
+  Turkish larger" toggle (`aria-pressed`). The button keeps the text "Konumumu göster": the flow shows the
+  coordinates, it does not send them, so "paylaş" would promise something it does not do.
+- **Translations are unverified.** The eight non-Turkish, non-English card texts were written for this project
+  and no native reader has checked them; each such card shows "otomatik çeviri · doğrulanmadı". They are short,
+  fixed sentences, with no model behind them. The service worker goes to `v6` and caches `js/emergency_text.js`.
+
+### Consequences and open risks
+
+- Gates (26 Sep, sprint flag, this branch): `make lint` pass; `make lane-gates` pass (pytest 3187 passed,
+  2 skipped, 3 xfailed; architecture 8 checks 0 failed, existing WARNs only: eta.py, gtfs.py, agent.py module
+  size, eta.py complexity; guardrails 14 checks 0 failed, 0 warnings); full `pytest tests` 3187 passed,
+  2 skipped (B01 not wired; `segno` not installed here), 3 xfailed; `make web-budget` 12 PASS 1 TARGET 0 FAIL;
+  `make eval` 60/60 offline with `data/reference/gtfs` present. This worktree had no GTFS copy (gitignored):
+  without it `make eval` is 55/60 on this branch and on an archive of HEAD `b93744e` alike (J2 `FileNotFoundError`,
+  J11 `missing_refusal`), so the five are the missing data, not this change.
+- Smoke on `make console-offline` (port 8186): "помогите, пожар" ru, "Hilfe, mein Vater hat einen Herzinfarkt"
+  de, "کمک کنید آتش سوزی" fa (rtl), "النجدة حريق" ar (rtl), "ayuda, accidente de coche" es, "au secours, il ne
+  respire pas" fr, "допоможіть, пожежа" uk: each opened the card in that language with the Turkish block, focus
+  on the 112 button, the page staying `tr`/`ltr`; "fire sale at the bazaar" answered with no card; "تسرب غاز في
+  الشقة" showed 112, 187, 153 and "GAZ KAÇAĞI · 187".
+- The rules lean wide by design: "police" in English and French (like "polis" in Turkish since the first
+  vocabulary) opens the card for "Where is the police station?"; a "help" plea next to a person word
+  ("help, my friend wants Taksim") does too. The card's "Not an emergency, go back" is the way out.
+- `console/emergency.py`'s older `classify()` (used by tests only) still has its own Turkish, English and
+  Arabic list; the chat path runs `policy.emergency_intent`. Folding the two is left open.
+- The chat's rate limit (HTTP 429) applies before the emergency check: in the smoke, two messages sent under a
+  second apart got a 429 and no card. Pre-existing; an emergency should probably bypass it. Not changed here.
+- The Kolay page's own emergency box stays Turkish (as it stayed without 187 in #36).
+- The model layer is not measured against a real model here (no paid call); only the fake-client paths are
+  tested (yes, no, gas, unreadable, error, timeout, ceiling, switch off, Turkish and English skipped).
