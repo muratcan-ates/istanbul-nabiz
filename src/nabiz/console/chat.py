@@ -2,7 +2,8 @@
 
     event: tool   data {"name", "status": "start"|"end"}      live, as the agent calls İBB tools
     event: token  data {"text"}                                the answer, in order
-    event: final  data {"answer", "citations", "author", "memory_suggestion", "refused"}
+    event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion",
+                        "refused", "how", "mode", "steps", "emergency"}
 
 **The answer streams after it is checked.** :class:`~nabiz.agent.NabizAgent` verifies every
 number in the model's prose against the tool results before it returns (and asks the model
@@ -11,10 +12,13 @@ the screen first, which is the one thing the agent exists to prevent. So the pag
 progress live, and the verified text as a run of ``token`` events.
 
 **Who wrote the answer is always said** (``author``): "model", "yerel model" (Foundry Local)
-or "kural" (the agent's keyword-routed templates). The rule path answers when no model is
-configured, when today's spend ceiling is reached (:mod:`nabiz.console.budget`), when the
-model call fails, and when a model answer still fails the numeric check after its repair:
-a sentence built from the tool payload is better than a number nobody can back.
+or "kural" (the agent's keyword-routed templates), taken from the rung that actually wrote the
+answer (``AgentAnswer.provider``), not from the configuration. A turn starts on the first rung of
+the model ladder (:func:`nabiz.agent.llm.pick_rung`); when today's cloud ceiling is reached, or
+has room for a call but not a whole turn, it drops to the free Foundry Local rung
+(``NABIZ_LADDER_LOCAL_ON_CAP=0`` switches that off). The rule path answers when no rung is left,
+when the model call fails, and when a model answer still fails the numeric check after its
+repair: a sentence built from the tool payload is better than a number nobody can back.
 
 **A service question goes to the service-page index when one is built** (:mod:`ibb_mcp.knowledge`).
 A refused question gets İBB's own sentence as a quote (``quote_only``) when a verified one
@@ -27,12 +31,11 @@ run at a time, and what a turn spent is recorded even when the model failed half
 calls made (``usage["model_calls"]``) and their tokens, or :data:`TURN_CALLS` when nothing
 could be counted.
 
-**What a visitor sends stays a visitor's words.** Only the person's own earlier questions
-are kept, never an "assistant" turn the page sends back (the page could forge one), and
-never a question the refusal rule caught; they reach the model as one ``user`` message
-before the question, not inside the system prompt. An İBB failure reaches the model and the
-page as one Turkish sentence; its body (an HTML page, a SOAP fault, a URL) stays in the
-server log as its kind and status.
+**What a visitor sends stays a visitor's words**: the pure parts of the turn (the emergency and
+refusal verdict, the earlier questions the model may see, the prompt, the events a finished turn
+writes) live in :mod:`nabiz.console.chat_pipeline`. An İBB failure reaches the model and the page
+as one Turkish sentence; its body (an HTML page, a SOAP fault, a URL) stays in the server log as
+its kind and status.
 
 Nothing here logs the question, the history or the needs.
 """
@@ -41,12 +44,9 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
-import json
 import logging
-import re
 import time
 from collections.abc import AsyncIterator, Callable, Sequence
-from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -59,25 +59,14 @@ from nabiz.agent import llm
 from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS
 from nabiz.agent.templates import OUT_OF_SCOPE
-from nabiz.console.budget import SpendGuard
+from nabiz.console import chat_pipeline as pipeline
+from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
-from nabiz.console.policy import (
-    REFUSAL_TEXT,
-    constraint_block,
-    emergency_intent,
-    functional_needs,
-    memory_suggestion,
-    names_a_price,
-    refuses,
-    refuses_in_context,
-)
+from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
+from nabiz.console.policy import functional_needs, memory_suggestion, names_a_price
 
 log = logging.getLogger("nabiz.console.chat")
 
-#: How much of the conversation the page may send back, and how much of it reaches the model.
-HISTORY_TURNS_KEPT = 8
-HISTORY_CHARS_KEPT = 600
-_WORDS_PER_TOKEN_EVENT = 3
 TURN_FAILED = "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene; acil bir durumdaysan 112'yi ara."
 #: The most model calls one turn can make: the agent's four steps, one forced answer, one repair.
 TURN_CALLS = 6
@@ -105,25 +94,6 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=1000)
     needs: list[str] = Field(default_factory=list, max_length=16)
     history: list[ChatTurn] = Field(default_factory=list, max_length=40)
-
-
-@dataclass(frozen=True)
-class FinalFields:
-    refused: bool
-    how: dict[str, Any]
-    mode: str
-    steps: list[str] | None = None
-    emergency: bool = False
-
-
-def sse(event: str, data: dict[str, Any]) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-def text_pieces(text: str) -> list[str]:
-    """The answer cut into small runs of words, whitespace kept, so joining them gives it back."""
-    words = re.findall(r"\s*\S+", text)
-    return ["".join(words[i : i + _WORDS_PER_TOKEN_EVENT]) for i in range(0, len(words), _WORDS_PER_TOKEN_EVENT)]
 
 
 class ToolEvents:
@@ -198,54 +168,11 @@ def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
     return result
 
 
-def _how(answer: AgentAnswer | None, started: float, *, rule_id: str | None) -> dict[str, Any]:
-    tools = []
-    for call in answer.tool_calls if answer is not None else []:
-        provenance = (call.payload or {}).get("provenance") or {}
-        tools.append({
-            "name": call.name,
-            "ok": call.ok,
-            "duration_ms": call.duration_ms,
-            "source": provenance.get("source"),
-            "source_url": provenance.get("source_url") or provenance.get("url"),
-            "observed_at": provenance.get("observed_at") or provenance.get("reported_at"),
-        })
-    elapsed_s = max(0.0, time.perf_counter() - started)
-    return {
-        "tools": tools,
-        "tool_calls": len(tools),
-        "elapsed_s": round(elapsed_s, 3),
-        "rule_id": rule_id,
-        "uncertainty": [],
-        "latency_ms": round(elapsed_s * 1000, 1),
-    }
-
-
-def _empty_how(started: float, *, rule_id: str | None) -> dict[str, Any]:
-    return _how(None, started, rule_id=rule_id)
-
-
-def earlier_questions(history: Sequence[ChatTurn]) -> list[str]:
-    """The person's own earlier questions: never an assistant turn, never a refused question."""
-    asked = [turn.content[:HISTORY_CHARS_KEPT] for turn in history if turn.role == "user"]
-    return [text for text in asked if not refuses(text)][-HISTORY_TURNS_KEPT:]
-
-
-def context_messages(earlier: Sequence[str]) -> list[dict[str, str]]:
-    """Earlier questions as one ``user`` message before the question: context, in the person's voice."""
-    if not earlier:
-        return []
-    lines = ["Önceki sorularım (yalnız bağlam için; buradaki sayılar doğrulanmış kabul edilmez):"]
-    return [{"role": "user", "content": "\n".join([*lines, *(f"- {text}" for text in earlier)])}]
-
-
-def system_prompt(needs: Sequence[str], base: str) -> str:
-    """The agent's prompt, plus the person's functional constraints. Nothing a visitor typed."""
-    parts = [base]
-    if block := constraint_block(needs):
-        parts.append(block)
-    parts.append("## Yazım\n'ETA' kısaltmasını kullanma; 'tahmini varış' de. Varış süresi tek tam dakika: '7 dk'.")
-    return "\n\n".join(parts)
+def author_for(config: llm.LlmConfig) -> str:
+    """The label a configuration would get. Kept only until B02's ``how_api.py`` labels with
+    ``llm.author_of(rung.provider)``; B01b deletes it. Nothing in this module calls it: a card's
+    author is the rung that wrote the answer."""
+    return llm.author_of(config.provider)
 
 
 class ChatService:
@@ -297,11 +224,9 @@ class ChatService:
                 task.cancel()
         if task.exception() is not None:
             log.error("chat turn failed: %s", type(task.exception()).__name__)
-            yield sse("token", {"text": TURN_FAILED})
-            yield sse("final", self._final(
-                TURN_FAILED, [], "kural", suggestion,
-                FinalFields(refused=False, how=_empty_how(started, rule_id=None), mode="unknown"),
-            ))
+            fields = FinalFields(refused=False, how=pipeline.empty_how(started, rule_id=None), mode="unknown")
+            for event in pipeline.answer_events(TURN_FAILED, [], "kural", suggestion, fields):
+                yield event
             return
         answer, author = task.result()
         for event in await self._answer_events(request.message, answer, author, suggestion, started):
@@ -311,16 +236,14 @@ class ChatService:
         """The finished answer as events, after the price filter and the service-page index."""
         if author != "kural" and names_a_price(answer.text) and not _TARIFF_TOOLS & set(answer.tool_names):
             # The last line of R-06: a model answer that states a price is not shown.
-            return self._refusal(suggestion, started)
+            return pipeline.refusal_events(suggestion, started)
         if author == "kural" and answer.text == OUT_OF_SCOPE.get(answer.lang):
             quoted = await self._from_knowledge(question, sensitive=False, suggestion=suggestion, started=started)
             if quoted:
                 return quoted
-        text = display_text(answer.text)
-        events = [sse("token", {"text": piece}) for piece in text_pieces(text)]
-        fields = FinalFields(refused=False, how=_how(answer, started, rule_id=None), mode="answer")
-        events.append(sse("final", self._final(text, citations(answer, offline=self.offline), author, suggestion, fields)))
-        return events
+        fields = FinalFields(refused=False, how=pipeline.how_block(answer, started, rule_id=None), mode="answer")
+        cited = citations(answer, offline=self.offline)
+        return pipeline.answer_events(display_text(answer.text), cited, author, suggestion, fields)
 
     async def _early_events(
         self,
@@ -329,12 +252,12 @@ class ChatService:
         suggestion: Any,
         started: float,
     ) -> list[str] | None:
-        if emergency_intent(request.message):
-            fields = FinalFields(refused=False, how=_empty_how(started, rule_id=None), mode="redirect", emergency=True)
-            return [sse("final", self._final("", [], "kural", suggestion, fields))]
-        if refuses_in_context(request.message, earlier):
+        verdict = pipeline.early_verdict(request.message, earlier)
+        if verdict == "emergency":
+            return pipeline.emergency_events(suggestion, started)
+        if verdict == "sensitive":
             quoted = await self._from_knowledge(request.message, sensitive=True, suggestion=suggestion, started=started)
-            return quoted or self._refusal(suggestion, started)
+            return quoted or pipeline.refusal_events(suggestion, started)
         return None
 
     def knowledge_index(self) -> tuple[Any, Any]:
@@ -360,62 +283,31 @@ class ChatService:
         if sensitive and found.mode != "quote_only":
             return None  # no verified quote: the refusal, which also names 112
         cited = [{**item, "source": KNOWLEDGE_SOURCE} for item in found.to_dict()["citations"]]
-        text = display_text(found.text)
-        how = _empty_how(started, rule_id="knowledge")
+        how = pipeline.empty_how(started, rule_id="knowledge")
         fields = FinalFields(refused=found.refused, how=how, mode=found.mode, steps=list(found.steps) or None)
-        events = [sse("token", {"text": piece}) for piece in text_pieces(text)]
-        events.append(sse("final", self._final(text, cited, found.author, suggestion, fields)))
-        return events
+        return pipeline.answer_events(display_text(found.text), cited, found.author, suggestion, fields)
 
-    def _refusal(
-        self,
-        suggestion: Any,
-        started: float,
-        *,
-        cited: list[dict[str, Any]] | None = None,
-        how: dict[str, Any] | None = None,
-        answer_text: str | None = None,
-        mode: str = "refused",
-        steps: list[str] | None = None,
-    ) -> list[str]:
-        answer = answer_text or REFUSAL_TEXT
-        fields = FinalFields(refused=True, how=how or _empty_how(started, rule_id="refusal"), mode=mode, steps=steps)
-        events = [sse("token", {"text": piece}) for piece in text_pieces(answer)]
-        events.append(sse("final", self._final(answer, cited or [], "kural", suggestion, fields)))
-        return events
+    def _reserve_rung(self) -> llm.LlmConfig | None:
+        """The rung this turn runs on, with room for a whole turn held on it; ``None`` for the rules.
 
-    @staticmethod
-    def _final(
-        answer: str,
-        citations: list[dict[str, Any]],
-        author: str,
-        suggestion: Any,
-        fields: FinalFields,
-    ) -> dict[str, Any]:
-        return {
-            "answer": answer,
-            "answer_text": answer,
-            "citations": citations,
-            "author": author,
-            "memory_suggestion": suggestion,
-            "refused": fields.refused,
-            "how": fields.how,
-            "mode": fields.mode,
-            "steps": fields.steps,
-            "emergency": fields.emergency,
-        }
+        ``allows`` asks for room for one call, the reservation for :data:`TURN_CALLS`: a cloud rung
+        that is allowed but cannot hold a whole turn drops to the free local rung too, unless
+        ``NABIZ_LADDER_LOCAL_ON_CAP`` is off. Only one reservation is ever held.
+        """
+        rung = llm.pick_rung(self.config, self.guard.allows)
+        if rung is None or self.guard.reserve(rung.provider, TURN_CALLS):
+            return rung
+        if not llm.local_on_cap():
+            return None
+        local = llm.first_rung(self.config, lambda provider: provider in FREE_PROVIDERS)
+        return local if local is not None and self.guard.reserve(local.provider, TURN_CALLS) else None
 
     async def _run(
         self, question: str, prompt: str, emit: Emit, context: list[dict[str, str]] | None = None
     ) -> tuple[AgentAnswer, str]:
-        """The model when it is configured, allowed today and trustworthy on this answer; else the rules."""
+        """The model when a rung has room today and the answer is trustworthy; else the rules."""
         tools = ToolEvents(self.nabiz, emit)
-        # The first rung of the model ladder (cloud, then Foundry Local) that today's ceiling has room
-        # for: a spent cloud budget drops to the free local model before it drops to the rules. The
-        # generator stops at the first rung that reserved, so only one reservation is ever held.
-        rung = None
-        if llm.available(self.config):
-            rung = llm.first_rung(self.config, lambda provider: self.guard.reserve(provider, TURN_CALLS))
+        rung = self._reserve_rung()
         if rung is not None:
             try:
                 async with self._model_turns:
