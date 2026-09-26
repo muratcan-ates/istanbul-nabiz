@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "source": "data/knowledge/sources.txt",
+  "call": "153",
+  "agencies": [
+    {"id": "ibb", "name": "İBB", "possessive": "İBB'nin", "url": "https://ibb.istanbul/"},
+    {"id": "iski", "name": "İSKİ", "possessive": "İSKİ'nin", "url": "https://www.iski.istanbul/"},
+    {"id": "igdas", "name": "İGDAŞ", "possessive": "İGDAŞ'ın", "url": "https://www.igdas.istanbul/"},
+    {"id": "iett", "name": "İETT", "possessive": "İETT'nin", "url": "https://iett.istanbul/"},
+    {"id": "metro", "name": "Metro İstanbul", "possessive": "Metro İstanbul'un", "url": "https://www.metro.istanbul/"},
+    {"id": "ispark", "name": "İSPARK", "possessive": "İSPARK'ın", "url": "https://ispark.istanbul/"},
+    {"id": "sehir_hatlari", "name": "Şehir Hatları", "possessive": "Şehir Hatlarının", "url": "https://sehirhatlari.istanbul/"},
+    {"id": "istanbulkart", "name": "BELBİM (İstanbulkart)", "possessive": "BELBİM'in", "url": "https://www.istanbulkart.istanbul/"},
+    {"id": "cozum_153", "name": "153 Çözüm Merkezi", "possessive": "153 Çözüm Merkezinin", "url": "https://cozummerkezi.ibb.istanbul/"}
+  ],
+  "district_office": {
+    "id": "ilce",
+    "name": "İlçe belediyesi",
+    "possessive": "ilçe belediyenizin",
+    "url": null,
+    "hint": "ilçe belediyenizin resmî sitesi"
+  },
+  "districts": [
+    "Adalar", "Arnavutköy", "Ataşehir", "Avcılar", "Bağcılar", "Bahçelievler", "Bakırköy", "Başakşehir",
+    "Bayrampaşa", "Beşiktaş", "Beykoz", "Beylikdüzü", "Beyoğlu", "Büyükçekmece", "Çatalca", "Çekmeköy",
+    "Esenler", "Esenyurt", "Eyüpsultan", "Fatih", "Gaziosmanpaşa", "Güngören", "Kadıköy", "Kağıthane",
+    "Kartal", "Küçükçekmece", "Maltepe", "Pendik", "Sancaktepe", "Sarıyer", "Silivri", "Sultanbeyli",
+    "Sultangazi", "Şile", "Şişli", "Tuzla", "Ümraniye", "Üsküdar", "Zeytinburnu"
+  ],
+  "district_aliases": {"Eyüp": "Eyüpsultan"}
+}
