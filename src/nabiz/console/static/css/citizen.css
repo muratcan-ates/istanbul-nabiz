@@ -1,15 +1,31 @@
 /* The citizen page (index.html): hero, the assistant, the arrival and alternative cards, profile, memory. */
 
-.hero { gap: var(--space-3); }
-.hero-sub { max-width: 52ch; color: var(--text-muted); font-size: var(--text-lg); }
+.hero { position: relative; display: grid; gap: var(--space-4); margin-inline: calc(-1 * var(--gutter)); padding: var(--space-7) var(--gutter) var(--space-6); background: linear-gradient(180deg, var(--nd-hero-wash), var(--surface) 28rem); }
+.hero > * { width: min(100%, var(--nd-measure-chat)); margin-inline: auto; }
+.hero h1 { max-width: 16ch; font-size: var(--nd-hero-size); line-height: var(--nd-hero-leading); letter-spacing: -.02em; }
+.hero-sub { max-width: var(--nd-measure-chat); color: var(--text-muted); font-size: var(--text-lg); }
 .hero-em { color: var(--primary); }
+.composer { position: relative; display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-composer); box-shadow: var(--shadow-2); }
+.composer::before { content: ""; position: absolute; inset: 0 var(--space-4) auto; height: 2px; background: repeating-linear-gradient(90deg, var(--nd-accent) 0 6px, transparent 6px 10px, var(--accent) 10px 12px, transparent 12px 16px); opacity: .35; pointer-events: none; }
+.composer::after { content: ""; position: absolute; inset: -5px; border-radius: inherit; box-shadow: 0 0 0 4px var(--nd-glow); opacity: 0; pointer-events: none; }
+.composer:focus-within { border-color: var(--nd-accent); }
+.composer:focus-within::after { opacity: 1; }
+.composer .chat-row > input { min-height: 56px; padding-inline: var(--space-2); border: 0; background: transparent; font-size: var(--text-lg); }
+.composer .chat-row > .btn { min-height: 48px; }
+.composer-tools { display: grid; gap: var(--space-2); justify-items: start; }
+.composer-tools .voice { justify-items: start; }
+.composer-tools .voice-disclosure { max-width: 68ch; color: var(--text-subtle); font-size: var(--text-sm); }
+.composer-tools #voice-optin { min-height: var(--tap); border-color: transparent; background: transparent; color: var(--link); }
+.composer #chat-count { justify-self: center; }
+.composer-more, .quick-more { width: min(100%, var(--nd-measure-chat)); }
+.composer-more > summary, .quick-more > summary { justify-content: flex-start; }
+.composer-more #chat-lang { display: flex; align-items: center; gap: var(--space-2); }
+.hero > .band { padding-inline: var(--space-3); border: 0; border-radius: var(--nd-radius-surface); }
+:root[data-contrast="more"] .hero { background: var(--surface); }
+:root[data-contrast="more"] .composer::before, :root[data-contrast="more"] .composer::after { display: none; }
 
-/* Workspace: cards on the left, the assistant sticky on the right from 1024 px. */
+/* The conversation grows with the page directly below the composer. */
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); align-items: start; }
-@media (min-width: 1024px) {
-  .workspace { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-  .workspace > .chat { position: sticky; top: calc(var(--topbar-h) + var(--space-4)); }
-}
 .workspace-main { display: grid; gap: var(--space-6); }
 
 /* Arrival: one minute, the line badge, the source icon beside the number, the age under it. */
@@ -18,16 +34,16 @@
 .arrival-form .field-hint { grid-column: 1 / -1; }
 
 /* The assistant. */
-.chat { display: grid; gap: var(--space-3); padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); box-shadow: var(--shadow-2); }
+.chat { display: grid; gap: var(--space-3); width: min(100%, var(--nd-measure-chat)); margin-inline: auto; padding: 0; border: 0; background: transparent; }
 .chat-band { --icon-size: var(--icon-size-sm); display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--info-wash); color: var(--text-muted); font-size: var(--text-sm); }
 .chat-band > .icon { flex: none; margin-top: 2px; color: var(--info); }
 .chat-band p { max-width: none; }
-.chat-log { display: grid; gap: var(--space-3); max-height: min(60vh, 32rem); padding: 0; overflow-y: auto; list-style: none; overscroll-behavior: contain; }
+.chat-log { display: grid; gap: var(--space-4); min-height: 0; padding: 0; overflow: visible; list-style: none; }
 .chat-msg { display: grid; gap: var(--space-2); max-width: 100%; padding: var(--space-3) var(--space-4); border-radius: var(--radius-surface); }
 .chat-msg.is-user { justify-self: end; max-width: 88%; background: var(--primary-subtle); color: var(--on-primary-subtle); }
 .chat-msg.is-assistant { border: 1px solid var(--border); background: var(--surface); }
 .chat-msg.is-refused { border-color: var(--warn); }
-.chat-who { color: var(--text-subtle); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+.chat-who { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-text:empty::before { content: "Yanıt yazılıyor"; color: var(--text-subtle); }
 .chat-tool { --icon-size: var(--icon-size-sm); display: flex; align-items: center; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-sm); }
@@ -41,6 +57,60 @@
 .chat-hint { color: var(--text-subtle); font-size: var(--text-sm); }
 .chat-hint a { white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) { .chat-msg { animation: card-enter var(--dur-ui) var(--ease-out) both; } }
+
+/* Disclosures retain their labelled sections and all form controls in the document. */
+.tool-detail, .account-detail { min-width: 0; border-block-end: 1px solid var(--nd-line); }
+.tool-detail > summary, .account-detail > summary { color: var(--text); }
+.tool-detail > summary > h2, .account-detail > summary > h2 { font-size: var(--text-lg); }
+.tool-detail > section, .account-detail > section { min-width: 0; }
+.a11y-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.ask-pill { position: fixed; z-index: var(--z-sticky); left: 0; right: 0; bottom: calc(16px + env(safe-area-inset-bottom)); width: max-content; min-height: 44px; margin-inline: auto; border-radius: var(--fluent-radius-circular); }
+:root.emergency-open .ask-pill { display: none !important; }
+:root[data-persona-call="on"] .ask-pill { display: none !important; }
+#chat-submit[aria-disabled="true"] { border-color: var(--nd-accent); background: var(--nd-accent); color: var(--nd-accent-ink); cursor: progress; }
+#chat-submit[aria-disabled="true"] > .icon { display: none; }
+#chat-submit[aria-disabled="true"]::after { content: ""; position: static; inset: auto; display: inline-block; flex: none; width: 1rem; height: 1rem; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: var(--fluent-radius-circular); box-shadow: none; opacity: 1; }
+
+@media (prefers-reduced-transparency: reduce) { .composer::before { display: none; } }
+@media (prefers-contrast: more) { .hero { background: var(--surface); } .composer::before, .composer::after { display: none; } }
+@media (forced-colors: active) { .composer, .tool-detail, .account-detail { border-color: CanvasText; } .hero { background: Canvas; } .composer::before, .composer::after { display: none; } }
+@media (min-width: 641px) { .ask-pill { display: none !important; } }
+@media (max-width: 767px) {
+  .topbar-inner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1) var(--space-2); }
+  .topbar-brand { grid-column: 1; grid-row: 1; min-width: 0; }
+  .topbar-actions { display: contents; }
+  .topbar-actions > #a11y-toggle { grid-column: 2; grid-row: 1; }
+  .topbar-actions > [role="group"] { grid-column: 1; grid-row: 2; display: flex; flex-wrap: nowrap; align-items: center; gap: 0; min-width: 0; }
+  .topbar-actions > [role="group"] .btn { min-height: 40px; padding-inline: var(--space-2); font-size: var(--text-sm); }
+  .topbar-role { grid-column: 2; grid-row: 2; min-width: 0; padding-inline: var(--space-2); font-size: var(--text-xs); line-height: 1.2; }
+  .topbar-role span { white-space: normal; }
+  .topbar-nav { grid-column: 1 / -1; grid-row: 3; min-width: 0; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+  .topbar-nav > a { flex: none; }
+}
+@media (max-width: 479px) {
+  .composer { padding: var(--space-3); }
+  .composer .chat-row > input { min-width: 0; font-size: var(--text-md); }
+  .composer .chat-row > .btn { padding-inline: var(--space-3); }
+  .chat-msg.is-user { max-width: 88%; }
+  :root:is([data-text-scale="125"], [data-text-scale="150"], [data-simple="on"]) .topbar-actions > [role="group"] { grid-column: 1 / -1; grid-row: 2; }
+  :root:is([data-text-scale="125"], [data-text-scale="150"], [data-simple="on"]) .topbar-role { grid-column: 1 / -1; grid-row: 3; }
+  :root:is([data-text-scale="125"], [data-text-scale="150"], [data-simple="on"]) .topbar-nav { grid-row: 4; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .composer::after { transition: opacity var(--nd-dur-state) var(--nd-ease-state); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .eyebrow,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > h1,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .hero-sub,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .composer { animation: nd-rise var(--nd-dur-enter) var(--nd-ease-enter) both; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > h1 { animation-delay: 40ms; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .hero-sub { animation-delay: 80ms; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .composer { animation-delay: 120ms; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) #chat-submit[aria-disabled="true"]::after { animation: spin 800ms linear infinite; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .ask-pill:not([hidden]) { animation: nd-pill-in var(--nd-dur-state) var(--nd-ease-enter) both; }
+}
+@keyframes nd-rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes nd-pill-in { from { opacity: 0; transform: translateY(8px); } }
 
 /* Profile: the needs, saved places, the consent line and two buttons. */
 .profile-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }

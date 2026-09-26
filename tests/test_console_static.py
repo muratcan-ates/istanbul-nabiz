@@ -227,7 +227,7 @@ def test_the_home_screen_has_the_question_box_before_city_cards() -> None:
     assert html.index('id="home-screen"') < html.index('id="chat-input"') < html.index('id="quick-cards"')
     assert html.index('id="quick-cards"') < html.index('id="city-cards"') < html.index('id="cards"')
     question = html[html.index('id="chat-input"'):html.index('id="chat-submit"')]
-    assert 'placeholder="İstanbul hakkında ne öğrenmek istiyorsun?"' in question
+    assert 'placeholder="Örnek: M2\'de arıza var mı?"' in question
     assert "autofocus" in question and 'tabindex="0"' in question
     source = read("js/home.js")
     assert 'role="button" tabindex="0"' in source and "button[data-seed]" in source

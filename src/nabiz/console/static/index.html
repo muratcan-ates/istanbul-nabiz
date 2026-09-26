@@ -116,6 +116,14 @@
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="topbar-brand" href="/">İstanbul Nabız</a>
+    <div class="topbar-actions">
+      <button type="button" class="btn" id="a11y-toggle" aria-expanded="false" aria-controls="a11y-panel">Erişilebilirlik</button>
+      <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Tema: sistem. Açık temaya geçmek için basın.">
+        <svg class="icon" aria-hidden="true"><use href="#i-device-desktop"></use></svg>
+      </button>
+    </div>
+    <a class="topbar-role" href="#hakkinda"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Resmî İBB hizmeti değildir</span></a>
     <nav class="topbar-nav" aria-label="Sayfa bölümleri">
       <a href="#asistan">Asistan</a>
       <a href="#profilim">Profilim</a>
@@ -123,43 +131,45 @@
       <a href="#hafizam">Hafızam</a>
       <a href="/kolay.html">Kolay ekran</a>
     </nav>
-    <div class="topbar-actions">
-      <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
-      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Tema: sistem. Açık temaya geçmek için basın.">
-        <svg class="icon" aria-hidden="true"><use href="#i-device-desktop"></use></svg>
-      </button>
-      <a class="topbar-role" href="#hakkinda"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Resmî İBB hizmeti değildir</span></a>
-    </div>
   </div>
 </header>
 
 <main class="wrap" id="main" tabindex="-1">
   <section class="hero" id="home-screen" aria-labelledby="home-title">
-    <div class="section-head">
-      <h1 id="home-title">İstanbul'a Sor</h1>
-      <div class="btn-row" role="group" aria-label="Dil">
-        <button type="button" class="btn" data-language="tr">Türkçe</button>
-        <span aria-hidden="true">·</span>
-        <button type="button" class="btn" data-language="en">English</button>
-      </div>
-    </div>
-    <form id="chat-form" class="chat-form" autocomplete="off">
+    <p class="eyebrow" id="home-eyebrow">Bağımsız şehir asistanı</p>
+    <h1 id="home-title">İstanbul'a sorun.</h1>
+    <p class="hero-sub" id="home-sub">Ulaşım, erişim ve şehir hizmetleri: her cevap kaynağı ve saatiyle.</p>
+    <form id="chat-form" class="chat-form composer glass" autocomplete="off">
       <label for="chat-input">Sorunuz</label>
       <div class="chat-row">
-        <input id="chat-input" name="q" type="text" enterkeyhint="send" placeholder="İstanbul hakkında ne öğrenmek istiyorsun?" autofocus tabindex="0" aria-describedby="chat-hint">
+        <input id="chat-input" name="q" type="text" enterkeyhint="send" placeholder="Örnek: M2'de arıza var mı?" autofocus tabindex="0" aria-describedby="chat-hint">
         <button type="submit" class="btn btn-primary" id="chat-submit">Sor<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
       </div>
+      <div class="composer-tools" id="composer-tools"></div>
       <p class="field-error" hidden>Bir soru yazın.</p>
+    </form>
+    <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
+    <details class="more quick-more" id="quick-more" hidden>
+      <summary>Daha fazla soru</summary>
+      <div id="quick-more-cards"></div>
+    </details>
+    <details class="more composer-more" id="composer-more">
+      <summary>Gizlilik ve ipuçları</summary>
       <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a><span data-pending="tid" hidden>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz</span>.</p>
       <p class="quota-strip" id="quota-strip" hidden></p>
       <p id="chat-lang">Cevap dili: <button type="button" class="btn" id="chat-lang-en" aria-pressed="false">English</button></p>
-    </form>
-    <div id="my-stops"></div>
-    <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
+    </details>
     <div class="band" role="note">
       <p>Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum. Resmî karar veren bir görevli değilim.
         <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
     </div>
+  </section>
+
+  <section class="chat" id="asistan" aria-labelledby="chat-title">
+    <h2 class="sr-only" id="chat-title">Yanıtlar</h2>
+    <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
+    <p class="sr-only" id="chat-status" role="status"></p>
+    <aside id="convo-root" aria-label="Sohbetlerim"></aside>
   </section>
 
   <section id="city-cards" aria-labelledby="cards-title">
@@ -170,17 +180,19 @@
         <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
       </button>
     </div>
+    <div id="my-stops"></div>
     <div class="cards" id="cards"></div>
     <p class="sr-only" id="cards-status" role="status"></p>
   </section>
 
   <div class="workspace">
     <div class="workspace-main">
-      <section aria-labelledby="arrival-title">
-        <div class="section-head">
-          <h2 id="arrival-title">Tahmini varış</h2>
-          <span class="section-note">tek dakika, kaynağı ve yaşıyla</span>
-        </div>
+      <section id="city-tools" aria-labelledby="tools-title">
+        <h2 id="tools-title">Şehir araçları</h2>
+        <details class="more tool-detail">
+          <summary><h2 id="arrival-title">Tahmini varış</h2></summary>
+          <section aria-labelledby="arrival-title">
+        <p class="section-note">tek dakika, kaynağı ve yaşıyla</p>
         <form id="arrival-form" class="arrival-form" autocomplete="off">
           <div class="field"><label for="arrival-line">Hat</label><input id="arrival-line" name="line" type="text"></div>
           <div class="field"><label for="arrival-stop">Durak</label><input id="arrival-stop" name="stop" type="text"></div>
@@ -188,7 +200,8 @@
           <p class="field-hint">Araç konumu eskiyince kart kendiliğinden "tarifeye göre" der; tarife de yoksa "doğrulanamadı".</p>
         </form>
         <div id="arrival"></div>
-      </section>
+          </section>
+        </details>
 
       <section aria-labelledby="alternative-title">
         <div class="section-head">
@@ -198,30 +211,31 @@
         <div id="alternative"></div>
       </section>
 
-      <section id="compare" aria-labelledby="compare-title">
-        <div class="section-head">
-          <h2 id="compare-title">Metro mu, otobüs mü?</h2>
-          <span class="section-note">tahmini süre, kaynağı ve yaşıyla</span>
-        </div>
+        <details class="more tool-detail" id="compare" aria-labelledby="compare-title">
+          <summary><h2 id="compare-title">Metro mu, otobüs mü?</h2></summary>
+          <section aria-labelledby="compare-title">
+        <p class="section-note">tahmini süre, kaynağı ve yaşıyla</p>
         <form id="compare-form" class="arrival-form" autocomplete="off">
           <div class="field"><label for="compare-from">Nereden</label><input id="compare-from" name="from" type="text"></div>
           <div class="field"><label for="compare-to">Nereye</label><input id="compare-to" name="to" type="text"></div>
           <button type="submit" class="btn">Karşılaştır</button>
         </form>
         <div id="compare-result"></div>
-      </section>
+          </section>
+        </details>
 
-      <section id="acik-veri" aria-labelledby="acik-veri-title">
-        <div class="section-head">
-          <h2 id="acik-veri-title">İBB Açık Veri</h2>
-          <span class="section-note">hangi veri var, kim yayımlıyor, ne zaman güncellendi</span>
-        </div>
+        <details class="more tool-detail">
+          <summary><h2 id="acik-veri-title">İBB Açık Veri</h2></summary>
+          <section id="acik-veri" aria-labelledby="acik-veri-title">
+        <p class="section-note">hangi veri var, kim yayımlıyor, ne zaman güncellendi</p>
         <form id="acik-veri-form" class="arrival-form" role="search" autocomplete="off">
           <div class="field"><label for="acik-veri-q">Veri seti ara</label><input id="acik-veri-q" name="q" type="search" maxlength="200" placeholder="otopark, baraj, wifi"></div>
           <button type="submit" class="btn">Ara</button>
         </form>
         <div class="chips od-chips" id="acik-veri-chips" role="group" aria-label="İBB Açık Veri kategorileri"></div>
         <div id="acik-veri-result" aria-live="polite" aria-busy="false"></div>
+          </section>
+        </details>
       </section>
 
       <section id="equipment-history" aria-labelledby="equipment-history-title" hidden>
@@ -235,19 +249,14 @@
       <section id="yakinimda-mount"></section>
     </div>
 
-    <section class="chat" id="asistan" aria-labelledby="chat-title">
-      <h2 id="chat-title">Yanıtlar</h2>
-      <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
-      <p class="sr-only" id="chat-status" role="status"></p>
-      <aside id="convo-root" aria-label="Sohbetlerim"></aside>
-    </section>
   </div>
 
-  <section id="profilim" aria-labelledby="profile-title">
-    <div class="section-head">
-      <h2 id="profile-title">Profilim</h2>
-      <span class="section-note">yalnız bu tarayıcıda, isteğe bağlı</span>
-    </div>
+  <section id="hesabim" aria-labelledby="you-title">
+    <h2 id="you-title">Hesabım ve tercihlerim</h2>
+    <details class="more account-detail">
+      <summary><h2 id="profile-title">Profilim</h2></summary>
+      <section id="profilim" aria-labelledby="profile-title">
+    <p class="section-note">yalnız bu tarayıcıda, isteğe bağlı</p>
     <form id="profile-form" class="profile-grid" autocomplete="off">
       <fieldset>
         <legend>İhtiyaçlarım</legend>
@@ -299,24 +308,24 @@
       <div class="callout profile-wide" id="profile-review" hidden></div>
       <p class="status-line profile-wide" id="profile-status" role="status"></p>
     </form>
-  </section>
+      </section>
+    </details>
 
-  <section id="hesap" aria-labelledby="account-title">
-    <div class="section-head">
-      <h2 id="account-title">Hesap bağla (örnek)</h2>
-      <span class="section-note">isteğe bağlı, açık rızayla; hesapsız kullanım bu cihazda kalır</span>
-    </div>
+    <details class="more account-detail">
+      <summary><h2 id="account-title">Hesap bağla (örnek)</h2></summary>
+      <section id="hesap" aria-labelledby="account-title">
+    <p class="section-note">isteğe bağlı, açık rızayla; hesapsız kullanım bu cihazda kalır</p>
     <p>Hesap bağlarsanız günlük soru hakkınız artar ve takip ettiğiniz konular için günde en çok bir özet e-posta hazırlanır.
       Giriş bir gösterimdir: gerçek İBB, İstanbulkart ya da Google hesabına bağlanılmaz.</p>
     <div id="acct-body"></div>
     <p class="status-line" id="acct-status" role="status"></p>
-  </section>
+      </section>
+    </details>
 
-  <section id="takip" aria-labelledby="follow-title">
-    <div class="section-head">
-      <h2 id="follow-title">Takip ettiklerim</h2>
-      <span class="section-note">hat, istasyon ya da anahtar kelime; konum değil</span>
-    </div>
+    <details class="more account-detail">
+      <summary><h2 id="follow-title">Takip ettiklerim</h2></summary>
+      <section id="takip" aria-labelledby="follow-title">
+    <p class="section-note">hat, istasyon ya da anahtar kelime; konum değil</p>
     <p id="follow-where"></p>
     <p class="field-hint">Asistana "M2 hattını takip et" ya da "Etiler asansörünü takip et" yazın; onayınızla eklenir. Verisi olmayan konular
       (su, doğalgaz, elektrik kesintisi) açıkça söylenir.</p>
@@ -324,20 +333,23 @@
     <ul class="follow-list" id="follow-list"></ul>
     <p class="memory-empty" id="follow-empty">Henüz takip edilen konu yok.</p>
     <p class="status-line" id="follow-status" role="status"></p>
-  </section>
+      </section>
+    </details>
 
-  <section id="hafizam" aria-labelledby="memory-title">
-    <div class="section-head">
-      <h2 id="memory-title"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg> Hafızam</h2>
-      <span class="section-note">asistanın önerdiği, sizin onayladığınız</span>
-    </div>
+    <details class="more account-detail">
+      <summary><h2 id="memory-title"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg> Hafızam</h2></summary>
+      <section id="hafizam" aria-labelledby="memory-title">
+    <p class="section-note">asistanın önerdiği, sizin onayladığınız</p>
     <p>Asistan bir şey öğrenmek istediğinde sorar: "Profiline ekleyeyim mi?". Siz onaylamadan hiçbir şey kaydedilmez.
       Kayıtlar burada görünür ve tek tuşla silinir.</p>
     <ul class="memory-list" id="memory-list"></ul>
     <p class="memory-empty" id="memory-empty">Henüz kayıt yok.</p>
     <div class="btn-row"><button type="button" class="btn" id="memory-clear" hidden>Tümünü sil</button></div>
     <p class="status-line" id="memory-status" role="status"></p>
+      </section>
+    </details>
   </section>
+  <button type="button" class="btn btn-primary ask-pill" id="ask-pill" hidden data-i18n="page.ask_pill">Sor</button>
 </main>
 
 <footer class="wrap">
