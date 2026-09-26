@@ -4,9 +4,10 @@
 import { MOCK, get, post } from './api.js';
 import { FRESHNESS_WARN_S, REFRESH_MS } from './config.js';
 import {
-  STATUS_TR, composeReason, decisionCard, draftItem, gatedAction, queueLists, statsStrip, traceList, verifyBadge,
+  composeReason, decisionCard, draftItem, gatedAction, queueLists, statsStrip, traceList, verifyBadge,
 } from './console-cards.js';
 import { errorCard, skeleton } from './cards.js';
+import { mountNav } from './console_desk.js';
 import { mountRules } from './console_rules.js';
 import { esc, shortAge } from './format.js';
 import { mountToggles } from './theme.js';
@@ -31,12 +32,32 @@ async function loadStats() {
   }
 }
 
+function updateSystemSummary() {
+  const host = $('#system-summary');
+  if (!host) return;
+  const toggle = $('#chat-pause-switch');
+  const badge = $('#chat-pause-badge');
+  const checked = toggle && toggle.getAttribute('aria-checked');
+  const chat = toggle
+    ? (toggle.getAttribute('aria-disabled') === 'true' || checked === null
+      ? 'Vatandaş sohbeti durumu okunamadı'
+      : checked === 'false' ? 'Vatandaş sohbeti durduruldu' : 'Vatandaş sohbeti açık')
+    : (badge && !badge.hidden ? badge.textContent.trim() : 'Vatandaş sohbeti durumu okunamadı');
+  const ledgerText = $('#ledger-badge')?.textContent.trim() || '';
+  const ledger = ledgerText.includes('doğrulanamadı') ? 'defter doğrulanamadı'
+    : ledgerText.includes('doğrulandı') ? 'defter doğrulandı' : 'defter henüz okunmadı';
+  const count = ledgerText.match(/\d+ kayıt/);
+  const summary = [chat, ledger, count && count[0]].filter(Boolean).join(' · ');
+  if (host.textContent !== summary) host.textContent = summary;
+}
+
 async function loadVerify() {
   try {
     $('#ledger-badge').innerHTML = verifyBadge(await get('/api/console/ledger/verify'));
   } catch (err) {
     $('#ledger-badge').innerHTML = verifyBadge(null);
   }
+  updateSystemSummary();
 }
 
 /* Re-render only when the rows changed, and put focus back on the row that had it: a refresh must
@@ -56,7 +77,8 @@ async function loadQueue({ announce = false } = {}) {
   try {
     const res = await get('/api/console/queue');
     const lists = queueLists(res.items || [], currentId);
-    renderList($('#queue-arena'), lists.arena || '<li class="queue-empty">Onay bekleyen sinyal yok.</li>');
+    const emptyQueue = '<li class="queue-empty">Onay bekleyen kart yok. Yeni sinyal gelince burada görünür.</li>';
+    renderList($('#queue-arena'), lists.awaiting ? lists.arena : emptyQueue);
     renderList($('#queue-reflex'), lists.reflex || '<li class="queue-empty">Bugün refleksle kapanan sinyal yok.</li>');
     $('#queue-arena-count').textContent = `(${lists.arenaCount}, ${lists.awaiting} karar bekliyor)`;
     $('#queue-reflex-count').textContent = `(${lists.reflexCount})`;
@@ -66,6 +88,11 @@ async function loadQueue({ announce = false } = {}) {
     const status = $('#queue-status');
     // The live region speaks when a person asked, or when something changed; a quiet refresh stays quiet.
     if (announce || status.textContent !== sentence) status.textContent = sentence;
+    if (!lists.awaiting) {
+      currentId = null;
+      $('#decision-body').innerHTML = '<p class="decision-empty">Onay bekleyen kart yok. Yeni sinyal gelince burada görünür.</p>';
+    }
+    updateSystemSummary();
     if (reading) queueRetry = setTimeout(() => { loadQueue(); loadStats(); loadVerify(); }, SOURCES_RETRY_MS);
   } catch (err) {
     $('#queue-arena').innerHTML = `<li>${errorCard('Sinyal kutusu alınamadı', err.message)}</li>`;
@@ -130,41 +157,58 @@ async function loadDecision(id, { focus = true } = {}) {
   }
 }
 
-async function decide(action) {
+async function settleQueueRow(id) {
+  const row = [...document.querySelectorAll('#queue .queue-item')].find((item) => item.dataset.id === id);
+  const root = document.documentElement;
+  const canMove = window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+    && root.dataset.motion !== 'reduce' && root.dataset.simple !== 'on';
+  if (!row || !canMove) return;
+  row.classList.add('is-leaving');
+  await new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(fallback);
+      row.removeEventListener('transitionend', ended);
+      resolve();
+    };
+    const ended = (event) => {
+      if (event.target === row && event.propertyName === 'opacity') finish();
+    };
+    const fallback = setTimeout(finish, 350);
+    row.addEventListener('transitionend', ended);
+  });
+}
+
+async function decide(action, button) {
+  const previousMarkup = button.innerHTML;
+  const previousDisabled = button.getAttribute('aria-disabled');
+  button.setAttribute('aria-busy', 'true');
+  button.setAttribute('aria-disabled', 'true');
+  button.textContent = ({ approve: 'Onaylanıyor', edit: 'Onaylanıyor', reject: 'Reddediliyor', defer: 'Erteleniyor' })[action];
   const status = $('#console-status');
   const reason = $('#decision-reason');
-  const error = $('#reason-error');
-  const text = reason.value.trim();
   const selected = document.querySelector('input[name="reason-code"]:checked');
   const code = selected && !selected.closest('label').hidden ? selected.value : null;
-  if ((action === 'reject' || action === 'defer') && !code) {
-    error.textContent = 'Ret ve erteleme için gerekçe kodu seçin.';
-    error.hidden = false;
-    document.querySelector('.reason-code:not([hidden]) input[name="reason-code"]')?.focus();
-    return;
-  }
-  if (text && !code) {
-    error.textContent = 'Ayrıntı için gerekçe kodu seçin.';
-    error.hidden = false;
-    document.querySelector('.reason-code:not([hidden]) input[name="reason-code"]')?.focus();
-    return;
-  }
-  error.hidden = true;
-  const composed = composeReason(code, text) || '';
+  const composed = composeReason(code, reason.value.trim()) || '';
   const edited = action === 'edit' ? $('#decision-edit').value.trim() : null;
+  const decidedId = currentId;
   status.className = 'status-line';
   status.textContent = 'Deftere yazılıyor.';
   try {
-    const res = await post(`/api/console/decisions/${encodeURIComponent(currentId)}`, { action, reason: composed, edited_text: edited });
-    const said = `Karar deftere yazıldı: ${STATUS_TR[res.status] || 'kaydedildi'}, kayıt ${res.ledger_entry_id || 'bilinmiyor'}.`;
-    // Keep the one status region outside the card that is replaced after a decision.
-    await loadDecision(currentId, { focus: false });
+    await post(`/api/console/decisions/${encodeURIComponent(decidedId)}`, { action, reason: composed, edited_text: edited });
+    await settleQueueRow(decidedId);
+    await loadDecision(decidedId, { focus: false });
+    await loadQueue();
+    loadStats();
+    decided();
     status.className = 'status-line is-ok';
     status.setAttribute('tabindex', '-1');
-    status.textContent = said;
+    status.textContent = 'Karar deftere yazıldı.';
     status.focus();
-    loadQueue(); loadStats(); decided();
   } catch (err) {
+    button.innerHTML = previousMarkup;
+    button.removeAttribute('aria-busy');
+    if (previousDisabled === null) button.removeAttribute('aria-disabled');
+    else button.setAttribute('aria-disabled', previousDisabled);
     status.className = 'status-line is-bad';
     status.textContent = `Karar yazılamadı: ${err.message}`;
   }
@@ -194,6 +238,7 @@ function onDecisionClick(evt) {
   }
   if (act === 'edit') {
     if (field.hidden) {
+      $('.reason-more').open = true;
       field.hidden = false;
       field.dataset.confirm = 'true';
       btn.textContent = 'Düzenleyerek onayla';
@@ -204,11 +249,35 @@ function onDecisionClick(evt) {
       $('#decision-edit').focus();
       return;
     }
-    decide('edit');
+    submitDecision('edit', btn);
     return;
   }
-  if (act === 'approve' || act === 'reject' || act === 'defer') filterReasonCodes(act);
-  decide(act);
+  if (act === 'approve' || act === 'reject' || act === 'defer') submitDecision(act, btn);
+}
+
+function submitDecision(action, button) {
+  filterReasonCodes(action);
+  const reason = $('#decision-reason');
+  const selected = document.querySelector('input[name="reason-code"]:checked');
+  const code = selected && !selected.closest('label').hidden ? selected.value : null;
+  if ((action === 'reject' || action === 'defer') && !code) {
+    showReasonError('Ret ve erteleme için gerekçe kodu seçin.');
+    return;
+  }
+  if (reason.value.trim() && !code) {
+    showReasonError('Ayrıntı için gerekçe kodu seçin.');
+    return;
+  }
+  decide(action, button);
+}
+
+function showReasonError(message) {
+  const more = $('.reason-more');
+  if (more) more.open = true;
+  const error = $('#reason-error');
+  error.textContent = message;
+  error.hidden = false;
+  document.querySelector('.reason-code:not([hidden]) input[name="reason-code"]')?.focus();
 }
 
 function filterReasonCodes(action) {
@@ -262,30 +331,11 @@ async function adopt(form) {
   }
 }
 
-/* ---- shell: the section nav under the sticky top bar ------------------------------------- */
-/* A link whose section is not on the page is hidden; a panel that adds its section shows it. */
-const syncNav = () => document.querySelectorAll('.console-nav a').forEach((a) => {
-  a.parentElement.hidden = !document.getElementById(a.hash.slice(1));
-});
-
-function mountNav() {
-  // The top bar wraps at 320 px: its real height places the nav and the anchor offset (console.css).
-  new ResizeObserver(([e]) => document.documentElement.style.setProperty('--console-topbar-h',
-    `${Math.ceil(e.borderBoxSize?.[0]?.blockSize ?? e.target.offsetHeight)}px`)).observe($('.topbar'));
-  syncNav();
-  new MutationObserver(syncNav).observe($('#main'), { childList: true });
-  // The native anchor scrolls; then focus moves to the section's heading so a keyboard user stays
-  // there (after the fragment navigation, which would otherwise drop it back to the body).
-  $('.console-nav').addEventListener('click', (evt) => {
-    const h = evt.target.closest('a') && document.querySelector(`${evt.target.closest('a').hash} h2`);
-    if (h) setTimeout(() => { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); });
-  });
-}
-
 /* ---- boot -------------------------------------------------------------------------------- */
 function boot() {
   mountToggles();
-  mountNav();
+  mountNav(updateSystemSummary);
+  updateSystemSummary();
   document.addEventListener('nabiz:ledger-changed', loadVerify);
   mountRules({ get, post, mock: MOCK, onChange: ledgerChanged });
   if (MOCK) $('#data-mode').hidden = false;
@@ -294,6 +344,20 @@ function boot() {
     if (item) loadDecision(item.dataset.id);
   });
   $('#decision-body').addEventListener('click', onDecisionClick);
+  $('#decision-body').addEventListener('change', (event) => {
+    if (event.target.matches('input[name="reason-code"]') && event.target.checked) $('#reason-error').hidden = true;
+  });
+  document.addEventListener('nabiz:open-decision', (event) => {
+    const id = event.detail && event.detail.id;
+    const item = id && [...document.querySelectorAll('#queue .queue-item')].find((row) => row.dataset.id === id);
+    if (item) {
+      item.scrollIntoView({ block: 'center' });
+      item.click();
+    } else if (id) {
+      const message = $('#brief-action-status');
+      if (message) message.textContent = 'Bu kart artık kuyrukta değil.';
+    }
+  });
   $('#simulate').addEventListener('click', simulate);
   $('#drafts').addEventListener('submit', (evt) => {
     const form = evt.target.closest('form.draft-form');

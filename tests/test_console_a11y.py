@@ -155,7 +155,7 @@ def test_the_card_draws_the_lifecycle_fields_only_when_they_are_present() -> Non
         assert "Panel önerisi: yayımla (destek 2, karşı 0, şartlı 1)" in rendered and "Gereken güven: yüksek" in rendered
         assert "publish" not in rendered.replace('value="publish', "")
     assert "Süresi doldu" in result["expired"] and "Uygulandı (simülasyon)" in result["executed"]
-    assert "Son karar:" in result["pending"]
-    assert "Son karar:" not in result["expired"] and "Son karar:" not in result["executed"]
+    assert "Karar son tarihi:" in result["pending"]
+    assert "Karar son tarihi:" not in result["expired"] and "Karar son tarihi:" not in result["executed"]
     assert "Operatör özeti" in result["queue"] and "Vatandaş özeti" not in result["queue"]
-    assert "2 tekrar katlandı" in result["queue"] and "Son karar:" in result["queue"]
+    assert "2 tekrar katlandı" in result["queue"] and "Karar son tarihi:" in result["queue"]
