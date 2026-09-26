@@ -44,7 +44,15 @@ from nabiz.agent import llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
 from nabiz.agent.minutes import with_shown_minutes
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS, build_tool_schemas
-from nabiz.agent.templates import ATTRIBUTION_LINE, DETERMINISTIC_NOTE, HELP_NUMBERS, NO_DATA, UNROUTED, render_answer
+from nabiz.agent.templates import (
+    ATTRIBUTION_LINE,
+    DETERMINISTIC_NOTE,
+    HELP_NUMBERS,
+    NO_DATA,
+    UNROUTED,
+    recorded_stamp,
+    render_answer,
+)
 
 log = logging.getLogger("nabiz.agent")
 
@@ -527,12 +535,16 @@ class NabizAgent:
         with span("nabiz.agent.deterministic", **{"nabiz.tool.name": tool}):
             record = await self._call_tool(tool, arguments)
         if record.ok and record.payload is not None:
-            text = render_answer(tool, record.payload, lang)
+            text = render_answer(tool, record.payload, lang, recorded=self.nabiz.settings.offline)
         else:
             text = f"{record.error}\n\n{ATTRIBUTION_LINE}" if record.error else NO_DATA[lang]
         # The error is relayed verbatim, so its own numbers ("bu durağa uğrayan hatlar:
         # 153, 154 …") came from the tool and are not this agent's invention.
-        report = check_faithfulness(text, [record.payload], question=question, extra_sources=record.error)
+        # The recording's own time ("kayıtlı · 26.09 05:15") is put there by this template from
+        # the tool's provenance, so its digits are sourced too.
+        stamp = recorded_stamp(record.payload["provenance"]) if record.ok and record.payload is not None else None
+        extra = [record.error, stamp] if stamp else record.error
+        report = check_faithfulness(text, [record.payload], question=question, extra_sources=extra)
         # A template is hand-written Turkish, so a numeric constant can creep into one and
         # then no number in it came from the payload. The model path warns when the check
         # fails; this path must warn too, or a failed check is invisible here.

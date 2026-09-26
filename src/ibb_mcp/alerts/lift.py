@@ -202,7 +202,7 @@ def _matching_station_records(
         by_line = line_key(record.line_name) in watched_lines
         if not (by_station or by_line):
             continue
-        name = (matched.name if matched is not None else None) or record.station_name or "Bilinmeyen istasyon"
+        name = (matched.name if matched is not None else None) or record.station_name or "İstasyonu İBB kaydında belirtilmemiş"
         key = station_key(name) or f"?{line_key(record.line_name)}"
         if key not in grouped:
             grouped[key] = (name, [])

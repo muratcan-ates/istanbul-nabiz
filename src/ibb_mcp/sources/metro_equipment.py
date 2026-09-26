@@ -83,6 +83,11 @@ UNKNOWN_STATUS_TYPE = "unknown_status_type"
 GROUP_UNAVAILABLE = "group_unavailable"
 NO_RECORDED_DATA = "no_recorded_data"
 STATION_UNMATCHED = "station_unmatched"
+STATION_UNKNOWN = "station_unknown"
+
+#: The first recording (2026-09-26) showed both answers wrapped once more: ``Data`` is a list
+#: holding one object, and the rows sit under one of these keys. A flat ``Data`` list still works.
+_NESTED_ROW_KEYS = ("Equipments", "EquipmentServiceStatus")
 
 DATE_LABEL_TR = "İBB kaydındaki tarih (anlamı belgelenmemiş; dönüş tarihi değildir)"
 EQUIPMENT_DISCLAIMER_TR = (
@@ -173,7 +178,20 @@ def unwrap(payload: Any, *, source: str) -> list[Any]:
         return []
     if not isinstance(data, list):
         raise UpstreamUnavailable(f"{source}: Data listesi bekleniyordu", source=source)
-    return data
+    return _flatten(data)
+
+
+def _flatten(rows: list[Any]) -> list[Any]:
+    """Rows lifted out of the wrapper objects the 2026-09-26 recording showed; other rows kept."""
+    flat: list[Any] = []
+    for row in rows:
+        nested = [row[key] for key in _NESTED_ROW_KEYS if isinstance(row, dict) and isinstance(row.get(key), list)]
+        if nested:
+            for inner in nested:
+                flat += inner
+        else:
+            flat.append(row)
+    return flat
 
 
 def _text(value: Any) -> str | None:
@@ -259,11 +277,13 @@ class EquipmentRecord(BaseModel):
             codes.append(LOCATION_EMPTY)
         if self.status_class == "unknown":
             codes.append(UNKNOWN_STATUS_TYPE)
+        if self.station_name is None:
+            codes.append(STATION_UNKNOWN)
         return codes
 
     def describe(self) -> str:
         """One Turkish line for a card. Says what İBB recorded, never that something works."""
-        where = self.station_name or "Bilinmeyen istasyon"
+        where = self.station_name or "İstasyonu İBB kaydında belirtilmemiş"
         if self.line_name:
             where = f"{where} ({self.line_name})"
         what = self.group.lower() if self.group else "ekipman"

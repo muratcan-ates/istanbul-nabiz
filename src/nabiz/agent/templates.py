@@ -7,6 +7,7 @@ within its size budget. Nothing here calls a tool or a model.
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Any
 
 from nabiz.agent.minutes import METHOD_TR, shown_minutes
@@ -244,13 +245,34 @@ RENDERERS = {
 }
 
 
-def render_answer(tool: str, payload: dict[str, Any], lang: str) -> str:
-    """Turn one tool payload into a templated answer carrying its age and attribution."""
+def recorded_stamp(provenance: dict[str, Any]) -> str | None:
+    """``"kayıtlı · 26.09 05:15"``: a recording's own time in İstanbul, never an age that reads live."""
+    raw = provenance.get("reported_at") or provenance.get("observed_at")
+    if not raw:
+        return None
+    try:
+        moment = dt.datetime.fromisoformat(str(raw))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=dt.UTC)
+    return f"kayıtlı · {moment.astimezone(dt.timezone(dt.timedelta(hours=3))):%d.%m %H:%M}"
+
+
+def render_answer(tool: str, payload: dict[str, Any], lang: str, *, recorded: bool = False) -> str:
+    """Turn one tool payload into a templated answer carrying its age and attribution.
+
+    ``recorded``: the answer comes from recorded fixtures (offline), so it carries the
+    recording's time ("kayıtlı · GG.AA SS:DD") instead of an age that would read as live.
+    """
     lines = [EN_PREFACE] if lang == "en" else []
     lines += RENDERERS.get(tool, _r_generic)(payload.get("data") or {})
     if payload.get("note"):
         lines.append(str(payload["note"]))
-    if payload["provenance"].get("age"):  # nothing read: no age line, never "0 sn önce"
+    stamp = recorded_stamp(payload["provenance"]) if recorded and payload["provenance"].get("age") else None
+    if stamp:
+        lines.append(f"Veri: {stamp}.")
+    elif payload["provenance"].get("age"):  # nothing read: no age line, never "0 sn önce"
         lines.append(f"Verinin yaşı: {payload['provenance']['age']}.")
     lines.append(ATTRIBUTION_LINE)
     return "\n".join(line for line in lines if line)
