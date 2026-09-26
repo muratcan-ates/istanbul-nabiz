@@ -2456,3 +2456,24 @@ come from the cache, the robots snapshots and the code.
   is agent work for a later epic (open).
 - A map layer or a true "nearest" needs a coordinate source or a geocoding decision, with its licence
   (open: owner).
+
+## 58. Nabız Dili foundation: Fluent 2 derived tokens, İznik palette, button hierarchy (E43, 26 Sep)
+
+### Decision
+
+- Size, radius, spacing and motion values are taken from Fluent 2 (`@fluentui/tokens`, MIT, Copyright (c) Microsoft
+  Corporation) and vendored as CSS variables in `base.css`; they are derived from Fluent, not Fluent components. No
+  colour literal is added: colours come from the generated `tokens.css`.
+- Palette P1 "Boğaz", named after İznik tiles: İznik blue (cobalt) is the one accent, firuze (turquoise) the analogous
+  second tone, çini white the ground; the tulip "moment" colour is allowed in four named places only. Red means an
+  emergency and nothing else.
+- One corner system: buttons, inputs and chips 8 px, cards 12 px, the composer and dialogs 16 px. Buttons have six
+  states (rest, hover, active, focus, disabled, busy) and three weights: primary, secondary, quiet.
+- Motion answers to `prefers-reduced-motion`; translucent shells fall back to solid under reduced transparency,
+  more contrast and forced colours.
+
+### Consequences
+
+- The web page's JS/total payload target rises by 153 B, in the open, because the generated tokens file is shared
+  byte-for-byte with the console.
+- The screens themselves change in E44 (citizen), E45 (answer card) and E46 (console); E43 changes button states only.
