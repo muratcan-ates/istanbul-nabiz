@@ -6,3 +6,11 @@
 .report-done { white-space: normal; }
 .report .btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 @media (forced-colors: active) { .report-confirm { border: 1px solid CanvasText; } }
+
+/* E33 */
+.report-outcomes { margin-top: var(--space-3); display: grid; gap: var(--space-2); }
+.report-outcomes[hidden] { display: none; }
+.report-outcome-list { list-style: none; padding: 0; display: grid; gap: var(--space-2); }
+.report-outcome { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.report-outcome .btn { min-height: var(--tap); }
+.report-outcome-text { flex-basis: 100%; overflow-wrap: anywhere; }
