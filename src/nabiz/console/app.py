@@ -65,6 +65,7 @@ from nabiz.console.knowledge_api import knowledge_routes
 from nabiz.console.map_layers_api import map_layers_routes
 from nabiz.console.model_api import model_routes
 from nabiz.console.nearby_api import nearby_router
+from nabiz.console.notice_age import notice_routes
 from nabiz.console.open_data_api import open_data_routes
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
@@ -333,6 +334,7 @@ def build_console_app(
     app.include_router(rules_routes)
     app.include_router(day_routes)
     app.include_router(approval_health_routes)
+    app.include_router(notice_routes)
     app.include_router(organs_routes)
     app.include_router(drill_routes)
     app.include_router(kill_switch_routes)

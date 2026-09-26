@@ -2242,3 +2242,25 @@ come without a model.
 ### Consequences
 
 - The #36 risk "no 187 or handoff card on the kolay page" is closed.
+
+## 48. How long a Metro notice has been in force (E34, 26 Sep)
+
+### Decision
+
+- İBB's `UpdateDate` is the last update, so the card says "en az … tarihinden beri" and never a start or an end.
+  Nabız's archive is not continuous: the card says how many days and reads it saw, never "sürekli".
+- A lift record missing from some reads says "ilk kez … gördü; N okumadan M tanesinde", not that it stayed.
+- Console: "Metro bildirimleri ne zamandır yayında" (`GET /api/console/metro-notices`, operator only).
+
+### Consequences
+
+- Open: `history_api._lake_root` and `notice_age.lake_root` mean the same thing; merge them in the clean-up.
+
+## 49. Escalators and moving walkways on the map (E35, 26 Sep)
+
+### Decision
+
+- `GET /api/map/equipment` places İBB's escalator and walkway records beside the lifts, in İBB's own sentence; no
+  duration is computed. "Çalıştırılmıyor" records sit under their own heading, without comment.
+- `map_equipment.js` is loaded lazily by `map_layers.js` and is in the service worker shell (v9), so the rail
+  section still builds offline.

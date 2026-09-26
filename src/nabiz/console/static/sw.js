@@ -1,6 +1,6 @@
 /* v8 (integration of 26 Sep, second round: E24 the lift report, E21 the quick-question chips, E23 the model strip;
    v7 was DECISIONS #38-#41): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v8';
+const VERSION = 'v9';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -46,6 +46,8 @@ const SHELL = [
   '/js/quick_chips.js', '/css/quick_chips.css',
   // DECISIONS #44 (E23): the citizen's model note (the console receipt strip is a console file, never cached)
   '/js/model_strip.js',
+  // E35: the escalator and walkway helpers map_layers.js imports lazily
+  '/js/map_equipment.js',
 ];
 
 function ruleFor(url, method, mode) {
