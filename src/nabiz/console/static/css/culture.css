@@ -1,0 +1,186 @@
+/* Kütüphane ve müze: şu an açık mı? (E30, js/culture.js). Tokens only; no motion, nothing decorative. */
+.culture-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.culture-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.culture-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.culture-field {
+  display: grid;
+  flex: 1 1 14rem;
+  gap: var(--space-1);
+  min-width: min(100%, 12rem);
+}
+
+.culture-field label,
+.culture-kinds legend {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.culture-field select {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.culture-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.culture-kinds legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+}
+
+.culture-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-round);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.culture-chip input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--accent-strong);
+}
+
+.culture-chip:focus-within,
+.culture-field select:focus-visible,
+.culture-phones a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.culture-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.culture-list {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.culture-item {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+}
+
+.culture-name {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: 1.35;
+}
+
+.culture-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-1) 0 0;
+}
+
+.culture-kind {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-round);
+  background: var(--accent-subtle);
+  color: var(--accent-strong);
+  font-size: var(--text-sm);
+}
+
+.culture-state {
+  font-weight: 600;
+}
+
+.culture-address,
+.culture-phones {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.culture-phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+}
+
+.culture-phones a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--accent-strong);
+  text-decoration-thickness: .08em;
+  text-underline-offset: .15em;
+}
+
+.culture-notes {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.culture-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 24rem) {
+  .culture-section {
+    padding: var(--space-3);
+  }
+}

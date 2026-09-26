@@ -1,0 +1,104 @@
+{
+ "author": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+ "author_email": "",
+ "creator_user_id": "64a86686-02cf-4b38-9e29-f088add06d1a",
+ "id": "2afda6c7-e8a6-4945-ade6-0be094797fbc",
+ "isopen": false,
+ "license_id": "ibb-license",
+ "license_title": "Istanbul Metropolitan Municipality Open Data License",
+ "license_url": "https://data.ibb.gov.tr/license",
+ "maintainer": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+ "maintainer_email": "",
+ "metadata_created": "2021-12-09T15:25:04.107219",
+ "metadata_modified": "2026-02-12T12:11:19.630048",
+ "name": "ibb-kutuphaneleri-lokasyon-calisma-gun-ve-saatleri",
+ "notes": "This data set contains information about the days and hours of work of the IMM libraries location.",
+ "num_resources": 1,
+ "num_tags": 3,
+ "organization": {
+  "id": "1b213d59-9958-4c97-aae3-bc3b3fdec44b",
+  "name": "kultur-varliklari-daire-baskanligi",
+  "title": "Kent Tarihi, Tanıtım ve Turizm Dairesi Başkanlığı",
+  "type": "organization",
+  "description": "",
+  "image_url": "2022-04-04-072643.2015897660eceb-7c95-4790-9369-e78e6559bf37.JPG",
+  "created": "2020-01-10T10:23:59.372680",
+  "is_organization": true,
+  "approval_status": "approved",
+  "state": "active"
+ },
+ "owner_org": "1b213d59-9958-4c97-aae3-bc3b3fdec44b",
+ "private": false,
+ "state": "active",
+ "title": "IMM Libraries Location Working Days and Hours",
+ "type": "dataset",
+ "url": "",
+ "version": "",
+ "groups": [
+  {
+   "description": "Sağlık alanında evde bakım ve kadın sağlığına ilişkin kaynaklar dâhilinde hizmet sunulmaktadır. Halka sunulan temel sağlık hizmetleri iyi düzeyde olup önleyici sağlık hizmetleri konusuna daha çok önem verilmekte ve bu konuda çalışmalar yapılmaktadır. Evde sağlık hizmetleri kapsamında yaşlı ve engelliler evlerinde tedavi görebilmektedir. Ayrıca tüm sağlık hizmetleri dijital ortama taşınmış olup, vatandaşların kendi durumlarını takip edebilmelerine olanak sağlanmıştır. Bu sistemler sayesinde sağlık hizmetleri daha iyi şekilde verilebilmektedir. Şehrin imkânlarından, vatandaşın her kesiminin faydalanabilmesi için daha çok çalışma yapılmaktadır. İstanbul, Akıllı Şehir Endeksi kapsamında GINI katsayısı değerlendirmesinde 51 puan alarak 7. olmuştur. Kültür sanat alanında geliştirilen dijital uygulamalar ile vatandaşların etkinliklere erişimi ve bilgi alması daha kolay hale gelmiş, kütüphanelerde bulunan eserler dijitalleştirilerek her yerden bu eserlere erişim imkanı sağlanmıştır. Sonuç olarak; verilen hizmetlerin teknoloji desteği ile koordineli ve herkese eşit düzeyde ulaştırılması sonucu yaşam kalitesi arttırılmaktadır.",
+   "display_name": "Yaşam",
+   "id": "b83606e1-9d68-44dc-a064-2c6737f2fb54",
+   "image_display_url": "",
+   "name": "yasam",
+   "title": "Yaşam"
+  }
+ ],
+ "resources": [
+  {
+   "cache_last_updated": null,
+   "cache_url": null,
+   "ckan_url": "https://data.ibb.gov.tr",
+   "created": "2021-12-10T07:59:02.036436",
+   "datastore_active": true,
+   "datastore_contains_all_records_of_source_file": true,
+   "description": "Bu veri seti İBB Kütüphaneleri lokasyon, çalışma gün ve saatleri bilgisini içermektedir.",
+   "format": "XLSX",
+   "hash": "da8399ecf0286c4a710506d5b4685d3b",
+   "id": "2ee4476c-9984-43de-96de-7aeda4da9aee",
+   "ignore_hash": false,
+   "last_modified": "2026-02-12T12:11:17.167819",
+   "metadata_modified": "2026-02-12T12:11:19.645436",
+   "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   "mimetype_inner": null,
+   "name": "İBB Kütüphaneleri Lokasyon, Çalışma Gün ve Saatleri Verisi",
+   "original_url": "https://data.ibb.gov.tr/dataset/2afda6c7-e8a6-4945-ade6-0be094797fbc/resource/2ee4476c-9984-43de-96de-7aeda4da9aee/download/ibb-kutuphaneleri-lokasyon-calma-gun-ve-saatleri-verisi_2025.xlsx",
+   "package_id": "2afda6c7-e8a6-4945-ade6-0be094797fbc",
+   "position": 0,
+   "resource_id": "2ee4476c-9984-43de-96de-7aeda4da9aee",
+   "resource_type": null,
+   "set_url_type": false,
+   "size": 15088,
+   "state": "active",
+   "task_created": "2026-02-12 12:11:17.347346",
+   "url": "https://data.ibb.gov.tr/dataset/2afda6c7-e8a6-4945-ade6-0be094797fbc/resource/2ee4476c-9984-43de-96de-7aeda4da9aee/download/ibb-kutuphaneleri-lokasyon-calma-gun-ve-saatleri-verisi_2025.xlsx",
+   "url_type": "upload"
+  }
+ ],
+ "tags": [
+  {
+   "display_name": "kütüphane",
+   "id": "20dcd6b9-9016-44ec-9a88-675c36e2c956",
+   "name": "kütüphane",
+   "state": "active",
+   "vocabulary_id": null
+  },
+  {
+   "display_name": "lokasyon",
+   "id": "eb2aa6dd-d75b-457b-9c13-39f224651bf7",
+   "name": "lokasyon",
+   "state": "active",
+   "vocabulary_id": null
+  },
+  {
+   "display_name": "çalışma saatleri",
+   "id": "b430fbd1-f644-4396-a434-d9c461e7c3a2",
+   "name": "çalışma saatleri",
+   "state": "active",
+   "vocabulary_id": null
+  }
+ ],
+ "extras": [],
+ "relationships_as_subject": [],
+ "relationships_as_object": []
+}

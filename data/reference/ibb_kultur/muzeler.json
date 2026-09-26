@@ -1,0 +1,525 @@
+{
+ "captured_at": "2026-09-26T12:29:08+00:00",
+ "package_id": "ibb-muzeleri-lokasyon-calisma-gun-ve-saatleri",
+ "resource_id": "016346da-e85d-4eda-b689-d6c4b6ad7fee",
+ "resource_last_modified": "2026-02-12T12:13:54.706642",
+ "license_id": "ibb-license",
+ "license_title": "Istanbul Metropolitan Municipality Open Data License",
+ "fields": [
+  {
+   "id": "_id",
+   "type": "int"
+  },
+  {
+   "id": "Muze Adi",
+   "type": "text"
+  },
+  {
+   "id": "Ilce Adi",
+   "type": "text"
+  },
+  {
+   "id": "Acilis Yili",
+   "type": "text"
+  },
+  {
+   "id": "Adres",
+   "type": "text"
+  },
+  {
+   "id": "Telefon",
+   "type": "text"
+  },
+  {
+   "id": "Calisma Saatleri",
+   "type": "text"
+  },
+  {
+   "id": "Calisma Gunleri",
+   "type": "text"
+  }
+ ],
+ "total": 48,
+ "records": [
+  {
+   "_id": 1,
+   "Muze Adi": "Anadolu Hisarı Müzesi",
+   "Ilce Adi": "Beykoz",
+   "Acilis Yili": "1942",
+   "Adres": "İstanbul ili, Beykoz İlçesi, Anadolu Hisarı Mahallesi",
+   "Telefon": "0216 333 52 30",
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 2,
+   "Muze Adi": "Artİstanbul Feshane",
+   "Ilce Adi": "Eyüpsultan",
+   "Acilis Yili": "1945",
+   "Adres": "Nişanca, 34050 Eyüpsultan/ İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 20:00 ",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 3,
+   "Muze Adi": "Aşiyan Müzesi",
+   "Ilce Adi": "Beşiktaş",
+   "Acilis Yili": "2013",
+   "Adres": "Bebek, Aşiyan Yolu, No:15 34342 Beşiktaş/İstanbul",
+   "Telefon": "0212 263 69 86",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 4,
+   "Muze Adi": "Atatürk Müzesi",
+   "Ilce Adi": "Şişli",
+   "Acilis Yili": "2019",
+   "Adres": "Meşrutiyet, Halaskargazi Cd. No:140, 34363 Şişli/İstanbul",
+   "Telefon": "0212 233 47 23",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 5,
+   "Muze Adi": "Baruthane Müze",
+   "Ilce Adi": "Bakırköy",
+   "Acilis Yili": "2021",
+   "Adres": "Ataköy 2-5-6. Kısım Mahallesi, Rauf Orbay Caddesi Bakırköy/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 6,
+   "Muze Adi": "Bebek Sarnıcı Sanat Galerisi",
+   "Ilce Adi": "Beşiktaş",
+   "Acilis Yili": "2021",
+   "Adres": "Bebek, Cevdet Paşa Cd. No:71, 34342 Beşiktaş/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 7,
+   "Muze Adi": "Bulgur Palas Müzesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2021",
+   "Adres": "Aksaray Mah. Kargı Çk.No:5 Fatih /ist.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 8,
+   "Muze Adi": "Casa Botter Sanat Galerisi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2021",
+   "Adres": " Şahkulu, İstiklal Cd. No:235, 34421 Beyoğlu/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 9,
+   "Muze Adi": "Cendere Sanat Müzesi",
+   "Ilce Adi": "Sarıyer",
+   "Acilis Yili": "2021",
+   "Adres": "Huzur Mah. Cendere Cad. No:128 Sarıyer /İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00 ",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 10,
+   "Muze Adi": "Cumhuriyet Müzesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2022",
+   "Adres": "Şehit Muhtar, Taksim Cd. 2A, 34435 Beyoğlu/İst.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 11,
+   "Muze Adi": "Çocuk Bilim Merkezi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2022",
+   "Adres": "Hasanpaşa, İkbaliye Sk. No:39, 34722 Kadıköy/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00 ",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 12,
+   "Muze Adi": "Doğa  ve Bilim Müzesi",
+   "Ilce Adi": "Beykoz",
+   "Acilis Yili": "2022",
+   "Adres": "Çubuklu Mah. Şehit Ersin Güner Cad. Beykoz/ist.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 13,
+   "Muze Adi": "Dijital Sanatlar Müzesi",
+   "Ilce Adi": "Beykoz",
+   "Acilis Yili": "2022",
+   "Adres": "Çubuklu Mah. Şehit Ersin Güner Cad. Beykoz/ist.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 14,
+   "Muze Adi": "Gülhane Sarnıcı",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2022",
+   "Adres": "Hocapaşa Mah. Gülhane Parkı içi, Fatih/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 15,
+   "Muze Adi": "Habitat Sanat",
+   "Ilce Adi": "Şişli",
+   "Acilis Yili": "2022",
+   "Adres": "Merkez Mah. Abide-i Hürriyet Cad. No:211 Şişli/İst.",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 16,
+   "Muze Adi": "Haliç Sanat 1",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2022",
+   "Adres": "Yavuz Sultan Selim Mah. Abdul Ezel Paşa Cad. No:4 Fatih/ist.",
+   "Telefon": "0212 233 47 23",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 17,
+   "Muze Adi": "Haliç Sanat 2",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2023",
+   "Adres": "Yavuz Sultan Selim Mah. Abdul Ezel Paşa Cad. No:4 Fatih/ist.",
+   "Telefon": "0212 233 47 23",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 18,
+   "Muze Adi": "Haliç Sanat 3",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2023",
+   "Adres": "Yavuz Sultan Selim Mah. Abdul Ezel Paşa Cad. No:4 Fatih/ist.",
+   "Telefon": "0212 233 47 23",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 19,
+   "Muze Adi": "İBB Belgradkapı Kara Surları Ziyaretçi Merkezi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2023",
+   "Adres": "Mevlanakapı Mah. Kale Dibi Sk. No:14 Fatih/ist.",
+   "Telefon": "0212 233 47 23",
+   "Calisma Saatleri": "10:00 - 18:00 ",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 20,
+   "Muze Adi": "İBB Mevlanakapı Kara Surları Ziyaretçi Merkezi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2023",
+   "Adres": "Fatih İlçesi, Mevlanakapı Caddesi, Melek Hatun Mahallesi, No:1",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00 ",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 21,
+   "Muze Adi": "İklim Müzesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2023",
+   "Adres": "Hasanpaşa, İkbaliye Sk. No:39, 34722 Kadıköy/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00 ",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 22,
+   "Muze Adi": "Bakırköy Sanat",
+   "Ilce Adi": "Bakırköy",
+   "Acilis Yili": "2024",
+   "Adres": "Zuhuratbaba Özgürlük Meydanı Bakırköy/İst.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 23,
+   "Muze Adi": "İstanbul Tasarım Müzesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "Süleymaniye, Mimar Sinan Cd., 34116 Fatih/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 24,
+   "Muze Adi": "İstanbul Sanat Müzesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2024",
+   "Adres": "Bedrettin Mah. Şişhane Cad.No:57 Beyoğlu/İst.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 19:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 25,
+   "Muze Adi": "İtfaiye Müzesi",
+   "Ilce Adi": "Beşiktaş",
+   "Acilis Yili": "2024",
+   "Adres": "Yıldız, Çitlembik Yokuşu, Horoz Sk. No:1, 34349 Beşiktaş/İstanbul",
+   "Telefon": "0212 259 91 24",
+   "Calisma Saatleri": "09:00 - 17:00",
+   "Calisma Gunleri": "Hafta içi: 09:00 - 17:00 / Hafta sonu: Kapalı"
+  },
+  {
+   "_id": 26,
+   "Muze Adi": "Kağıthane Sanat",
+   "Ilce Adi": "Kâğıthane",
+   "Acilis Yili": "2024",
+   "Adres": "Merkez, Mermerciler Sk. 10, 34406 Kâğıthane",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 27,
+   "Muze Adi": "Karikatür ve Mizah Müzesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2024",
+   "Adres": "Hasanpaşa, İkbaliye Sk. No:39, 34722 Kadıköy/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00 ",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 28,
+   "Muze Adi": "Kemal Sunal Müzesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2024",
+   "Adres": "Caddebostan Mah. Göztepe 60. Yıl Parkı Kadıköy/ist.",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 29,
+   "Muze Adi": "Maltepe Sanat",
+   "Ilce Adi": "Maltepe",
+   "Acilis Yili": "2024",
+   "Adres": "Altayçeşme, Maltepe Cumhuriyet Meydanı Alt Geçiti, Maltepe",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 30,
+   "Muze Adi": "Mecidiyeköy Sanat Galerisi",
+   "Ilce Adi": "Şişli",
+   "Acilis Yili": "2024",
+   "Adres": "Mecidiyeköy Meydanı, Şişli",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 31,
+   "Muze Adi": "Saraçhane Sergi Salonu",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "İstanbul Büyükşehir Belediye Başkanlığı Kemalpaşa Mh. 15 Temmuz Şehitleri Cd. No:5",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 32,
+   "Muze Adi": "Taş Mektep Müze",
+   "Ilce Adi": "Adalar",
+   "Acilis Yili": "2024",
+   "Adres": "Nizam Mah. Kadıyoran Cad. Büyükada/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 33,
+   "Muze Adi": "Tekfur Sarayı Müzesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "Ayvansaray mh. Şişhane cd. Fatih Ayvansaray, 34087 Fatih/İstanbul",
+   "Telefon": "0212 525 61 30",
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 34,
+   "Muze Adi": "Yerebatan Sarnıcı Müzesi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "Alemdar, Yerebatan Cad. 1/3, Fatih / İstanbul",
+   "Telefon": "0212 233 47 23",
+   "Calisma Saatleri": "09:00 - 22:00 ",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 35,
+   "Muze Adi": "Yedikule Gazhane Hangar",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2024",
+   "Adres": "Yedikule Mahallesi Fatih / İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 36,
+   "Muze Adi": "Turhan Selçuk Müzesi",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2025",
+   "Adres": "Caferağa Mah. Cem Sk. No:6 Kadıköy / istanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 21:00",
+   "Calisma Gunleri": "Hergün"
+  },
+  {
+   "_id": 37,
+   "Muze Adi": "Dudullu Sanat Galerisi",
+   "Ilce Adi": "Ümraniye",
+   "Acilis Yili": "2025",
+   "Adres": "Yukarı Dudullu Ümraniye/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00-18:00",
+   "Calisma Gunleri": "Pazartesi-Cuma"
+  },
+  {
+   "_id": 38,
+   "Muze Adi": "Metrohan",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2025",
+   "Adres": "Şahkulu Mah. Çukur, Erkanı Harp Sok. No: 2 Beyoğlu/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 39,
+   "Muze Adi": "Baruthane Galeri",
+   "Ilce Adi": "Bakırköy",
+   "Acilis Yili": "2025",
+   "Adres": "Ataköy 2-5-6. Kısım Mahallesi, Rauf Orbay Caddesi",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 40,
+   "Muze Adi": "Müze Gazhane P Binası",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2025",
+   "Adres": "Hasanpaşa, İkbaliye Sokak  No:39, 34722",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 41,
+   "Muze Adi": "Müze Gazhane L Binası",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2025",
+   "Adres": "Hasanpaşa, İkbaliye Sokak  No:39, 34722",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 42,
+   "Muze Adi": "Müze Gazhane C Binası",
+   "Ilce Adi": "Kadıköy",
+   "Acilis Yili": "2025",
+   "Adres": "Hasanpaşa, İkbaliye Sokak  No:39, 34722",
+   "Telefon": null,
+   "Calisma Saatleri": "10:00 - 18:00",
+   "Calisma Gunleri": "Salı-Pazar"
+  },
+  {
+   "_id": 43,
+   "Muze Adi": "Atatürk Kitaplığı Sanat Galerisi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2025",
+   "Adres": "Miralay Şefik Bey Sokak  No: 6 Taksim",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 44,
+   "Muze Adi": "Kuyumcular Hanı Müzesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2025",
+   "Adres": "Arap Camii Mah. Tersane Cad.No:77 Beyoğlu/ist",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 45,
+   "Muze Adi": "İstanbul Boğaziçi Müzesi",
+   "Ilce Adi": "Beyoğlu",
+   "Acilis Yili": "2025",
+   "Adres": "Ömer Avni, Meclis-i Mebusan Cd. No:30, 34427 Beyoğlu/İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 46,
+   "Muze Adi": "Polyektus Kazıevi",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2025",
+   "Adres": "İskender Paşa, Kavalalı Sok., Fatih",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 47,
+   "Muze Adi": "Bukoleon Sarayı",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2025",
+   "Adres": "Bukoleon Sarayı, Küçük Ayasofya, Kennedy Caddesi 40, 34122, Fatih, İstanbul,",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  },
+  {
+   "_id": 48,
+   "Muze Adi": "Million Taşı",
+   "Ilce Adi": "Fatih",
+   "Acilis Yili": "2025",
+   "Adres": "Alemdar, Divanyolu Caddesi, 34110, Fatih, İstanbul",
+   "Telefon": null,
+   "Calisma Saatleri": null,
+   "Calisma Gunleri": null
+  }
+ ]
+}
