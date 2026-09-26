@@ -35,7 +35,7 @@ AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit lane-gates architecture \
-        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console console-offline eval eval-knowledge eval-record eval-live fixtures places \
+        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console console-offline eval eval-knowledge numbers eval-record eval-live fixtures places \
         sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
 
@@ -119,6 +119,9 @@ eval:  ## run the journey eval offline into reports/eval (gitignored); never wri
 
 eval-knowledge:  ## validate the locked knowledge question set with fixed offline unknown answers
 	$(PY) eval/run_knowledge_eval.py --questions eval/knowledge_questions.jsonl --offline
+
+numbers:  ## WRITES eval/results/numbers.md and numbers.json: tools, tests and eval counts (no network)
+	NABIZ_OFFLINE=1 $(PY) scripts/demo_numbers.py --write
 
 eval-record:  ## WRITES eval/results: an offline run kept as evidence (Integrator or owner only)
 	$(PY) eval/run_eval.py --offline $(EVAL_ARGS)

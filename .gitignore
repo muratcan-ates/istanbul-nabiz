@@ -17,6 +17,8 @@ data/console/
 data/reference/gtfs/
 docs/screenshots/*.mov
 eval/results/*.json
+# The numbers sheet (scripts/demo_numbers.py --write) is evidence, like numbers.md beside it.
+!eval/results/numbers.json
 logs/
 # pytest --junitxml output (CI and make ci-local); its test ids quote the trailers and
 # addresses the guardrail tests feed in.
