@@ -133,12 +133,8 @@
   "dyn.kind_schedule": "Tarifeye göre",
   "dyn.kind_unknown": "Veri yaşı bilinmiyor",
   "dyn.stale": "Eski olabilir, 153 ile teyit edin",
-  "dyn.conflict_title": "Kaynaklar farklı söylüyor",
-  "dyn.conflict_check": "153 ile teyit edin.",
   "dyn.listen": "Dinle",
-  "dyn.listen_unsupported": "Bu tarayıcı sesli okumayı desteklemiyor.",
   "dyn.listen_stopped": "Okuma durduruldu.",
-  "dyn.listen_on": "Okunuyor.",
   "dynp.live": "Canlı veri ·",
   "dynp.recorded": "Kayıtlı veri ·",
   "dynp.measured": "Ölçüm ·"

@@ -133,12 +133,8 @@
   "dyn.kind_schedule": "Based on the timetable",
   "dyn.kind_unknown": "Data age unknown",
   "dyn.stale": "May be out of date, check with 153",
-  "dyn.conflict_title": "The sources disagree",
-  "dyn.conflict_check": "Check with 153.",
   "dyn.listen": "Listen",
-  "dyn.listen_unsupported": "This browser does not support reading aloud.",
   "dyn.listen_stopped": "Reading stopped.",
-  "dyn.listen_on": "Reading aloud.",
   "dynp.live": "Live data ·",
   "dynp.recorded": "Recorded data ·",
   "dynp.measured": "Measurement ·"

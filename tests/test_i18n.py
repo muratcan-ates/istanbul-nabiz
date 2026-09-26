@@ -21,8 +21,8 @@ STATIC = REPO_ROOT / "src" / "nabiz" / "console" / "static"
 I18N = STATIC / "i18n"
 LANGS = ("tr", "en", "ar")
 E07_KEYS = {
-    "dyn.kind_page", "dyn.kind_schedule", "dyn.kind_unknown", "dyn.stale", "dyn.conflict_title",
-    "dyn.conflict_check", "dyn.listen", "dyn.listen_unsupported", "dyn.listen_stopped", "dyn.listen_on",
+    "dyn.kind_page", "dyn.kind_schedule", "dyn.kind_unknown", "dyn.stale",
+    "dyn.listen", "dyn.listen_stopped",
     "dynp.live", "dynp.recorded", "dynp.measured",
 }
 

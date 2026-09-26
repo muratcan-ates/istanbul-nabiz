@@ -133,12 +133,8 @@
   "dyn.kind_schedule": "حسب جدول المواعيد",
   "dyn.kind_unknown": "عمر البيانات غير معروف",
   "dyn.stale": "قد تكون قديمة، تحقّق عبر 153",
-  "dyn.conflict_title": "المصادر لا تتفق",
-  "dyn.conflict_check": "تحقّق عبر 153.",
   "dyn.listen": "استمع",
-  "dyn.listen_unsupported": "هذا المتصفح لا يدعم القراءة بصوت عالٍ.",
   "dyn.listen_stopped": "توقفت القراءة.",
-  "dyn.listen_on": "جارٍ القراءة.",
   "dynp.live": "بيانات مباشرة ·",
   "dynp.recorded": "بيانات مسجّلة ·",
   "dynp.measured": "قياس ·"
