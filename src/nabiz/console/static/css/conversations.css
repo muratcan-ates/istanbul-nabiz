@@ -1,0 +1,25 @@
+.convo-root, .convo-root * { box-sizing: border-box; }
+.convo-root { min-width: 0; max-width: 100%; color: var(--text); }
+.convo-toggle, .convo-new, .convo-clear, .convo-delete, .convo-open { max-width: 100%; min-height: var(--tap); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--text); font: inherit; }
+.convo-toggle, .convo-new, .convo-clear, .convo-delete { padding: var(--space-2) var(--space-3); cursor: pointer; }
+.convo-panel { display: grid; gap: var(--space-3); width: 100%; min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.convo-panel[hidden] { display: none; }
+.convo-header, .convo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.convo-heading { flex: 1 1 10rem; min-width: 0; margin: 0; }
+.convo-actions { justify-content: flex-end; }
+.convo-list { display: grid; gap: var(--space-2); min-width: 0; max-width: 100%; margin: 0; padding: 0; list-style: none; }
+.convo-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); min-width: 0; max-width: 100%; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-control); }
+.convo-open { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); min-width: 0; padding: var(--space-2); text-align: start; cursor: pointer; }
+.convo-title { min-width: 0; overflow-wrap: anywhere; font-weight: var(--weight-semibold); }
+.convo-date, .convo-note, .convo-empty, .convo-unavailable, .convo-privacy, .convo-status { min-width: 0; margin: 0; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.convo-note, .convo-status { grid-column: 1 / -1; }
+.convo-delete { align-self: start; }
+.convo-toggle:focus-visible, .convo-new:focus-visible, .convo-clear:focus-visible, .convo-delete:focus-visible, .convo-open:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+@media (max-width: 48rem) {
+  .convo-panel { padding: var(--space-3); }
+  .convo-actions { justify-content: flex-start; }
+  .convo-item { gap: var(--space-1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .convo-root, .convo-root * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
