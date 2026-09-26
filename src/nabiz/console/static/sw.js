@@ -1,7 +1,6 @@
-/* v7 (integration of 26 Sep: DECISIONS #38 quota strip, example account, follows; #39 the request card and its sheet;
-   #40 the 112 card's text in the visitor languages; #41 the İBB Açık Veri section): bump VERSION when this worker's
-   behavior or shell changes. */
-const VERSION = 'v7';
+/* v8 (integration of 26 Sep, second round: E24 the lift report, E21 the quick-question chips, E23 the model strip;
+   v7 was DECISIONS #38-#41): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v8';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -41,6 +40,8 @@ const SHELL = [
   '/js/emergency_text.js',
   // DECISIONS #41: the İBB Açık Veri section
   '/js/open_data.js', '/css/open_data.css',
+  // DECISIONS #42 (E24): the one-tap lift report under the step-free card
+  '/js/report.js', '/css/report.css',
 ];
 
 function ruleFor(url, method, mode) {

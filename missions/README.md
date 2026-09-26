@@ -53,6 +53,7 @@ snapshot; the console adds the time and the provenance and wraps them as `nexus_
 | `long_outage` | the same fields, emitted when `outage_hours` > 24 |
 | `hub_faults` | `hub`, `fault_count`, `equipment_list`, `lines` |
 | `source_stale` | `source`, `age_text`, `age_minutes`, `last_known_text` |
+| `citizen_report` | `station`, `line`, `report_kind`, `bucket`, `report_text`, `lift_status`, `lift_text`, `operator_text` |
 
 `outage_hours` counts from İBB's `Date`, whose meaning is undocumented (it may be when the fault
 began or when service should resume), so `outage_hours_basis` is `ibb_date` and cards say so.
@@ -72,5 +73,6 @@ began or when service should resume), so `outage_hours_basis` is `ibb_date` and 
   watched car park fills up, R-08 air quality at the watched place, R-09 the watched line's measured
   bunching history: each alert's own message is the card text, and each goes to a person (Arena).
   Signal field: `text` (plus `alert_rule`, `dedupe_key`).
+- [`vatandas_bildirimi.toml`](vatandas_bildirimi.toml): R-10 vatandaş bildirimi her zaman insana (Arena); refleks yok.
 
 Wording in every template: never "çalışıyor"; the most a card says is "İBB kaydında arıza yok".

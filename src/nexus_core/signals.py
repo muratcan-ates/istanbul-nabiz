@@ -39,6 +39,7 @@ SIGNAL_TITLES: dict[str, str] = {
     "parking_full": "Otopark doluyor",
     "air_quality": "Hava kalitesi",
     "bus_bunching": "Otobüs yığılması",
+    "citizen_report": "Vatandaş bildirimi",
 }
 
 

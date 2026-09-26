@@ -44,6 +44,9 @@ MIN_APPROVALS = 3
 WINDOW_DAYS = 30
 EXPIRES_DAYS = 30
 FIRST_LEARNED_ID = 101
+#: Signal kinds a person must always see: a citizen's own report (R-10, E24) never becomes a learned reflex,
+#: however often operators approve the same answer.
+NEVER_DRAFTED = frozenset({"citizen_report"})
 
 
 class DraftNotFound(KeyError):
@@ -91,7 +94,7 @@ class AdoptedRule(BaseModel):
 
 
 def pattern_of(state: SignalState) -> Pattern | None:
-    if state.decision is None:
+    if state.decision is None or state.signal.kind in NEVER_DRAFTED:
         return None
     equipment = state.signal.payload.get("equipment_type")
     return Pattern(

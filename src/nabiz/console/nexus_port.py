@@ -32,11 +32,12 @@ import datetime as dt
 import hashlib
 import logging
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from ibb_mcp.tools import Nabiz
 from nabiz.console.ports import OPERATOR, PortConflict
+from nabiz.console.report_api import support_counts, support_step_text, support_summary
 from nabiz.console.rules_api import revoke_learned, rule_registry
 from nabiz.console.signals import CITY_WATCH, Incoming, alert_incoming, equipment_incoming
 from nexus_core import Approval, DecisionConflict, NexusEngine, Operator
@@ -85,6 +86,8 @@ SOURCE_TR = {
 OTHER_STEPS = {
     "expired": "Süresi doldu: kart son karar zamanına kadar yanıtlanmadı; vatandaşa bir şey yayımlanmadı.",
 }
+#: Ledger steps whose sentence reads the entry's detail (E24: a citizen's report folded into an open card).
+DETAIL_STEPS: dict[str, Callable[[Mapping[str, Any]], str]] = {"citizen_support": support_step_text}
 
 
 def board_key(state_or_incoming: SignalState | Incoming) -> tuple[str, str, str | None]:
@@ -160,7 +163,7 @@ def describe_step(kind: str, detail: dict[str, Any]) -> str:  # noqa: PLR0911 - 
         reason = (detail.get("reason") or "gerekçe yazılmadı").rstrip(". ")
         published = detail.get("published_text")
         return f"{action}. Gerekçe: {reason}." + (f" Yayımlanan metin: {published}" if published else "")
-    return OTHER_STEPS.get(kind, kind)
+    return DETAIL_STEPS.get(kind, lambda _detail: OTHER_STEPS.get(kind, kind))(detail)
 
 
 def titled(title: str, state: SignalState) -> str:
@@ -278,10 +281,14 @@ class NexusConsole:
         # before the queue is read, so the page never offers a decision the core would refuse.
         await asyncio.to_thread(self.engine.expire)
         states = self.engine.states()
+        counts = support_counts(self.engine)
         payload = queue_payload(states.values())
         for item in payload["items"]:
             item["title"] = titled(item["title"], states[item["signal_id"]])
             item["operator_summary"] = states[item["signal_id"]].signal.payload.get("operator_text", item["summary"])
+            if item["signal_id"] in counts:
+                item["operator_summary"] = support_summary(states[item["signal_id"]], counts[item["signal_id"]])
+                item["support_count"] = counts[item["signal_id"]]
         payload["reading_sources"] = reading
         return payload
 

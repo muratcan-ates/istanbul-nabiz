@@ -2092,3 +2092,38 @@ project measured (guardrail `stale-claims`). AGENTS.md §4: no session calls an 
 - Gates (26 Sep, sprint flag): `make lane-gates` 3075 passed, 2 skipped, 3 xfailed; architecture 0 failed;
   guardrails 14 checks 0 failed; `make eval` 66/66; `make smoke` 18 tools; `make web-budget` 12 PASS 1 TARGET
   0 FAIL; numbers sheet `eval/results/numbers.md`.
+
+## 42. Vatandaş asansör bildirimi (E24, 26 Eyl): a citizen's lift report always goes to a person
+
+**Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep); merged from `gun3/vatandas-ariza-bildirimi`
+and wired at the integration merge.
+
+### Context
+
+The step-free card shows İBB's lift record, which can lag or be wrong. A person standing at a closed lift had no
+way to say so. The report must not become a way to change a public card without a person, and must not collect
+personal data.
+
+### Decision
+
+- `POST /api/report` takes only `{station, kind, bucket}` (`not_working` / `data_wrong`, `now` / `today`); any other
+  field is refused. No text, no location, no identity; the address is only an in-memory key for 3 reports a
+  minute. The station must match İBB's list exactly (a prefix is refused).
+- Mission R-10 (`missions/vatandas_bildirimi.toml`): a `citizen_report` signal always goes to the Arena, a person
+  decides; no reflex. A report never changes the public card by itself; only an approved card is published, and it
+  says "Bu bilgi vatandaş bildirimidir; İBB kaydıyla doğrulanmadı."
+- Folding: reports on the same `{station, kind}` within 30 minutes fold into the card that still awaits a person,
+  sealed as `citizen_support` ledger entries; the console shows "N kişi bildirdi". A decided card never takes a fold,
+  so the reply "Bildiriminiz İBB çalışanının kuyruğuna düştü" stays true. A report that arrives while the first card
+  is still in the Arena (status `received`) folds into it instead of opening a twin.
+- Integration condition: `nexus_core.rule_drafts.NEVER_DRAFTED = {"citizen_report"}`. However often operators
+  approve citizen reports, no learned-rule draft comes of them (R-10 is "always a person");
+  `tests/test_report_api.py::test_citizen_reports_never_become_rule_drafts`.
+
+### Consequences
+
+- Wiring at the merge: `report_routes` in the app, `report.css`/`report.js` on the page and in the service worker
+  shell (v8), `SIGNAL_TITLES["citizen_report"]`, the console queue's support count and ledger sentence
+  (`nexus_port.DETAIL_STEPS`), the lift card's `data-station`/`data-lift`, the published card's "how" tool
+  (`TOOL_BY_SIGNAL`), and a KVKK paragraph.
+- The 30-minute window and the per-minute limit are design parameters, not measurements.

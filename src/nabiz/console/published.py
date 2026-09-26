@@ -26,7 +26,10 @@ EQUIPMENT_KINDS = frozenset({"equipment_fault", "hub_faults", "long_outage"})
 KIND_BY_SIGNAL = {
     "long_outage": "metro_equipment", "hub_faults": "metro_equipment", "equipment_fault": "metro_equipment",
     "source_stale": "metro_equipment", "parking_full": "parking", "air_quality": "air", "bus_bunching": "metro_status",
+    "citizen_report": "metro_equipment",
 }
+#: The "how" line's tool for a card that did not come from an MCP tool (E24: a citizen's approved report).
+TOOL_BY_SIGNAL = {"citizen_report": "citizen_report"}
 
 
 class PublishedCards:
@@ -114,7 +117,7 @@ class PublishedCards:
             published_at = state.published_at
             latency_ms = (published_at - state.received_at).total_seconds() * 1000 if published_at else None
 
-        tool = "metro_equipment_signals" if signal.kind in EQUIPMENT_KINDS else "check_alerts"
+        tool = TOOL_BY_SIGNAL.get(signal.kind, "metro_equipment_signals" if signal.kind in EQUIPMENT_KINDS else "check_alerts")
         how = how_view(
             tool, provenance, rule_id=rule_id, signal_id=signal.signal_id,
             uncertainty=uncertainty, latency_ms=latency_ms,

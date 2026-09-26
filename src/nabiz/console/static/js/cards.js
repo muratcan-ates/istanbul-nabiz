@@ -108,7 +108,8 @@ function alternativeCard(data) {
       + '<a href="tel:153">153</a> ile teyit edin.</p>';
     status = data.stale ? 'stale' : 'warning';
   }
-  return `<article class="card card-in is-${status}" id="alternative-card" aria-labelledby="alternative-t">`
+  return `<article class="card card-in is-${status}" id="alternative-card" data-station="${esc(data.station || '')}" `
+    + `data-lift="${lift}" aria-labelledby="alternative-t">`
     + `<span class="card-kind">${icon('elevator')}</span>`
     + '<h3 class="card-title" id="alternative-t">Asansör ve adımsız yol</h3>'
     + body

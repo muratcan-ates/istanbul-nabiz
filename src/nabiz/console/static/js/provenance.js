@@ -13,7 +13,7 @@ const TOOL_TR = {
   metro_equipment_signals: 'Metro ekipman sinyalleri', check_alerts: 'şehir uyarıları',
   traffic_index: 'trafik indeksi', air_quality_now: 'hava kalitesi', air_quality_forecast: 'hava kalitesi tahmini',
   plan_journey: 'yolculuk karşılaştırması', line_reliability: 'hat güvenilirliği', city_freshness: 'veri tazeliği',
-  ibb_datasets_search: 'açık veri kataloğu',
+  ibb_datasets_search: 'açık veri kataloğu', citizen_report: 'vatandaş bildirimi',
 };
 
 const SOURCE_TR = {

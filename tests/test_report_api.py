@@ -407,3 +407,20 @@ def test_report_files_follow_the_page_rules() -> None:
         assert forbidden not in javascript
     assert "min-height: var(--tap)" in css
     assert "@media (forced-colors: active)" in css
+
+
+def test_citizen_reports_never_become_rule_drafts(report_client) -> None:
+    """Integration condition for E24: three approved citizen reports at three stations would meet
+    MIN_APPROVALS, but R-10 always goes to a person, so no learned-rule draft may come of them."""
+    client, engine, clock, _ = report_client
+    client.app.state.report_limiter = TurnLimiter(60)
+    for station in ("Kartal", "Taksim", "Yenikapı"):
+        assert post_report(client, station=station).status_code == 200, station
+        clock.advance(minutes=1)
+    states = citizen_states(engine)
+    assert len(states) == 3
+    for state in states:
+        engine.decide(approve(state.signal.signal_id, reason="Saha teyit etti"))
+        clock.advance(minutes=1)
+    assert all(state.status != "awaiting_approval" for state in citizen_states(engine))
+    assert [draft for draft in engine.drafts.drafts() if draft.pattern.kind == REPORT_KIND] == []
