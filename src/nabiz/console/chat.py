@@ -2,9 +2,8 @@
 
     event: tool   data {"name", "status": "start"|"end"}      live, as the agent calls İBB tools
     event: token  data {"text"}                                the answer, in order
-    event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion",
-                        "refused", "how", "mode", "steps", "emergency", "guard", "hazard", "lang",
-                        "masked_count", "masked_kinds"}
+    event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how",
+                        "mode", "steps", "emergency", "guard", "hazard", "lang", "masked_count", "masked_kinds"}
 
 **The answer streams after it is checked.** :class:`~nabiz.agent.NabizAgent` verifies every
 number in the model's prose against the tool results before it returns (and asks the model
@@ -84,9 +83,8 @@ TURN_CALLS = 6
 MODEL_TURNS_AT_ONCE = 3
 #: What an İBB failure becomes, for the model and for the page.
 UPSTREAM_DOWN = "doğrulanamadı"
-#: Sources that are a timetable or this repository's own reference files, never a live reading.
+#: Sources that are a timetable or reference files (the open-data catalogue: the owner's capture), never a live reading.
 SCHEDULE_SOURCES = frozenset({"iett_schedule", "gtfs"})
-#: The open-data catalogue is a copy made by the owner, as old as its capture: "recorded", never "live".
 REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places", "ibb_catalog"})
 #: A model answer may name a price only when the person asked about car parks (İSPARK's tariff).
 _TARIFF_TOOLS = frozenset({"ispark_find_parking", "ispark_park_detail", "ispark_typical_occupancy"})
