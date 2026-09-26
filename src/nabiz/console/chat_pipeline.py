@@ -13,6 +13,11 @@ service-page index); everything here takes values and returns values, with no I/
   system prompt.
 - **after**: :func:`final_body`, :func:`how_block`, :func:`refusal_events` and
   :func:`emergency_events` write the ``token`` and ``final`` events.
+- **the trace**: :class:`TurnTrace` records the stages the turn really went through and the checks
+  it ran, and every ``final`` carries them as ``how.chain`` and ``how.checks`` (the "Bu nasıl
+  bulundu?" panel's "Adımlar" and "Kontroller" rows). Names and verdicts only: no question, no
+  answer, no quote, no URL ever enters it. A stage that is not wired yet, or that the turn never
+  reached, is not listed.
 
 Policy functions are reached through the :mod:`~nabiz.console.policy` module, not imported by
 name, so a test can record the order in which a turn consults them.
@@ -23,8 +28,9 @@ from __future__ import annotations
 import json
 import re
 import time
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from nabiz.console import policy
@@ -38,6 +44,11 @@ HISTORY_CHARS_KEPT = 600
 _WORDS_PER_TOKEN_EVENT = 3
 
 EarlyVerdict = Literal["emergency", "sensitive"]
+#: The turn's stages in order. B01 runs acil, hassas, arac_bilgi and cikti; the rest are wired in B01b.
+STAGES = ("girdi", "acil", "hassas", "maske", "katman", "dil", "arac_bilgi", "cikti")
+#: The checks a ``final`` reports: ``True`` passed, ``False`` caught something, ``None`` not applied.
+CHECKS = ("girdi", "hassas", "sayi", "kanit", "cikti")
+StepStatus = Literal["gecti", "cevapladi", "hata"]
 
 
 class Turn(Protocol):
@@ -66,12 +77,49 @@ def text_pieces(text: str) -> list[str]:
     return ["".join(words[i : i + _WORDS_PER_TOKEN_EVENT]) for i in range(0, len(words), _WORDS_PER_TOKEN_EVENT)]
 
 
-def early_verdict(message: str, earlier: Sequence[str]) -> EarlyVerdict | None:
+@dataclass
+class TurnTrace:
+    """The stages one turn went through and the checks it ran, in memory, for ``final.how``."""
+
+    chain: list[dict[str, str]] = field(default_factory=list)
+    checks: dict[str, bool | None] = field(default_factory=lambda: dict.fromkeys(CHECKS))
+
+    @contextmanager
+    def step(self, name: str) -> Iterator[None]:
+        """Record a stage as passed when it starts; an exception out of it marks it ``hata``."""
+        if name not in STAGES:
+            raise ValueError(f"unknown stage {name!r}")
+        self.chain.append({"name": name, "status": "gecti"})
+        try:
+            yield
+        except BaseException:
+            self.mark("hata")
+            raise
+
+    def mark(self, status: StepStatus, stage: str | None = None) -> None:
+        """Set the status of ``stage`` (its last run), or of the last stage recorded."""
+        for item in reversed(self.chain):
+            if stage is None or item["name"] == stage:
+                item["status"] = status
+                return
+
+    def how_fields(self, checks: Mapping[str, bool | None] | None = None) -> dict[str, Any]:
+        return {"chain": [dict(item) for item in self.chain], "checks": {**self.checks, **(checks or {})}}
+
+
+def early_verdict(message: str, earlier: Sequence[str], trace: TurnTrace | None = None) -> EarlyVerdict | None:
     """Whether the turn ends before any tool or model: an emergency first, then the refusal rule."""
-    if policy.emergency_intent(message):
-        return "emergency"
-    if policy.refuses_in_context(message, earlier):
-        return "sensitive"
+    trace = trace if trace is not None else TurnTrace()
+    with trace.step("acil"):
+        if policy.emergency_intent(message):
+            trace.mark("cevapladi")
+            return "emergency"
+    with trace.step("hassas"):
+        sensitive = policy.refuses_in_context(message, earlier)
+        trace.checks["hassas"] = not sensitive
+        if sensitive:
+            trace.mark("cevapladi")
+            return "sensitive"
     return None
 
 
@@ -98,7 +146,9 @@ def system_prompt(needs: Sequence[str], base: str) -> str:
     return "\n\n".join(parts)
 
 
-def how_block(answer: AgentAnswer | None, started: float, *, rule_id: str | None) -> dict[str, Any]:
+def how_block(
+    answer: AgentAnswer | None, started: float, *, rule_id: str | None, trace: TurnTrace | None = None
+) -> dict[str, Any]:
     """The "Bu nasıl bulundu?" panel's data: each tool call with its source, and the turn's time."""
     tools = []
     for call in answer.tool_calls if answer is not None else []:
@@ -119,11 +169,12 @@ def how_block(answer: AgentAnswer | None, started: float, *, rule_id: str | None
         "rule_id": rule_id,
         "uncertainty": [],
         "latency_ms": round(elapsed_s * 1000, 1),
+        **(trace if trace is not None else TurnTrace()).how_fields(),
     }
 
 
-def empty_how(started: float, *, rule_id: str | None) -> dict[str, Any]:
-    return how_block(None, started, rule_id=rule_id)
+def empty_how(started: float, *, rule_id: str | None, trace: TurnTrace | None = None) -> dict[str, Any]:
+    return how_block(None, started, rule_id=rule_id, trace=trace)
 
 
 def final_body(
@@ -170,7 +221,12 @@ def refusal_events(
     return answer_events(answer, cited or [], "kural", suggestion, fields)
 
 
-def emergency_events(suggestion: Any, started: float) -> list[str]:
+def traced_refusal(suggestion: Any, started: float, trace: TurnTrace) -> list[str]:
+    """:func:`refusal_events` with the turn's trace in its ``how``."""
+    return refusal_events(suggestion, started, how=empty_how(started, rule_id="refusal", trace=trace))
+
+
+def emergency_events(suggestion: Any, started: float, trace: TurnTrace | None = None) -> list[str]:
     """The emergency redirect: one ``final`` with no text; the page shows 112 itself."""
-    fields = FinalFields(refused=False, how=empty_how(started, rule_id=None), mode="redirect", emergency=True)
+    fields = FinalFields(refused=False, how=empty_how(started, rule_id=None, trace=trace), mode="redirect", emergency=True)
     return [sse("final", final_body("", [], "kural", suggestion, fields))]
