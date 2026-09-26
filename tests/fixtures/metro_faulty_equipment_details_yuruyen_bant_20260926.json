@@ -1,0 +1,108 @@
+{
+ "Success": true,
+ "Error": null,
+ "Data": [
+  {
+   "Lines": [],
+   "Stations": [],
+   "Equipments": [
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 31,
+     "StationName": "Seyrantepe",
+     "Location": "",
+     "Type": "Çalıştırılmıyor",
+     "Date": "2024-10-23T00:00:00.000",
+     "Description": "S07/TRA/04"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 31,
+     "StationName": "Seyrantepe",
+     "Location": "",
+     "Type": "Çalıştırılmıyor",
+     "Date": "2024-10-23T00:00:00.000",
+     "Description": "S07/TRA/03"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 31,
+     "StationName": "Seyrantepe",
+     "Location": "",
+     "Type": "Çalıştırılmıyor",
+     "Date": "2024-10-23T00:00:00.000",
+     "Description": "S07/TRA/02"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 31,
+     "StationName": "Seyrantepe",
+     "Location": "",
+     "Type": "Çalıştırılmıyor",
+     "Date": "2024-10-23T00:00:00.000",
+     "Description": "S07./TRA/01"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 3,
+     "LineName": "M4",
+     "StationId": 10,
+     "StationName": "Maltepe",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-24T00:00:00.000",
+     "Description": "S10_MW_352"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 3,
+     "LineName": "M4",
+     "StationId": 4,
+     "StationName": "Ünalan",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-24T00:00:00.000",
+     "Description": "SF_MW_102"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 3,
+     "LineName": "M4",
+     "StationId": 4,
+     "StationName": "Ünalan",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-06-04T00:00:00.000",
+     "Description": "SF_MW_254"
+    },
+    {
+     "Code": "YURYNBANT",
+     "Group": "Yürüyen Bant",
+     "LineId": 3,
+     "LineName": "M4",
+     "StationId": 4,
+     "StationName": "Ünalan",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-07-31T00:00:00.000",
+     "Description": "SF_MW_253"
+    }
+   ]
+  }
+ ]
+}

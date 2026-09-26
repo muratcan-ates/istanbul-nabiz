@@ -86,5 +86,37 @@
   "bytes": 13354,
   "seconds": 0.38,
   "captured_at_utc": "2026-09-08T06:09:00+00:00"
+ },
+ {
+  "name": "metro_faulty_equipments_20260926",
+  "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipments",
+  "captured_at_utc": "2026-09-26T02:15:37+00:00",
+  "seconds": 0.15,
+  "status": 200,
+  "bytes": 2334
+ },
+ {
+  "name": "metro_faulty_equipment_details_asansor_20260926",
+  "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails",
+  "captured_at_utc": "2026-09-26T02:15:44+00:00",
+  "seconds": 0.11,
+  "status": 200,
+  "bytes": 2620
+ },
+ {
+  "name": "metro_faulty_equipment_details_yuruyen_merdiven_20260926",
+  "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails",
+  "captured_at_utc": "2026-09-26T02:15:50+00:00",
+  "seconds": 0.11,
+  "status": 200,
+  "bytes": 11394
+ },
+ {
+  "name": "metro_faulty_equipment_details_yuruyen_bant_20260926",
+  "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails",
+  "captured_at_utc": "2026-09-26T02:15:57+00:00",
+  "seconds": 0.12,
+  "status": 200,
+  "bytes": 2441
  }
 ]

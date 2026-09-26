@@ -1,0 +1,120 @@
+{
+ "Success": true,
+ "Error": null,
+ "Data": [
+  {
+   "Lines": [],
+   "Stations": [],
+   "Equipments": [
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 32,
+     "StationName": "İTÜ-Ayazağa",
+     "Location": "",
+     "Type": "Revizyon",
+     "Date": "2026-07-20T00:00:00.000",
+     "Description": "S09/LFP/101"
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 30,
+     "StationName": "Sanayi Mahallesi",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-24T00:00:00.000",
+     "Description": "S08/LFP/101"
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 24,
+     "StationName": "Taksim",
+     "Location": "",
+     "Type": "Revizyon",
+     "Date": "2026-04-14T00:00:00.000",
+     "Description": "S1T/LFP/202"
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 1,
+     "LineName": "M2",
+     "StationId": 24,
+     "StationName": "Taksim",
+     "Location": "",
+     "Type": "Revizyon",
+     "Date": "2026-04-14T00:00:00.000",
+     "Description": "S1T/LFP/201"
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 5,
+     "LineName": "M5",
+     "StationId": 136,
+     "StationName": "Necip Fazıl",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-16T00:00:00.000",
+     "Description": "S15/LFP/351"
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 5,
+     "LineName": "M5",
+     "StationId": 242,
+     "StationName": "Sarıgazi",
+     "Location": "",
+     "Type": "Revizyon",
+     "Date": "2026-09-22T00:00:00.000",
+     "Description": null
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 6,
+     "LineName": "M6",
+     "StationId": 140,
+     "StationName": "Etiler",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-25T00:00:00.000",
+     "Description": "M6S3/LFP/601"
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 17,
+     "LineName": "M9",
+     "StationId": 229,
+     "StationName": "Halkalı Caddesi",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-25T00:00:00.000",
+     "Description": null
+    },
+    {
+     "Code": "ASANSOR",
+     "Group": "Asansör",
+     "LineId": 13,
+     "LineName": "T4",
+     "StationId": 88,
+     "StationName": "50.Yıl-Baştabya",
+     "Location": "",
+     "Type": "Arıza",
+     "Date": "2026-09-24T00:00:00.000",
+     "Description": null
+    }
+   ]
+  }
+ ]
+}
