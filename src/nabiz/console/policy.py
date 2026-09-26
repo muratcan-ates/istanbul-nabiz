@@ -15,7 +15,8 @@ question ("Peki öğrenciler için ne kadar?"), and the model's own prompt
 own data.
 
 **An emergency comes first** (:func:`emergency_intent`): the page shows 112 before any model,
-tool or refusal. "acil" and "düştü" count only with company ("acil yardım", "annem düştü").
+tool or refusal. "acil" and "düştü" count only with company ("acil yardım", "annem düştü"); a gas
+leak or smell ("gaz kaçağı", "doğalgaz kokusu") counts alone.
 
 **Needs are functional constraints, nothing else.** The page may send a few profile keys
 ("step_free", "stroller" …). Only the keys in :data:`NEEDS` pass, as one line of constraint
@@ -132,7 +133,14 @@ EMERGENCY_TERMS = {"acil": ("yangin", "ambulans", "polis", "siddet", "kalp", "ba
 #: Whole words: "kaza" must not catch "kazan dairesi".
 _EMERGENCY_WORDS = ("kaza", "kazasi", "yarali", "yaralilar", "kanama", "kalp krizi", "intihar", "saldiri")
 #: Verb stems from a word boundary, so the person endings pass ("boğuluyorum", "yaralandık").
-_EMERGENCY_STEMS = ("yaraland", "kaniyor", "nefes alamiyor", "boguluyor", "bilincini kaybet")
+#: A gas leak or smell is an emergency on its own, with no person in the sentence: "gaz kaçağı var".
+#: "doğalgaz" is one word, so its phrases are listed apart; "gaz faturası" and "doğalgaz aboneliği"
+#: match none of these.
+_EMERGENCY_STEMS = (
+    "yaraland", "kaniyor", "nefes alamiyor", "boguluyor", "bilincini kaybet",
+    "gaz kacag", "gaz kaciyor", "gaz koku", "gaz sizinti",
+    "dogalgaz kacag", "dogalgaz kaciyor", "dogalgaz koku", "dogalgaz sizinti",
+)  # fmt: skip
 _EMERGENCY_RE = re.compile(r"\b(?:" + "|".join(_EMERGENCY_WORDS) + r")\b|\b(?:" + "|".join(_EMERGENCY_STEMS) + ")")
 #: "acil" is an emergency only next to one of these ("acil yardım", "acil, biri düştü").
 _URGENT = re.compile(r"\bacil\b")

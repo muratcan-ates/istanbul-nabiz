@@ -155,6 +155,24 @@ def test_acil_and_dustu_alone_are_not_an_emergency(question: str) -> None:
     assert not emergency_intent(question)
 
 
+@pytest.mark.parametrize(
+    "question",
+    ["gaz kaçağı var", "Gaz kokusu var", "Doğalgaz kaçağı var galiba", "doğal gaz kokuyor", "Evde gaz kaçıyor",
+     "Mutfakta doğalgaz sızıntısı var", "Merdivende gaz kokusu geliyor"],
+)  # fmt: skip
+def test_a_gas_leak_is_an_emergency_on_its_own(question: str) -> None:
+    assert emergency_intent(question)
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["Gaz faturası nereden ödenir?", "Doğalgaz aboneliği nasıl yapılır?", "Doğalgaz faturamı nasıl öderim?",
+     "Doğalgaz açma randevusu nasıl alınır?", "Gaz sayacı ne zaman okunur?", "Doğalgaz aboneliğini nasıl kapatırım?"],
+)  # fmt: skip
+def test_a_gas_account_question_is_not_an_emergency(question: str) -> None:
+    assert not emergency_intent(question)
+
+
 def test_the_first_vocabulary_still_matches_as_a_word_prefix() -> None:
     # "polis" has redirected to 112 since the first vocabulary; kept on purpose, not widened.
     assert emergency_intent("Polis merkezi nerede?")

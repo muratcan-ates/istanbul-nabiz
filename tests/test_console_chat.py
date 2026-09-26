@@ -351,7 +351,9 @@ def test_an_emergency_redirect_never_calls_the_model_or_tools(nabiz: Nabiz, monk
     assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
 
 
-@pytest.mark.parametrize("question", ["acil, biri düştü", "Kaza oldu, yaralı var", "Annem düştü kalkamıyor"])
+@pytest.mark.parametrize(
+    "question", ["acil, biri düştü", "Kaza oldu, yaralı var", "Annem düştü kalkamıyor", "gaz kaçağı var", "Doğalgaz kokusu var"]
+)
 def test_the_wider_emergency_vocabulary_redirects_before_the_model(
     nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch, question: str
 ) -> None:
@@ -360,6 +362,13 @@ def test_the_wider_emergency_vocabulary_redirects_before_the_model(
     with client_for(nabiz, CLOUD) as client:
         _, final = ask(client, question)
     assert final["mode"] == "redirect" and final["emergency"] is True and fake.calls == []
+
+
+@pytest.mark.parametrize("question", ["Doğalgaz faturası nereden ödenir?", "Doğalgaz aboneliği nasıl yapılır?"])
+def test_a_gas_account_question_is_not_an_emergency(nabiz: Nabiz, question: str) -> None:
+    with client_for(nabiz, llm.LlmConfig()) as client:
+        _, final = ask(client, question)
+    assert final["emergency"] is False and final["mode"] != "redirect"
 
 
 def test_an_assembly_area_question_is_not_an_emergency(nabiz: Nabiz) -> None:
