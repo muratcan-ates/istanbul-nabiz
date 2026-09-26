@@ -31,3 +31,15 @@ def metro_route(folded: str, line: re.Match[str] | None) -> tuple[str, dict[str,
     if asks_about_service(folded):
         return "", {"reason": "scope"}
     return "metro_status", {"line": line.group(1).upper() if line else None}
+
+
+#: Words that ask about a station's lifts or escalators: İBB's fault record answers those, not
+#: the station list (whose lift count says nothing about whether one is out of service).
+EQUIPMENT_WORDS = ("asansor", "yuruyen merdiven", "yuruyen bant", "lift", "elevator", "escalator")
+
+
+def station_route(folded: str, place: str) -> tuple[str, dict[str, Any]]:
+    """A station question: its fault record when it names a lift or an escalator, else its facilities."""
+    if any(word in folded for word in EQUIPMENT_WORDS):
+        return "metro_equipment_status", {"station": place}
+    return "metro_station_info", {"name": place}

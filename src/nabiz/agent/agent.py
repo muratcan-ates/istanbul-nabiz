@@ -42,8 +42,9 @@ from ibb_mcp.text import normalize_tr
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import injection, llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
-from nabiz.agent.metro_route import metro_route
+from nabiz.agent.metro_route import metro_route, station_route
 from nabiz.agent.minutes import with_shown_minutes
+from nabiz.agent.open_data_route import dataset_route
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS, build_tool_schemas
 from nabiz.agent.templates import (
     ATTRIBUTION_LINE,
@@ -246,16 +247,11 @@ def _stop_name(question: str) -> str | None:
     return " ".join(words[-3:]) if words else None
 
 
-#: Words that ask about a station's lifts or escalators: İBB's fault record answers those, not
-#: the station list (whose lift count says nothing about whether one is out of service).
-_EQUIPMENT_WORDS = ("asansor", "yuruyen merdiven", "yuruyen bant", "lift", "elevator", "escalator")
-
-
-def _station_route(text: str, place: str) -> tuple[str, dict[str, Any]]:
-    """A station question: its fault record when it names a lift or an escalator, else its facilities."""
-    if any(word in text for word in _EQUIPMENT_WORDS):
-        return "metro_equipment_status", {"station": place}
-    return "metro_station_info", {"name": place}
+def _city_route(text: str) -> tuple[str, dict[str, Any]] | None:
+    """The city-wide readings that need no place: the traffic index, then the data's age."""
+    if _has(text, "traffic"):
+        return "traffic_index", {"window": "24h" if "dun" in text or "yesterday" in text else "now"}
+    return ("city_freshness", {}) if _has(text, "fresh") else None
 
 
 class NabizAgent:
@@ -465,13 +461,15 @@ class NabizAgent:
     def route(self, question: str) -> tuple[str, dict[str, Any]]:  # noqa: C901, PLR0912 - debt, ratcheted in scripts/architecture_baseline.json
         """Pick one tool by keyword. The whole of "no LLM" mode's intelligence lives here."""
         text = normalize_tr(question)
+        if (catalogue := dataset_route(text, question)) is not None:
+            return catalogue  # "İBB'nin otopark verisi var mı?" asks for a dataset, not a car park
         place = self._find_place(question)
         if _has(text, "air"):
             if not place:
                 return "", _NEEDS_PLACE_REASON
             return ("air_quality_forecast" if _has(text, "window") else "air_quality_now"), {"place": place}
         if _has(text, "station") and place and not _has(text, "stop"):
-            return _station_route(text, place)
+            return station_route(text, place)
         # A bus line code outranks the word "metro": "500T 4. Levent metroya ne zaman
         # gelir" is a bus question whose destination happens to be a metro station.
         line_code = _bus_line(question)
@@ -489,10 +487,8 @@ class NabizAgent:
             return "iett_line_buses", {"line_code": line_code}
         if _has(text, "stop"):
             return "iett_stops_search", {"query": _stop_name(question) or place or question}
-        if _has(text, "traffic"):
-            return "traffic_index", {"window": "24h" if "dun" in text or "yesterday" in text else "now"}
-        if _has(text, "fresh"):
-            return "city_freshness", {}
+        if (city := _city_route(text)) is not None:
+            return city
         if place:
             return "places_resolve", {"query": place}
         # Nothing matched and no place was named. Answering "how old is the data?" to

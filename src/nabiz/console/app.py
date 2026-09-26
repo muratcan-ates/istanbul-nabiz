@@ -63,6 +63,7 @@ from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
 from nabiz.console.map_layers_api import map_layers_routes
 from nabiz.console.nearby_api import nearby_router
+from nabiz.console.open_data_api import open_data_routes
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
 from nabiz.console.policy import functional_needs
@@ -305,6 +306,7 @@ def build_console_app(
     app.include_router(feedback_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
+    app.include_router(open_data_routes)
     app.include_router(how_routes)
     app.include_router(map_layers_routes)
     app.include_router(agency_routes)

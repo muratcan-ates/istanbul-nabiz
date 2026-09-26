@@ -70,6 +70,7 @@ from nabiz.console import text_guard
 from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
+from nabiz.console.open_data_api import dataset_citations
 from nabiz.console.pii_guard import mask, mask_turn, pii_final_fields
 from nabiz.console.policy import emergency_hazard, functional_needs, memory_suggestion, names_a_price
 
@@ -84,7 +85,8 @@ MODEL_TURNS_AT_ONCE = 3
 UPSTREAM_DOWN = "doğrulanamadı"
 #: Sources that are a timetable or this repository's own reference files, never a live reading.
 SCHEDULE_SOURCES = frozenset({"iett_schedule", "gtfs"})
-REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places"})
+#: The open-data catalogue is a copy made by the owner, as old as its capture: "recorded", never "live".
+REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places", "ibb_catalog"})
 #: A model answer may name a price only when the person asked about car parks (İSPARK's tariff).
 _TARIFF_TOOLS = frozenset({"ispark_find_parking", "ispark_park_detail", "ispark_typical_occupancy"})
 #: The citation source of a service-page quote (the page's label: "Hizmet sayfaları (yerel dizin)").
@@ -173,7 +175,7 @@ def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
             "age_s": _age_s(as_of) if as_of else None,
             "mode": source_mode(item.get("source"), offline=offline) if as_of else "unknown",
         })
-    return result
+    return result + dataset_citations(answer.tool_calls)
 
 
 def author_for(config: llm.LlmConfig) -> str:
