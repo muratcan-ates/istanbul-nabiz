@@ -10,6 +10,7 @@ const INSTITUTIONS = {
   IBB: 'İBB',
   IBB_OPEN_DATA: 'İBB Açık Veri Portalı',
   IETT: 'İETT',
+  IGDAS: 'İGDAŞ',
   ISKI: 'İSKİ',
   ISPARK: 'İSPARK',
   METRO_ISTANBUL: 'Metro İstanbul',

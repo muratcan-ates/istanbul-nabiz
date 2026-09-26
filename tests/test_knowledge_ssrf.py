@@ -69,23 +69,56 @@ def test_seed_counts_after_q1() -> None:
     rows = parse_knowledge_sources(SOURCES)
     accepted = [row for row in rows if is_allowed_url(row.url)]
     rejected = [row for row in rows if not is_allowed_url(row.url)]
-    assert (len(rows), len(accepted), len(rejected)) == (330, 319, 11)
+    assert (len(rows), len(accepted), len(rejected)) == (373, 362, 11)
     assert len({row.url for row in rows}) == len(rows), "duplicate URL in sources.txt"
     crawl = [row for row in accepted if row.crawlable]
-    assert len(crawl) == 314
+    assert len(crawl) == 357
     # mevzuat.gov.tr has two rows, so 11 rejected rows cover 10 hosts.
     assert {urlsplit(row.url).hostname for row in rejected} == REJECTED_HOSTS
     # Q2 = E: the card's public site is in, exact host only.
     assert "www." + "istanbulkart" + ".istanbul" in {urlsplit(row.url).hostname for row in accepted}
 
 
+def _section_urls() -> dict[str, list[str]]:
+    """URL rows per ``# ===== BÖLÜM N`` header, in file order."""
+    sections: dict[str, list[str]] = {}
+    current = ""
+    for line in SOURCES.read_text(encoding="utf-8").splitlines():
+        if line.startswith("# ===== BÖLÜM "):
+            current = line.removeprefix("# ===== BÖLÜM ").split(":", 1)[0]
+            sections[current] = []
+        elif line.startswith(("http://", "https://")):
+            sections[current].append(line.split("\t", 1)[0])
+    return sections
+
+
+def test_row_counts_per_section() -> None:
+    counts = {name: len(urls) for name, urls in _section_urls().items()}
+    assert counts == {"1": 14, "2": 9, "3": 39, "4": 11, "5": 257, "6": 43}
+
+
 def test_e26_section_is_crawlable_and_inside_the_allowlist() -> None:
-    lines = SOURCES.read_text(encoding="utf-8").splitlines()
-    start = next(i for i, line in enumerate(lines) if line.startswith("# ===== BÖLÜM 5: E26"))
-    e26 = {line.split("\t", 1)[0] for line in lines[start:] if line.startswith("https://")}
+    e26 = set(_section_urls()["5"])
     rows = [row for row in parse_knowledge_sources(SOURCES) if row.url in e26]
     assert len(rows) == len(e26) == 257
     assert all(row.crawlable and row.verified and is_allowed_url(row.url) for row in rows)
+
+
+def test_gemini_section_is_unverified_crawlable_and_inside_the_allowlist() -> None:
+    """Section 6 (26 Sep): Gemini's İSKİ/İGDAŞ/Şehir Hatları candidates, never opened; ingest weeds out 404s."""
+    sections = _section_urls()
+    gemini = set(sections["6"])
+    earlier = {url for name, urls in sections.items() if name != "6" for url in urls}
+    assert not gemini & earlier
+    rows = [row for row in parse_knowledge_sources(SOURCES) if row.url in gemini]
+    assert len(rows) == len(gemini) == 43
+    assert all(row.crawlable and not row.verified and is_allowed_url(row.url) for row in rows)
+    assert all(row.note.startswith("Gemini, doğrulanmadı: ") for row in rows)
+    by_institution = {code: sum(row.institution == code for row in rows) for code in ("ISKI", "IGDAS", "SEHIR_HATLARI")}
+    assert by_institution == {"ISKI": 15, "IGDAS": 15, "SEHIR_HATLARI": 13}
+    hosts = {urlsplit(row.url).hostname for row in rows}
+    assert hosts == {"www." + "iski" + ".istanbul", "www." + "igdas" + ".istanbul", "sehirhatlari" + ".istanbul"}
+    assert not any("google." in row.url or "utm_" in row.url for row in rows)
 
 
 @pytest.mark.parametrize("host", AFFILIATE_HOSTS)

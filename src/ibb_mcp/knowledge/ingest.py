@@ -95,6 +95,11 @@ def canonical_url(url: str) -> str:
     return parts._replace(fragment="").geturl()
 
 
+#: A note containing any of these marks its row as unverified in the ingest report ("doğrulanmadı":
+#: section 6, Gemini's candidates that nobody opened).
+UNVERIFIED_NOTE_MARKERS = ("erişilemedi", "?", "doğrulanamadı", "doğrulanmadı", "unverified")
+
+
 def parse_knowledge_sources(path: str | pathlib.Path) -> list[Source]:
     """Read tabular source metadata, preserving uncertain rows for transparent reports."""
     rows = []
@@ -109,7 +114,7 @@ def parse_knowledge_sources(path: str | pathlib.Path) -> list[Source]:
             continue
         url, institution, category, content_type, risk, note = cells
         normalized_note = note.casefold()
-        verified = not any(marker in normalized_note for marker in ("erişilemedi", "?", "doğrulanamadı", "unverified"))
+        verified = not any(marker in normalized_note for marker in UNVERIFIED_NOTE_MARKERS)
         crawlable = "crawl tohumu değil" not in section and category not in {
             "robots",
             "mevzuat-fsek",

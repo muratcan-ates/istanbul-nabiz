@@ -352,3 +352,51 @@ https://imarmudurlugu.ibb.istanbul/dokumanlar	IBB	ruhsat-imar-e-belediye	html	or
 https://imarmudurlugu.ibb.istanbul/hizmetkategori/imar-durum-belgesi	IBB	ruhsat-imar-e-belediye	html	yuksek	İmar durum belgesi: İmar durum belgesi hizmetinin başvuru ve kapsam bilgilerini veriyor; mevzuat ve işlem koşulları değişebilir; tarih yok.
 https://imarmudurlugu.ibb.istanbul/hizmetkategori/proje-onay-ve-yapi-ruhsati-islemleri	IBB	ruhsat-imar-e-belediye	html	yuksek	Proje onay ve yapı ruhsatı: Proje onayı ve yapı ruhsatı hizmet kategorilerinin işlem bilgisini sunuyor; güncel belge ve mevzuat ayrıca teyit edilmeli; tarih yok.
 https://imarmudurlugu.ibb.istanbul/hizmetkategori/siluet-onayi-ve-mesk	IBB	ruhsat-imar-e-belediye	html	orta	Siluet onayı ve MESK: Siluet onayı ve MESK hizmetlerinin kapsam ve resmi yönlendirmesini veriyor; tarih yok.
+#
+# ===== BÖLÜM 6: Gemini listesi (26.09.2026) — DOĞRULANMADI; yol kalıpları tahmin olabilir, ingest 404/robots ile eler =====
+# Kaynak: Gemini'nin İSKİ/İGDAŞ/Şehir Hatları URL listesi (26.09.2026). Hiçbir satır açılıp okunmadı; Google yönlendirme sarmalayıcısı ve utm_source=gemini temizlendi.
+# 45 adaydan 2'si Bölüm 5'te zaten var (sehirhatlari.istanbul/tr/seferler/ic-hatlar, /bogaz-turlari), eklenmedi. Üç host da allowlist'te (exact). 404 veren sayfa dizine girmez.
+# url	kurum	kategori	icerik_turu	risk	not
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/yeni-abonelik	ISKI	abonelik	html	orta	Gemini, doğrulanmadı: Yeni su ve atıksu aboneliği başvuru koşulları ve evraklar
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/abonelik-devri	ISKI	abonelik	html	orta	Gemini, doğrulanmadı: Aboneliğin devri süreci
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/abonelik-fesih	ISKI	abonelik	html	yuksek	Gemini, doğrulanmadı: Abonelik kapatma ve fesih adımları
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/guvence-bedeli	ISKI	guvence-bedeli	html	yuksek	Gemini, doğrulanmadı: Fesih sonrası güvence bedeli hesaplama ve iadesi
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/fatura-itiraz	ISKI	fatura	html	orta	Gemini, doğrulanmadı: Fatura itiraz usulü
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/fatura-odeme-kanallari	ISKI	fatura	html	orta	Gemini, doğrulanmadı: Ödeme kanalları
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/su-kesintileri	ISKI	kesinti	html	orta	Gemini, doğrulanmadı: Planlı ve arıza kesintilerini sorgulama
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/ariza-bildirimi	ISKI	ariza	html	orta	Gemini, doğrulanmadı: Şebeke arızası bildirimi
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/su-tarifeleri	ISKI	tarife	html	dusuk	Gemini, doğrulanmadı: Su ve atıksu birim fiyatları
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/sosyal-tarife	ISKI	sosyal-tarife	html	orta	Gemini, doğrulanmadı: İndirimli tarife şartları
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/sayac-islemleri	ISKI	sayac	html	orta	Gemini, doğrulanmadı: Sayaç kontrol ve değişim
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/subelerimiz	ISKI	hizmet-noktalari	html	dusuk	Gemini, doğrulanmadı: Şube adres ve saatleri
+https://www.iski.istanbul/web/tr-TR/musteri-hizmetleri/online-basvuru	ISKI	online-islemler	html	orta	Gemini, doğrulanmadı: E-İSKİ dijital başvurular
+https://www.iski.istanbul/web/tr-TR/iletisim/iletisim-bilgileri	ISKI	iletisim	html	dusuk	Gemini, doğrulanmadı: Alo 185 ve iletişim
+https://www.iski.istanbul/web/tr-TR/iletisim/iletisim-formu	ISKI	iletisim	html	dusuk	Gemini, doğrulanmadı: Online şikâyet/istek formu
+https://www.igdas.istanbul/tr/abonelik-islemleri/yeni-abonelik	IGDAS	abonelik	html	orta	Gemini, doğrulanmadı: Yeni bağlantı ve bağlantı bedeli
+https://www.igdas.istanbul/tr/abonelik-islemleri/sozlesme-yapma	IGDAS	abonelik	html	orta	Gemini, doğrulanmadı: Kullanım sözleşmesi imzalama
+https://www.igdas.istanbul/tr/abonelik-islemleri/sozlesme-fesih	IGDAS	abonelik	html	yuksek	Gemini, doğrulanmadı: Sözleşme feshi
+https://www.igdas.istanbul/tr/abonelik-islemleri/guvence-bedeli-iadesi	IGDAS	guvence-bedeli	html	yuksek	Gemini, doğrulanmadı: Teminat iadesi IBAN/PTT
+https://www.igdas.istanbul/tr/abonelik-islemleri/gaz-acma-randevusu	IGDAS	randevu	html	yuksek	Gemini, doğrulanmadı: İç tesisat kontrolü ve gaz açma randevusu
+https://www.igdas.istanbul/tr/fatura-ve-odeme/fatura-itiraz	IGDAS	fatura	html	orta	Gemini, doğrulanmadı: Fatura itirazı
+https://www.igdas.istanbul/tr/fatura-ve-odeme/odeme-noktalari	IGDAS	fatura	html	orta	Gemini, doğrulanmadı: Ödeme noktaları
+https://www.igdas.istanbul/tr/fatura-ve-odeme/dogalgaz-fiyat-tarifeleri	IGDAS	tarife	html	dusuk	Gemini, doğrulanmadı: Doğalgaz fiyat tarifeleri
+https://www.igdas.istanbul/tr/fatura-ve-odeme/taksitlendirme	IGDAS	fatura	html	orta	Gemini, doğrulanmadı: Borç taksitlendirme
+https://www.igdas.istanbul/tr/hizmetler/planli-kesintiler	IGDAS	kesinti	html	orta	Gemini, doğrulanmadı: Planlı gaz kesintileri
+https://www.igdas.istanbul/tr/hizmetler/sayac-islemleri	IGDAS	sayac	html	orta	Gemini, doğrulanmadı: Sayaç işlemleri
+https://www.igdas.istanbul/tr/hizmetler/yetkili-firmalar	IGDAS	tesisat	html	yuksek	Gemini, doğrulanmadı: Yetkili iç tesisat firmaları
+https://www.igdas.istanbul/tr/iletisim/hizmet-binalari	IGDAS	hizmet-noktalari	html	dusuk	Gemini, doğrulanmadı: Hizmet binaları
+https://www.igdas.istanbul/tr/iletisim/iletisim-bilgileri	IGDAS	iletisim	html	dusuk	Gemini, doğrulanmadı: 187 acil hattı ve iletişim
+https://www.igdas.istanbul/tr/musteri-hizmetleri/sikayet-oneri	IGDAS	iletisim	html	dusuk	Gemini, doğrulanmadı: Şikâyet ve öneri
+https://sehirhatlari.istanbul/tr/seferler/adalar-hatlari	SEHIR_HATLARI	sefer	html	dusuk	Gemini, doğrulanmadı: Adalar hatları
+https://sehirhatlari.istanbul/tr/seferler/iptal-seferler	SEHIR_HATLARI	sefer	html	orta	Gemini, doğrulanmadı: İptal seferler
+https://sehirhatlari.istanbul/tr/seferler/gunluk-sefer-tarifeleri	SEHIR_HATLARI	sefer	html	dusuk	Gemini, doğrulanmadı: Günlük sefer tarifeleri
+https://sehirhatlari.istanbul/tr/bilet-ve-ucretler/ucret-tarifesi	SEHIR_HATLARI	ucret	html	dusuk	Gemini, doğrulanmadı: Ücret tarifesi
+https://sehirhatlari.istanbul/tr/bilet-ve-ucretler/istanbulkart	SEHIR_HATLARI	ucret	html	orta	Gemini, doğrulanmadı: İstanbulkart kullanımı
+https://sehirhatlari.istanbul/tr/hizmetler/kayip-esya	SEHIR_HATLARI	kayip-esya	html	dusuk	Gemini, doğrulanmadı: Kayıp eşya
+https://sehirhatlari.istanbul/tr/hizmetler/engelli-yolcu-hizmetleri	SEHIR_HATLARI	erisilebilirlik	html	dusuk	Gemini, doğrulanmadı: Engelli yolcu hizmetleri
+https://sehirhatlari.istanbul/tr/hizmetler/bisiklet-ve-evcil-hayvan	SEHIR_HATLARI	hizmet	html	dusuk	Gemini, doğrulanmadı: Bisiklet ve evcil hayvan
+https://sehirhatlari.istanbul/tr/hizmetler/deniz-taksisi	SEHIR_HATLARI	deniz-taksi	html	orta	Gemini, doğrulanmadı: Deniz taksi
+https://sehirhatlari.istanbul/tr/hizmetler/gemi-kiralama	SEHIR_HATLARI	kiralama	html	orta	Gemini, doğrulanmadı: Gemi kiralama
+https://sehirhatlari.istanbul/tr/iskeleler	SEHIR_HATLARI	iskeleler	html	dusuk	Gemini, doğrulanmadı: İskeleler
+https://sehirhatlari.istanbul/tr/iletisim/bize-ulasin	SEHIR_HATLARI	iletisim	html	dusuk	Gemini, doğrulanmadı: Bize ulaşın
+https://sehirhatlari.istanbul/tr/iletisim/musteri-hizmetleri	SEHIR_HATLARI	iletisim	html	dusuk	Gemini, doğrulanmadı: Müşteri hizmetleri
