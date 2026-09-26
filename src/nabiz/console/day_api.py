@@ -11,6 +11,7 @@ from fastapi import APIRouter, Query, Request
 
 from nabiz.console.nexus_port import ACTION_TR, OPEN, titled
 from nabiz.console.operator import port_problem
+from nabiz.console.pii_guard import mask
 from nabiz.console.ports import OPERATOR
 from nexus_core import NexusEngine
 from nexus_core.ledger import EntryKind, LedgerEntry
@@ -80,7 +81,8 @@ def day_decisions(entries: Iterable[LedgerEntry], states: Mapping[str, SignalSta
                 "action": action,
                 "action_label": ACTION_TR.get(action, action),
                 "status": detail.get("status", ""),
-                "reason": detail.get("reason") or "",
+                # A free-text reason can carry a phone number or an ID; the table and the handoff show it masked (E14).
+                "reason": mask(detail.get("reason") or "")[0],
                 "decision_s": decision_s,
             }
         )
@@ -94,7 +96,7 @@ def open_cards(states: Mapping[str, SignalState]) -> list[dict[str, Any]]:
         if state.status not in OPEN:
             continue
         deferred = state.status == "deferred"
-        reason = state.rulings[-1].reason if deferred and state.rulings else ""
+        reason = mask(state.rulings[-1].reason)[0] if deferred and state.rulings else ""
         if not deferred:
             reason = "; ".join(REASON_TEXT.get(code, code) for code in state.reasons) or "gerekçe yok"
         rows.append(

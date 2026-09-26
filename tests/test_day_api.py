@@ -170,6 +170,19 @@ def test_open_cards_keep_their_reasons(tmp_path: Path) -> None:
     assert rows[1]["reason"] == expected
 
 
+def test_a_free_text_reason_is_masked_before_it_is_shown(tmp_path: Path) -> None:
+    clock = Clock()
+    engine = build_engine(tmp_path, clock)
+    clock.now = T0
+    signal_id = process(engine, long_outage(clock, "ASN-9@today"))
+    clock.advance(minutes=1)
+    engine.decide(approve(signal_id, "defer", "Ali Bey 0532 123 45 67 arayacak"))
+    rows = client(engine, clock=clock).get("/api/console/day?date=2026-09-25").json()
+    shown = [rows["decisions"][0]["reason"], *(item["reason"] for item in rows["open"]), rows["handoff"]]
+    assert all("0532" not in text and "45 67" not in text for text in shown)
+    assert "TELEFON" in rows["decisions"][0]["reason"]
+
+
 def test_rules_expiring_within_three_days(tmp_path: Path) -> None:
     from test_nexus_core_rule_drafts import spread
 
