@@ -1407,3 +1407,80 @@ This round (2026-09-26), from the lane notes and the product rules:
   The test was left as it is; aligning it with #29 until 2026-10-01 is the owner's call.
 - The home screen's band ("Yanıtları bir yapay zekâ asistanı yazar", #28) and the chat's AI notice band
   are two sentences about AI on one page; whether the home band should go is the owner's call.
+
+## 31. Dalga-1 GPT epikleri birleştirmesi (26 Eyl 2026): 21 epics merged and wired
+
+**Date:** 2026-09-26 · **Status:** Accepted for `gun2/entegrasyon`; the owner reviews it before anything is pushed
+
+### Context
+
+Twenty-one GPT epics (E01–E20, E25; E06 session A only) finished uncommitted in their own worktrees
+(`~/code/nabiz-gun3-<slug>`, branch `gun3/<slug>`, base `f244a51`; E25 on `93c16bf`). Each left a report
+(`RAPOR-E<NN>.md`, git-excluded) with its commit groups and an "Entegratöre not" for the shared files it was
+not allowed to touch (`app.py`, `index.html`, `console.html`, `chat.js`, `citizen.js`, `chat.py`).
+
+### Decision
+
+- **Lane commits.** 38 unsigned commits in the worktrees, from each report's commit groups, explicit paths only:
+  E01 2, E02 2, E03 2, E04 2, E05 2, E06 2 (A files only: `templates_i18n.py`, `i18n/{tr,en,ar}.json`,
+  `test_i18n.py`), E07 2, E08 1, E09 1, E10 1, E11 2, E12 2, E13 2, E14 2, E15 1, E16 2, E17 2, E18 2, E19 2
+  (a organs, b drill), E20 2, E25 2. No lane had written a hunk into a shared file, so no hunk was refused.
+- **Merges.** `git merge --no-ff` in the order console/independent (E17, E18, E19, E20, E14, E16, E15, E01, E02)
+  then citizen face (E07, E08, E03, E04, E05, E06, E09, E10, E11, E12, E13, E25): 21 merges, no conflict
+  (every lane added new files only).
+- **Wiring** (`76f633f..a067e61`). `app.py` registers agency, map layers, day, approval health, organs, drill,
+  chat pause and stop card routers before the static mount (each route once); `/api/chat` answers 503 while
+  paused (`chat_gate`, before the rate limiter); CSP names `worker-src 'self'` and `manifest-src 'self'`.
+  `segno` is the optional `qr` extra (pyproject, NOTICE.md, architecture allowlist for
+  `nabiz.console.stop_card`). `console.html` links the day/health/organs sheets, preloads and loads
+  `console_health.js`, `console_day.js`, `console_organs.js`, `console_kill.js`, with `#day`,
+  `#approval-health` and `#nx-organs` placeholders fixing the order; `console.js` fires `nabiz:decided`.
+  `index.html` gets the manifest and touch icon, `progress/answer_card/personas/conversations` sheets in the
+  head, the new modules (pwa and arrival confidence after citizen.js, easy_read after voice.js, my_stops after
+  share.js, map_layers and trip after map.js; emergency, agency, pii_badge, char_counter, service_status,
+  personas after feedback.js), `#my-stops`, `#convo-root`, and links to `/kolay.html` (nav and footer) and
+  `/offline.html` (footer). `kolay.html` loads pii_badge and service_status. `sw.js` goes to v2 and caches
+  every new module and `/kolay.html`. `kvkk.html` names every new device key. `a11y.js` lists Alt+Shift+O/D;
+  `share.js` leaves `?q=Yolculuk:` links to trip.js. `chat.js`: `renderAnswerCard` first, `answerCard` for
+  the emergency card and unknown modes; `progressLine` for tool events (into `#chat-status`); a
+  `nabiz:emergency` event with the language; `onTurn` per turn, `loadHistory`, the compaction note.
+  `citizen.js`: Sohbetlerim (`mountConversations`, lazy `newConversation`, `purgeOlderThan(30)`).
+  `day_api` masks free-text reasons with E14's `mask` (table, open cards, handoff).
+- **Tests changed on purpose.** The Kartal lift citation is `recorded` since the 26 Sep recording
+  (`test_answer_card_contract`); the stop-card app test no longer skips (included routers are lazy in this
+  FastAPI, so its route-list check never saw the wiring); four `dyn.*` strings for card parts E07 did not
+  build (conflict box, two Listen strings) left the catalogs and `E07_KEYS`; sw version v2 in
+  `test_pwa_static`; `kolay.html` joins `test_console_static.PAGES`; new kvkk keys in `test_static_a11y`;
+  a masking test in `test_day_api`. J9 in `eval/journeys.jsonl` expects the recorded state
+  (`lift_status == "working"`, `mode == "recorded"`); it already failed on `93c16bf`, before any merge.
+- **Gates** (2026-09-26, sprint flag): `make lint` pass; `make lane-gates` 2782 passed, 5 skipped, 3 xfailed,
+  architecture 0 FAIL, guardrails 0 FAIL; full `pytest tests` the same; `make eval` 60/60; `make web-budget`
+  12 PASS, 1 TARGET, 0 FAIL. E25's `plan_journey` warm-p95 failure did not reproduce here (sandbox load).
+
+### Consequences and open risks
+
+- **Left for B01 (`chat.py`)**: E14 server mask (`mask_turn` before retrieval/model, `masked_count` in the final
+  body, then the skipped `test_pii_guard` check); E15 `classify_turn` (greetings, follow-ups, split) and the
+  `small_talk`/`clarify` card with `shell.dataset.ruleId`; E16 `check_input`/`check_output`, the `guard` mode
+  and its plain card; E06 `lang` on `ChatRequest`, `fixed_text`/`quote_frame`, `lang` in the final body; E01
+  `emergency_intent or classify` (today's `emergency_intent` already catches "acil biri düştü"); E08 a `tool`
+  event on the knowledge path. E20 gates only `/api/chat`; `/api/knowledge/ask` stays open while paused.
+- **Left for E06 session B** (same worktree, now fast-forwarded to this branch): `i18n.js`, `rtl.css`, the
+  `index.html` line after disclosure.js and the `nabiz.lang.v1` kvkk row.
+- **Left for dalga-2 or the owner**: `/kolay` short route; E05↔E09 shared stop key; E03 elder preset link to
+  `/kolay.html#sor`; E10 removal of `#compare`/`journey.js` and `lift_status` in `alternatives_used`; E11
+  nearby.js "haritada göster"; E08 `transcript.js` labels; E13 `aria-describedby` offline note, stop-card
+  caching, and one offline band with B09; E17 actor handle in `traceList`; E18 `ConsolePort.approval_health()`;
+  E19/E20 `CHAT_PAUSED`/`CHAT_RESUMED` ledger kinds; E04 `voice.js` reads an emptied `.chat-text`.
+- **Owner decisions**: 153 link on the answer card under the hearing persona (E07/E03); "Polis merkezi
+  nerede?" stays an emergency (E01); İSKİ/İGDAŞ/İSPARK URLs and the 39 districts (E02); Arabic copy needs a
+  native reviewer (E06, E15); the persona 153 bar and the kolay 153 bar share a style (E03/E05).
+- **Deployment**: `data/agencies.json` is read from the checkout (`NABIZ_AGENCIES_PATH` overrides); the root
+  `Dockerfile` copies only `data/reference/`, and there is no `Dockerfile.console`, so the console image must
+  copy it before E02 works in a container. `segno` is not in `.venv`; until `make install EXTRAS=dev,web,qr`
+  (network, the owner's) `/d/{code}/qr.svg` serves the text fallback.
+- **Page weight**: `make web-budget` measures `src/nabiz/web/static`, not the console's citizen page. That page's
+  module graph grew from 21 JS files (147 KB raw / 51 KB gzip) to 40 (330 KB / 111 KB), and CSS from 6 to 10
+  files (42 → 51 KB raw). No budget covers it yet; many modules also watch `#chat-log` with their own observer.
+- **AI notice** stays once in the chat log (`disclosure.js`); the home band question from #30 is still open.
+  The "Resmî İBB hizmeti değildir" band is on every page, `kolay.html` included.
