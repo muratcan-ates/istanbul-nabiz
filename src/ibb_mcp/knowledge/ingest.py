@@ -115,12 +115,14 @@ def parse_knowledge_sources(path: str | pathlib.Path) -> list[Source]:
         url, institution, category, content_type, risk, note = cells
         normalized_note = note.casefold()
         verified = not any(marker in normalized_note for marker in UNVERIFIED_NOTE_MARKERS)
+        # 'oturum': giriş/oturum sayfaları (E39, e-şube); listede kayıt olarak durur, asla istenmez.
         crawlable = "crawl tohumu değil" not in section and category not in {
             "robots",
             "mevzuat-fsek",
             "mevzuat-bilgi-edinme",
             "ckan-api-doc",
             "robots-rfc",
+            "oturum",
         }
         rows.append(Source(url, institution, category, risk, note, verified, content_type, crawlable))
     return rows

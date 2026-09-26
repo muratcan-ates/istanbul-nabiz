@@ -400,3 +400,56 @@ https://sehirhatlari.istanbul/tr/hizmetler/gemi-kiralama	SEHIR_HATLARI	kiralama	
 https://sehirhatlari.istanbul/tr/iskeleler	SEHIR_HATLARI	iskeleler	html	dusuk	Gemini, doğrulanmadı: İskeleler
 https://sehirhatlari.istanbul/tr/iletisim/bize-ulasin	SEHIR_HATLARI	iletisim	html	dusuk	Gemini, doğrulanmadı: Bize ulaşın
 https://sehirhatlari.istanbul/tr/iletisim/musteri-hizmetleri	SEHIR_HATLARI	iletisim	html	dusuk	Gemini, doğrulanmadı: Müşteri hizmetleri
+#
+# ===== BÖLÜM 7: Grok (26.09.2026) · 45 URL · Grok açıp okudu; Nabız açmadı =====
+# Kaynak: Grok'un İSKİ/İGDAŞ/Şehir Hatları doğrulama listesi (26.09.2026, Murat iletti). http:// adresler https'e çevrildi; yol ve sorgu dizesi aynen.
+# Grok'un 49 URL'sinden 4'ü Bölüm 5'te zaten var, eklenmedi: sehirhatlari.istanbul/tr/ucret-tarifeleri, /tr/seferler/ic-hatlar, /tr/iletisim, /tr/basvuru-kanallari. Bölüm 6 (Gemini) ile birebir çakışan yok.
+# iski.istanbul/ (apex) Bölüm 3'teki www.iski.istanbul/ ile aynı site olabilir; host farklı, ikisi de kalır (E26'da www zaman aşımına düştü).
+# Yeni exact hostlar guardrails.DEFAULT_ALLOWLIST'te: iski.istanbul, cdn.iski.istanbul, grafikgoster.iski.gov.tr, esube.iski.gov.tr, www.sehirhatlari.istanbul, files.sehirhatlari.istanbul.
+# Kategori 'oturum' taranmaz (ingest.parse_knowledge_sources): e-şube giriş sayfası yalnız kayıt için listede.
+# url	kurum	kategori	icerik_turu	risk	not
+https://iski.istanbul/abone-hizmetleri/abone-rehberi/yenileme-abonelik-islemleri/	ISKI	abonelik	html	orta	Grok, 26.09.2026 açtı: yenileme aboneliği belgeleri ve teminat
+https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-iptal-islemleri/	ISKI	abonelik	html	orta	Grok, 26.09.2026 açtı: iptal belgeleri, kanallar, teminat iadesi
+https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-isim-degisikligi/	ISKI	abonelik	html	orta	Grok, 26.09.2026 açtı: isim değişikliği belgeleri
+https://iski.istanbul/abone-hizmetleri/abone-rehberi/yabanci-uyruklu-kisilerin-abonelik-islemleri	ISKI	abonelik	html	orta	Grok, 26.09.2026 açtı: yabancı uyruklu abonelik evrakı
+https://grafikgoster.iski.gov.tr/abone-hizmetleri/abone-rehberi/yeni-abonelik-islemleri/	ISKI	abonelik	html	orta	Grok, 26.09.2026 açtı: ilk abonelik belgeleri, iskân, teminat
+https://iski.istanbul/abone-hizmetleri/abone-rehberi/su-birim-fiyatlari	ISKI	tarife	html	dusuk	Grok, 26.09.2026 açtı: 2026 kademeli birim fiyatlar, insani su hakkı
+https://iski.istanbul/iletisim/sss	ISKI	fatura	html	dusuk	Grok, 26.09.2026 açtı: SSS: abonelik, iptal, teminat iadesi, fatura hesaplama
+https://iski.istanbul/iletisim/alo-185/	ISKI	ariza	html	dusuk	Grok, 26.09.2026 açtı: ALO 185 kanalları
+https://iski.istanbul/abone-hizmetleri/oedeme-kanallari/vezneler/tum-vezneler	ISKI	fatura	html	dusuk	Grok, 26.09.2026 açtı: vezne adres ve saatleri
+https://cdn.iski.istanbul/uploads/ISKI_ABONE_HIZMETLERI_TARIFE_VE_UYGULAMA_Y_Oe_NETMELIGI_2024_150ea718d2.pdf	ISKI	tarife	pdf	dusuk	Grok, 26.09.2026 açtı: tarife ve uygulama yönetmeliği (pdf)
+https://cdn.iski.istanbul/uploads/2023_SK_Hizmet_Envanteri_1e2db8b36d.pdf	ISKI	fatura	pdf	dusuk	Grok, 26.09.2026 açtı: hizmet envanteri (pdf)
+https://esube.iski.gov.tr/giris.aspx?eno=20	ISKI	oturum	html	yuksek	Grok, 26.09.2026 açtı: e-şube giriş sayfası; oturum sayfası, taranmaz
+https://esube.iski.gov.tr/files/mesafeliSozlesmeMetni.pdf	ISKI	abonelik	pdf	orta	Grok, 26.09.2026 açtı: mesafeli sözleşme (pdf)
+https://iski.istanbul/kurumsal/hakkimizda/icme-suyu-kalitesi/icilebilir-su-seruveni	ISKI	su-kalitesi	html	dusuk	Grok, 26.09.2026 açtı: arıtma süreci
+https://iski.istanbul/	ISKI	ana-sayfa	html	dusuk	Grok, 26.09.2026 açtı: ana sayfa
+https://cdn.iski.istanbul/uploads/aralik_su_kalite_68eddb759f.pdf	ISKI	su-kalitesi	pdf	dusuk	Grok, 26.09.2026 açtı: aylık analiz (pdf)
+https://www.igdas.istanbul/abonelik-sozlesmesi	IGDAS	abonelik	html	orta	Grok, 26.09.2026 açtı: sözleşme evrakı, güvence bedeli
+https://www.igdas.istanbul/sozlesme-fesih-iptal-islemi-kurumsal	IGDAS	abonelik	html	orta	Grok, 26.09.2026 açtı: kurumsal fesih, TÜFE güncellemeli iade
+https://www.igdas.istanbul/gecici-dogal-gaz-acmakapama/	IGDAS	abonelik	html	orta	Grok, 26.09.2026 açtı: geçici kapama-açma
+https://igdas.istanbul/gaz-acma-randevusu	IGDAS	randevu	html	orta	Grok, 26.09.2026 açtı: gaz açma randevusu süreci
+https://www.igdas.istanbul/gaz-acma-randevusu-kurumsal	IGDAS	randevu	html	orta	Grok, 26.09.2026 açtı: kurumsal gaz açma
+https://www.igdas.istanbul/para-iade-noktalari/	IGDAS	guvence-bedeli	html	dusuk	Grok, 26.09.2026 açtı: iade vezneleri
+https://igdas.istanbul/veznelerimiz/	IGDAS	fatura	html	dusuk	Grok, 26.09.2026 açtı: vezne saatleri
+https://www.igdas.istanbul/faturada-ne-nedir	IGDAS	fatura	html	dusuk	Grok, 26.09.2026 açtı: fatura kalemleri
+https://www.igdas.istanbul/tarifeler/	IGDAS	tarife	html	dusuk	Grok, 26.09.2026 açtı: bağlantı bedelleri, satış fiyatları
+https://www.igdas.istanbul/baglanti-tarifeleri/	IGDAS	abonelik	html	dusuk	Grok, 26.09.2026 açtı: bağlantı bedeli dilimleri
+https://igdas.istanbul/serbest-tuketici-satis/	IGDAS	tarife	html	dusuk	Grok, 26.09.2026 açtı: konut/serbest tüketici, şehit-gazi fiyatı
+https://igdas.istanbul/sabit-odeme-sistemi	IGDAS	fatura	html	orta	Grok, 26.09.2026 açtı: sabit ödeme sistemi
+https://www.igdas.istanbul/cagri-merkezi/	IGDAS	iletisim	html	dusuk	Grok, 26.09.2026 açtı: 187 ve ALO 153 süreçleri
+https://www.igdas.istanbul/dogal-gaz-acil-187	IGDAS	acil	html	yuksek	Grok, 26.09.2026 açtı: 187 ihbarında verilecek bilgiler, koku/yangın
+https://www.igdas.istanbul/724-sertifikali-firmalar	IGDAS	ariza	html	orta	Grok, 26.09.2026 açtı: 7/24 sertifikalı firmalar
+https://www.igdas.istanbul/periyodik-kontrol-islemleri/	IGDAS	randevu	html	orta	Grok, 26.09.2026 açtı: periyodik kontrol
+https://igdas.istanbul/cagri-merkezi-aydinlatma-metni/	IGDAS	iletisim	html	yuksek	Grok, 26.09.2026 açtı: KVKK aydınlatma metni
+https://sehirhatlari.istanbul/tr/seferler/ic-hatlar/istanbul-ici-hatlar/halic-hatti-37	SEHIR_HATLARI	sefer	html	dusuk	Grok, 26.09.2026 açtı: Haliç hattı saatleri
+https://sehirhatlari.istanbul/tr/seferler/ic-hatlar/adalar-hatlari/buyukada-sedef-adasi-hatti-895	SEHIR_HATLARI	sefer	html	dusuk	Grok, 26.09.2026 açtı: Büyükada-Sedef
+https://sehirhatlari.istanbul/tr/seferler/ic-hatlar/bogaz-hatlari/bogazdan-gelis-bogaza-gidis-167	SEHIR_HATLARI	sefer	html	dusuk	Grok, 26.09.2026 açtı: Boğaz hattı
+https://sehirhatlari.istanbul/en/timetables/domestic-trips/adalar-princes-islands-lines/kabatas-adalar-177	SEHIR_HATLARI	sefer	html	dusuk	Grok, 26.09.2026 açtı: Kabataş-Adalar (EN)
+https://www.sehirhatlari.istanbul/tr/duyurular/kis-tarifesinde-yapilan-yeni-duzenlemeler-2278	SEHIR_HATLARI	iptal	html	dusuk	Grok, 26.09.2026 açtı: kış tarifesi duyurusu
+https://sehirhatlari.istanbul/tr/sikca-sorulan-sorular	SEHIR_HATLARI	iptal	html	dusuk	Grok, 26.09.2026 açtı: SSS: iptal ve yolculuk hakları
+https://sehirhatlari.istanbul/tr/bilgiler/yolculuk-kurallari-249	SEHIR_HATLARI	kayip-esya	html	dusuk	Grok, 26.09.2026 açtı: yolculuk kuralları, kayıp eşya
+https://sehirhatlari.istanbul/tr/ibb-deniz-taksi-sikca-sorulan-sorular	SEHIR_HATLARI	ucret	html	orta	Grok, 26.09.2026 açtı: deniz taksi SSS
+https://sehirhatlari.istanbul/tr/bilgiler/erisilebilirlik-ve-sehir-hatlari-251	SEHIR_HATLARI	erisilebilirlik	html	dusuk	Grok, 26.09.2026 açtı: engelli erişimi
+https://files.sehirhatlari.istanbul/tarife.pdf?yaz=2026	SEHIR_HATLARI	sefer	pdf	dusuk	Grok, 26.09.2026 açtı: 2026 yaz tarifesi (pdf)
+https://sehirhatlari.istanbul/tr/gemiler	SEHIR_HATLARI	filo	html	dusuk	Grok, 26.09.2026 açtı: vapurlar
+https://sehirhatlari.istanbul/tr/kurumsal/hakkimizda-215	SEHIR_HATLARI	kurumsal	html	dusuk	Grok, 26.09.2026 açtı: hakkımızda

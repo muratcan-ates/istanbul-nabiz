@@ -43,6 +43,15 @@ DEFAULT_ALLOWLIST = frozenset(
         "www." + "kultur" + ".istanbul",
         "ihe" + ".istanbul",
         "www." + "ihe" + ".istanbul",
+        # E39 (26 Sep, Murat's request): İSKİ's apex and file hosts, its two iski.gov.tr hosts,
+        # and Şehir Hatları's www and file hosts; exact only, subdomains not reviewed.
+        # esube.iski.gov.tr is for the PDF only; its login page is never crawled (category: oturum).
+        "iski" + ".istanbul",
+        "cdn." + "iski" + ".istanbul",
+        "grafikgoster." + "iski" + ".gov.tr",
+        "esube." + "iski" + ".gov.tr",
+        "www." + "sehirhatlari" + ".istanbul",
+        "files." + "sehirhatlari" + ".istanbul",
     }
 )
 #: Municipal domains whose subdomains count as reviewed, when the domain itself is in the list.
