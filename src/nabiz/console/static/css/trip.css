@@ -1,0 +1,159 @@
+#yolculugum {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.trip-form,
+.trip-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.trip-form .field,
+.trip-option,
+.trip-card-section {
+  min-width: 0;
+}
+
+.trip-form input {
+  width: 100%;
+  min-width: 0;
+}
+
+.trip-form-actions,
+.trip-actions,
+.trip-map-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.trip-form .btn,
+.trip-card .btn {
+  min-height: var(--tap);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trip-card {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trip-card-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.trip-option {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+}
+
+.trip-option h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.trip-option.is-unavailable {
+  border-color: var(--border-strong);
+}
+
+.trip-metric {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.trip-metric b {
+  font-size: var(--text-lg);
+}
+
+.trip-detail,
+.trip-steps p,
+.trip-avoided p {
+  margin: 0;
+}
+
+.trip-card .card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.trip-stepfree {
+  min-width: 0;
+}
+
+.trip-stepfree > summary {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.trip-steps,
+.trip-station-lifts,
+.trip-avoided,
+.trip-points {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding-inline-start: var(--space-5);
+}
+
+.trip-steps > li,
+.trip-avoided > li {
+  min-width: 0;
+  padding: var(--space-2);
+  border-inline-start: 2px solid var(--border-strong);
+  overflow-wrap: anywhere;
+}
+
+.trip-avoided-state {
+  color: var(--text-muted);
+}
+
+.trip-map-links {
+  margin-block: var(--space-2);
+}
+
+.trip-actions {
+  margin-top: var(--space-2);
+}
+
+.trip-actions .btn {
+  flex: 0 1 auto;
+}
+
+#trip-share-status {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@media (min-width: 40rem) {
+  .trip-form,
+  .trip-compare {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trip-form-actions,
+  .trip-form > .field-hint {
+    grid-column: 1 / -1;
+  }
+}
