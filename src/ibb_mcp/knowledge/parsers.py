@@ -4,10 +4,9 @@
 from __future__ import annotations
 
 import re
-import shutil
-import subprocess
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from io import BytesIO
 
 from .chunking import PageBlock
 
@@ -155,28 +154,20 @@ def html_to_blocks(document: str, url: str = "") -> ParsedPage:
 
 
 def pdf_to_blocks(content: bytes) -> list[PageBlock]:
-    """Extract PDF text with BSD pypdf, then the system Poppler ``pdftotext`` utility."""
-    extracted: list[PageBlock] = []
+    """Extract PDF text with BSD pypdf only; Poppler (GPL) is never called.
+
+    Without pypdf the row reports ``skipped`` rather than falling back to a GPL tool, so the licence stays
+    visible in the ingest report instead of silently changing with what the machine has installed.
+    """
     try:
-        from io import BytesIO
-
         import pypdf
-
+    except ImportError as exc:
+        raise KnowledgeUnavailable("pypdf kurulu değil; PDF atlandı.", parser_status="skipped") from exc
+    try:
         reader = pypdf.PdfReader(BytesIO(content))
-        for number, page in enumerate(reader.pages, start=1):
-            text = clean_text(page.extract_text() or "")
-            if text:
-                extracted.append(PageBlock(text, page_number=number))
-        if extracted:
-            return extracted
-    except Exception:
-        pass
-    executable = shutil.which("pdftotext")
-    if executable:
-        try:
-            result = subprocess.run([executable, "-layout", "-", "-"], input=content, capture_output=True, check=True, timeout=30)
-            pages = result.stdout.decode("utf-8", errors="replace").split("\f")
-            return [PageBlock(clean_text(text), page_number=n) for n, text in enumerate(pages, 1) if clean_text(text)]
-        except (OSError, subprocess.SubprocessError):
-            pass
-    raise KnowledgeUnavailable("No supported PDF text parser is available.", parser_status="unsupported_pdf")
+        blocks = [PageBlock(t, page_number=n) for n, p in enumerate(reader.pages, 1) if (t := clean_text(p.extract_text() or ""))]
+    except Exception as exc:  # noqa: BLE001 - pypdf's own errors vary by version
+        raise KnowledgeUnavailable("PDF okunamadı.", parser_status="unsupported_pdf") from exc
+    if not blocks:
+        raise KnowledgeUnavailable("PDF'te okunur metin yok.", parser_status="unsupported_pdf")
+    return blocks

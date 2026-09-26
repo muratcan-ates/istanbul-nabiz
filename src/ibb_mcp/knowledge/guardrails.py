@@ -15,11 +15,14 @@ from .retrieve import Hit
 from .store import KnowledgeStore
 
 _GOV_HOST = "ibb" + ".gov.tr"
+_CITY_HOST = "ibb" + ".istanbul"
+#: The one reviewed host list: ingest fetches from it and evidence is verified against it
+#: (``ingest.ALLOWLIST`` is this object), so the two can never drift apart.
 DEFAULT_ALLOWLIST = frozenset(
     {
         _GOV_HOST,
         "www." + _GOV_HOST,
-        "ibb" + ".istanbul",
+        _CITY_HOST,
         "www." + "iski" + ".istanbul",
         "iett" + ".istanbul",
         "www." + "metro" + ".istanbul",
@@ -28,10 +31,16 @@ DEFAULT_ALLOWLIST = frozenset(
         "data." + _GOV_HOST,
         "istanbulsenin.istanbul",
         "istanbulkart.istanbul",
+        # Q2 (owner's decision E): the card's public site, exact host only; its subdomains are not reviewed.
+        "www." + "istanbulkart" + ".istanbul",
         "sehirhatlari.istanbul",
         "spor.istanbul",
     }
 )
+#: Municipal domains whose subdomains count as reviewed, when the domain itself is in the list.
+#: Q1 (owner's decision A): the city domain joins the government one, for the 12 service subdomains in the seed.
+ALLOWED_SUFFIXES: tuple[str, ...] = (_GOV_HOST, _CITY_HOST)
+
 _TAG = re.compile(r"<[^>]*>")
 _SCRIPT = re.compile(r"<(script|style)\b[^>]*>.*?</\1\s*>", re.IGNORECASE | re.DOTALL)
 _EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
@@ -46,15 +55,21 @@ class EvidenceValidation:
     dropped: list[str]
 
 
-def _host_allowed(url: str, allowlist: Iterable[str]) -> bool:
-    try:
-        host = (urlsplit(url).hostname or "").lower().rstrip(".")
-    except ValueError:
-        return False
+def host_allowed(host: str, allowlist: Iterable[str] = DEFAULT_ALLOWLIST) -> bool:
+    """Exact reviewed host, or a subdomain of a suffix that is itself in the list."""
+    host = host.lower().rstrip(".")
     allowed = {item.lower().rstrip(".") for item in allowlist}
     if host in allowed:
         return True
-    return host.endswith("." + _GOV_HOST) and _GOV_HOST in allowed
+    return any(host.endswith("." + suffix) and suffix in allowed for suffix in ALLOWED_SUFFIXES)
+
+
+def _host_allowed(url: str, allowlist: Iterable[str]) -> bool:
+    try:
+        host = urlsplit(url).hostname or ""
+    except ValueError:
+        return False
+    return bool(host) and host_allowed(host, allowlist)
 
 
 def verify_evidence(

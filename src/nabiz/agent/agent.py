@@ -40,7 +40,7 @@ from ibb_mcp.models import ToolResult
 from ibb_mcp.telemetry import Span, span
 from ibb_mcp.text import normalize_tr
 from ibb_mcp.tools import Nabiz
-from nabiz.agent import llm
+from nabiz.agent import injection, llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
 from nabiz.agent.minutes import with_shown_minutes
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS, build_tool_schemas
@@ -323,7 +323,7 @@ class NabizAgent:
     ) -> AgentAnswer:
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": self.system_prompt},
-            *context,
+            *injection.safe_context(context),
             {"role": "user", "content": question},
         ]
         calls: list[ToolCallRecord] = []
@@ -431,7 +431,7 @@ class NabizAgent:
             else:
                 try:
                     result: ToolResult = await getattr(self.nabiz, name)(**arguments)
-                    payload = _payload(result)
+                    payload = injection.screen_tool_payload(name, _payload(result))
                     tool_span.set(
                         **{
                             "nabiz.tool.cached": result.provenance.cached,
