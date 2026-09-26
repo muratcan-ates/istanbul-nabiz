@@ -57,6 +57,7 @@ from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
 from nabiz.console.feedback_api import feedback_routes
 from nabiz.console.history_api import history_routes
+from nabiz.console.how_api import how_routes
 from nabiz.console.journey_api import accessible_journey_route
 from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
@@ -66,6 +67,7 @@ from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
+from nabiz.console.rules_api import rules_routes
 from nabiz.console.stop_card import stop_card_router
 
 log = logging.getLogger("nabiz.console")
@@ -115,7 +117,8 @@ async def console_health(request: Request) -> dict[str, Any]:
         "model": {
             "provider": config.provider,
             "configured": llm.available(config),
-            "within_budget": state.guard.allows(config.provider),
+            # The turn's own rule (B01): a capped first rung may still answer from a later one.
+            "within_budget": llm.pick_rung(config, state.guard.allows) is not None or not llm.available(config),
         },
     }
 
@@ -302,9 +305,11 @@ def build_console_app(
     app.include_router(feedback_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
+    app.include_router(how_routes)
     app.include_router(map_layers_routes)
     app.include_router(agency_routes)
     app.include_router(operator_routes)
+    app.include_router(rules_routes)
     app.include_router(day_routes)
     app.include_router(approval_health_routes)
     app.include_router(organs_routes)
