@@ -1673,3 +1673,67 @@ kapsamı. An unchecked translation on a city-help page is a risk we cannot sign 
   1 warning); full `pytest tests` 2980 passed, 1 skipped, 3 xfailed; `make web-budget` 12 PASS 1 TARGET 0 FAIL;
   `make eval` 60/60 offline. Smoke on `make console-offline` (port 8190): only Türkçe/English buttons,
   `/i18n/ar.json` and `/css/rtl.css` 404, English sets `lang=en`, `?lang=ar` stays `ltr`.
+
+## 36. Demo-kritik düzeltmeler: gaz kaçağı acil, gece metrosu yönlendirmesi, bilgi eşiği kalibrasyonu (26 Eyl)
+
+**Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep)
+
+### Context
+
+The 26 Sep problem map found three things a demo would hit, all offline and with no model: "gaz kaçağı var"
+did not open the emergency card (`policy.emergency_intent` had no gas term); "Gece metrosu hangi günler
+çalışıyor?" went to `metro_status` and showed an unrelated M7 notice; and service questions whose page the
+index does hold came back "bilmiyorum + 153". Measuring the third (`scripts/knowledge_calibration.py`, 198
+questions: the 150-question research seed, 20 from the map's HAFİFLETİYOR rows, 6 demo questions, 22
+negatives) showed why: `assess_evidence` compared the *smallest* `|bm25|` against a ceiling of 1.0, but FTS5
+scores on this index run 5 to 35, so no lexical match was ever sufficient; and 37 of the 110 function words
+are written with Turkish letters, so after `normalize_tr` "nasıl", "için", "yapılır" counted as distinctive.
+Meanwhile a sensitive question was quoted on *weak* evidence: 28 quote_only answers, 23 of them from a page
+other than the question's gold page (a fare question quoting a chimney-sweep tariff; a headache-medicine
+question quoting an activity-report line).
+
+### Decision
+
+- **Gas is an emergency on its own** (`policy._EMERGENCY_STEMS`, and the same phrases in `emergency.py`):
+  gaz/doğalgaz kaçağı, kokusu, kaçıyor, sızıntısı. "Gaz faturası", "doğalgaz aboneliği", "doğalgaz açma
+  randevusu", "gaz sayacı" are not. The gas card also shows **İGDAŞ 187 Doğal Gaz Acil Hattı** after the 112
+  button: the number has a source in the local index, İBB's 2025 activity report
+  (`uploads.ibb.istanbul/uploads/2025_Faaliyet_Raporu_68f4b037e0.pdf`: "İGDAŞ, ALO 153 Çağrı Merkezi ve 187
+  Acil Hattı ile 7/24 …" and the heading "187 Doğal Gaz Acil Hattı"). The final carries `hazard: "gas"`;
+  no other emergency gets a second number. 155 and 110 stay unwritten (no source).
+- **A metro service question leaves the announcement tool** (`nabiz.agent.metro_route`): gece metrosu, 24
+  saat, hangi gün, hafta sonu, sefer saatleri, ilk/son sefer, yolcu hakları, şikâyet, kayıp eşya,
+  erişilebilirlik hizmetleri, evcil hayvan, bisiklet go out of scope, where the chat searches the service
+  pages; disruption questions keep `metro_status`. Tool descriptions say the same for the model path.
+- **"İnsanla görüşmek istiyorum" gets the handoff**, not the index: the server reads the page's own phrases
+  (`policy.PERSON_PHRASES`, held equal to `js/handoff.js` by a test), answers with a fixed pointer to 153
+  and 112, `mode: "handoff"`, `rule_id: "layer:handoff"` (the rule the page opens its card on).
+- **Evidence thresholds, measured offline on this index** (lexical only; the offline chat embeds no query):
+  `best_bm25` is the largest `|bm25|`; coverage is read on the first quote against folded function words
+  (`FOLDED_FUNCTION_WORDS_TR`; the FTS expression keeps the old list: in a side run it put the gold page first for 29
+  questions against 24 with the folded list); sufficient at `|bm25| ≥ 16` and coverage `≥ 0.5`
+  (`NABIZ_KNOWLEDGE_FTS_MIN`, `NABIZ_KNOWLEDGE_MIN_COVERAGE`). Only sufficient evidence is quoted, on
+  sensitive questions too. 16 was chosen over 14 for margin: at 14 the nearest negative ("Kredi kartı borcumu
+  nasıl yapılandırırım?", 13.1) sits just under the floor, and 14 cites a non-gold page 23 times against 13.
+
+### Consequences and open risks
+
+- Measured (eval/results/knowledge-calibration.md, before at 399248c, after at a7ee298): answer/quote_only
+  28 → 26 of 198; answered with the gold page cited first 4 → 13; with another page first 23 → 13; negative-set
+  answers 1 → 0. Of the 13 non-gold, by reading: Q011, Q013, Q060, Q066, Q085, Q087, Q114, h-13 are the
+  right institution's page; Q067, Q103, Q104, Q138, Q147 are wrong (vapur questions answered from Metro pages,
+  a menu line, a cemetery statistic, a heading).
+- Still "bilmiyorum" offline: "Hızlı bina taraması nedir?" (right page, `|bm25|` 10.7), "Öğrenci kartı
+  vizesi" (the page mentions "vizelyebilir" once, coverage 0.33), "153 Çözüm Merkezi'ne nasıl ulaşırım?".
+  İSKİ and İGDAŞ questions have no page in the index (0 documents): "bilmiyorum" is the right answer there.
+- The quote chosen per chunk is the one with the most query words, so "Gece metrosu hangi günler çalışıyor?"
+  shows the page's headings and its link, not the "Cuma'yı Cumartesi'ye …" sentence. Quote choice was left
+  as it was; a first attempt to prefer sentences over headings lowered the gold count and was reverted.
+- The BM25 floor is this index's scale and moves when the index grows; re-run the script after an ingest.
+  One-page test indexes set `NABIZ_KNOWLEDGE_FTS_MIN=0`. The cosine threshold (0.35) is still unmeasured:
+  with a query embedding the level can differ (not run: it needs a paid embedding call).
+- The Kolay page's own emergency box and handoff do not show 187 or the card; only the main page does.
+- Gates (26 Sep, sprint flag): see the commit series; `make lane-gates` 3033 passed, 1 skipped, 3 xfailed,
+  architecture 0 failed (existing WARNs: eta.py, gtfs.py, agent.py module size and eta.py complexity, none
+  grown here), guardrails 14 checks 0 failed; `make eval` 60/60; `make eval-knowledge` PASS 100 records;
+  `make web-budget` 12 PASS 1 TARGET 0 FAIL.
