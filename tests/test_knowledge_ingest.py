@@ -4,6 +4,8 @@ import asyncio
 import hashlib
 import json
 import pathlib
+import sys
+import types
 
 import httpx
 import pytest
@@ -84,18 +86,19 @@ def test_pdf_to_blocks_keeps_page_numbers(monkeypatch) -> None:
     assert [(block.page_number, block.text) for block in blocks] == [(1, "Page one text."), (2, "Page two text.")]
 
 
-def test_pdf_falls_back_to_pdftotext_when_pypdf_missing(monkeypatch) -> None:
-    class Result:
-        stdout = b"one\ftwo\f"
-
-    monkeypatch.setattr("ibb_mcp.knowledge.parsers.shutil.which", lambda _name: "/usr/bin/pdftotext")
-    monkeypatch.setattr("ibb_mcp.knowledge.parsers.subprocess.run", lambda *a, **k: Result())
-    blocks = pdf_to_blocks(b"%PDF fake")
-    assert [(block.page_number, block.text) for block in blocks] == [(1, "one"), (2, "two")]
+def test_pdf_without_pypdf_is_skipped(monkeypatch) -> None:
+    # A None entry in sys.modules makes "import pypdf" raise ImportError, as on a machine without the extra.
+    monkeypatch.setitem(sys.modules, "pypdf", None)
+    with pytest.raises(KnowledgeUnavailable) as error:
+        pdf_to_blocks(b"%PDF fake")
+    assert error.value.parser_status == "skipped"
 
 
-def test_pdf_reports_unsupported_when_no_parser_available(monkeypatch) -> None:
-    monkeypatch.setattr("ibb_mcp.knowledge.parsers.shutil.which", lambda _name: None)
+def test_pdf_with_no_text_is_unsupported(monkeypatch) -> None:
+    class Reader:
+        pages = []
+
+    monkeypatch.setitem(sys.modules, "pypdf", types.SimpleNamespace(PdfReader=lambda _s: Reader()))
     with pytest.raises(KnowledgeUnavailable) as error:
         pdf_to_blocks(b"%PDF fake")
     assert error.value.parser_status == "unsupported_pdf"
