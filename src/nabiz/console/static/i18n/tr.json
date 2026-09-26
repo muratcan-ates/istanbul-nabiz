@@ -92,7 +92,6 @@
     "Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Sunucuda kişisel veri saklanmaz; sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider. Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.",
     "Kişisel veriler ve gizlilik: tam metin"
   ],
-  "switch.ar_draft": "Arapça çeviri taslaktır",
   "note.answer_lang": "Dil modeli açıkken cevaplar İngilizce gelir. Model yokken cevapların çoğu Türkçe gelir.",
   "quote.source_is_turkish": "Kaynak metin Türkçedir.",
   "fixed.no_data": "Bu soruya verecek veri bulunamadı.",

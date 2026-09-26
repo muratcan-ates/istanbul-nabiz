@@ -23,17 +23,6 @@ export const CARD_TEXT = Object.freeze({
     back: 'Not an emergency, go back',
     foot: 'Not an official İBB service. Nabız is an independent project. Your location stays on this device only.',
   }),
-  ar: Object.freeze({
-    title: 'قد تكون هذه حالة طارئة',
-    desc: 'أوقفتُ المحادثة. لا يستطيع هذا الموقع طلب المساعدة؛ اتصل أنت بنفسك.',
-    live: 'قد تكون هذه حالة طارئة. اتصل بالرقم 112.',
-    call: 'اتصل بالرقم 112',
-    locate: 'أظهر موقعي',
-    copy: 'انسخ',
-    line153: 'مركز الحلول 153 (للأمور غير الطارئة)',
-    back: 'ليست حالة طارئة، عودة',
-    foot: 'ليست خدمة رسمية من İBB. Nabız مشروع مستقل. يبقى موقعك على هذا الجهاز فقط.',
-  }),
 });
 
 const LOCATION_TEXT = Object.freeze({
@@ -51,13 +40,6 @@ const LOCATION_TEXT = Object.freeze({
     copyfail: 'Could not copy. Read the numbers from the screen: {coords}.',
     denied: 'Could not get your location. Tell 112 your address.',
   }),
-  ar: Object.freeze({
-    waiting: 'جارٍ تحديد موقعك.',
-    shown: 'موقعك: {coords}. يمكنك قراءة هذه الأرقام على 112.',
-    copied: 'تم النسخ إلى الحافظة: {coords}.',
-    copyfail: 'تعذّر النسخ. اقرأ الأرقام من الشاشة: {coords}.',
-    denied: 'تعذّر تحديد موقعك. أخبر 112 بعنوانك.',
-  }),
 });
 
 let activeDocument = null;
@@ -67,11 +49,11 @@ let locationRequested = false;
 
 export function pickLang(value) {
   const code = String(value ?? '').trim().toLowerCase().slice(0, 2);
-  return code === 'en' || code === 'ar' ? code : 'tr';
+  return code === 'en' ? code : 'tr';
 }
 
 function htmlLang(lang) {
-  return lang === 'ar' ? ' lang="ar" dir="rtl"' : lang === 'en' ? ' lang="en"' : '';
+  return lang === 'en' ? ' lang="en"' : '';
 }
 
 export function cardMarkup(lang = 'tr') {
@@ -97,7 +79,7 @@ export function formatCoords(lat, lon) {
 
 export function locationMessage(kind, coords, lang = 'tr') {
   const text = LOCATION_TEXT[pickLang(lang)][kind] || LOCATION_TEXT.tr.denied;
-  const safeCoords = coords == null ? '' : (pickLang(lang) === 'ar' ? `\u2066${coords}\u2069` : coords);
+  const safeCoords = coords == null ? '' : coords;
   return text.replace('{coords}', safeCoords);
 }
 

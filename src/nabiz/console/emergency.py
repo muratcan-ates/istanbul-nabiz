@@ -101,6 +101,8 @@ _TERMS = (
     _term("someone fell", language="en"),
     _term("fell on the tracks", language="en"),
     _term("emergency", company="emergency", language="en"),
+    # Arabic stays as input only (DECISIONS #35): the page no longer speaks Arabic, but a plea written in it
+    # must still stop the chat and show the 112 card, which then renders in the page language.
     _term("حريق", language="ar"),
     _term("إسعاف", language="ar"),
     _term("شرطة", language="ar"),

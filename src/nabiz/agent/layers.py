@@ -17,14 +17,14 @@ from ibb_mcp.text import normalize_tr
 
 PHRASES_PATH = Path(__file__).with_name("selamlar.toml")
 LAYER_KINDS = ("greeting", "thanks", "unclear", "split", "followup", "pass")
-_LANGUAGES = ("tr", "en", "ar")
-_MATCH_LANGUAGES = ("ar", "en", "tr")
-_ARABIC = re.compile(r"[\u0600-\u06ff]")
+#: DECISIONS #35: Turkish and English only; a message in any other script classifies as Turkish.
+_LANGUAGES = ("tr", "en")
+_MATCH_LANGUAGES = ("en", "tr")
 _TURKISH = re.compile(r"[çğıöşüÇĞİÖŞÜ]")
 _METRO_LINE = re.compile(r"\b(M\d{1,2}[AB]?|T\d|F\d|MARMARAY)(?!\d)", re.IGNORECASE)
 _BUS_LINE = re.compile(r"\b(\d{1,3}[A-ZÇĞİÖŞÜ]{1,2})\b")
 _STOP_CODE = re.compile(r"^\d{1,6}$")
-_TRAILING_PUNCTUATION = "?!.,;:؟"
+_TRAILING_PUNCTUATION = "?!.,;:"
 
 
 def _word_set(words: str) -> frozenset[str]:
@@ -63,7 +63,7 @@ _SLOT_TERMS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 class TurnLayer(TypedDict):
     kind: Literal["greeting", "thanks", "unclear", "split", "followup", "pass"]
-    lang: Literal["tr", "en", "ar"]
+    lang: Literal["tr", "en"]
     message: str
     parts: list[str]
     entity: dict[str, str] | None
@@ -138,9 +138,7 @@ def load_phrases(path: Path = PHRASES_PATH) -> dict[str, Any]:
     return data
 
 
-def _lang(text: str) -> Literal["tr", "en", "ar"]:
-    if _ARABIC.search(text):
-        return "ar"
+def _lang(text: str) -> Literal["tr", "en"]:
     if _TURKISH.search(text):
         return "tr"
     words = set(normalize_tr(text).split())
@@ -163,7 +161,7 @@ def _small_talk(message: str, phrases: Mapping[str, Any]) -> tuple[Literal["gree
     text = f" {normalize_tr(message)} "
     text, thanks_lang = _consume(text, phrases["thanks"]["patterns"])
     text, greeting_lang = _consume(text, phrases["greeting"]["patterns"])
-    text, _ = _consume(text, {"ar": phrases["address"]["words"], "en": (), "tr": ()})
+    text, _ = _consume(text, {"en": (), "tr": phrases["address"]["words"]})
     if text.strip() or (thanks_lang is None and greeting_lang is None):
         return None
     if thanks_lang is not None:
@@ -365,7 +363,7 @@ def _unclear_streak(history: Sequence[str], places: Sequence[str]) -> int:
 def _turn(
     kind: Literal["greeting", "thanks", "unclear", "split", "followup", "pass"],
     message: str,
-    lang: Literal["tr", "en", "ar"],
+    lang: Literal["tr", "en"],
     history: Sequence[str],
     metadata: Mapping[str, Any] | None = None,
 ) -> TurnLayer:

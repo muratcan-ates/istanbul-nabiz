@@ -283,7 +283,7 @@ def test_card_markup_has_the_actions(tmp_path: Path) -> None:
         "emergency.cardMarkup('ar'), emergency.cardMarkup('xx')]));",
         tmp_path,
     )
-    tr, en, ar, unknown = values
+    tr, en, arabic, unknown = values
     for required in (
         'href="tel:112"', 'href="tel:153"', "Konumumu göster", 'data-act="copy"',
         "Acil değil, geri dön", 'role="alertdialog"', 'aria-live="assertive"', "Resmî İBB hizmeti değildir",
@@ -291,7 +291,8 @@ def test_card_markup_has_the_actions(tmp_path: Path) -> None:
         assert required in tr
     assert re.findall(r'href="(tel:[^"]+)"', tr) == ["tel:112", "tel:153"]
     assert "Call 112" in en and "Not an official İBB service" in en
-    assert 'dir="rtl"' in ar
+    # DECISIONS #35: Arabic is not a card language any more; it falls back to Turkish like any other code.
+    assert arabic == tr and 'dir="rtl"' not in arabic
     assert unknown == tr
 
 
@@ -301,15 +302,15 @@ def test_format_coords_and_messages(tmp_path: Path) -> None:
         "emergency.formatCoords(NaN, 1), emergency.formatCoords(91, 0), "
         "emergency.locationMessage('denied'), emergency.locationMessage('denied', null, 'en'), "
         "emergency.locationMessage('shown', '41.01235, 28.97612', 'ar'), "
-        "emergency.pickLang('en-US'), emergency.pickLang('')]));",
+        "emergency.pickLang('en-US'), emergency.pickLang(''), emergency.pickLang('ar')]));",
         tmp_path,
     )
     assert values == [
         "41.01235, 28.97612", None, None,
         "Konum alınamadı. Adresinizi 112'ye söyleyin.",
         "Could not get your location. Tell 112 your address.",
-        "موقعك: \u206641.01235, 28.97612\u2069. يمكنك قراءة هذه الأرقام على 112.",
-        "en", "tr",
+        "Konumunuz: 41.01235, 28.97612. Bu sayıları 112'ye okuyabilirsiniz.",
+        "en", "tr", "tr",
     ]
 
 

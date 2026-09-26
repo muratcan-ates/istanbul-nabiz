@@ -1,4 +1,4 @@
-/* The first-run question box and quick routes. The Türkçe/English/عربي buttons belong to js/i18n.js alone:
+/* The first-run question box and quick routes. The Türkçe/English buttons belong to js/i18n.js alone:
    it keeps the choice in the URL and on the device and follows the answer-language button (#chat-lang). */
 
 import { esc } from './format.js';

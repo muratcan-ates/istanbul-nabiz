@@ -194,7 +194,7 @@ def test_sw_rules_by_path(tmp_path: Path) -> None:
         ['/console','GET','navigate'], ['/console.html','GET','navigate'], ['/js/console.js','GET','cors'],
         ['/css/console.css','GET','cors'], ['/mock/brief.json','GET','cors'], ['/api/arrival?line=500T','GET','cors'],
         ['/healthz','GET','cors'], ['https://tile.openstreetmap.org/1/1/1.png','GET','cors'], ['/console/login','POST','cors'],
-        ['/i18n/ar.json','GET','cors']
+        ['/i18n/en.json','GET','cors']
       ];
       const result = paths.map(([path, method, mode]) =>
         self.nabizSw.ruleFor(new URL(path, 'https://nabiz.test').href, method, mode));
@@ -216,6 +216,9 @@ def test_shell_lists_only_files_that_exist(tmp_path: Path) -> None:
     shell = json.loads(run_node(tmp_path, source, str(SW)))
     missing = [path for path in shell if not (STATIC / ("index.html" if path == "/" else path.lstrip("/"))).is_file()]
     assert not missing, missing
+    # DECISIONS #35: Arabic is gone, so its catalogue and the RTL sheet are no longer cached.
+    assert "/i18n/ar.json" not in shell and "/css/rtl.css" not in shell
+    assert {"/i18n/tr.json", "/i18n/en.json", "/js/i18n.js"} <= set(shell)
 
 def test_shell_covers_everything_the_page_loads(tmp_path: Path) -> None:
     source = (
@@ -321,11 +324,15 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source = "const fs=require('node:fs'),vm=require('node:vm');const self={location:{origin:'https://x'},addEventListener(){}};"
     source += "vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),{self,URL});"
     source += "const keys=['nabiz-shell-v1','nabiz-brief-v1','nabiz-shell-v2','nabiz-brief-v2',"
-    source += "'nabiz-shell-v3','nabiz-brief-v3','nabiz-shell-v4','nabiz-brief-v4','baska-site'];"
+    source += "'nabiz-shell-v3','nabiz-brief-v3','nabiz-shell-v4','nabiz-brief-v4','nabiz-shell-v5','nabiz-brief-v5',"
+    source += "'baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
-    stale = ["nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2", "nabiz-shell-v3", "nabiz-brief-v3"]
-    assert result == {"version": "v4", "stale": stale}
+    stale = [
+        "nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2", "nabiz-shell-v3", "nabiz-brief-v3",
+        "nabiz-shell-v4", "nabiz-brief-v4",
+    ]
+    assert result == {"version": "v5", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """

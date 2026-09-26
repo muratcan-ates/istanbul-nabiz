@@ -33,14 +33,15 @@ SCENARIOS = [
     pytest.param("Hello", [], "greeting", {"lang": "en"}, id="g-en-hello"),
     pytest.param("Good morning!", [], "greeting", {"lang": "en"}, id="g-en-morning"),
     pytest.param("hi there", [], "greeting", {"lang": "en"}, id="g-en-hi-there"),
-    pytest.param("مرحبا", [], "greeting", {"lang": "ar"}, id="g-ar-marhaba"),
-    pytest.param("السلام عليكم", [], "greeting", {"lang": "ar"}, id="g-ar-salam"),
+    # DECISIONS #35: Arabic is not supported; an Arabic greeting or thanks is no small talk and reads as Turkish.
+    pytest.param("مرحبا", [], "pass", {"lang": "tr"}, id="p-ar-unsupported-marhaba"),
+    pytest.param("السلام عليكم", [], "pass", {"lang": "tr"}, id="p-ar-unsupported-salam"),
     pytest.param("Teşekkürler", ["M2'de arıza var mı?"], "thanks", {"lang": "tr", "first_turn": False}, id="t-tr-tesekkurler"),
     pytest.param("sağ ol", ["M2'de arıza var mı?"], "thanks", {"lang": "tr"}, id="t-tr-sag-ol"),
     pytest.param("Çok teşekkür ederim, iyi günler", ["M2'de arıza var mı?"], "thanks", {"lang": "tr"}, id="t-tr-plus-greeting"),
     pytest.param("Eyvallah", ["M2'de arıza var mı?"], "thanks", {"lang": "tr"}, id="t-tr-eyvallah"),
     pytest.param("Thank you!", ["Is M2 working?"], "thanks", {"lang": "en"}, id="t-en-thank-you"),
-    pytest.param("شكرا", ["M2"], "thanks", {"lang": "ar"}, id="t-ar-shukran"),
+    pytest.param("شكرا", ["M2"], "pass", {"lang": "tr"}, id="p-ar-unsupported-shukran"),
     pytest.param("Hey", [], "greeting", {"lang": "tr"}, id="g-tr-hey"),
     pytest.param("Merhaba, M2'de arıza var mı?", [], "pass", {}, id="p-greet-question"),
     pytest.param("Teşekkürler, peki Kadıköy'de otopark var mı?", [], "pass", {}, id="p-thanks-question"),
@@ -51,7 +52,7 @@ SCENARIOS = [
     pytest.param("Asansör çalışıyor mu?", [], "unclear", {"ask": "station"}, id="u-station"),
     pytest.param("hmm", [], "unclear", {"ask": "generic"}, id="u-generic"),
     pytest.param("???", [], "unclear", {"ask": "generic"}, id="u-generic-punct"),
-    pytest.param("؟", [], "unclear", {"ask": "generic", "lang": "ar"}, id="u-generic-ar"),
+    pytest.param("؟", [], "unclear", {"ask": "generic", "lang": "tr"}, id="u-generic-ar-mark"),
     pytest.param("bir sorum var", [], "unclear", {"ask": "generic"}, id="u-generic-sorum"),
     pytest.param("Where is the stop?", [], "unclear", {"ask": "stop", "lang": "en"}, id="u-en-stop"),
     pytest.param("Durak nerede?", ["Kadıköy'de otopark var mı?"], "unclear", {"ask": "stop", "unclear_streak": 1}, id="u-single"),
@@ -220,7 +221,7 @@ def test_layer_replies_never_repeat_the_ai_notice() -> None:
         classify_turn("Merhaba", ["M2'de arıza var mı?"]),
         classify_turn("Teşekkürler"),
         classify_turn("Hello"),
-        classify_turn("مرحبا"),
+        classify_turn("Thank you!", ["Is M2 working?"]),
         classify_turn("Durak nerede?"),
     ]
     answers = [layer_reply(turn)["answer"] for turn in turns]
@@ -234,7 +235,7 @@ def test_layer_replies_never_repeat_localized_ai_notice() -> None:
     except (ImportError, AttributeError):
         pytest.skip("E06 henüz yok")
     notice = fixed["AI_NOTICE"]
-    turns = [classify_turn("Hello"), classify_turn("مرحبا"), classify_turn("Durak nerede?")]
+    turns = [classify_turn("Hello"), classify_turn("Thank you!", ["Is M2 working?"]), classify_turn("Durak nerede?")]
     for turn in turns:
         assert notice[turn["lang"]] not in layer_reply(turn)["answer"]
 
@@ -257,7 +258,7 @@ def test_one_unclear_turn_has_no_handoff_two_have() -> None:
 
 def test_every_clarify_reply_asks_exactly_one_question() -> None:
     for ask in ("stop", "line", "station", "generic"):
-        for lang in ("tr", "en", "ar"):
+        for lang in ("tr", "en"):
             for handoff in (False, True):
                 turn: TurnLayer = {
                     "kind": "unclear",
@@ -271,7 +272,7 @@ def test_every_clarify_reply_asks_exactly_one_question() -> None:
                     "first_turn": True,
                 }
                 answer = layer_reply(turn)["answer"]
-                assert answer.count("?") + answer.count("؟") == 1
+                assert answer.count("?") == 1
 
 
 def test_followup_reads_only_the_history_it_is_given() -> None:
@@ -301,10 +302,11 @@ def test_no_journey_question_is_small_talk_unclear_or_followup() -> None:
 def test_phrase_file_is_complete_and_a_broken_one_fails(tmp_path: Path) -> None:
     phrases = load_phrases()
     assert load_phrases() is phrases
-    assert all(lang in phrases["greeting"]["reply"] for lang in ("tr", "en", "ar"))
+    assert all(lang in phrases["greeting"]["reply"] for lang in ("tr", "en"))
+    assert "ar" not in phrases["greeting"]["reply"]
     broken = tmp_path / "selamlar.toml"
     broken.write_text(
-        PHRASES_PATH.read_text(encoding="utf-8").replace('ar = "أي محطة حافلات تقصد؟ اكتب اسمها أو رقمها."\n', ""),
+        PHRASES_PATH.read_text(encoding="utf-8").replace('en = "Which stop do you mean? Write the stop name or code."\n', ""),
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="selamlar.toml: clarify.stop"):

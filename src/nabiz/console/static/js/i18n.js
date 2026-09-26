@@ -1,7 +1,6 @@
 import { answerLanguage, readProfile } from './profile.js';
-export const LANGS = Object.freeze(['tr', 'en', 'ar']);
+export const LANGS = Object.freeze(['tr', 'en']);
 export const STORAGE_KEY = 'nabiz.lang.v1';
-export const AR_REVIEWED = false;
 export const BINDINGS = Object.freeze([
   ['title', 'page.title', 'title'],
   ['.skip-link', 'page.skip', 'text'],
@@ -191,7 +190,7 @@ function frameQuotes(language, catalog, fallback) {
 }
 function setDirection(language) {
   const root = document.documentElement;
-  root.lang = language; root.dir = language === 'ar' ? 'rtl' : 'ltr';
+  root.lang = language; root.dir = 'ltr';
   const input = document.querySelector('#chat-input');
   if (input) language === 'tr' ? input.removeAttribute('dir') : input.setAttribute('dir', 'auto');
   document.querySelectorAll('.answer-short p, .ac-short p, .chat-text').forEach((node) => language === 'tr' ? node.removeAttribute('dir') : node.setAttribute('dir', 'auto'));
@@ -207,7 +206,6 @@ function addLanguageButton(group, lang, text) {
   let button = group.querySelector(`[data-language="${lang}"]`);
   if (!button) { button = document.createElement('button'); button.type = 'button'; button.className = 'btn'; button.dataset.language = lang; button.textContent = text; group.append(button); }
   button.lang = lang;
-  if (lang === 'ar') button.dir = 'rtl'; else button.removeAttribute('dir');
   return button;
 }
 function mountLanguageGroup() {
@@ -218,13 +216,10 @@ function mountLanguageGroup() {
     group = document.createElement('div'); group.className = 'btn-row i18n-switch'; group.setAttribute('role', 'group'); actions.append(group);
   }
   group.classList.add('i18n-switch');
-  const tr = addLanguageButton(group, 'tr', 'Türkçe'), en = addLanguageButton(group, 'en', 'English'), ar = addLanguageButton(group, 'ar', 'عربي');
-  tr.lang = 'tr'; en.lang = 'en';
-  for (const button of [en, ar]) if (!(button.previousElementSibling?.tagName === 'SPAN' && button.previousElementSibling.getAttribute('aria-hidden') === 'true')) {
-    const separator = document.createElement('span'); separator.className = 'i18n-separator'; separator.setAttribute('aria-hidden', 'true'); separator.textContent = '·'; button.before(separator);
-  }
-  if (!AR_REVIEWED && !group.querySelector('.i18n-draft')) {
-    const draft = document.createElement('span'); draft.className = 'field-hint i18n-draft'; draft.dataset.i18n = '1'; ar.after(draft);
+  addLanguageButton(group, 'tr', 'Türkçe');
+  const en = addLanguageButton(group, 'en', 'English');
+  if (!(en.previousElementSibling?.tagName === 'SPAN' && en.previousElementSibling.getAttribute('aria-hidden') === 'true')) {
+    const separator = document.createElement('span'); separator.className = 'i18n-separator'; separator.setAttribute('aria-hidden', 'true'); separator.textContent = '·'; en.before(separator);
   }
   if (!group.dataset.i18nBound) {
     group.addEventListener('click', (event) => {
@@ -242,7 +237,6 @@ function syncAnswerLanguage(language) {
   syncing = true;
   try { button.click(); } finally { syncing = false; }
 }
-function setDraft(language, catalog, fallback) { const label = document.querySelector('.i18n-draft'); if (label) { label.lang = language; label.textContent = lookup(catalog, fallback, 'switch.ar_draft') || ''; } }
 function setAnswerNote(language, catalog, fallback) {
   let note = document.querySelector('#i18n-answer-note');
   if (language === 'tr') { note?.remove(); return; }
@@ -252,12 +246,10 @@ function setAnswerNote(language, catalog, fallback) {
   }
   note.lang = language; note.textContent = lookup(catalog, fallback, 'note.answer_lang') || '';
 }
-function loadRtlStylesheet() { if (!document.querySelector('#i18n-rtl-css')) { const link = document.createElement('link'); link.id = 'i18n-rtl-css'; link.rel = 'stylesheet'; link.href = '/css/rtl.css'; document.head.append(link); } }
 async function applyLanguage(language, { sync = false, persist = false, update = false } = {}) {
   if (!validLang(language) || !mounted) return;
   activeLanguage = language; setDirection(language);
   const group = document.querySelector('.i18n-switch'); setPressed(group, language);
-  if (language === 'ar') loadRtlStylesheet();
   if (persist) { try { window.localStorage.setItem(STORAGE_KEY, language); } catch (error) { /* private browsing */ } }
   if (update) updateUrl(language);
   if (sync) syncAnswerLanguage(language);
@@ -265,7 +257,7 @@ async function applyLanguage(language, { sync = false, persist = false, update =
   if (activeLanguage !== language) return;
   activeFallback = fallback; activeCatalog = catalog; restoreOriginals(); applyBindings(fallback, catalog);
   visitDynamic(document.body, fallback, catalog); frameQuotes(language, catalog, fallback);
-  setDraft(language, catalog, fallback); setAnswerNote(language, catalog, fallback); setPressed(group, language);
+  setAnswerNote(language, catalog, fallback); setPressed(group, language);
   window.dispatchEvent(new CustomEvent('nabiz:lang', { detail: { lang: language } }));
 }
 export function setLang(language, { sync = true } = {}) {
