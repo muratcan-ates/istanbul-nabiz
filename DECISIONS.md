@@ -1737,3 +1737,36 @@ question quoting an activity-report line).
   architecture 0 failed (existing WARNs: eta.py, gtfs.py, agent.py module size and eta.py complexity, none
   grown here), guardrails 14 checks 0 failed; `make eval` 60/60; `make eval-knowledge` PASS 100 records;
   `make web-budget` 12 PASS 1 TARGET 0 FAIL.
+
+## 37. Bilgi kaynaklarına İSKİ/İGDAŞ/Şehir Hatları adayları (Gemini, doğrulanmamış) (26 Eyl)
+
+**Date:** 2026-09-26 · **Status:** Accepted for `gun2/entegrasyon` (owner's request); the owner runs the ingest
+
+### Context
+
+The index holds 0 İSKİ and 0 İGDAŞ pages (#33, #36), so water and gas service questions end in "bilmiyorum +
+153". Gemini proposed 45 page URLs on `www.iski.istanbul`, `www.igdas.istanbul` and `sehirhatlari.istanbul`.
+Nobody opened them; the path patterns may be guesses.
+
+### Decision
+
+- **Section 6 of `data/knowledge/sources.txt`**, headed "Gemini listesi (26.09.2026) — DOĞRULANMADI". 43 rows:
+  İSKİ 15, İGDAŞ 15, Şehir Hatları 13. Two Şehir Hatları URLs were already in section 5 and are left out.
+  Google redirect wrappers and `utm_source=gemini` are stripped; every note starts "Gemini, doğrulanmadı: ".
+- All three hosts were already exact allowlist entries (#33); no host is added.
+- İGDAŞ rows use the institution code `IGDAS`, and the answer card labels it "İGDAŞ" (`answer_card.js`).
+  The older section 3 row for İGDAŞ keeps `DIGER`.
+- `parse_knowledge_sources` counts "doğrulanmadı" as an unverified mark (`UNVERIFIED_NOTE_MARKERS`), so the
+  ingest report lists these rows as unverified; crawling is unchanged.
+- Counts: 373 rows, 362 inside the allowlist, 11 outside, 357 crawlable. `tests/test_knowledge_ssrf.py` pins
+  the count per section (14, 9, 39, 11, 257, 43) and the section 6 rules.
+
+### Consequences and open risks
+
+- Pages that do not exist return 404 and are not indexed; robots.txt still decides per host at run time.
+  İSKİ timed out in the E26 run, so its rows may all fail again.
+- After the ingest the BM25 floor of #36 is re-measured (`scripts/knowledge_calibration.py`); a larger index
+  moves the scale.
+- Gates (26 Sep, sprint flag): `make lint` pass; `make guardrails` 14 checks 0 failed (1 existing WARN); full
+  `pytest` 3035 passed, 1 skipped, 3 xfailed; `make architecture` 8 checks 0 failed (existing eta.py WARN);
+  `make eval` 60/60 offline. No network call was made; the ingest itself was not run.
