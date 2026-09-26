@@ -1030,6 +1030,16 @@ def _numbers_in(text: str) -> set[str]:
     return {_normalise_number(m.group(0)) for m in _NUMBER.finditer(text)}
 
 
+#: A number as the README's Turkish ``## Sayılar`` table writes it: ``1.351``, ``12,94``,
+#: ``%27,3``. There a dot between digits groups thousands and a comma marks the decimals.
+_NUMBER_TR = re.compile(r"(?<![\w.,])(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?(?![\w])")
+
+
+def _numbers_in_tr(text: str) -> set[str]:
+    """``12,94`` is ``12.94`` and ``1.351`` is ``1351``, so both compare with the English evidence files."""
+    return {_normalise_number(m.group(0).replace(".", "").replace(",", ".")) for m in _NUMBER_TR.finditer(text)}
+
+
 def _evidence_numbers(path: pathlib.Path) -> set[str]:
     """Every number written in an evidence file, plus, for JSON, the size of every collection.
 
@@ -1054,12 +1064,12 @@ def _evidence_numbers(path: pathlib.Path) -> set[str]:
     return numbers
 
 
-def _results_rows(text: str) -> list[tuple[int, list[str]]]:
-    """The body rows of the first table under ``## Results``, as (line number, cells)."""
+def _table_rows(text: str, heading: str) -> list[tuple[int, list[str]]]:
+    """The body rows of the first table under the ``## <heading>`` section, as (line number, cells)."""
     rows: list[tuple[int, list[str]]] = []
     inside = False
     for lineno, line in enumerate(text.splitlines(), start=1):
-        if re.match(r"^##\s+Results\b", line, re.I):
+        if re.match(rf"^##\s+{heading}", line, re.I):
             inside = True
             continue
         if inside and line.startswith("## "):
@@ -1070,27 +1080,20 @@ def _results_rows(text: str) -> list[tuple[int, list[str]]]:
     return rows[1:]  # the first row is the header
 
 
-def check_no_fabricated_metrics(repo: pathlib.Path) -> CheckResult:
-    """§1.5: every number in the README's Results table must be written in the file its row names.
+def _results_rows(text: str) -> list[tuple[int, list[str]]]:
+    """The body rows of the first table under ``## Results``, as (line number, cells)."""
+    return _table_rows(text, r"Results\b")
 
-    The README says its numbers are "copied from a file in ``eval/results/`` or
-    ``data/reference/``, and the file is named in the row". That promise is only worth
-    something if something checks it, because the pressure to fill a table the night before a
-    demo is exactly when nobody does. An earlier version of this check only asked whether
-    ``eval/results/latest.md`` existed, and passed while four of the table's rows quoted files
-    it never opened. So each row's Result cell is compared, number by number, with the
-    evidence files its Source cell names; a Source cell that starts with "same" reuses the
-    row above's files. A number that cannot be found, or a row with numbers and no evidence
-    file, fails. A ``[T]``/``[S]``/``[E]`` placeholder row is an honest gap and is skipped.
-    """
-    readme = repo / "README.md"
-    if not readme.is_file():
-        return CheckResult("no-fabricated-metrics", SKIP, "no README.md")
 
-    rows = _results_rows(read_text(readme) or "")
-    if not rows:
-        return CheckResult("no-fabricated-metrics", SKIP, "README has no '## Results' table")
+def _sayilar_rows(text: str) -> list[tuple[int, list[str]]]:
+    """The body rows of the Turkish ``## Sayılar`` table: the numbers read out in the demo."""
+    return _table_rows(text, r"Sayılar\b")
 
+
+def _unbacked_numbers(
+    repo: pathlib.Path, rows: list[tuple[int, list[str]]], numbers_in: Callable[[str], set[str]], section: str
+) -> tuple[list[Finding], int]:
+    """Each row's value cell against the evidence files its source cell names: the findings and the numbers checked."""
     findings: list[Finding] = []
     checked = 0
     previous: list[pathlib.Path] = []
@@ -1106,14 +1109,14 @@ def check_no_fabricated_metrics(repo: pathlib.Path) -> CheckResult:
         if source.casefold().startswith("same"):
             named = [*previous, *named]
         previous = named or previous
-        claimed = _numbers_in(result)
+        claimed = numbers_in(result)
         if not claimed or PLACEHOLDER_CELL.search(result):
             continue
         checked += len(claimed)
         label = metric.strip("*\"")[:40]
         if not named:
             message = f"'{label}' states numbers but names no file under eval/results/ or data/reference/"
-            findings.append(Finding(f"README.md:{lineno}", message))
+            findings.append(Finding(f"README.md:{lineno}", f"{section}: {message}" if section != "Results" else message))
             continue
         evidence: set[str] = set()
         for path in named:
@@ -1122,13 +1125,93 @@ def check_no_fabricated_metrics(repo: pathlib.Path) -> CheckResult:
         if missing:
             where = ", ".join(rel(repo, p) for p in named)
             findings.append(Finding(f"README.md:{lineno}", f"'{label}': {', '.join(missing)} not found in {where}"))
+    return findings, checked
+
+
+def check_no_fabricated_metrics(repo: pathlib.Path) -> CheckResult:
+    """§1.5: every number in the README's Results and Sayılar tables must be written in the file its row names.
+
+    The README says its numbers are "copied from a file in ``eval/results/`` or
+    ``data/reference/``, and the file is named in the row". That promise is only worth
+    something if something checks it, because the pressure to fill a table the night before a
+    demo is exactly when nobody does. An earlier version of this check only asked whether
+    ``eval/results/latest.md`` existed, and passed while four of the table's rows quoted files
+    it never opened. So each row's Result cell is compared, number by number, with the
+    evidence files its Source cell names; a Source cell that starts with "same" reuses the
+    row above's files. A number that cannot be found, or a row with numbers and no evidence
+    file, fails. A ``[T]``/``[S]``/``[E]`` placeholder row is an honest gap and is skipped.
+    The Turkish ``## Sayılar`` table, the numbers read out in the demo, is held to the same
+    rule with Turkish number reading (``12,94``, ``1.351``); a README without it is not a FAIL.
+    """
+    readme = repo / "README.md"
+    if not readme.is_file():
+        return CheckResult("no-fabricated-metrics", SKIP, "no README.md")
+
+    text = read_text(readme) or ""
+    rows = _results_rows(text)
+    if not rows:
+        return CheckResult("no-fabricated-metrics", SKIP, "README has no '## Results' table")
+    sayilar = _sayilar_rows(text)
+
+    findings, checked = _unbacked_numbers(repo, rows, _numbers_in, "Results")
+    tr_findings, tr_checked = _unbacked_numbers(repo, sayilar, _numbers_in_tr, "Sayılar")
+    findings += tr_findings
+    checked += tr_checked
 
     if findings:
-        summary = f"{len(findings)} Results row(s) quote a number their source does not hold"
+        summary = f"{len(findings)} Results or Sayılar row(s) quote a number their source does not hold"
         return CheckResult("no-fabricated-metrics", FAIL, summary, findings)
     return CheckResult(
-        "no-fabricated-metrics", PASS, f"{checked} number(s) in {len(rows)} Results row(s), each found in the file its row names"
+        "no-fabricated-metrics",
+        PASS,
+        f"{checked} number(s) in {len(rows)} Results row(s) and {len(sayilar)} Sayılar row(s),"
+        " each found in the file its row names",
     )
+
+
+# ---------------------------------------------------------------------------------------
+# 11b. stale-claims
+# ---------------------------------------------------------------------------------------
+#: Claims the README once made and must not make again, each with the reason it is wrong.
+STALE_CLAIMS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    # The portal lists 547 to 552 datasets depending on the day, 41 of them API-shaped; 555 was never measured.
+    ("555 datasets", re.compile(r"\b555\s+(?:veri\s+seti|data\s*sets?)", re.I)),
+    # An old in-sample calibration claim; the held-out error is 35.82 min (eval/results/eta.md).
+    ("16.8 to 11.2", re.compile(r"16[.,]8\s*(?:→|->|to)\s*11[.,]2")),
+    # The test count of 23 Sep; the current count is in eval/results/numbers.md.
+    ("1250 tests", re.compile(r"\b1[.,]?250\s+(?:passed|tests?)\b")),
+    # The server lists 17 tools (make smoke, eval/results/numbers.md); 15 and 16 are older counts.
+    ("15 or 16 tools", re.compile(r"\b1[56]\s+(?:araç|MCP\s+tools?|tools)\b")),
+    # The page and its text carry no em dash (DECISIONS, web budget 'dashes'); the README follows it.
+    ("em dash", re.compile("\u2014")),
+)
+#: "ETA" is an abbreviation a Turkish listener does not read; the demo's numbers say "varış tahmini".
+_ETA_IN_SAYILAR = ("ETA in Sayılar", re.compile(r"\bETA\b"))
+
+
+def check_stale_claims(repo: pathlib.Path) -> CheckResult:
+    """README.md must not bring back a claim that was measured false or has gone stale.
+
+    Each pattern is a sentence the README carried and lost for a reason written next to it.
+    Lifted from the evidence files once is not enough: the same sentence gets pasted back from
+    an old draft, a slide or a chat, so the fence stays. ``## Sayılar`` also carries no "ETA".
+    """
+    readme = repo / "README.md"
+    if not readme.is_file():
+        return CheckResult("stale-claims", SKIP, "no README.md")
+    findings: list[Finding] = []
+    in_sayilar = False
+    lines = (read_text(readme) or "").splitlines()
+    for lineno, line in enumerate(lines, start=1):
+        if line.startswith("## "):
+            in_sayilar = bool(re.match(r"^##\s+Sayılar\b", line))
+        patterns = [*STALE_CLAIMS, _ETA_IN_SAYILAR] if in_sayilar else STALE_CLAIMS
+        for name, pattern in patterns:
+            if pattern.search(line):
+                findings.append(Finding(f"README.md:{lineno}", f"{name}: {line.strip()[:60]}"))
+    if findings:
+        return CheckResult("stale-claims", FAIL, f"{len(findings)} stale claim(s) in README.md", findings)
+    return CheckResult("stale-claims", PASS, f"README.md: {len(lines)} line(s), none of {len(STALE_CLAIMS) + 1} stale claims")
 
 
 # ---------------------------------------------------------------------------------------
@@ -1307,6 +1390,7 @@ CHECKS: tuple[tuple[str, Callable[[pathlib.Path], CheckResult]], ...] = (
     ("no-ai-attribution", check_no_ai_attribution),
     ("fixture-freshness", check_fixture_freshness),
     ("no-fabricated-metrics", check_no_fabricated_metrics),
+    ("stale-claims", check_stale_claims),
     ("agent-rules-links", check_agent_rules_links),
     ("no-azure-ids", check_no_azure_ids),
 )

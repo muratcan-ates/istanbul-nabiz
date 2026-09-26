@@ -429,6 +429,91 @@ def test_the_committed_readme_results_are_backed_by_their_files() -> None:
     assert result.status == guardrails.PASS, result.findings
 
 
+SAYILAR_HEAD = "\n## Sayılar\n\nGiriş.\n\n| Ne | Değer | Kaynak |\n|---|---|---|\n"
+
+
+def sayilar_repo(root: pathlib.Path, rows: str) -> None:
+    """A README with a backed Results table and a Turkish Sayılar table; the evidence is written in English."""
+    results = "| Task success | 24/24 | `eval/results/run.md` |\n"
+    write(root, "README.md", RESULTS_HEAD + results + SAYILAR_HEAD + rows + "\n## Next\n")
+    write(root, "eval/results/run.md", "| Task success | 24/24 |\n")
+    eta = "| Mean absolute error | 12.94 min |\n| Within 5 minutes | 27.3% |\n| Sample size | 1351 |\n"
+    write(root, "eval/results/eta.md", eta)
+    write(root, "eval/results/agent.md", "| Numeric faithfulness | 100.0% (126/126 numbers) |\n")
+
+
+def test_sayilar_turkish_numbers_found_in_the_named_file_pass(tmp_path: pathlib.Path) -> None:
+    sayilar_repo(
+        tmp_path,
+        "| Ortalama mutlak hata | **12,94 dk** (n = 1.351) | `eval/results/eta.md` · `make eta` · 8–22 Eyl |\n"
+        "| 5 dakika içinde | %27,3 | same |\n"
+        "| Kaynağıyla eşleşen sayı | **126/126** | `eval/results/agent.md` · 8 Eyl |\n",
+    )
+    result = guardrails.check_no_fabricated_metrics(tmp_path)
+    assert result.status == guardrails.PASS, result.findings
+    assert "1 Results row(s) and 3 Sayılar row(s)" in result.summary
+
+
+def test_a_sayilar_number_the_named_file_does_not_hold_fails(tmp_path: pathlib.Path) -> None:
+    sayilar_repo(
+        tmp_path,
+        "| Ortalama mutlak hata | **12,94 dk** | `eval/results/eta.md` |\n| Kalibre edilmiş hata | **11,2 dk** | same |\n",
+    )
+    result = guardrails.check_no_fabricated_metrics(tmp_path)
+    assert result.status == guardrails.FAIL
+    assert [f.location for f in result.findings] == ["README.md:16"]  # the second Sayılar row
+    assert "11.2 not found" in result.findings[0].message
+
+
+def test_readme_without_sayilar_still_checks_results(tmp_path: pathlib.Path) -> None:
+    results_repo(tmp_path, "| Task success | **24/24** | `eval/results/run.md` |\n")
+    result = guardrails.check_no_fabricated_metrics(tmp_path)
+    assert result.status == guardrails.PASS and "0 Sayılar row(s)" in result.summary
+    results_repo(tmp_path, "| Task success | **25/25** | `eval/results/run.md` |\n")
+    assert guardrails.check_no_fabricated_metrics(tmp_path).status == guardrails.FAIL
+
+
+@pytest.mark.parametrize(
+    ("line", "name"),
+    [
+        ("Portal 555 veri seti sunuyor.", "555 datasets"),
+        ("Calibration took the error from 16.8 → 11.2 min.", "16.8 to 11.2"),
+        ("| Tests | **1250 passed** |", "1250 tests"),
+        ("İBB verisi 15 araç ile sunulur.", "15 or 16 tools"),
+        ("A server \u2014 and a page.", "em dash"),
+        ("## Sayılar\n\n| ETA hatası | 12,94 dk |", "ETA in Sayılar"),
+    ],
+)
+def test_stale_claims_fail(tmp_path: pathlib.Path, line: str, name: str) -> None:
+    write(tmp_path, "README.md", "# Demo\n\n" + line + "\n")
+    result = guardrails.check_stale_claims(tmp_path)
+    assert result.status == guardrails.FAIL
+    assert [f.message.split(":", 1)[0] for f in result.findings] == [name]
+    assert result.findings[0].location == f"README.md:{3 + line.count(chr(10))}"
+
+
+def test_correct_claims_pass(tmp_path: pathlib.Path) -> None:
+    write(
+        tmp_path,
+        "README.md",
+        "# Demo\n\n## Results\n\n| Bus ETA error | 12.94 min |\n\n## Sayılar\n\n"
+        "| Araç | 17 araç |\n| Dönem | 8–22 Eyl |\n| Varış tahmini hatası | medyan 11,24 dk |\n",
+    )
+    result = guardrails.check_stale_claims(tmp_path)
+    assert result.status == guardrails.PASS, result.findings
+
+
+def test_the_committed_readme_has_no_stale_claims() -> None:
+    result = guardrails.check_stale_claims(REPO_ROOT)
+    assert result.status == guardrails.PASS, result.findings
+
+
+def test_the_committed_readme_sayilar_are_backed_by_their_files() -> None:
+    result = guardrails.check_no_fabricated_metrics(REPO_ROOT)
+    assert result.status == guardrails.PASS, result.findings
+    assert " 0 Sayılar row(s)" not in result.summary
+
+
 def test_files_from_checks_exactly_the_listed_files_even_under_a_skipped_directory(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
