@@ -1,7 +1,6 @@
-/* v7 (integration of 26 Sep: DECISIONS #38 quota strip, example account, follows; #39 the request card and its sheet;
-   #40 the 112 card's text in the visitor languages; #41 the İBB Açık Veri section): bump VERSION when this worker's
-   behavior or shell changes. */
-const VERSION = 'v7';
+/* v10 (E40: i18n_text.js and the new surfaces' catalogue keys; gun2/entegrasyon already shipped v9 with E35's lazy
+   map module and v8 with its second round): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v10';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -32,7 +31,7 @@ const SHELL = [
   // cloud PRs (B02, B04): the how-it-works page and the handoff card
   '/nasil.html', '/css/how.css', '/js/how.js', '/css/handoff.css', '/js/handoff.js',
   // E06: the page language switch and the Turkish and English catalogues
-  '/js/i18n.js', '/i18n/tr.json', '/i18n/en.json',
+  '/js/i18n.js', '/js/i18n_text.js', '/i18n/tr.json', '/i18n/en.json',
   // DECISIONS #38: the quota strip, the example account and the follows
   '/css/account.css', '/js/identity.js', '/js/account_view.js', '/js/account.js', '/js/quota_strip.js', '/js/follow.js',
   // DECISIONS #39 (operatör-çeviri): the request card (its /api/requests reads always go to the network)
