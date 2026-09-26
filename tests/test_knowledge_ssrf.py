@@ -63,16 +63,24 @@ def test_parsers_never_shell_out() -> None:
 AFFILIATE_HOSTS = tuple(
     prefix + name + ".istanbul" for name in ("igdas", "kultur", "ihe") for prefix in ("", "www.")
 )
+GROK_NEW_HOSTS = (
+    "iski" + ".istanbul",
+    "cdn." + "iski" + ".istanbul",
+    "grafikgoster." + "iski" + ".gov.tr",
+    "esube." + "iski" + ".gov.tr",
+    "www." + "sehirhatlari" + ".istanbul",
+    "files." + "sehirhatlari" + ".istanbul",
+)
 
 
 def test_seed_counts_after_q1() -> None:
     rows = parse_knowledge_sources(SOURCES)
     accepted = [row for row in rows if is_allowed_url(row.url)]
     rejected = [row for row in rows if not is_allowed_url(row.url)]
-    assert (len(rows), len(accepted), len(rejected)) == (373, 362, 11)
+    assert (len(rows), len(accepted), len(rejected)) == (418, 407, 11)
     assert len({row.url for row in rows}) == len(rows), "duplicate URL in sources.txt"
     crawl = [row for row in accepted if row.crawlable]
-    assert len(crawl) == 357
+    assert len(crawl) == 401
     # mevzuat.gov.tr has two rows, so 11 rejected rows cover 10 hosts.
     assert {urlsplit(row.url).hostname for row in rejected} == REJECTED_HOSTS
     # Q2 = E: the card's public site is in, exact host only.
@@ -94,7 +102,7 @@ def _section_urls() -> dict[str, list[str]]:
 
 def test_row_counts_per_section() -> None:
     counts = {name: len(urls) for name, urls in _section_urls().items()}
-    assert counts == {"1": 14, "2": 9, "3": 39, "4": 11, "5": 257, "6": 43}
+    assert counts == {"1": 14, "2": 9, "3": 39, "4": 11, "5": 257, "6": 43, "7": 45}
 
 
 def test_e26_section_is_crawlable_and_inside_the_allowlist() -> None:
@@ -198,3 +206,69 @@ def test_a_subdomain_source_is_quoted_not_bilmiyorum(tmp_path) -> None:
     result = asyncio.run(answer("Burs başvurusu nasıl yapılır?", store=store, embedder=HashingEmbedder()))
     assert result.mode == "answer"
     assert url in result.text
+
+
+def test_grok_section_is_verified_https_and_inside_the_allowlist() -> None:
+    grok_urls = set(_section_urls()["7"])
+    rows = [row for row in parse_knowledge_sources(SOURCES) if row.url in grok_urls]
+    assert len(rows) == len(grok_urls) == 45
+    assert all(row.url.startswith("https://") for row in rows)
+    assert all(row.verified and is_allowed_url(row.url) for row in rows)
+    assert all(row.note.startswith("Grok, 26.09.2026 açtı: ") for row in rows)
+    assert all("?" not in row.note for row in rows)
+    assert {row.institution: sum(item.institution == row.institution for item in rows) for row in rows} == {
+        "ISKI": 16,
+        "IGDAS": 17,
+        "SEHIR_HATLARI": 12,
+    }
+    non_crawlable = [row for row in rows if not row.crawlable]
+    assert len(non_crawlable) == 1
+    assert non_crawlable[0].category == "oturum"
+    assert {urlsplit(row.url).hostname for row in rows} == {
+        "iski" + ".istanbul",
+        "cdn." + "iski" + ".istanbul",
+        "grafikgoster." + "iski" + ".gov.tr",
+        "esube." + "iski" + ".gov.tr",
+        "igdas" + ".istanbul",
+        "www." + "igdas" + ".istanbul",
+        "sehirhatlari" + ".istanbul",
+        "www." + "sehirhatlari" + ".istanbul",
+        "files." + "sehirhatlari" + ".istanbul",
+    }
+
+
+def test_grok_section_repeats_no_earlier_row() -> None:
+    sections = _section_urls()
+
+    def canonical(url: str) -> tuple[str, str, str]:
+        parts = urlsplit(url)
+        return (parts.hostname.casefold(), parts.path.rstrip("/"), parts.query)
+
+    grok = {canonical(url) for url in sections["7"]}
+    earlier = {canonical(url) for name, urls in sections.items() if name != "7" for url in urls}
+    assert not grok & earlier
+
+
+@pytest.mark.parametrize("host", GROK_NEW_HOSTS)
+def test_grok_hosts_are_exact_and_redirect_safe(host: str) -> None:
+    assert is_allowed_url(f"https://{host}/")
+    assert is_allowed_redirect(f"https://{host}/x")
+    assert not is_allowed_url(f"https://intranet.{host}/")
+    assert not is_allowed_url(f"https://evil{host}/")
+    assert not is_allowed_url(f"https://{host}.evil.example/")
+
+
+def test_a_session_page_is_listed_but_never_crawled(tmp_path) -> None:
+    rows = parse_knowledge_sources(SOURCES)
+    session_pages = [row for row in rows if row.category == "oturum"]
+    assert len(session_pages) == 1
+    assert session_pages[0].verified and not session_pages[0].crawlable
+
+    sources = tmp_path / "sources.txt"
+    sources.write_text(
+        "https://login.example.test/\tISKI\toturum\thtml\tyuksek\tGrok, 26.09.2026 açtı: giriş sayfası\n"
+        "https://water.example.test/\tISKI\tabonelik\thtml\torta\tGrok, 26.09.2026 açtı: abonelik bilgisi\n",
+        encoding="utf-8",
+    )
+    parsed = parse_knowledge_sources(sources)
+    assert [row.crawlable for row in parsed] == [False, True]
