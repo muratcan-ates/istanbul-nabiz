@@ -4,8 +4,10 @@ import { MOCK, get, post } from './api.js';
 import { LIFT_TR } from './cards.js';
 import { esc } from './format.js';
 import { icon } from './icons.js';
+import { parseStored, POLL_MS } from './request_status.js';
 
-const host = document.querySelector('#alternative');
+const pageDocument = typeof document === 'undefined' ? null : document;
+const host = pageDocument?.querySelector('#alternative') || null;
 const STORAGE_KEY = 'nabiz.report.v1';
 const WINDOW_MS = 30 * 60 * 1000;
 const view = { key: '', station: '', kind: '', open: false, busy: false, bucket: null, status: '', bad: false, done: null };
@@ -150,6 +152,7 @@ async function sendReport(selection, bucket) {
   try {
     const result = await post('/api/report', { station, kind, bucket });
     saveMark(key);
+    void trackReport(result.station, result.kind);
     if (view.key !== key) return;
     Object.assign(view, {
       open: false,
@@ -210,3 +213,170 @@ if (host && !MOCK) {
   new MutationObserver(attach).observe(host, { childList: true });
   attach();
 }
+
+/* E33 · Bildirimim ne oldu? */
+const OUTCOME_KEY = 'nabiz.report-codes.v1';
+const OUTCOME_KIND = { not_working: 'asansör kapalıydı', data_wrong: 'kayıt yanlış görünüyor' };
+const OUTCOME_WAITING = {
+  code: '', station: 'Bildirim', kind_text: 'durum bilgisi', status: 'waiting', label: 'Onay bekliyor',
+  text: 'Onay bekliyor: simüle operatör henüz karar vermedi.',
+};
+const OUTCOME_STYLES = {
+  waiting: { tag: 'is-info', glyph: 'clock' },
+  approved: { tag: 'is-ok', glyph: 'circle-check' },
+  not_published: { tag: '', glyph: 'info-circle' },
+  expired: { tag: 'is-warn', glyph: 'clock' },
+};
+let outcomeContext = null;
+
+function outcomeMarkup(outcome) {
+  const style = OUTCOME_STYLES[outcome.status] || OUTCOME_STYLES.waiting;
+  const tag = style.tag ? ` ${style.tag}` : '';
+  return `<li class="report-outcome is-${esc(outcome.status)}" data-code="${esc(outcome.code)}">`
+    + `<span class="report-outcome-what"><b>${esc(outcome.station)}</b> · ${esc(outcome.kind_text)}</span>`
+    + `<span class="tag${tag}">${icon(style.glyph)}${esc(outcome.label)}</span>`
+    + `<span class="report-outcome-text" lang="tr">${esc(outcome.text)}</span>`
+    + '<button type="button" class="btn" data-outcome="remove">Bu cihazdan kaldır</button></li>';
+}
+
+function readOutcomeItems(storage) {
+  try { return parseStored(storage?.getItem(OUTCOME_KEY)); } catch { return []; }
+}
+
+function writeOutcomeItems(context) {
+  try {
+    context.storage?.setItem(OUTCOME_KEY, JSON.stringify({ version: 1, items: context.items.slice(-10) }));
+  } catch { /* private mode keeps this list in memory for this visit */ }
+}
+
+function renderOutcomeList(context) {
+  const active = context.list.contains(context.doc.activeElement)
+    ? [...context.list.querySelectorAll('li')].find((row) => row.contains(context.doc.activeElement))?.dataset.code
+    : null;
+  context.block.hidden = context.items.length === 0;
+  context.list.innerHTML = context.items.map((item) => outcomeMarkup(context.views.get(item.code) || {
+    ...OUTCOME_WAITING, code: item.code,
+  })).join('');
+  if (active) {
+    const row = [...context.list.querySelectorAll('li')].find((item) => item.dataset.code === active);
+    row?.querySelector('[data-outcome="remove"]')?.focus({ preventScroll: true });
+  }
+}
+
+function forgetOutcome(context, code) {
+  context.items = context.items.filter((item) => item.code !== code);
+  context.views.delete(code);
+  writeOutcomeItems(context);
+  renderOutcomeList(context);
+}
+
+async function refreshOutcome(context, code) {
+  try {
+    const outcome = await get(`/api/report/outcome/${encodeURIComponent(code)}`);
+    const previous = context.views.get(code);
+    context.views.set(code, outcome);
+    renderOutcomeList(context);
+    if (previous && previous.status !== outcome.status) {
+      context.status.textContent = `${outcome.station} bildiriminiz: ${outcome.text}`;
+    }
+  } catch (error) {
+    if (error.status !== 404) return;
+    const item = context.items.find((entry) => entry.code === code);
+    if (item && Date.now() - item.at > 120_000) forgetOutcome(context, code);
+  }
+}
+
+function startOutcomePolling(context) {
+  clearInterval(context.timer);
+  context.timer = null;
+  const waiting = context.items.filter((item) => (context.views.get(item.code) || OUTCOME_WAITING).status === 'waiting');
+  if (!waiting.length) return;
+  context.timer = setInterval(() => {
+    if (context.doc.hidden) return;
+    const pending = context.items.filter((item) => (context.views.get(item.code) || OUTCOME_WAITING).status === 'waiting');
+    if (!pending.length) {
+      clearInterval(context.timer);
+      context.timer = null;
+      return;
+    }
+    pending.forEach((item) => { void refreshOutcome(context, item.code); });
+  }, POLL_MS);
+}
+
+function mountOutcomes(doc, storage) {
+  if (MOCK || !doc) return null;
+  const target = doc.getElementById('alternative');
+  if (!target) return null;
+  let block = doc.getElementById('report-outcomes');
+  if (!block) {
+    const wrapper = doc.createElement('div');
+    wrapper.innerHTML = '<div class="report-outcomes" id="report-outcomes" role="region" aria-labelledby="report-outcomes-title" hidden>'
+      + '<h3 id="report-outcomes-title">Bildirimlerim (bu cihazda)</h3><ul class="report-outcome-list"></ul>'
+      + '<p class="report-note">Hesap yok: bildirim kimliği yalnız bu cihazda durur (30 gün). '
+      + 'Resmî İBB başvurusu değildir; resmî kayıt için <a href="tel:153">153</a>.</p>'
+      + '<p class="sr-only" id="report-outcomes-status" role="status"></p></div>';
+    block = wrapper.firstElementChild;
+    target.after(block);
+  }
+  if (outcomeContext?.doc === doc && outcomeContext.block === block) return outcomeContext;
+  const list = block.querySelector('.report-outcome-list');
+  const status = block.querySelector('#report-outcomes-status');
+  if (!list || !status) return null;
+  const context = { doc, storage, target, block, list, status, items: readOutcomeItems(storage), views: new Map(), timer: null };
+  context.items.forEach((item) => context.views.set(item.code, { ...OUTCOME_WAITING, code: item.code }));
+  outcomeContext = context;
+  renderOutcomeList(context);
+  block.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-outcome="remove"]');
+    if (!button) return;
+    const row = button.closest('.report-outcome');
+    const rows = [...list.querySelectorAll('li')];
+    const nextCode = rows[rows.indexOf(row) + 1]?.dataset.code;
+    forgetOutcome(context, row.dataset.code);
+    const next = nextCode && [...list.querySelectorAll('li')].find((item) => item.dataset.code === nextCode);
+    const remove = next?.querySelector('[data-outcome="remove"]');
+    if (remove) remove.focus({ preventScroll: true });
+    else {
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+    }
+  });
+  void Promise.all(context.items.map((item) => refreshOutcome(context, item.code))).then(() => startOutcomePolling(context));
+  return context;
+}
+
+async function trackReport(station, kind) {
+  if (MOCK || !outcomeContext) return;
+  try {
+    const result = await get('/api/report/code', { station, kind });
+    const now = Date.now();
+    if (parseStored(JSON.stringify({ version: 1, items: [{ code: result.code, at: now }] })).length !== 1) return;
+    let item = outcomeContext.items.find((entry) => entry.code === result.code);
+    if (!item) {
+      item = { code: result.code, at: now };
+      outcomeContext.items.push(item);
+      outcomeContext.items = outcomeContext.items.slice(-10);
+    }
+    outcomeContext.views.set(result.code, {
+      ...OUTCOME_WAITING,
+      code: result.code,
+      station: result.station || station,
+      kind_text: OUTCOME_KIND[result.kind] || OUTCOME_WAITING.kind_text,
+    });
+    writeOutcomeItems(outcomeContext);
+    renderOutcomeList(outcomeContext);
+    await refreshOutcome(outcomeContext, result.code);
+    startOutcomePolling(outcomeContext);
+  } catch { /* the citizen report already has its own confirmation */ }
+}
+
+if (pageDocument) {
+  let storage = null;
+  try { storage = globalThis.localStorage; } catch { /* private mode */ }
+  mountOutcomes(pageDocument, storage);
+  pageDocument.addEventListener?.('nabiz:report-sent', (event) => {
+    if (event.detail?.station && event.detail?.kind) void trackReport(event.detail.station, event.detail.kind);
+  });
+}
+
+export { OUTCOME_KEY, outcomeMarkup, trackReport, mountOutcomes };
