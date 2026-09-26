@@ -225,6 +225,8 @@ DEPENDENCY_SETS: dict[str, frozenset[str]] = {
     "nabiz.web": CORE | {"fastapi", "starlette", "uvicorn", "jinja2"},
     # nexus_core is first-party (FIRST_PARTY); the console is its composition root.
     "nabiz.console": CORE | {"fastapi", "starlette", "uvicorn"},
+    # the `qr` extra, imported under ImportError: without it the stop card prints its address as text
+    "nabiz.console.stop_card": CORE | {"fastapi", "starlette", "uvicorn", "segno"},
     "nabiz.collector": CORE | {"azure", "deltalake", "pyarrow"},
     "nabiz.agent": CORE | {"openai", "agent_framework", "azure", "opentelemetry"},
     "nexus_core": frozenset({"pydantic"}),
