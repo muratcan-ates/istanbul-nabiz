@@ -76,6 +76,8 @@
 @media (prefers-contrast: more) { .hero { background: var(--surface); } .composer::before, .composer::after { display: none; } }
 @media (forced-colors: active) { .composer, .tool-detail, .account-detail { border-color: CanvasText; } .hero { background: Canvas; } .composer::before, .composer::after { display: none; } }
 @media (min-width: 641px) { .ask-pill { display: none !important; } }
+/* The ask pill floats over the page on phones; the page ends with room for it so the last line is never under it. */
+@media (max-width: 640px) { main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); } }
 @media (max-width: 767px) {
   .topbar-inner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1) var(--space-2); }
   .topbar-brand { grid-column: 1; grid-row: 1; min-width: 0; }
