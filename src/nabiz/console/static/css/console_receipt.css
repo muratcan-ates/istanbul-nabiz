@@ -1,0 +1,113 @@
+.receipt-strip {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+}
+
+.receipt-strip h2,
+.receipt-strip p {
+  margin: 0;
+}
+
+.receipt-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+
+.receipt-line .icon,
+#receipt-badge .icon {
+  flex: none;
+}
+
+#receipt-badge .tag { white-space: normal; }
+
+.receipt-price,
+.receipt-table td,
+.receipt-table th {
+  overflow-wrap: anywhere;
+}
+
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.receipt-table th,
+.receipt-table td {
+  padding: var(--space-2);
+  border-block-start: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.receipt-table th[scope="row"] {
+  font-weight: var(--weight-semibold);
+}
+
+#receipt-details summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  cursor: pointer;
+}
+
+#receipt-details summary:focus-visible {
+  outline: var(--focus-ring) solid 2px;
+  outline-offset: 2px;
+}
+
+@media (max-width: 40rem) {
+  .receipt-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .receipt-table,
+  .receipt-table tbody,
+  .receipt-table tr,
+  .receipt-table th[scope="row"],
+  .receipt-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .receipt-table tr {
+    padding-block: var(--space-2);
+    border-block-start: 1px solid var(--border);
+  }
+
+  .receipt-table th[scope="row"],
+  .receipt-table td {
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+
+  .receipt-table td::before {
+    display: block;
+    color: var(--text-muted);
+    content: attr(data-label);
+  }
+}
+
+@media (forced-colors: active) {
+  .receipt-strip,
+  .receipt-table th,
+  .receipt-table td,
+  .receipt-table tr {
+    border-color: CanvasText;
+  }
+}
