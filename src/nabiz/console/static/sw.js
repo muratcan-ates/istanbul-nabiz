@@ -1,5 +1,5 @@
-/* v5 (DECISIONS #35: Arabic removed, only the tr/en catalogues): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v5';
+/* v6 (operatör-çeviri: the request card and its sheet join the shell): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v6';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -31,6 +31,8 @@ const SHELL = [
   '/nasil.html', '/css/how.css', '/js/how.js', '/css/handoff.css', '/js/handoff.js',
   // E06: the page language switch and the Turkish and English catalogues
   '/js/i18n.js', '/i18n/tr.json', '/i18n/en.json',
+  // operatör-çeviri: the request card (its /api/requests reads always go to the network)
+  '/js/request_status.js', '/css/operator_requests.css',
 ];
 
 function ruleFor(url, method, mode) {

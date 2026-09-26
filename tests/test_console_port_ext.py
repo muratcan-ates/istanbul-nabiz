@@ -130,13 +130,15 @@ def html() -> str:
     return CONSOLE.read_text(encoding="utf-8")
 
 
-def test_the_console_nav_lists_six_sections_in_order() -> None:
+def test_the_console_nav_lists_seven_sections_in_order() -> None:
     source = html()
     nav = re.search(r'<nav class="console-nav" aria-label="Konsol bölümleri">(.*?)</nav>', source, re.S)
     assert nav is not None
     links = re.findall(r'<a href="(#[\w-]+)">([^<]+)</a>', nav.group(1))
-    assert [h for h, _ in links] == ["#today", "#queue", "#rules", "#nx-organs", "#approval-health", "#service-receipt"]
-    assert [t for _, t in links] == ["Bugün", "Sinyal kutusu", "Kurallar", "NEXUS", "Sağlık", "Maliyet"]
+    assert [h for h, _ in links] == [
+        "#today", "#queue", "#citizen-requests", "#rules", "#nx-organs", "#approval-health", "#service-receipt",
+    ]  # fmt: skip
+    assert [t for _, t in links] == ["Bugün", "Sinyal kutusu", "Talepler", "Kurallar", "NEXUS", "Sağlık", "Maliyet"]
     queue_title = re.search(r'<h2 id="queue-title">([^<]+)</h2>', source)
     assert queue_title is not None and dict((h, t) for h, t in links)["#queue"] == queue_title.group(1)
     skip = source.index('<a class="skip-link" href="#main">')

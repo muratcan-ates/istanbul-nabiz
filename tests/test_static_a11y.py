@@ -222,7 +222,7 @@ def test_kvkk_page_carries_honesty_lines_and_names_every_storage_key() -> None:
     for key in (
         "nabiz.profile.v1", "nabiz.memory.v1", "nabiz-theme", "nabiz-simple", "nabiz.a11y.v1", "nabiz.feedback.v1",
         "nabiz.persona.v1", "nabiz.easyread.v1", "nabiz.kolay.v1", "nabiz.my-stops.v1", "nabiz.my-stops.asked.v1",
-        "nabiz.conversations.v1", "nabiz-brief-v2", "nabiz.lang.v1",
+        "nabiz.conversations.v1", "nabiz-brief-v2", "nabiz.lang.v1", "nabiz.requests.v1",
     ):
         assert key in page
     assert 'id="kvkk-kisa"' in page

@@ -97,6 +97,12 @@ function offerReason(turns) {
   return null;
 }
 
+/** The last question that is not itself a request for a person, for the operator form to start from. */
+function operatorQuestion(turns) {
+  const asked = [...turns].reverse().find((t) => t.role === 'user' && !asksForPerson(t.text));
+  return asked ? asked.text : '';
+}
+
 function questionLine(users, mask) {
   if (!mask) return SUMMARY_NO_MASK;
   const asked = [...users].reverse().find((t) => !asksForPerson(t.text));
@@ -133,6 +139,8 @@ function cardMarkup(summary, { tid } = {}) {
     + '<button type="button" class="btn btn-primary" data-handoff="copy">Özeti kopyala</button>'
     + "<a class=\"btn btn-primary\" href=\"tel:153\" data-handoff=\"call\">153'ü ara</a>"
     + tidButton
+    // Operatöre aktar: js/request_status.js opens its own consent form; nothing leaves the page from here.
+    + '<button type="button" class="btn" data-handoff="operator">Operatöre ilet</button>'
     + '<a class="btn btn-danger" href="tel:112" data-handoff="emergency">Acil durum: 112</a>'
     + '<button type="button" class="btn" data-handoff="close">Kapat</button>'
     + '</div>'
@@ -232,6 +240,9 @@ function mountHandoff(log) {
     if (!control) return;
     const card = control.closest('#handoff-card');
     if (control.dataset.handoff === 'copy') copySummary(card);
+    if (control.dataset.handoff === 'operator') {
+      doc.dispatchEvent(new CustomEvent('nabiz:operator-request', { detail: { question: operatorQuestion(readTurns(log)) } }));
+    }
     if (control.dataset.handoff === 'close') {
       card.remove();
       doc.querySelector('#chat-input')?.focus();
@@ -247,5 +258,5 @@ if (typeof document !== 'undefined') mountHandoff(document.querySelector('#chat-
 
 export {
   ILCELER, TOPICS, asksForPerson, topicOf, districtOf, offerReason,
-  buildSummary, cardMarkup, tidHref, readTurns, loadMasker, mountHandoff,
+  buildSummary, cardMarkup, tidHref, readTurns, loadMasker, mountHandoff, operatorQuestion,
 };
