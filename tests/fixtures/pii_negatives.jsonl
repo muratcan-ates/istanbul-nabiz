@@ -1,0 +1,50 @@
+{"text":"500T ne zaman gelir?","neden":"hat kodu"}
+{"text":"153'ü aradım, hat meşguldü","neden":"çağrı merkezi numarası"}
+{"text":"Acil durumda 112","neden":"acil çağrı numarası"}
+{"text":"Otobüs 34 dakika gecikti","neden":"süre"}
+{"text":"Aylık abonman 1500 TL mi?","neden":"ücret"}
+{"text":"Kapı No: 12","neden":"kapı numarası"}
+{"text":"34AS hattı çalışıyor mu?","neden":"hat kodu"}
+{"text":"34BZ 10 dakikada gelir mi?","neden":"hat kodu ve süre"}
+{"text":"15F ile 500T arasında aktarma","neden":"hat kodları"}
+{"text":"M4 ve T1 çalışıyor mu?","neden":"hat kodları"}
+{"text":"Marmaray 06:15 seferi","neden":"saat"}
+{"text":"Başvuru no 1234567","neden":"yedi haneli başvuru numarası"}
+{"text":"Durak kodu 301291","neden":"altı haneli durak kodu"}
+{"text":"Posta kodu 34000","neden":"posta kodu"}
+{"text":"Tarih 25.09.2026, saat 08:00","neden":"tarih ve saat"}
+{"text":"2026 yılı tarifesi","neden":"yıl"}
+{"text":"12 km 500 m yürüdüm","neden":"mesafe"}
+{"text":"İETT ve İSPARK aynı kurum mu?","neden":"kurum adları"}
+{"text":"İSPARK otoparkı 250 araçlık","neden":"araç kapasitesi"}
+{"text":"Hat 34 ile 500 arası","neden":"hat ve güzergâh numaraları"}
+{"text":"Başvuru numaram 12345678901","neden":"kontrol basamağı tutmayan on bir hane"}
+{"text":"Kart numarası 4111111111111112","neden":"geçersiz kontrol toplamı"}
+{"text":"TR12 3456","neden":"eksik IBAN"}
+{"text":"5 dakika sonra","neden":"süre"}
+{"text":"Saat 5'te 555 kişi vardı","neden":"saat ve kişi sayısı"}
+{"text":"100 metre sonra sağa dön","neden":"mesafe"}
+{"text":"444 00 00 benzeri çağrı merkezi","neden":"çağrı merkezi numarası"}
+{"text":"Bus 500T at 08:00","neden":"route and time"}
+{"text":"الحافلة 500T","neden":"خط الحافلة"}
+{"text":"Hat 500T için sefer bilgisi","neden":"hat kodu"}
+{"text":"No 12 peronunda buluşalım","neden":"peron numarası"}
+{"text":"Otobüs 15F ile meydana git","neden":"hat kodu"}
+{"text":"M4 seferinde durak kodu 123456","neden":"hat kodu ve altı hane"}
+{"text":"Günlük tarife 1250 TL oldu","neden":"ücret"}
+{"text":"Şehir içi sefer bilgisi için danışma","neden":"genel ulaşım sorusu"}
+{"text":"Kurum kodu 7654321 geçersiz","neden":"yedi haneli kurum kodu"}
+{"text":"Aylık kart yükleme bedeli 250 TL","neden":"ücret"}
+{"text":"500T ile M4 arasında aktarma","neden":"hat kodları"}
+{"text":"Durağa 12 dakika kaldı","neden":"süre"}
+{"text":"Otobüs saat 06:30 kalkıyor","neden":"saat"}
+{"text":"İETT hat kodu 34AS","neden":"hat kodu"}
+{"text":"Marmaray 08:00 kalkıyor","neden":"saat"}
+{"text":"Tarife 2026 için yenilendi","neden":"yıl"}
+{"text":"Durak kodu 401299 ekranda görünüyor","neden":"altı haneli durak kodu"}
+{"text":"Hava 23 derece, yürüyüş için uygun","neden":"hava durumu değeri"}
+{"text":"Öğrenci bileti 250 TL mi?","neden":"ücret"}
+{"text":"Otobüs 153 numaralı durakta duruyor","neden":"durak ve çağrı merkezi numarası"}
+{"text":"M4 arızası var mı, 112 gerekmiyor","neden":"hat ve acil çağrı numarası"}
+{"text":"No: 12 yan durak olarak işaretlenmiş","neden":"durak numarası"}
+{"text":"A number 654321 appears in the schedule","neden":"six digit schedule value"}
