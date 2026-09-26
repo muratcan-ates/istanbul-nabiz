@@ -50,6 +50,21 @@ class AgencyKeywordRule:
     prefixes: tuple[str, ...] = ()
     phrases: tuple[str, ...] = ()
     together: tuple[str, ...] = ()
+    unless: tuple[str, ...] = ()
+    context: tuple[str, ...] = ()
+
+
+# Metro station LineName values in tests/fixtures/metro_stations.json; "m1" is
+# the common shorthand for M1A and M1B.
+METRO_LINE_CODES = (
+    "f1", "f4", "m1", "m1a", "m1b", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9",
+    "t1", "t3", "t4", "t5", "tf1", "tf2",
+)
+# No "ariza": m2 and m3 are also square and cubic metres ("100 m2 dairede arıza", "30 m3, sayaç arızalı").
+LINE_CONTEXT = (
+    "istasyon", "hat", "sefer", "asansor", "merdiven", "bant", "durak", "peron",
+    "aktarma", "metro", "tramvay", "funikuler",
+)
 
 
 RULES = (
@@ -62,10 +77,15 @@ RULES = (
     AgencyKeywordRule("istanbulkart", words=("belbim",), prefixes=("istanbulkart", "akbil"), phrases=("istanbul kart",)),
     AgencyKeywordRule("cozum_153", words=("153",), phrases=("cozum merkez",)),
     AgencyKeywordRule("iski", words=("su", "suyu", "suyum", "sular", "sulari", "susuz"),
-         prefixes=("kanalizasyon", "rogar", "logar"), phrases=("atik su",)),
+         prefixes=("kanalizasyon", "rogar", "logar", "lagim", "foseptik"), phrases=("atik su",)),
     AgencyKeywordRule("igdas", words=("gaz", "gazim"), prefixes=("dogalgaz",), phrases=("dogal gaz", "gazi kesil")),
-    AgencyKeywordRule("iett", prefixes=("otobus", "metrobus")),
+    # Street and stop-area litter belongs to district municipalities; metrobus stations remain with IETT.
+    AgencyKeywordRule("ilce", words=("cop", "copu", "copum", "copun", "cope", "copler", "copleri", "coplerim", "coplerimiz"),
+         unless=("metrobus",)),
+    AgencyKeywordRule("iett", prefixes=("otobus", "metrobus"), unless=("deniz otobus",)),
     AgencyKeywordRule("metro", prefixes=("metro", "tramvay", "funikuler", "teleferik")),
+    AgencyKeywordRule("metro", phrases=("yuruyen merdiven", "yuruyen bant"), unless=("marmaray", "avm", "alisveris")),
+    AgencyKeywordRule("metro", words=METRO_LINE_CODES, context=LINE_CONTEXT, unless=("marmaray",)),
     AgencyKeywordRule("ispark", prefixes=("otopark", "parkomat"), phrases=("park yeri",)),
     AgencyKeywordRule("sehir_hatlari", prefixes=("vapur",)),
     AgencyKeywordRule("ilce", prefixes=("nikah", "evlendirme", "evlilik"),
@@ -98,13 +118,23 @@ def _prefix_hit(prefixes: tuple[str, ...], words: list[str]) -> str | None:
     return next((prefix for prefix in prefixes if any(word.startswith(prefix) for word in words)), None)
 
 
+def _vetoed(rule: AgencyKeywordRule, text: str) -> bool:
+    return any(f" {phrase}" in f" {text}" for phrase in rule.unless)
+
+
+def _in_context(rule: AgencyKeywordRule, words: list[str]) -> bool:
+    return not rule.context or any(word.startswith(prefix) for prefix in rule.context for word in words)
+
+
 def _match_rule(rule: AgencyKeywordRule, text: str, words: list[str]) -> str | None:
+    if _vetoed(rule, text):
+        return None
     hit = next((word for word in rule.words if word in words), None)
     hit = hit or _prefix_hit(rule.prefixes, words)
     hit = hit or next((phrase for phrase in rule.phrases if f" {phrase}" in f" {text}"), None)
     if hit is None and rule.together and all(_prefix_hit((prefix,), words) for prefix in rule.together):
-        return " ".join(rule.together)
-    return hit
+        hit = " ".join(rule.together)
+    return hit if hit and _in_context(rule, words) else None
 
 
 def _district_candidates(data: dict[str, Any]) -> list[tuple[str, str]]:
