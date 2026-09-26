@@ -1,0 +1,52 @@
+# İstanbul Nabız sohbet katmanları: selam, teşekkür ve netleştirme metinleri (E15).
+# Kalıplar doğal yazımla; layers.py yüklerken ibb_mcp.text.normalize_tr ile katlar.
+# Yapay zekâ bildirimi burada yok; tek kaynağı disclosure.js ve E06 FIXED["AI_NOTICE"]'tır.
+version = 1
+
+[greeting.patterns]
+tr = ["merhaba", "merhabalar", "selam", "selamlar", "slm", "mrb", "iyi günler", "günaydın", "iyi akşamlar", "iyi geceler", "selamün aleyküm", "hey", "naber", "nasılsın"]
+en = ["hello", "hi", "good morning", "good afternoon", "good evening"]
+ar = ["مرحبا", "السلام عليكم", "أهلا", "صباح الخير", "مساء الخير"]
+
+[greeting.reply]
+tr = "Merhaba. Otobüs, metro, durak, otopark, hava kalitesi ve trafik sorularınızı yanıtlarım. Ne öğrenmek istersiniz?"
+en = "Hello. I answer questions about buses, metro, stops, car parks, air quality and traffic in Istanbul. What would you like to know?"
+ar = "مرحبا. أجيب عن أسئلة الحافلات والمترو والمحطات ومواقف السيارات وجودة الهواء وحركة المرور في إسطنبول. ماذا تريد أن تعرف؟"
+
+[thanks.patterns]
+tr = ["teşekkürler", "teşekkür ederim", "çok teşekkürler", "çok teşekkür ederim", "sağ ol", "sağol", "sağ olun", "eyvallah", "tşk"]
+en = ["thanks", "thank you", "thanks a lot", "many thanks", "thx"]
+ar = ["شكرا", "شكرا جزيلا", "مشكور"]
+
+[thanks.reply]
+tr = "Rica ederim. Başka bir sorunuz olursa yazın."
+en = "You are welcome. Ask me anything else about the city."
+ar = "على الرحب والسعة. اسألني متى شئت."
+
+[address]
+words = ["Nabız", "asistan", "bot", "there"]
+
+[clarify.stop]
+tr = "Hangi durağı kastettiniz? Durağın adını ya da kodunu yazın."
+en = "Which stop do you mean? Write the stop name or code."
+ar = "أي محطة حافلات تقصد؟ اكتب اسمها أو رقمها."
+
+[clarify.line]
+tr = "Hangi hattı kastettiniz? Hat kodunu yazın, örneğin 500T."
+en = "Which line do you mean? Write the line code, for example 500T."
+ar = "أي خط تقصد؟ اكتب رمز الخط، مثل 500T."
+
+[clarify.station]
+tr = "Hangi istasyonu kastettiniz? İstasyonun adını yazın."
+en = "Which station do you mean? Write the station name."
+ar = "أي محطة تقصد؟ اكتب اسم المحطة."
+
+[clarify.generic]
+tr = "Sorunuzu tam anlayamadım. Otobüs, metro, durak, otopark, hava kalitesi ya da trafikten hangisini soruyorsunuz? Acil bir durumdaysanız 112'yi arayın."
+en = "I did not quite understand. Which do you mean: buses, metro, stops, car parks, air quality or traffic? If this is an emergency, call 112."
+ar = "لم أفهم سؤالك تمامًا. هل تسأل عن الحافلات أم المترو أم المحطات أم مواقف السيارات أم جودة الهواء أم المرور؟ في حالة الطوارئ اتصل بالرقم 112."
+
+[handoff]
+tr = "İki kez anlaşamadık. İsterseniz bir insanla görüşün: 153 Çözüm Merkezi."
+en = "We did not understand each other twice. If you like, talk to a person: İBB's 153 Solution Centre."
+ar = "لم نتفاهم مرتين. إن شئت تحدث إلى شخص: مركز الحلول 153."
