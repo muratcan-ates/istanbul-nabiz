@@ -1,0 +1,16 @@
+/* İnsanla görüş card (js/handoff.js). .callout is a row flex box; the card stacks vertically, and on a phone
+ * every button takes the full width so it is easy to press. Tokens only; no motion. */
+
+.handoff-card { flex-direction: column; align-items: stretch; margin-top: var(--space-3); border: 1px solid var(--border-strong); }
+.handoff-body { display: grid; gap: var(--space-3); min-width: 0; }
+.handoff-body h3 { margin: 0; }
+.handoff-body label { font-weight: var(--weight-semibold); }
+.handoff-card textarea { width: 100%; min-height: 7.5rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); font: inherit; line-height: 1.5; resize: vertical; }
+.handoff-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.handoff-card .btn { min-height: calc(var(--tap) * 1.25); font-size: 1.125rem; white-space: normal; }
+.handoff-card .btn:focus-visible, .handoff-card textarea:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.handoff-status { min-height: 1.5em; margin: 0; color: var(--text-subtle); }
+
+@media (max-width: 30rem) {
+  .handoff-card .btn { flex: 1 1 100%; }
+}
