@@ -2160,3 +2160,39 @@ source page.
   expect the live chips plus the agency chip; `tests/test_console_static.py` pins that the İSKİ seed survives.
 - The rule path's own chat answer to the İSKİ question is still the "bilmiyorum" text; the agency card beside it is
   what helps. A knowledge answer for it waits for the index to hold İSKİ pages (#37).
+
+## 44. Konsol hizmet makbuzu ve model şeridi (E23, 26 Eyl): what a decision cost, which model rung answers today
+
+**Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep); merged from `gun3/konsol-hizmet-makbuzu` and
+wired at the integration merge.
+
+### Context
+
+The console showed each decision's receipt (time, model calls, dollars) only inside a card, and nothing said what
+the day had cost or which rung of the model ladder answers citizens now. The citizen page never said when answers
+come without a model.
+
+### Decision
+
+- Console: a "Hizmet makbuzu" section above "Bugün" (`console_receipt.js`/`.css`): today's spend from the chat's
+  and the Arena's spend guards (dollars only when both prices are set, otherwise a call count; 75% warns, 100% says
+  which path answers now), the active rung, and the ledger's recent receipts (`GET /api/console/spend`,
+  `GET /api/console/receipts`, read only: no ingest, no decision, no model call).
+- Every dollar figure is labelled an estimate: "USD (tahmin)" on the decision card, "$ (tahmin)" in the receipt
+  table; an unpriced model call says "fiyat tanımsız", never a guessed price.
+- The decision card's receipt names its path ("Yol: Arena" / "Yol: refleks"); `nexus_core.views` now carries
+  `receipt.path`. One spelling, "Arena", in the queue tag, the card and the receipt table.
+- Citizen page: `GET /api/model/status` follows `llm.pick_rung` (no model name, URL or key; no probe) and
+  `model_strip.js` shows one plain sentence under the chat only when the answer path changes: no model ("hazır
+  kurallarla"), the day's cap reached, or the local rung answering ("Bulut modelinin bugünkü sınırı doldu; cevapları
+  yerel model yazıyor.").
+
+### Consequences
+
+- Wiring at the merge: `model_routes` and `receipt_routes` in the app; `console_receipt.css`, its modulepreload and
+  `console_receipt.js` in `console.html` (the `section[aria-labelledby="stats-title"]` anchor kept); `model_strip.js`
+  on the citizen page and in the service worker shell (v8). Console files stay out of the shell.
+- `app.state.author_counts` does not exist, so the receipt strip's author split shows "bağlanmadı".
+- Open risk (reported, not fixed): `model_api` reads the app-wide `state.guard`; when one person's daily quota
+  (`MeteredGuard`, #38) closes the model for them, the citizen note does not say so. The chat's own `quota` field
+  does.

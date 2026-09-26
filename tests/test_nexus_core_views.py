@@ -52,7 +52,7 @@ def test_the_decision_card_has_the_contract_fields(tmp_path: pathlib.Path) -> No
     assert set(card["confidence"]) == {"level", "reasons", "uncertainty"}
     assert card["confidence"]["level"] in {"high", "medium", "low"}
     assert set(card["panel"]) == {"verdict", "votes", "answered", "quorum", "rounds"}
-    assert set(card["receipt"]) == {"reflex_ms", "arena_ms", "wall_ms", "llm_calls", "usd"}
+    assert set(card["receipt"]) == {"path", "reflex_ms", "arena_ms", "wall_ms", "llm_calls", "usd"}
     json.dumps(card)
 
 

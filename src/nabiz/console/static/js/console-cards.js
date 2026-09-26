@@ -7,7 +7,7 @@ import { citations, stamp } from './provenance.js';
 
 const SEVERITY_TR = { info: 'bilgi', warning: 'uyarı', critical: 'kritik' };
 const SEVERITY_ICON = { info: 'info-circle', warning: 'alert-triangle', critical: 'alert-triangle' };
-const PATH_TR = { reflex: 'refleks', arena: 'arena' };
+const PATH_TR = { reflex: 'refleks', arena: 'Arena' };
 const PATH_ICON = { reflex: 'bolt', arena: 'arrows-exchange' };
 const STATUS_TR = {
   closed_by_reflex: 'refleksle kapandı', awaiting_approval: 'onay bekliyor', approved: 'onaylandı', rejected: 'reddedildi',
@@ -173,9 +173,10 @@ function decisionCard(d, options) {
       `<li title="${esc(item.code || '')}"><b>${esc(item.label || '')}</b>${item.detail ? `: ${esc(item.detail)}` : ''}</li>`
     ).join('')}</ul></div>` : '';
   const receipt = d.receipt && typeof d.receipt === 'object' ? [
+    d.receipt.path ? `Yol: ${PATH_TR[d.receipt.path] || d.receipt.path}` : '',
     d.receipt.wall_ms !== null && d.receipt.wall_ms !== undefined ? `Süre: ${num(d.receipt.wall_ms, 1)} ms` : '',
     d.receipt.llm_calls !== null && d.receipt.llm_calls !== undefined ? `model çağrısı: ${num(d.receipt.llm_calls, 0)}` : '',
-    d.receipt.usd !== null && d.receipt.usd !== undefined ? `${num(d.receipt.usd, 4)} USD` : '',
+    d.receipt.usd !== null && d.receipt.usd !== undefined ? `${num(d.receipt.usd, 4)} USD (tahmin)` : '',
     // A model was called but no price was given (NABIZ_ARENA_USD_PER_CALL): say so, never guess one.
     (d.receipt.usd === null || d.receipt.usd === undefined) && Number(d.receipt.llm_calls) > 0 ? 'fiyat tanımsız' : '',
   ].filter(Boolean) : [];

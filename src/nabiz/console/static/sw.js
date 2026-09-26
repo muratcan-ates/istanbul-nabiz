@@ -44,6 +44,8 @@ const SHELL = [
   '/js/report.js', '/css/report.css',
   // DECISIONS #43 (E21): the quick-question chips
   '/js/quick_chips.js', '/css/quick_chips.css',
+  // DECISIONS #44 (E23): the citizen's model note (the console receipt strip is a console file, never cached)
+  '/js/model_strip.js',
 ];
 
 function ruleFor(url, method, mode) {

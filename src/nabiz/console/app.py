@@ -63,6 +63,7 @@ from nabiz.console.journey_api import accessible_journey_route
 from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
 from nabiz.console.map_layers_api import map_layers_routes
+from nabiz.console.model_api import model_routes
 from nabiz.console.nearby_api import nearby_router
 from nabiz.console.open_data_api import open_data_routes
 from nabiz.console.operator import operator_routes, port_problem
@@ -72,6 +73,7 @@ from nabiz.console.ports import Ports, UnwiredStepFree
 from nabiz.console.quick_api import quick_routes
 from nabiz.console.quota import MeteredGuard, QuotaBook
 from nabiz.console.quota_api import plan_turn, quota_routes
+from nabiz.console.receipt_api import receipt_routes
 from nabiz.console.report_api import report_routes
 from nabiz.console.requests_api import request_routes
 from nabiz.console.rules_api import rules_routes
@@ -325,6 +327,9 @@ def build_console_app(
     app.include_router(map_layers_routes)
     app.include_router(agency_routes)
     app.include_router(operator_routes)
+    # E23: which model rung answers today (no keys, no probe) and the console's service receipts and spend.
+    app.include_router(model_routes)
+    app.include_router(receipt_routes)
     app.include_router(rules_routes)
     app.include_router(day_routes)
     app.include_router(approval_health_routes)

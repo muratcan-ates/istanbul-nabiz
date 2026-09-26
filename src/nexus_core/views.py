@@ -96,6 +96,7 @@ def decision_payload(state: SignalState, now: dt.datetime) -> dict[str, Any]:
         },
         "receipt": (
             {
+                "path": receipt.path,
                 "reflex_ms": receipt.reflex_ms,
                 "arena_ms": receipt.arena_ms,
                 "wall_ms": receipt.wall_ms,
