@@ -274,7 +274,7 @@ src/ibb_mcp/            the MCP server package (publishable)
   http.py cache.py      PoliteClient (6 s/host, İETT 80/h), single-flight TTL cache
   sources/              ispark iett metro traffic airquality places
   gtfs.py eta.py        GTFS index + stop sequences; arrival estimator (3 methods)
-  tools.py server.py    the 17 tools; MCP 2.x server (stdio | stateless http, /healthz, per-caller budget)
+  tools.py server.py    the 18 tools; MCP 2.x server (stdio | stateless http, /healthz, per-caller budget)
   analytics.py          history-backed answers (AQ baseline forecast)
   occupancy.py reliability.py eta_profile.py   derived tables: parking history, headway, fitted ETA rates
   routing.py metro_graph.py lines.py traffic_profile.py   plan_journey: modes, rail graph, bus index, traffic norm

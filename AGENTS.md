@@ -173,7 +173,7 @@ A rule with no machine check says so. "Review" means the owner reading the diff 
 | Paths and `make` targets named in this file exist, and relative links resolve in every tracked Markdown file | guardrail `agent-rules-links` | `make guardrails`, CI |
 | No secrets in tracked files | guardrail `no-secrets`; GitHub secret scanning + push protection | CI; on push |
 | Every README §Results number is in the file its row names | guardrail `no-fabricated-metrics` (value by value) | `make guardrails`, CI |
-| README claims retired for a reason (555 datasets, 16.8 to 11.2, 1250 tests, 15 or 16 tools, em dash, ETA in Sayılar); Sayılar numbers in the file their row names | guardrails `stale-claims`, `no-fabricated-metrics` | `make guardrails`, CI |
+| README claims retired for a reason (555 datasets, 16.8 to 11.2, 1250 tests, 15, 16 or 17 tools, em dash, ETA in Sayılar); Sayılar numbers in the file their row names | guardrails `stale-claims`, `no-fabricated-metrics` | `make guardrails`, CI |
 | No user location server-side | `tests/test_alerts.py` (log capture, no-disk-write) | `make test`, CI |
 | No personal e-mail or home path in tracked files | guardrail `no-personal-data` | `make guardrails`, CI |
 | No subscription, tenant or client id in tracked files | guardrail `no-azure-ids` | `make guardrails`, CI |

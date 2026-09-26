@@ -65,6 +65,7 @@ UPSTREAM_COLD: dict[str, tuple[int, str]] = {
         "has equipment records)",
     ),
     "ibb_services_search": (0, "the local knowledge index; offline, no embedding call"),
+    "ibb_datasets_search": (0, "the local catalogue file; captured by the owner, never at answer time"),
 }
 
 

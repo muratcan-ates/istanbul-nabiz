@@ -153,7 +153,7 @@ async def test_every_mcp_tool_has_a_label(settings) -> None:
 def test_labels_are_plain_turkish_and_claim_no_success() -> None:
     source = LABELS.read_text(encoding="utf-8")
     labels = re.findall(r'^\s{2}[a-z_]+: \{ started: "([^"]+)", ended: "([^"]+)" \},$', source, re.M)
-    assert len(labels) == 17
+    assert len(labels) == 18
     for started, ended in labels:
         assert started.endswith("…")
         assert not ended.endswith((".", "…"))

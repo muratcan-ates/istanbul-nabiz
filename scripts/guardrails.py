@@ -1180,8 +1180,8 @@ STALE_CLAIMS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("16.8 to 11.2", re.compile(r"16[.,]8\s*(?:→|->|to)\s*11[.,]2")),
     # The test count of 23 Sep; the current count is in eval/results/numbers.md.
     ("1250 tests", re.compile(r"\b1[.,]?250\s+(?:passed|tests?)\b")),
-    # The server lists 17 tools (make smoke, eval/results/numbers.md); 15 and 16 are older counts.
-    ("15 or 16 tools", re.compile(r"\b1[56]\s+(?:araç|MCP\s+tools?|tools)\b")),
+    # The server lists 18 tools (make smoke, eval/results/numbers.md); 15, 16 and 17 are older counts.
+    ("15, 16 or 17 tools", re.compile(r"\b1[5-7]\s+(?:araç|MCP\s+tools?|tools)\b")),
     # The page and its text carry no em dash (DECISIONS, web budget 'dashes'); the README follows it.
     ("em dash", re.compile("\u2014")),
 )

@@ -103,6 +103,7 @@ TOOL_CALLS: dict[str, dict[str, Any]] = {
     "line_reliability": {"line_code": "500T"},
     "check_alerts": {"subscription": SUBSCRIPTION},
     "ibb_services_search": {"query": "su aboneliği", "limit": 5},
+    "ibb_datasets_search": {"query": "otopark", "limit": 5},
 }
 
 

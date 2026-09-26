@@ -18,6 +18,7 @@ export const TOOL_LABELS = Object.freeze({
   line_reliability: { started: "Hattın geçmiş kayıtları okunuyor…", ended: "Hat kayıtları okuması bitti" },
   check_alerts: { started: "Şehir uyarıları taranıyor…", ended: "Uyarı taraması bitti" },
   ibb_services_search: { started: "Resmî sayfalar taranıyor…", ended: "Resmî sayfa taraması bitti" },
+  ibb_datasets_search: { started: "İBB Açık Veri kataloğunda aranıyor…", ended: "Katalog araması bitti" },
   city_freshness: { started: "Verilerin tazeliği kontrol ediliyor…", ended: "Tazelik kontrolü bitti" },
 });
 

@@ -479,7 +479,8 @@ def test_readme_without_sayilar_still_checks_results(tmp_path: pathlib.Path) -> 
         ("Portal 555 veri seti sunuyor.", "555 datasets"),
         ("Calibration took the error from 16.8 → 11.2 min.", "16.8 to 11.2"),
         ("| Tests | **1250 passed** |", "1250 tests"),
-        ("İBB verisi 15 araç ile sunulur.", "15 or 16 tools"),
+        ("İBB verisi 15 araç ile sunulur.", "15, 16 or 17 tools"),
+        ("One MCP server with 17 tools.", "15, 16 or 17 tools"),
         ("A server \u2014 and a page.", "em dash"),
         ("## Sayılar\n\n| ETA hatası | 12,94 dk |", "ETA in Sayılar"),
     ],
@@ -497,7 +498,7 @@ def test_correct_claims_pass(tmp_path: pathlib.Path) -> None:
         tmp_path,
         "README.md",
         "# Demo\n\n## Results\n\n| Bus ETA error | 12.94 min |\n\n## Sayılar\n\n"
-        "| Araç | 17 araç |\n| Dönem | 8–22 Eyl |\n| Varış tahmini hatası | medyan 11,24 dk |\n",
+        "| Araç | 18 araç |\n| Dönem | 8–22 Eyl |\n| Varış tahmini hatası | medyan 11,24 dk |\n",
     )
     result = guardrails.check_stale_claims(tmp_path)
     assert result.status == guardrails.PASS, result.findings
