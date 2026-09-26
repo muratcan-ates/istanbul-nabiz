@@ -196,11 +196,12 @@ class ChatService:
     async def events(self, request: ChatRequest) -> AsyncIterator[str]:
         """The whole turn as SSE text: tool events while it runs, then the answer and the final event."""
         started = time.perf_counter()
+        trace = pipeline.TurnTrace()
         yield sse("session_started", {})
         earlier = [turn.content for turn in request.history if turn.role == "user"]
         needs = functional_needs(request.needs)
         suggestion = memory_suggestion(request.message, earlier, needs)
-        early = await self._early_events(request, earlier, suggestion, started)
+        early = await self._early_events(request, earlier, suggestion, started, trace)
         if early is not None:
             for event in early:
                 yield event
@@ -213,35 +214,56 @@ class ChatService:
             self._run(request.message, prompt, lambda kind, data: queue.put_nowait((kind, data)), context)
         )
         task.add_done_callback(lambda done: queue.put_nowait(("done", None)))
-        try:
-            while True:
-                kind, data = await queue.get()
-                if kind == "done":
-                    break
-                yield sse(kind, data)
-        finally:
-            if not task.done():
-                task.cancel()
+        with trace.step("arac_bilgi"):
+            try:
+                while True:
+                    kind, data = await queue.get()
+                    if kind == "done":
+                        break
+                    yield sse(kind, data)
+            finally:
+                if not task.done():
+                    task.cancel()
         if task.exception() is not None:
             log.error("chat turn failed: %s", type(task.exception()).__name__)
-            fields = FinalFields(refused=False, how=pipeline.empty_how(started, rule_id=None), mode="unknown")
+            trace.mark("hata", "arac_bilgi")
+            how = pipeline.empty_how(started, rule_id=None, trace=trace)
+            fields = FinalFields(refused=False, how=how, mode="unknown")
             for event in pipeline.answer_events(TURN_FAILED, [], "kural", suggestion, fields):
                 yield event
             return
         answer, author = task.result()
-        for event in await self._answer_events(request.message, answer, author, suggestion, started):
+        for event in await self._answer_events(request.message, answer, author, suggestion, started, trace):
             yield event
 
-    async def _answer_events(self, question: str, answer: AgentAnswer, author: str, suggestion: Any, started: float) -> list[str]:
+    async def _answer_events(
+        self,
+        question: str,
+        answer: AgentAnswer,
+        author: str,
+        suggestion: Any,
+        started: float,
+        trace: pipeline.TurnTrace | None = None,
+    ) -> list[str]:
         """The finished answer as events, after the price filter and the service-page index."""
-        if author != "kural" and names_a_price(answer.text) and not _TARIFF_TOOLS & set(answer.tool_names):
-            # The last line of R-06: a model answer that states a price is not shown.
-            return pipeline.refusal_events(suggestion, started)
+        trace = trace if trace is not None else pipeline.TurnTrace()
+        trace.mark("cevapladi", "arac_bilgi")
+        trace.checks["sayi"] = answer.faithfulness.passed if answer.faithfulness is not None else None
+        if author != "kural":
+            with trace.step("cikti"):
+                priced = names_a_price(answer.text) and not _TARIFF_TOOLS & set(answer.tool_names)
+                trace.checks["cikti"] = not priced
+            if priced:
+                # The last line of R-06: a model answer that states a price is not shown.
+                trace.mark("gecti", "arac_bilgi")
+                trace.mark("cevapladi", "cikti")
+                return pipeline.traced_refusal(suggestion, started, trace)
         if author == "kural" and answer.text == OUT_OF_SCOPE.get(answer.lang):
-            quoted = await self._from_knowledge(question, sensitive=False, suggestion=suggestion, started=started)
+            quoted = await self._from_knowledge(question, sensitive=False, suggestion=suggestion, started=started, trace=trace)
             if quoted:
                 return quoted
-        fields = FinalFields(refused=False, how=pipeline.how_block(answer, started, rule_id=None), mode="answer")
+        how = pipeline.how_block(answer, started, rule_id=None, trace=trace)
+        fields = FinalFields(refused=False, how=how, mode="answer")
         cited = citations(answer, offline=self.offline)
         return pipeline.answer_events(display_text(answer.text), cited, author, suggestion, fields)
 
@@ -251,13 +273,16 @@ class ChatService:
         earlier: Sequence[str],
         suggestion: Any,
         started: float,
+        trace: pipeline.TurnTrace,
     ) -> list[str] | None:
-        verdict = pipeline.early_verdict(request.message, earlier)
+        verdict = pipeline.early_verdict(request.message, earlier, trace)
         if verdict == "emergency":
-            return pipeline.emergency_events(suggestion, started)
+            return pipeline.emergency_events(suggestion, started, trace)
         if verdict == "sensitive":
-            quoted = await self._from_knowledge(request.message, sensitive=True, suggestion=suggestion, started=started)
-            return quoted or pipeline.refusal_events(suggestion, started)
+            quoted = await self._from_knowledge(
+                request.message, sensitive=True, suggestion=suggestion, started=started, trace=trace
+            )
+            return quoted or pipeline.traced_refusal(suggestion, started, trace)
         return None
 
     def knowledge_index(self) -> tuple[Any, Any]:
@@ -269,9 +294,13 @@ class ChatService:
             self._knowledge = (store, None if self.offline else embedder)
         return self._knowledge
 
-    async def _from_knowledge(self, question: str, *, sensitive: bool, suggestion: Any, started: float) -> list[str] | None:
+    async def _from_knowledge(
+        self, question: str, *, sensitive: bool, suggestion: Any, started: float, trace: pipeline.TurnTrace | None = None
+    ) -> list[str] | None:
         """Quotes from İBB's service pages, or ``None`` for the fixed text: no index, no quote for a
-        refused question, or an index that failed."""
+        refused question, or an index that failed. ``trace.checks["kanit"]`` says whether a verified
+        quote came back; it stays ``None`` when no index answered."""
+        trace = trace if trace is not None else pipeline.TurnTrace()
         store, embedder = self.knowledge_index()
         if store is None:
             return None
@@ -280,10 +309,11 @@ class ChatService:
         except Exception as exc:  # noqa: BLE001 - a broken index must not break the turn
             log.warning("knowledge answer failed, keeping the fixed text: %s", type(exc).__name__)
             return None
+        cited = [{**item, "source": KNOWLEDGE_SOURCE} for item in found.to_dict()["citations"]]
+        trace.checks["kanit"] = bool(cited) and (not sensitive or found.mode == "quote_only")
         if sensitive and found.mode != "quote_only":
             return None  # no verified quote: the refusal, which also names 112
-        cited = [{**item, "source": KNOWLEDGE_SOURCE} for item in found.to_dict()["citations"]]
-        how = pipeline.empty_how(started, rule_id="knowledge")
+        how = pipeline.empty_how(started, rule_id="knowledge", trace=trace)
         fields = FinalFields(refused=found.refused, how=how, mode=found.mode, steps=list(found.steps) or None)
         return pipeline.answer_events(display_text(found.text), cited, found.author, suggestion, fields)
 
