@@ -1,5 +1,7 @@
-/* v6 (DECISIONS #36: quota strip, example account, follows; operatör-çeviri: the request card and its sheet join the shell; DECISIONS #37: the 112 card's text in the visitor languages, js/emergency_text.js; the İBB Açık Veri section joins the shell): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v6';
+/* v7 (integration of 26 Sep: DECISIONS #38 quota strip, example account, follows; #39 the request card and its sheet;
+   #40 the 112 card's text in the visitor languages; #41 the İBB Açık Veri section): bump VERSION when this worker's
+   behavior or shell changes. */
+const VERSION = 'v7';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -31,13 +33,13 @@ const SHELL = [
   '/nasil.html', '/css/how.css', '/js/how.js', '/css/handoff.css', '/js/handoff.js',
   // E06: the page language switch and the Turkish and English catalogues
   '/js/i18n.js', '/i18n/tr.json', '/i18n/en.json',
-  // DECISIONS #36: the quota strip, the example account and the follows
+  // DECISIONS #38: the quota strip, the example account and the follows
   '/css/account.css', '/js/identity.js', '/js/account_view.js', '/js/account.js', '/js/quota_strip.js', '/js/follow.js',
-  // operatör-çeviri: the request card (its /api/requests reads always go to the network)
+  // DECISIONS #39 (operatör-çeviri): the request card (its /api/requests reads always go to the network)
   '/js/request_status.js', '/css/operator_requests.css',
-  // DECISIONS #37: the emergency card's text in every card language, cached so the card opens offline
+  // DECISIONS #40: the emergency card's text in every card language, cached so the card opens offline
   '/js/emergency_text.js',
-  // DECISIONS #37: the İBB Açık Veri section
+  // DECISIONS #41: the İBB Açık Veri section
   '/js/open_data.js', '/css/open_data.css',
 ];
 
