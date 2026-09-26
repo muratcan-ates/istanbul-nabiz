@@ -16,26 +16,11 @@ from urllib.robotparser import RobotFileParser
 
 from ibb_mcp.http import PoliteClient
 
+from .guardrails import DEFAULT_ALLOWLIST, host_allowed
 from .parsers import KnowledgeUnavailable, ParsedPage, clean_text, html_to_blocks, pdf_to_blocks  # noqa: F401
 
-_GOV_HOST = "ibb" + ".gov.tr"
-ALLOWLIST = frozenset(
-    {
-        _GOV_HOST,
-        "www." + _GOV_HOST,
-        "ibb" + ".istanbul",
-        "www." + "iski" + ".istanbul",
-        "iett" + ".istanbul",
-        "www." + "metro" + ".istanbul",
-        "metro" + ".istanbul",
-        "ispark" + ".istanbul",
-        "data." + _GOV_HOST,
-        "istanbulsenin" + ".istanbul",
-        "istanbulkart" + ".istanbul",
-        "sehirhatlari" + ".istanbul",
-        "spor" + ".istanbul",
-    }
-)
+#: The same object as ``guardrails.DEFAULT_ALLOWLIST``: one reviewed list for fetching and for evidence.
+ALLOWLIST = DEFAULT_ALLOWLIST
 TERMS_CATEGORIES = frozenset({"lisans", "terms", "kullanim-kosullari"})
 #: Hops followed for one page. Each is vetted before it is requested (``is_allowed_redirect``);
 #: the HTTP client never follows a redirect on its own here.
@@ -87,19 +72,21 @@ def is_allowed_url(url: str, allowlist: frozenset[str] = ALLOWLIST) -> bool:
         return False
     if port is not None and port != (443 if parts.scheme == "https" else 80):
         return False
-    return host in allowlist or (host.endswith("." + _GOV_HOST) and _GOV_HOST in allowlist)
+    return host_allowed(host, allowlist)
 
 
-def is_allowed_redirect(url: str, allowlist: frozenset[str] = ALLOWLIST) -> bool:
-    """A redirect target must be a safe URL on an *exact* reviewed host.
+def is_allowed_redirect(url: str, allowlist: frozenset[str] = ALLOWLIST, *, from_host: str | None = None) -> bool:
+    """A redirect target must be a safe URL on an *exact* reviewed host, or stay on the host it left.
 
-    Stricter than :func:`is_allowed_url`, which also admits any subdomain of the municipality's
-    domain for seed rows a person reviewed: a ``Location`` header is chosen by the server, so a
-    hop may only land on a host that is itself in the list.
+    Stricter than :func:`is_allowed_url`, which also admits subdomains of the municipal domains
+    (``ALLOWED_SUFFIXES``) for seed rows a person reviewed: a ``Location`` header is chosen by the
+    server, so a hop may only land on a host that is itself in the list, or on ``from_host``, the
+    already-vetted host that answered with it (``/a`` to ``/b`` on a reviewed subdomain).
     """
     if not is_allowed_url(url, allowlist):
         return False
-    return (urlsplit(url).hostname or "").lower().rstrip(".") in allowlist
+    host = (urlsplit(url).hostname or "").lower().rstrip(".")
+    return host in allowlist or (from_host is not None and host == from_host.lower().rstrip("."))
 
 
 def canonical_url(url: str) -> str:
@@ -190,7 +177,8 @@ class _FetchSession:
                 log.warning("knowledge: more than %d redirects from %s; refused", MAX_REDIRECTS, host)
                 raise RedirectRefused(f"more than {MAX_REDIRECTS} redirects")
             robots = self.robots.get(target_host)
-            if not is_allowed_redirect(target) or (robots is not None and not robots.can_fetch(self.user_agent, target)):
+            allowed = is_allowed_redirect(target, from_host=current_host)
+            if not allowed or (robots is not None and not robots.can_fetch(self.user_agent, target)):
                 log.warning("knowledge: refused redirect from %s to %s", current_host, target_host or "?")
                 raise RedirectRefused(f"redirect to {target_host or '?'} is not allowed")
             current, current_host = target, target_host
