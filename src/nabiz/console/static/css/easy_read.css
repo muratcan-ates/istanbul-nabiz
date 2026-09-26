@@ -1,0 +1,65 @@
+.er-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+.er-rates { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.er-progress { color: var(--text-muted); font-size: var(--text-sm); }
+.er-note { flex-basis: 100%; color: var(--text-muted); font-size: var(--text-sm); }
+.er-term {
+  padding: 0;
+  border: 0;
+  border-block-end: 2px dotted var(--border-strong);
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+.er-term:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.er-tip {
+  position: absolute;
+  z-index: 40;
+  max-width: min(32rem, calc(100vw - 1rem));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: var(--shadow-2);
+}
+.er-tip small { display: block; margin-block-start: var(--space-1); color: var(--text-muted); }
+:root[data-easy-read="on"] .chat-msg.is-assistant .answer-short p,
+:root[data-easy-read="on"] .chat-msg.is-assistant .chat-final ol > li,
+:root[data-easy-read="on"] .answer-card .ac-short p,
+:root[data-easy-read="on"] .answer-card .ac-steps li,
+:root[data-easy-read="on"] .answer-card .ac-fixed,
+:root[data-easy-read="on"] [data-er-target] {
+  max-width: 60ch;
+  line-height: 1.8;
+}
+:root[data-easy-read="on"] .er-sentence {
+  display: block;
+  margin-block-end: var(--space-2);
+}
+:root[data-easy-read="on"] .quote-exact,
+:root[data-easy-read="on"] .quote-box blockquote.quote-text {
+  max-width: 60ch;
+  line-height: 1.8;
+}
+::highlight(er-now) {
+  background-color: var(--primary-subtle);
+  color: var(--on-primary-subtle);
+}
+.er-sentence.is-speaking {
+  background-color: var(--primary-subtle);
+  color: var(--on-primary-subtle);
+}
+@media (forced-colors: active) {
+  ::highlight(er-now) { background-color: Highlight; color: HighlightText; }
+  .er-sentence.is-speaking { background-color: Highlight; color: HighlightText; }
+}
+@media (max-width: 40rem) {
+  .er-bar > .btn { flex: 1 1 auto; }
+  .er-rates { width: 100%; }
+}
