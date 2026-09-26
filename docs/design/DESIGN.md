@@ -60,6 +60,9 @@ drawing while it is current, the status pill's live dot only while some source's
 `data_age_seconds` under 7,200 s, §7), the focus ring and the selected map marker. Never a button, a
 large fill, body text or a gradient. HSL saturation 58.7 % light and 54.0 % dark, under the 80 % ceiling.
 
+Moment colour (tulip, h 352.8 light / 348.9 dark): only the four locations listed in `NABIZ-DILI.md` §3.5;
+never a button, text colour, large area or status meaning.
+
 **Identity boundary.** Nabız borrows the web palette family, never the mark: no İBB logo, emblem or
 emblem-like shape, no Pantone 200 C red (the one official İBB brand colour), no sign panels. Metro line
 colours are the operator's published values, never tuned, and always carry their code.
@@ -88,15 +91,16 @@ tokens through classes, or through `getComputedStyle` for MapLibre paint.
 |---|---|
 | Ramps | `--primary-50..950`, `--accent-50..950`, `--neutral-0..1000` |
 | Metro lines | `--line-<code>` and `--line-<code>-ink` for M1A to T5, TF1, TF2, F1, F4, M11, plus `--line-unknown` |
-| Semantic | `--surface`, `--surface-raised`, `--surface-sunken`, `--border(-strong)`, `--text(-muted, -subtle)`, `--primary*`, `--link*`, `--accent*`, `--focus-ring`, `--ok/warn/bad/info` with washes, `--aqi-*`, `--kind-*`, `--marker-ring`, `--shadow-1..3` |
+| Semantic | `--surface`, `--surface-raised`, `--surface-sunken`, `--border(-strong)`, `--text(-muted, -subtle)`, `--primary*`, `--link*`, `--accent*`, `--focus-ring`, `--moment` and `--moment-subtle` (generated tulip event colour), `--ok/warn/bad/info` with washes, `--aqi-*`, `--kind-*`, `--marker-ring`, `--shadow-1..3` |
 | Dark | the same names under `prefers-color-scheme: dark` (unless `data-theme="light"`) and under `data-theme="dark"`, generated from one list so the two blocks cannot drift |
 | Non-colour | 8 type sizes and a display clamp, 3 weights, 3 leadings, a 4 px spacing scale, two radii, layout widths, 2 easings and 7 durations, drawing strokes, a z-index scale |
 | Role aliases (no new colour) | `--pulse-ink-low/high/archive`, `--chart-guide/ref/now/halo/best`, `--live-dot`, `--occupancy-ink`, `--route-foot/transit/drive`, `--badge-bus`, `--line-casing`, `--marker-edge`, `--map-wash`, `--sheet-bg`, `--skeleton`, `--selected-row`, `--topbar-bg` |
 
-**Verified.** `scripts/design/verify_tokens.py` on the files in the tree (2026-09-23): the palette's
-required pairs **178/178** and the pairs this design adds **76/76** pass WCAG AA in both themes; the served
+**Verified.** `scripts/design/verify_tokens.py` on the files in the tree: the palette's
+required pairs **178/178** and the pairs this design adds **80/80** pass in both themes, including four
+3:1 moment-colour graphic pairs; the served
 and annotated copies resolve identically, and so do the two dark blocks. The served file keeps a
-three-line header (the long one stays in the annotated copy) and is 12,177 B raw and 2,850 B gzip -9
+three-line header (the long one stays in the annotated copy) and is 12,331 B raw and 2,895 B gzip -9
 (budget 16 KB / 4 KB). An excerpt, light / dark:
 
 | Pair | Light | Dark | Needs |

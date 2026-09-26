@@ -51,6 +51,7 @@ HEADER = """/* Nabız tokens: the project's own native-CSS token system (docs/de
  *  - Ramps step evenly in OKLab lightness (0.075 per step), so 400 -> 500 looks as far as 700 -> 800.
  *  - Neutrals share hue 260 at low chroma: cool blue-ink greys, never warm.
  *  - ONE accent, analogous cyan at 222 degrees. It means "now / live / focus" and nothing else.
+ *    The separate tulip moment colour (h 352.8 light, 348.9 dark) is restricted to NABIZ-DILI.md §3.5.
  *  - Lightness encodes quantity (the pulse line's pen pressure); hue encodes only categories a
  *    source defines (Metro line colours, AQI bands). Warm hues are reserved for warn, bad and AQI.
  *

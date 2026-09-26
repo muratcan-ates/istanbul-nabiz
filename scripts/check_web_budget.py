@@ -248,9 +248,12 @@ TARGETS_BY_CHECK: dict[str, dict[str, Target]] = {
     # rewritten renderers) took the JS to 117,259 B raw / 52,238 B gzip, 27 modules. The count is
     # the larger overage, now the raw one (117,259 - 80,000); the total is 178,371 B raw. Cutting
     # 12 KB of gzip is not a fast change, and the 3-day product sprint needs the gate green.
+    # Raised to 38,524 on 2026-09-26 for E43 (DECISIONS #58), in the open: +153 B raw is the six
+    # generated tulip "moment" lines in css/tokens.css, which must stay byte-equal to the console's
+    # copy (test_tokens_are_the_web_pages_tokens). This page never reads --moment; JS is unchanged.
     "payload": {
         "js": Target("owner: JS gzip budget for native modules", 37_259),
-        "total": Target(f"owner: the JS budget above, measured after {STEP7}", 38_371),
+        "total": Target(f"owner: the JS budget above, measured after {STEP7}", 38_524),
     },
 }
 TARGETS: dict[str, Target] = {

@@ -34,6 +34,12 @@ H_PRIMARY = 260.0
 # Analogous accent: ibb.istanbul's own cyan (blue-400 / blue-500) sits at 221.2-223.0 degrees,
 # 38 degrees from the navy. Same step, same direction, so the pairing is İBB's, the values are ours.
 H_ACCENT = 222.0
+H_MOMENT = 352.8
+H_MOMENT_DARK = 348.9
+MOMENT_LIGHT = (0.497, 0.169, H_MOMENT)
+MOMENT_DARK = (0.742, 0.124, H_MOMENT_DARK)
+MOMENT_SUBTLE_LIGHT = (0.965, 0.018, H_MOMENT)
+MOMENT_SUBTLE_DARK = (0.280, 0.040, H_MOMENT_DARK)
 
 # ============================================================================ 2. ramps (OKLCH)
 STEPS = (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950)
@@ -149,6 +155,7 @@ def themes(r: dict) -> dict[str, dict[str, str]]:
         "link": P[700], "link-hover": P[800],
         "accent": A[500], "accent-strong": A[700], "accent-subtle": A[50], "on-accent": ink_dark,
         "focus-ring": A[600],
+        "moment": ok(*MOMENT_LIGHT), "moment-subtle": ok(*MOMENT_SUBTLE_LIGHT),
         "info": P[700], "info-wash": P[50],
     }
     dark = {
@@ -161,6 +168,7 @@ def themes(r: dict) -> dict[str, dict[str, str]]:
         # accent one step below the ring and 0.075 L above the primary fill (tritan separation)
         "accent": A[400], "accent-strong": A[300], "accent-subtle": A[950], "on-accent": ink_dark,
         "focus-ring": A[300],
+        "moment": ok(*MOMENT_DARK), "moment-subtle": ok(*MOMENT_SUBTLE_DARK),
         "info": P[300], "info-wash": P[950],
     }
     for name, (lt, dk, lw, dw) in STATUS.items():
@@ -363,6 +371,8 @@ GROUPS = [
                                                   "link", "link-hover"]),
     ("accent: the one accent. live pulse, focus, highlight stroke. Never body text; use accent-strong",
      ["accent", "accent-strong", "accent-subtle", "on-accent", "focus-ring"]),
+    ("moment: tulip event colour, restricted to NABIZ-DILI.md §3.5",
+     ["moment", "moment-subtle"]),
     ("status: text/icon colour + tinted wash. Always paired with an icon and a word, never colour alone",
      ["ok", "ok-wash", "warn", "warn-wash", "bad", "bad-wash", "info", "info-wash"]),
 ]

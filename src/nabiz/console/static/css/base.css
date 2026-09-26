@@ -1,6 +1,84 @@
 /* Base for both console pages: font, reset, type, controls, layout, topbar, footer, motion, simple mode.
    Adapted from src/nabiz/web/static/css/base.css (docs/design/DESIGN.md). Colours are tokens only. */
 
+/* Nabız Dili (NABIZ-DILI.md §4.2).
+ * Ölçü ve hareket değerleri Fluent 2'den birebir alınmıştır.
+ * Kaynak: @fluentui/tokens 1.0.0-alpha.24, MIT Lisansı.
+ * Copyright (c) Microsoft Corporation.
+ * Fluent 2 belirteçlerinden türetildi; Fluent bileşeni değildir.
+ * Renk değişmezi yoktur; renkler css/tokens.css dosyasından var() ile gelir.
+ */
+:root {
+  --fluent-radius-medium: 4px;
+  --fluent-radius-xlarge: 8px;
+  --fluent-radius-2xlarge: 12px;
+  --fluent-radius-3xlarge: 16px;
+  --fluent-radius-circular: 10000px;
+  --fluent-spacing-xxs: 2px;
+  --fluent-spacing-xs: 4px;
+  --fluent-spacing-s-nudge: 6px;
+  --fluent-spacing-s: 8px;
+  --fluent-spacing-m-nudge: 10px;
+  --fluent-spacing-m: 12px;
+  --fluent-spacing-l: 16px;
+  --fluent-spacing-xl: 20px;
+  --fluent-spacing-xxl: 24px;
+  --fluent-spacing-xxxl: 32px;
+  --fluent-font-size-200: 12px;
+  --fluent-font-size-300: 14px;
+  --fluent-font-size-400: 16px;
+  --fluent-font-size-500: 20px;
+  --fluent-font-size-600: 24px;
+  --fluent-font-size-hero-700: 28px;
+  --fluent-font-size-hero-800: 32px;
+  --fluent-font-size-hero-900: 40px;
+  --fluent-line-height-200: 16px;
+  --fluent-line-height-300: 20px;
+  --fluent-line-height-400: 22px;
+  --fluent-line-height-500: 28px;
+  --fluent-line-height-600: 32px;
+  --fluent-line-height-hero-700: 36px;
+  --fluent-line-height-hero-800: 40px;
+  --fluent-line-height-hero-900: 52px;
+  --fluent-duration-faster: 100ms;
+  --fluent-duration-fast: 150ms;
+  --fluent-duration-normal: 200ms;
+  --fluent-duration-gentle: 250ms;
+  --fluent-duration-slow: 300ms;
+  --fluent-curve-decelerate-max: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --fluent-curve-decelerate-mid: cubic-bezier(0, 0, 0, 1);
+  --fluent-curve-accelerate-mid: cubic-bezier(1, 0, 1, 1);
+  --fluent-curve-easy-ease: cubic-bezier(0.33, 0, 0.67, 1);
+  --fluent-stroke-thin: 1px;
+  --fluent-stroke-thick: 2px;
+
+  --nd-accent: var(--primary);
+  --nd-accent-hover: var(--primary-hover);
+  --nd-accent-ink: var(--on-primary);
+  --nd-secondary-ink: var(--accent-strong);
+  --nd-secondary-wash: var(--accent-subtle);
+  --nd-moment: var(--moment, var(--accent));
+  --nd-glow: color-mix(in srgb, var(--primary) 24%, transparent);
+  --nd-glass: color-mix(in srgb, var(--surface-raised) 86%, transparent);
+  --nd-hero-wash: var(--primary-subtle);
+  --nd-line: var(--border);
+  --nd-line-strong: var(--border-strong);
+  --nd-radius-control: var(--fluent-radius-xlarge);
+  --nd-radius-surface: var(--fluent-radius-2xlarge);
+  --nd-radius-composer: var(--fluent-radius-3xlarge);
+  --nd-dur-press: var(--fluent-duration-faster);
+  --nd-dur-hover: var(--fluent-duration-fast);
+  --nd-dur-state: var(--fluent-duration-normal);
+  --nd-dur-enter: var(--fluent-duration-slow);
+  --nd-ease-enter: var(--fluent-curve-decelerate-max);
+  --nd-ease-state: var(--fluent-curve-easy-ease);
+  --nd-ease-exit: var(--fluent-curve-accelerate-mid);
+  --nd-hero-size: clamp(2rem, 1.4rem + 2.4vw, 2.5rem);
+  --nd-hero-leading: 1.25;
+  --nd-eyebrow-size: var(--text-sm);
+  --nd-measure-chat: 46rem;
+}
+
 /* Source Sans 3 (OFL 1.1, fonts/OFL.txt), subset and renamed. */
 @font-face { font-family: "Nabız Sans"; src: url(/fonts/nabiz-sans-tr-v1.woff2) format("woff2"); font-weight: 400 700; font-display: swap; }
 /* fallback-metrics:start */
@@ -20,6 +98,7 @@ body {
   font: var(--weight-regular) var(--text-md) / var(--leading-body) var(--font-sans);
   font-variant-numeric: tabular-nums lining-nums;
   font-synthesis: none;
+  font-optical-sizing: auto;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -47,7 +126,6 @@ th { color: var(--text-muted); font-weight: var(--weight-semibold); }
 tr:last-child > td { border-bottom: 0; }
 summary { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); color: var(--link); font-size: var(--text-sm); font-weight: var(--weight-semibold); cursor: pointer; list-style: none; }
 summary::-webkit-details-marker { display: none; }
-summary > .icon { transition: transform var(--dur-ui) var(--ease-out); }
 [open] > summary > .icon { transform: rotate(90deg); }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
@@ -57,16 +135,39 @@ summary > .icon { transition: transform var(--dur-ui) var(--ease-out); }
 .skip-link:focus { transform: none; }
 .icon { display: inline-block; flex: none; width: var(--icon-size); height: var(--icon-size); vertical-align: -.25em; fill: none; stroke: currentColor; stroke-width: var(--icon-stroke); stroke-linecap: round; stroke-linejoin: round; }
 
-.btn, .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-4); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); font-weight: var(--weight-semibold); text-decoration: none; white-space: nowrap; transition: background-color var(--dur-ui), color var(--dur-ui), transform var(--dur-press); }
+.btn, .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-4); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); font-weight: var(--weight-semibold); text-decoration: none; white-space: nowrap; }
 .icon-btn { width: var(--tap); padding: 0; border-color: transparent; background: none; color: var(--text-muted); }
 .btn:hover, .icon-btn:hover { background: var(--surface-sunken); color: var(--text); }
-.btn-primary, .btn-primary:hover { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
-.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary { position: relative; border-color: var(--nd-accent); background: var(--nd-accent); color: var(--nd-accent-ink); }
+.btn-primary:hover { border-color: var(--nd-accent); background: var(--nd-accent-hover); color: var(--nd-accent-ink); }
+.btn-primary::after { content: ""; position: absolute; inset: -3px; border-radius: inherit; box-shadow: 0 0 0 3px var(--nd-glow); opacity: 0; pointer-events: none; }
+.btn-quiet { min-height: var(--tap); border-color: transparent; background: transparent; color: var(--link); text-decoration: none; }
+.btn-quiet:hover { background: var(--surface-sunken); color: var(--link); }
+/* Reserve this destructive style for irreversible deletion. */
 .btn-danger { border-color: var(--bad); color: var(--bad); }
-.btn:active, .icon-btn:active { transform: translateY(1px) scale(.98); }
+.btn[aria-busy="true"]::after { content: ""; position: static; inset: auto; display: inline-block; flex: none; width: 1rem; height: 1rem; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: var(--fluent-radius-circular); box-shadow: none; opacity: 1; }
+.btn[aria-busy="true"] > .icon { display: none; }
 .btn[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-subtle); color: var(--on-primary-subtle); }
+.btn[aria-disabled="true"] { opacity: 1; background: var(--surface-sunken); color: var(--text-muted); border-color: var(--border-strong); cursor: not-allowed; transform: none; }
 .link-btn { padding: 0; border: 0; background: none; color: var(--link); text-decoration: underline; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* Motion only (M1 to M3): colours above hold in every mode; :where() keeps the guard at zero specificity
+   so page stylesheets still override .btn exactly as before. */
+@media (prefers-reduced-motion: no-preference) {
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) summary > .icon { transition: transform var(--nd-dur-state) var(--nd-ease-state); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .icon-btn { transition: background-color var(--nd-dur-hover) var(--nd-ease-state), color var(--nd-dur-hover) var(--nd-ease-state), transform var(--nd-dur-press) var(--nd-ease-state); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn-primary:not([aria-disabled="true"]):hover { transform: translateY(-1px); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn-primary:not([aria-disabled="true"])::after { transition: opacity var(--nd-dur-press) var(--nd-ease-state); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn-primary:not([aria-disabled="true"]):active::after { opacity: 1; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn-primary .icon:has(> use[href="#i-arrow-right"]) { transition: transform var(--nd-dur-hover) var(--nd-ease-state); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn-primary:not([aria-disabled="true"]):hover .icon:has(> use[href="#i-arrow-right"]),
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn-primary:not([aria-disabled="true"]):focus-visible .icon:has(> use[href="#i-arrow-right"]) { transform: translateX(3px); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn:not([aria-disabled="true"]):active,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .icon-btn:not([aria-disabled="true"]):active { transform: scale(.97); transition: transform var(--nd-dur-press) ease-out; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .btn[aria-busy="true"]::after { animation: spin 800ms linear infinite; }
+}
 
 input[type="text"], input[type="search"], textarea { width: 100%; min-height: var(--tap); padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); }
 textarea { min-height: 5.5rem; resize: vertical; }
