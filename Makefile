@@ -35,7 +35,7 @@ AUTHORSHIP_RANGE ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help status venv install test lint fmt smoke guardrails authorship hooks ci-local ci-commit lane-gates architecture \
-        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console console-offline eval eval-knowledge numbers eval-record eval-live fixtures places \
+        architecture-tighten perf-budgets perf-report web-budget mcp mcp-http web console console-offline notify-digest eval eval-knowledge numbers eval-record eval-live fixtures places \
         sequences collect collect-bg collect-supervise collect-status collect-stop collect-plan lake-backup eta eta-diagnose \
         eta-holdout warmup clean
 
@@ -113,6 +113,9 @@ console:  ## serve the product app: citizen face (/) and simulated-operator cons
 
 console-offline:  ## the product app from recordings only: no İBB call, no .env read, no model probe, sprint flag on (CONSOLE_PORT=)
 	NABIZ_ENV_FILE=/dev/null NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 NABIZ_SPRINT_MODE=1 NABIZ_CONSOLE_PORT=$(CONSOLE_PORT) $(PY) -m nabiz.console
+
+notify-digest:  ## WRITES data/outbox: the follow digest for example accounts, offline from recordings; never sends (DECISIONS #36)
+	NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) scripts/notify_digest.py
 
 eval:  ## run the journey eval offline into reports/eval (gitignored); never writes eval/results (EVAL_ARGS='--mode agent')
 	$(PY) eval/run_eval.py --offline --results-dir $(EVAL_OUT) $(EVAL_ARGS)

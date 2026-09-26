@@ -102,9 +102,10 @@ def ask(client: TestClient, message: str, *, needs: list[str] | None = None, his
     stream = events(response.text)
     final = stream[-1]
     assert final[0] == "final"
-    assert set(final[1]) == {
+    # DECISIONS #36: every final carries the day's quota; a follow request adds its suggestion.
+    assert set(final[1]) - {"follow_suggestion"} == {
         "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
-        "guard", "hazard", "masked_count", "masked_kinds",
+        "guard", "hazard", "masked_count", "masked_kinds", "quota",
     }
     tokens = "".join(data["text"] for kind, data in stream if kind == "token")
     assert tokens == final[1]["answer"], "the token events must add up to the final answer"

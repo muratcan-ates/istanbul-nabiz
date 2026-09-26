@@ -44,6 +44,7 @@ from nabiz.console.access import (
     is_operator_path,
     login_page,
 )
+from nabiz.console.accounts_api import account_routes
 from nabiz.console.agency_api import agency_routes
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
@@ -67,6 +68,8 @@ from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
+from nabiz.console.quota import MeteredGuard, QuotaBook
+from nabiz.console.quota_api import plan_turn, quota_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.stop_card import stop_card_router
 
@@ -200,10 +203,12 @@ async def citizen_chat(request: Request, body: ChatRequest) -> Response:
         return paused
     service: ChatService = request.app.state.chat
     limiter: TurnLimiter = request.app.state.chat_limiter
-    if not limiter.allow(request.client.host if request.client else "unknown"):
+    # DECISIONS #36: an emergency is never limited or counted; the daily quota closes only the model.
+    turn = plan_turn(request, body.message)
+    if not turn.emergency and not limiter.allow(request.client.host if request.client else "unknown"):
         return port_problem(429, "too_many_turns", "Çok sık soru geldi. Bir dakika sonra yeniden dene.")
     return StreamingResponse(
-        service.events(body),
+        turn.events(service, body),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -249,7 +254,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     owned = state.nabiz is None
     if owned:
         state.nabiz = Nabiz(SourceContext.create(settings=state.settings))
-    state.chat = ChatService(state.nabiz, state.chat_config, state.guard, offline=state.settings.offline)
+    # The chat's guard also meters each person's daily model calls (DECISIONS #36); /healthz reads the plain one.
+    state.chat = ChatService(state.nabiz, state.chat_config, MeteredGuard(state.guard), offline=state.settings.offline)
     release = None
     if state.wire_nexus:
         from nabiz.console.wiring import wire_ports
@@ -293,6 +299,7 @@ def build_console_app(
     state.guard = guard or SpendGuard(BudgetConfig.from_env())
     state.access = access or OperatorAccess.from_env()
     state.chat_limiter = TurnLimiter(env_seconds("NABIZ_CHAT_TURNS_PER_MIN", CHAT_TURNS_PER_MIN))
+    state.quota = QuotaBook.from_env()
     state.fresh = Freshness(
         offline=state.settings.offline,
         card_stale_after_s=env_seconds("NABIZ_CARD_STALE_S", CARD_STALE_DEFAULT_S),
@@ -316,6 +323,8 @@ def build_console_app(
     app.include_router(drill_routes)
     app.include_router(kill_switch_routes)
     app.include_router(stop_card_router)
+    app.include_router(quota_routes)
+    app.include_router(account_routes)
     # Last, so every /api route wins the match ahead of the page's files.
     if CONSOLE_STATIC_DIR.is_dir():
         app.mount("/", StaticFiles(directory=CONSOLE_STATIC_DIR, html=True), name="static")
