@@ -76,6 +76,9 @@ from nabiz.console.quota import MeteredGuard, QuotaBook
 from nabiz.console.quota_api import plan_turn, quota_routes
 from nabiz.console.receipt_api import receipt_routes
 from nabiz.console.report_api import report_routes
+from nabiz.console.report_map_api import report_map_routes
+from nabiz.console.report_outcome_api import outcome_routes
+from nabiz.console.report_triage import triage_routes
 from nabiz.console.requests_api import request_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.stop_card import stop_card_router
@@ -319,6 +322,10 @@ def build_console_app(
     app.include_router(feedback_routes)
     # E24: a citizen's lift report (station, kind, time bucket only) waits for a person in the Arena.
     app.include_router(report_routes)
+    # E29 triage context, E28 report map (both behind the console door), E33 a report's outcome by derived code.
+    app.include_router(triage_routes)
+    app.include_router(report_map_routes)
+    app.include_router(outcome_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
     # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).

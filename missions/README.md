@@ -53,7 +53,7 @@ snapshot; the console adds the time and the provenance and wraps them as `nexus_
 | `long_outage` | the same fields, emitted when `outage_hours` > 24 |
 | `hub_faults` | `hub`, `fault_count`, `equipment_list`, `lines` |
 | `source_stale` | `source`, `age_text`, `age_minutes`, `last_known_text` |
-| `citizen_report` | `station`, `line`, `report_kind`, `bucket`, `report_text`, `lift_status`, `lift_text`, `operator_text` |
+| `citizen_report` | `station`, `line`, `report_kind`, `bucket`, `report_text`, `lift_status`, `lift_text`, `operator_text`; severity `warning`, `critical` when the station's name carries two or more lines (an interchange, E29); priority and the agency suggestion are computed in the console when read, never written to the ledger |
 
 `outage_hours` counts from İBB's `Date`, whose meaning is undocumented (it may be when the fault
 began or when service should resume), so `outage_hours_basis` is `ibb_date` and cards say so.

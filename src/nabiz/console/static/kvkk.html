@@ -76,6 +76,8 @@
           <tr><td>Örnek hesabın giriş anahtarı ve gösterilen bilgileri</td><td><code>nabiz.account.v1</code></td><td>Hesap bağla bölümünde Hesabımı ve verilerimi sil.</td></tr>
           <tr><td>Hesapsız takip edilen konular (en çok 3) ve gösterilmiş değişiklikler</td><td><code>nabiz.follows.v1</code>, <code>nabiz.follows.seen.v1</code></td><td>Takip ettiklerim bölümünde Takibi bırak ya da Hesabımı ve verilerimi sil.</td></tr>
 
+          <tr><td>Asansör bildirimi işareti (30 dk)</td><td><code>nabiz.report.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Bildirimlerim: bildirim durum kimlikleri (30 gün)</td><td><code>nabiz.report-codes.v1</code></td><td>Bildirimlerim listesinde Bu cihazdan kaldır ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Operatöre ilettiğiniz taleplerin kodları (30 gün)</td><td><code>nabiz.requests.v1</code></td><td>Talep kartında Kartı bu cihazdan kaldır.</td></tr>
           <tr><td>Çevrimdışı kayıtlı şehir kartları ve çevrimdışı süre notu</td><td><code>nabiz-brief-v2</code>, <code>nabiz.pwa.offlineSince</code>, <code>nabiz.pwa.iosHintClosed</code></td><td>Profilim bölümünde Profili sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
         </tbody>
@@ -111,7 +113,7 @@
     <p>Sorunuzun metninde kendiniz kişisel bilgi paylaşabilirsiniz. Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
 
     <h2 id="kvkk-ses">Sesle yazma</h2>
-    <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir.</p>
+    <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir. Sesle bildirimde söylediğiniz cümle cihazınızda kalır; Nabız sunucusuna yalnız istasyon adı, durum ve zaman gider.</p>
 
     <h2 id="kvkk-toplanmayan">Toplanmayan bilgiler</h2>
     <p>Uygulama kamera görüntüsü, konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>

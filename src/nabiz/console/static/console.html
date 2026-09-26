@@ -19,6 +19,8 @@
 <link rel="stylesheet" href="/css/console_day.css">
 <link rel="stylesheet" href="/css/console_health.css">
 <link rel="stylesheet" href="/css/console_organs.css">
+<link rel="stylesheet" href="/css/console_report_triage.css">
+<link rel="stylesheet" href="/css/console_report_map.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/console.js">
 <link rel="modulepreload" href="/js/api.js">
@@ -37,6 +39,8 @@
 <link rel="modulepreload" href="/js/console_notices.js">
 <link rel="modulepreload" href="/js/requests_console.js">
 <link rel="modulepreload" href="/js/console_receipt.js">
+<link rel="modulepreload" href="/js/console_report_triage.js">
+<link rel="modulepreload" href="/js/console_report_map.js">
 <script type="module" src="/js/console.js"></script>
 <script type="module" src="/js/console_receipt.js"></script>
 <!-- Wave-1 panels (E17-E20): each fills its own section; the placeholders below fix their order. -->
@@ -44,6 +48,9 @@
 <script type="module" src="/js/console_day.js"></script>
 <script type="module" src="/js/console_organs.js"></script>
 <script type="module" src="/js/console_kill.js"></script>
+<!-- E29: priority and agency context on a citizen report card; E28: the report map fills #report-map. -->
+<script type="module" src="/js/console_report_triage.js"></script>
+<script type="module" src="/js/console_report_map.js"></script>
 <script type="module" src="/js/console_notices.js"></script>
 <!-- Operatöre aktar + çeviri: the citizen requests queue fills #citizen-requests. -->
 <script type="module" src="/js/requests_console.js"></script>
@@ -89,6 +96,7 @@
   <ul class="wrap">
     <li><a href="#today">Bugün</a></li>
     <li><a href="#queue">Sinyal kutusu</a></li>
+    <li><a href="#report-map">Bildirim haritası</a></li>
     <li><a href="#citizen-requests">Talepler</a></li>
     <li><a href="#rules">Kurallar</a></li>
     <li><a href="#nx-organs">NEXUS</a></li>
@@ -136,6 +144,8 @@
         seçenekleri, üç koltuğun görüşünü ve itiraz özetini gösterir; onay kanıt açılmadan verilmez.</p></div>
     </section>
   </div>
+
+  <section id="report-map" aria-labelledby="report-map-title"><h2 id="report-map-title">Bildirim haritası</h2></section>
 
   <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
 

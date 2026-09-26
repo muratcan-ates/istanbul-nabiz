@@ -1,6 +1,7 @@
-/* v10 (E40: i18n_text.js and the new surfaces' catalogue keys; gun2/entegrasyon already shipped v9 with E35's lazy
-   map module and v8 with its second round): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v10';
+/* v11 (E27: the voice report modules; E33: report.js lists this device's reports; gun2/entegrasyon already shipped
+   v10 with E40's i18n_text.js and v9 with E35's lazy map module): bump VERSION when this worker's behavior or
+   shell changes. */
+const VERSION = 'v11';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -48,6 +49,8 @@ const SHELL = [
   '/js/model_strip.js',
   // E35: the escalator and walkway helpers map_layers.js imports lazily
   '/js/map_equipment.js',
+  // E27: report by voice (the E28/E29 console files are console_* and never cached)
+  '/js/voice_intent.js', '/js/voice_report.js',
 ];
 
 function ruleFor(url, method, mode) {
