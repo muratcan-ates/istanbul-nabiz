@@ -7,6 +7,7 @@ import { HISTORY_TURNS } from './config.js';
 import { ageText, ageSentence, sourceLabel, AUTHOR_TR } from './provenance.js';
 
 const KOLAY_KEY = 'nabiz.kolay.v1';
+const GAS_LINE = 'İGDAŞ 187 Doğal Gaz Acil Hattı';
 
 function finalText(data, unknownText) {
   const mode = data.mode || (data.refused ? 'refused' : 'answer');
@@ -24,6 +25,7 @@ function answerMarkup(data) {
   if (mode === 'redirect' && data.emergency === true) {
     return '<div class="kolay-emergency" role="alert">'
       + '<a class="kolay-call" href="tel:112">112 Acil</a>'
+      + (data.hazard === 'gas' ? `<a class="kolay-call kolay-call-187" href="tel:187">${GAS_LINE}</a>` : '')
       + '<a class="kolay-call" href="tel:153">153 İBB</a></div>';
   }
   if (mode === 'unknown' || mode === 'refused') return call153();
@@ -56,6 +58,7 @@ function renderFinal(li, data, unknownText) {
   text.textContent = finalText(data, unknownText);
   final.innerHTML = answerMarkup(data);
   if (progress) progress.hidden = true;
+  if (li.dataset) li.dataset.ruleId = data.rule_id || '';
   if (mode === 'redirect' && data.emergency === true) li.classList.add('is-emergency');
   if (mode === 'refused' || mode === 'unknown') li.classList.add('is-refused');
   li.setAttribute('aria-busy', 'false');
@@ -211,12 +214,15 @@ async function boot() {
       cancelActive();
       const controller = new AbortController();
       activeController = controller;
+      const userItem = document.createElement('li');
+      userItem.className = 'chat-msg is-user';
+      const questionText = document.createElement('p');
+      questionText.className = 'chat-text kolay-q';
+      questionText.textContent = `Sorunuz: ${question}`;
+      userItem.append(questionText);
       const card = document.createElement('li');
       card.className = 'chat-msg is-assistant kolay-answer';
       card.setAttribute('aria-busy', 'true');
-      const questionText = document.createElement('p');
-      questionText.className = 'kolay-q';
-      questionText.textContent = `Sorunuz: ${question}`;
       const progress = document.createElement('p');
       progress.className = 'kolay-progress';
       progress.textContent = 'Cevap hazırlanıyor.';
@@ -224,8 +230,8 @@ async function boot() {
       text.className = 'chat-text';
       const final = document.createElement('div');
       final.className = 'chat-final kolay-final';
-      card.append(questionText, progress, text, final);
-      log.replaceChildren(card);
+      card.append(progress, text, final);
+      log.replaceChildren(userItem, card);
       log.setAttribute('aria-busy', 'true');
       chatSubmit.disabled = true;
       say('Cevap hazırlanıyor.');
@@ -365,7 +371,7 @@ async function boot() {
 }
 
 export {
-  answerMarkup, finalText, renderFinal, arrivalMarkup, KOLAY_KEY, readSavedStop, saveStop, forgetStop, boot,
+  answerMarkup, finalText, renderFinal, arrivalMarkup, KOLAY_KEY, GAS_LINE, readSavedStop, saveStop, forgetStop, boot,
 };
 
 if (typeof document !== 'undefined') boot();
