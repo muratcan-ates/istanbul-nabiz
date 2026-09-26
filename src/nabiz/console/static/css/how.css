@@ -1,0 +1,28 @@
+/* "Nasıl çalışır?" (/nasil.html). Only how- classes; every colour is a token. Nothing is wider than a
+ * 320 px phone: the columns wrap, the tables scroll inside their own region, long paths break. */
+
+.how-main { display: grid; gap: var(--space-6); padding-block: var(--space-6); }
+.how-main section { display: grid; gap: var(--space-3); min-width: 0; }
+.how-band { border: 1px solid var(--border); border-radius: var(--radius-surface); }
+.how-band p { margin: 0; }
+.how-check { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.how-check p { margin: 0; flex: 1 1 16rem; }
+.how-muted { color: var(--text-muted); }
+
+.how-steps { display: grid; gap: var(--space-3); margin: 0; padding-inline-start: var(--space-5); }
+.how-step { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.how-step h3 { margin: 0 0 var(--space-1); }
+.how-step p { margin: var(--space-1) 0; }
+.how-code { color: var(--text-muted); font-size: var(--text-sm); }
+.how-code code, .how-main code { overflow-wrap: anywhere; word-break: break-word; }
+
+.how-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: var(--space-4); }
+.how-col { min-width: 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.how-col h3 { margin-top: 0; }
+.how-list { display: grid; gap: var(--space-2); margin: 0; padding-inline-start: var(--space-4); }
+
+.how-table { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-surface); }
+.how-table table { width: 100%; min-width: 40rem; border-collapse: collapse; }
+.how-table th, .how-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); text-align: start; vertical-align: top; }
+.how-table thead th { color: var(--text-muted); font-size: var(--text-sm); }
+.how-table tbody th { font-weight: var(--weight-semibold); }

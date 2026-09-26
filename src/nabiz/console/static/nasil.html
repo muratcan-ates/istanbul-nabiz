@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Nasıl çalışır? | İstanbul Nabız</title>
+<meta name="description" content="İstanbul Nabız'da bir sorunun geçtiği adımlar, bu sunucunun şu anki sayılarıyla.">
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/a11y.css">
+<link rel="stylesheet" href="/css/how.css">
+<link rel="modulepreload" href="/js/a11y.js">
+<script type="module" src="/js/a11y.js"></script>
+<link rel="modulepreload" href="/js/how.js">
+<script type="module" src="/js/how.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">İçeriğe atla</a>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="topbar-brand" href="/">İstanbul Nabız</a>
+    <div class="topbar-actions">
+      <a class="topbar-role" href="/">Resmî İBB hizmeti değildir</a>
+    </div>
+  </div>
+</header>
+<main class="wrap how-main" id="main" tabindex="-1">
+  <h1 id="how-title">Nasıl çalışır?</h1>
+  <div class="band how-band" role="note">
+    <p>Resmî İBB hizmeti değildir. Bağımsız öğrenci projesi.</p>
+  </div>
+  <div class="band how-band" role="note" id="how-ai-band">
+    <p id="how-ai-notice"></p>
+  </div>
+  <p class="sr-only" role="status" aria-live="polite" id="how-status">Sayılar yükleniyor.</p>
+  <div class="how-check">
+    <p class="how-muted">Bu sayfadaki her sayı sunucunun kendi dosyalarından ve şu anki durumundan okunur. <span data-how="checked">yükleniyor</span></p>
+    <button type="button" class="btn" id="how-refresh">Yeniden kontrol et</button>
+  </div>
+
+  <section id="akis" aria-labelledby="akis-title">
+    <h2 id="akis-title">Bir soru nasıl cevaplanır</h2>
+    <ol class="how-steps">
+      <li class="how-step">
+        <h3>Soru</h3>
+        <p>Sorun sunucuda loglanmaz; profilinden yalnız işlevsel ihtiyaç bayrağı gider (örnek: adımsız erişim).</p>
+        <p class="how-code"><code>src/nabiz/console/chat.py</code></p>
+      </li>
+      <li class="how-step">
+        <h3>Kural kontrolü</h3>
+        <p data-how="rules">yükleniyor</p>
+        <p class="how-code"><code>src/nabiz/console/policy.py</code> <code>missions/</code></p>
+      </li>
+      <li class="how-step">
+        <h3>Kaynak ve araç</h3>
+        <p data-how="tools">yükleniyor</p>
+        <p class="how-code"><code>src/ibb_mcp/server.py</code> <code>src/ibb_mcp/knowledge/</code></p>
+      </li>
+      <li class="how-step">
+        <h3>Doğrulama</h3>
+        <p data-how="verify">yükleniyor</p>
+        <p class="how-code"><code>src/nabiz/agent/faithfulness.py</code></p>
+      </li>
+      <li class="how-step">
+        <h3>Kart</h3>
+        <p data-how="card">yükleniyor</p>
+        <p class="how-code"><code>src/nabiz/console/cards.py</code> <code>src/nexus_core/ledger.py</code></p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="organlar" aria-labelledby="organlar-title">
+    <h2 id="organlar-title">NEXUS organ haritası</h2>
+    <div data-how="organs"><p>yükleniyor</p></div>
+  </section>
+
+  <section id="durum" aria-labelledby="durum-title">
+    <h2 id="durum-title">Bugün çalışan ve planlanan</h2>
+    <div class="how-cols">
+      <div class="how-col">
+        <h3>Bugün çalışan</h3>
+        <div data-how="today"><p>yükleniyor</p></div>
+      </div>
+      <div class="how-col">
+        <h3>Planlanan</h3>
+        <div data-how="planned"><p>yükleniyor</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="olcumler" aria-labelledby="olcumler-title">
+    <h2 id="olcumler-title">Ölçülen sonuçlar</h2>
+    <p>Varış tahmini henüz iyi değil; ölçüp yazıyoruz.</p>
+    <div class="how-table" role="region" tabindex="0" aria-label="Ölçülen sonuçlar tablosu">
+      <table>
+        <thead><tr><th scope="col">Ölçüm</th><th scope="col">Sonuç</th><th scope="col">Örneklem</th><th scope="col">Tarih</th><th scope="col">Kaynak</th><th scope="col">Durum</th></tr></thead>
+        <tbody data-how="metrics"><tr><td colspan="6">yükleniyor</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="yapar" aria-labelledby="yapar-title">
+    <h2 id="yapar-title">Ne yapar, ne yapmaz</h2>
+    <div class="how-cols">
+      <div class="how-col">
+        <h3>Ne yapar</h3>
+        <ul>
+          <li>İBB açık verisinden kaynak ve veri yaşıyla cevap verir.</li>
+          <li>Hak, ücret, ceza ya da sağlık sorusunda kaynağın cümlesini alıntılar; kaynak yoksa 153'e yönlendirir.</li>
+          <li>Asansör için en fazla "İBB kaydında arıza yok" der.</li>
+          <li>Şehir sinyalini İBB çalışanının onayına getirir.</li>
+        </ul>
+      </div>
+      <div class="how-col">
+        <h3>Ne yapmaz</h3>
+        <ul>
+          <li>Resmî karar vermez.</li>
+          <li>Bir asansörün çalıştığını söylemez.</li>
+          <li>Vatandaşa puan ya da skor vermez.</li>
+          <li>İBB sistemlerine yazmaz.</li>
+          <li>Model onay veremez; onay yalnız insandan gelir.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="toplamiyoruz" aria-labelledby="toplamiyoruz-title">
+    <h2 id="toplamiyoruz-title">Ne toplamıyoruz</h2>
+    <ul>
+      <li>Kimlik, tanı ya da sağlık bilgisi sunucuya gitmez; profilinden yalnız işlevsel ihtiyaç bayrağı gider (örnek: adımsız erişim).</li>
+      <li>Ses kaydı tutulmaz.</li>
+      <li>Sorun sunucuda loglanmaz.</li>
+      <li>Kişiye skor yok.</li>
+    </ul>
+    <p><a href="/kvkk.html">Kişisel veriler ve gizlilik: tam metin</a></p>
+  </section>
+
+  <section id="acik-kaynak" aria-labelledby="acik-kaynak-title">
+    <h2 id="acik-kaynak-title">Açık kaynak bileşenler</h2>
+    <div class="how-table" role="region" tabindex="0" aria-label="Açık kaynak bileşenler tablosu">
+      <table>
+        <thead><tr><th scope="col">Bileşen</th><th scope="col">Lisans</th></tr></thead>
+        <tbody data-how="open-source"><tr><td colspan="2">yükleniyor</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer class="wrap">
+  <p id="attribution">
+    Kamu sektörü bilgilerini içerir: İBB Açık Veri Portalı,
+    <a href="https://data.ibb.gov.tr/license" rel="noopener noreferrer" target="_blank">İBB Açık Veri Lisansı</a>.
+  </p>
+  <p><a href="/">Ana sayfaya dön</a> · <a href="/kvkk.html">Kişisel veriler ve gizlilik</a></p>
+</footer>
+</body>
+</html>
