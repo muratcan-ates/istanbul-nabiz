@@ -17,13 +17,14 @@ const KIND_TR = {
   metro_equipment: 'Metro ekipmanı', metro_status: 'Metro hattı', arrival: 'varış', traffic: 'trafik', air: 'hava kalitesi',
   parking: 'otopark', alternative: 'adımsız alternatif', equipment_fault: 'ekipman arızası', long_outage: 'uzun süren arıza',
   hub_faults: 'aktarma merkezinde arızalar', source_stale: 'bayat kaynak', parking_full: 'otopark doluluğu',
-  air_quality: 'hava kalitesi', bus_bunching: 'otobüs yığılması',
+  air_quality: 'hava kalitesi', bus_bunching: 'otobüs yığılması', citizen_report: 'vatandaş bildirimi',
 };
 /* Settled: nothing left to decide. A deferred card is not settled: it can still be decided. */
 const SETTLED = ['approved', 'rejected', 'closed_by_reflex', 'expired', 'executed'];
 const STEP_TR = {
   signal_received: 'sinyal', routed: 'yönlendirme', reflex_closed: 'refleks', reflex_failed: 'refleks çalışamadı',
   arena_drafted: 'Arena kartı', approval: 'karar', rule_adopted: 'kural benimsendi', rule_revoked: 'kural geri alındı',
+  expired: 'süre doldu', chat_paused: 'sohbet durduruldu', chat_resumed: 'sohbet açıldı',
 };
 const STANCE_TR = { support: 'destekliyor', oppose: 'karşı çıkıyor', conditional: 'şartlı destekliyor' };
 const STANCE_ICON = { support: 'circle-check', oppose: 'alert-triangle', conditional: 'clock-question' };
@@ -175,6 +176,8 @@ function decisionCard(d, options) {
     d.receipt.wall_ms !== null && d.receipt.wall_ms !== undefined ? `Süre: ${num(d.receipt.wall_ms, 1)} ms` : '',
     d.receipt.llm_calls !== null && d.receipt.llm_calls !== undefined ? `model çağrısı: ${num(d.receipt.llm_calls, 0)}` : '',
     d.receipt.usd !== null && d.receipt.usd !== undefined ? `${num(d.receipt.usd, 4)} USD` : '',
+    // A model was called but no price was given (NABIZ_ARENA_USD_PER_CALL): say so, never guess one.
+    (d.receipt.usd === null || d.receipt.usd === undefined) && Number(d.receipt.llm_calls) > 0 ? 'fiyat tanımsız' : '',
   ].filter(Boolean) : [];
   const receiptLine = receipt.length ? `<p class="receipt">${receipt.map(esc).join(' · ')}</p>` : '';
   const expires = !done && d.expires_at ? `<p class="field-hint">Son karar: ${dateTime(d.expires_at)}</p>` : '';

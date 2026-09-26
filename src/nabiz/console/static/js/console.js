@@ -7,6 +7,7 @@ import {
   STATUS_TR, composeReason, decisionCard, draftItem, gatedAction, queueLists, statsStrip, traceList, verifyBadge,
 } from './console-cards.js';
 import { errorCard, skeleton } from './cards.js';
+import { mountRules } from './console_rules.js';
 import { esc, shortAge } from './format.js';
 import { mountToggles } from './theme.js';
 
@@ -17,6 +18,9 @@ let decisionWaitTimer = null;
 /* How soon the queue is read again while the server is still reading its sources. */
 const SOURCES_RETRY_MS = 5_000;
 const DECISION_WAIT_MS = 60_000;
+/* Other panels listen on document: a decision (E17, E23) and any new ledger entry (the badge, rules, E20). */
+const ledgerChanged = () => document.dispatchEvent(new CustomEvent('nabiz:ledger-changed'));
+const decided = () => { document.dispatchEvent(new CustomEvent('nabiz:decided')); ledgerChanged(); };
 
 /* ---- strip, ledger badge, queue, drafts -------------------------------------------------- */
 async function loadStats() {
@@ -159,11 +163,7 @@ async function decide(action) {
     status.setAttribute('tabindex', '-1');
     status.textContent = said;
     status.focus();
-    loadQueue();
-    loadStats();
-    loadVerify();
-    // The day's decisions panel (console_day.js) refreshes at once instead of on its minute.
-    document.dispatchEvent(new CustomEvent('nabiz:decided'));
+    loadQueue(); loadStats(); decided();
   } catch (err) {
     status.className = 'status-line is-bad';
     status.textContent = `Karar yazılamadı: ${err.message}`;
@@ -231,9 +231,7 @@ async function simulate() {
   btn.setAttribute('aria-disabled', 'true');
   try {
     const res = await post('/api/console/simulate', { fixture: btn.dataset.fixture || 'metro_faulty_kartal' });
-    await loadQueue();
-    loadStats();
-    loadVerify();
+    await loadQueue(); loadStats(); loadVerify();
     if (res.signal_id) loadDecision(res.signal_id);
     status.className = 'status-line is-ok';
     status.textContent = res.duplicate
@@ -257,17 +255,39 @@ async function adopt(form) {
     status.className = 'status-line is-ok';
     status.textContent = `Kural benimsendi: ${res.rule_id || form.dataset.id}, son geçerlilik ${res.expires_at || 'bilinmiyor'}.`;
     loadDrafts();
-    loadVerify();
-    document.dispatchEvent(new CustomEvent('nabiz:decided'));
+    decided();
   } catch (err) {
     status.className = 'status-line is-bad';
     status.textContent = `Kural benimsenemedi: ${err.message}`;
   }
 }
 
+/* ---- shell: the section nav under the sticky top bar ------------------------------------- */
+/* A link whose section is not on the page is hidden; a panel that adds its section shows it. */
+const syncNav = () => document.querySelectorAll('.console-nav a').forEach((a) => {
+  a.parentElement.hidden = !document.getElementById(a.hash.slice(1));
+});
+
+function mountNav() {
+  // The top bar wraps at 320 px: its real height places the nav and the anchor offset (console.css).
+  new ResizeObserver(([e]) => document.documentElement.style.setProperty('--console-topbar-h',
+    `${Math.ceil(e.borderBoxSize?.[0]?.blockSize ?? e.target.offsetHeight)}px`)).observe($('.topbar'));
+  syncNav();
+  new MutationObserver(syncNav).observe($('#main'), { childList: true });
+  // The native anchor scrolls; then focus moves to the section's heading so a keyboard user stays
+  // there (after the fragment navigation, which would otherwise drop it back to the body).
+  $('.console-nav').addEventListener('click', (evt) => {
+    const h = evt.target.closest('a') && document.querySelector(`${evt.target.closest('a').hash} h2`);
+    if (h) setTimeout(() => { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); });
+  });
+}
+
 /* ---- boot -------------------------------------------------------------------------------- */
 function boot() {
   mountToggles();
+  mountNav();
+  document.addEventListener('nabiz:ledger-changed', loadVerify);
+  mountRules({ get, post, mock: MOCK, onChange: ledgerChanged });
   if (MOCK) $('#data-mode').hidden = false;
   $('#queue').addEventListener('click', (evt) => {
     const item = evt.target.closest('.queue-item');

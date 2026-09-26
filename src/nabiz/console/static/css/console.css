@@ -1,4 +1,4 @@
-/* The operator page (console.html): the queue, the decision card, the trace, rule drafts. */
+/* The operator page (console.html): the section nav, the queue, the decision card, the trace, rules, rule drafts. */
 
 .console-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-6); align-items: start; }
 @media (min-width: 1024px) { .console-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
@@ -85,6 +85,36 @@
 @media (min-width: 768px) { .draft-form { grid-template-columns: 8rem minmax(0, 1fr) auto; align-items: end; } }
 .draft-form .field-hint { grid-column: 1 / -1; }
 
+/* Section nav: sticks under the top bar, whose real height console.js measures (it wraps at 320 px). */
+:root { --console-nav-h: calc(var(--tap) + 2 * var(--space-1)); }
+html { scroll-padding-top: calc(var(--console-topbar-h, var(--topbar-h)) + var(--console-nav-h) + var(--space-4)); }
+.console-nav { position: sticky; top: var(--console-topbar-h, var(--topbar-h)); z-index: var(--z-sticky); border-bottom: 1px solid var(--border); background: var(--topbar-bg); }
+.console-nav ul { display: flex; gap: var(--space-1); min-height: var(--console-nav-h); margin-block: 0; padding-block: var(--space-1); overflow-x: auto; list-style: none; }
+.console-nav li { flex: 0 0 auto; }
+.console-nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding-inline: var(--space-3); border-radius: var(--radius-control); color: var(--text-muted); font-weight: var(--weight-semibold); text-decoration: none; white-space: nowrap; }
+.console-nav a:hover { background: var(--surface-sunken); color: var(--text); }
+.console-nav a:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+
+/* Rules: one card per rule; a stale one is marked, an ended one is quieter. */
+.rules { display: grid; gap: var(--space-3); padding: 0; list-style: none; }
+.rule-card { display: grid; gap: var(--space-2); padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.rule-card > p { margin: 0; }
+.rule-card.is-stale { border-color: var(--warn); }
+.rule-card.is-ended { background: var(--surface); color: var(--text-muted); }
+.rule-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.rule-head h3 { margin: 0; }
+.rule-tags { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+.rule-sentence { max-width: 70ch; font-weight: var(--weight-semibold); }
+.rule-meta { color: var(--text-muted); font-size: var(--text-sm); }
+.rule-card .btn-row { justify-content: flex-end; }
+
+.revoke-dialog { max-width: 36rem; width: calc(100% - 2 * var(--space-4)); padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); color: var(--text); box-shadow: var(--shadow-2); }
+.revoke-dialog::backdrop { background: var(--text); opacity: .4; }
+.revoke-dialog form { display: grid; gap: var(--space-2); }
+.revoke-dialog h2 { margin: 0; }
+.revoke-dialog textarea { width: 100%; }
+.revoke-dialog .btn-row { justify-content: flex-end; margin-top: var(--space-2); }
+
 @media (max-width: 480px) {
   .topbar-actions { display: grid; grid-template-columns: minmax(0, 1fr) 4rem var(--tap) 4rem; width: 100%; }
   #ledger-badge { min-width: 0; }
@@ -95,4 +125,4 @@
   .btn-row .btn { flex: 1 1 auto; }
 }
 
-@media (forced-colors: active) { .queue-item, .decision, .evidence-item, .opinion, .draft, .proposed { border: 1px solid CanvasText; } }
+@media (forced-colors: active) { .queue-item, .decision, .evidence-item, .opinion, .draft, .proposed, .rule-card, .revoke-dialog { border: 1px solid CanvasText; } }

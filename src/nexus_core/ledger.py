@@ -69,6 +69,9 @@ class EntryKind(StrEnum):
     EXPIRED = "expired"
     RULE_ADOPTED = "rule_adopted"
     RULE_REVOKED = "rule_revoked"
+    # The console chat's pause switch (E20): a person stops and restarts the citizen chat.
+    CHAT_PAUSED = "chat_paused"
+    CHAT_RESUMED = "chat_resumed"
 
 
 class LedgerEntry(BaseModel):
