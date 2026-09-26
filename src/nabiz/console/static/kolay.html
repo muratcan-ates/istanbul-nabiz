@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>İstanbul Nabız: kolay ekran</title>
+<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/kolay.css">
+<link rel="modulepreload" href="/js/kolay.js">
+<script type="module" src="/js/kolay.js"></script>
+<script type="module" src="/js/voice.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">İçeriğe atla</a>
+
+<header class="kolay-header">
+  <div class="kolay-header-inner">
+    <a class="kolay-brand" href="/">İstanbul Nabız</a>
+    <span class="kolay-label">Kolay ekran</span>
+    <a class="kolay-full" href="/">Tam sürüm</a>
+  </div>
+  <p class="kolay-band kolay-identity" role="note">Resmî İBB hizmeti değildir</p>
+</header>
+
+<main id="main" tabindex="-1" class="kolay">
+  <h1 id="kolay-title">Ne yapmak istersiniz?</h1>
+  <div id="kolay-ai-band" class="kolay-band" role="note"></div>
+
+  <nav id="kolay-actions" aria-label="Eylemler">
+    <button type="button" id="kolay-sor" aria-controls="kolay-panel-sor" aria-expanded="false">Sor</button>
+    <button type="button" id="kolay-durak" aria-controls="kolay-panel-durak" aria-expanded="false">Durağım</button>
+  </nav>
+
+  <section id="kolay-panel-sor" aria-labelledby="kolay-sor-title" hidden>
+    <h2 id="kolay-sor-title">Sorunuzu yazın</h2>
+    <form id="chat-form" autocomplete="off">
+      <label for="chat-input">Sorunuz</label>
+      <div class="chat-row">
+        <input id="chat-input" name="q" type="text" enterkeyhint="send" maxlength="1000" aria-describedby="kolay-sor-error">
+        <button type="submit" id="chat-submit">Gönder</button>
+      </div>
+      <p class="field-error" id="kolay-sor-error" hidden>Bir soru yazın.</p>
+    </form>
+  </section>
+
+  <section id="kolay-panel-durak" aria-labelledby="kolay-durak-title" hidden>
+    <h2 id="kolay-durak-title">Durağım</h2>
+    <form id="kolay-stop-form" autocomplete="off">
+      <label for="kolay-line">Hat</label>
+      <input id="kolay-line" name="line" type="text" maxlength="12" autocapitalize="characters" aria-describedby="kolay-line-error">
+      <p class="field-error" id="kolay-line-error" hidden>Bu alanı doldurun.</p>
+      <label for="kolay-stop">Durak</label>
+      <input id="kolay-stop" name="stop" type="text" maxlength="80" aria-describedby="kolay-stop-error">
+      <p class="field-error" id="kolay-stop-error" hidden>Bu alanı doldurun.</p>
+      <label class="kolay-check"><input type="checkbox" id="kolay-remember"> Bu cihazda hatırla</label>
+      <button type="submit">Göster</button>
+    </form>
+    <div id="kolay-stop-saved" hidden></div>
+  </section>
+
+  <ol id="chat-log" class="kolay-card-host" aria-live="polite" aria-busy="false" aria-label="Cevap"></ol>
+  <p id="kolay-status" class="sr-only" role="status"></p>
+  <div id="kolay-privacy"></div>
+</main>
+
+<footer class="kolay-footer">
+  <div class="kolay-callbar"><a id="kolay-call-153" class="kolay-call" href="tel:153">153'ü ara</a></div>
+  <p>Hayati tehlikede <a id="kolay-call-112" class="kolay-call-112" href="tel:112">112</a>'yi arayın.</p>
+  <a href="/kvkk.html">KVKK / Gizlilik</a>
+</footer>
+</body>
+</html>
