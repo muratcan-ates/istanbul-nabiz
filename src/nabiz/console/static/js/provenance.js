@@ -108,6 +108,37 @@ function citations(list) {
   return `<ul class="cites" aria-label="Kaynaklar">${items.map(citation).join('')}</ul>`;
 }
 
+/* The turn's trace (final.how.chain, final.how.checks): ASCII stage and check names from the
+ * server, Turkish words here. An unknown name is shown as sent, escaped. */
+const STEP_TR = {
+  girdi: 'Girdi', acil: 'Acil', hassas: 'Hassas', maske: 'Maske', katman: 'Katman', dil: 'Dil',
+  arac_bilgi: 'Araç/bilgi', cikti: 'Çıktı',
+};
+const CHECK_TR = { girdi: 'Girdi', hassas: 'Hassas konu', sayi: 'Sayılar', kanit: 'Kanıt', cikti: 'Çıktı' };
+const STATUS_TR = {
+  gecti: 'geçti', cevapladi: 'cevapladı', hata: 'hata verdi',
+  true: 'doğrulandı', false: 'takıldı', null: 'uygulanmadı',
+};
+
+function traceRows(how) {
+  const rows = [];
+  if (Array.isArray(how.chain) && how.chain.length) {
+    const steps = how.chain.map((step) => {
+      const name = STEP_TR[step.name] || step.name;
+      return `${esc(name)} ${esc(STATUS_TR[step.status] || step.status)}`;
+    });
+    rows.push(`<li class="cite">Adımlar: ${steps.join(' · ')}</li>`);
+  }
+  if (how.checks && typeof how.checks === 'object' && !Array.isArray(how.checks)) {
+    const checks = Object.entries(how.checks).map(([name, value]) => {
+      const state = value === true || value === false ? String(value) : 'null';
+      return `${esc(CHECK_TR[name] || name)} ${esc(STATUS_TR[state])}`;
+    });
+    if (checks.length) rows.push(`<li class="cite">Kontroller: ${checks.join(' · ')}</li>`);
+  }
+  return rows.join('');
+}
+
 function howPanel(how, id) {
   if (!how) return '';
   const tools = Array.isArray(how.tools) && how.tools.length ? how.tools : (how.tool ? [how] : []);
@@ -130,7 +161,7 @@ function howPanel(how, id) {
   const uncertainty = Array.isArray(how.uncertainty) && how.uncertainty.length ? how.uncertainty.join(', ') : 'yok';
   const latency = Number.isFinite(Number(how.latency_ms)) ? Math.trunc(Number(how.latency_ms)) : null;
   return `<details id="${esc(id)}-how"><summary>${icon('list-details')}Bu nasıl bulundu?</summary><ul class="cites">`
-    + `${toolRows.join('')}${sourceRows.join('')}`
+    + `${traceRows(how)}${toolRows.join('')}${sourceRows.join('')}`
     + `<li class="cite">Kayıt zamanı: ${esc(observedText)}</li>`
     + `<li class="cite">Kural: ${esc(rule)}</li>`
     + `<li class="cite">Belirsizlik: ${esc(uncertainty)}</li>`
