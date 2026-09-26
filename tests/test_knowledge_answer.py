@@ -62,8 +62,8 @@ def test_model_never_writes_url_or_quote_only_evidence_ids(tmp_path) -> None:
     store = make_store(tmp_path, "Su aboneliği başvurusu resmî kaynakta açıklanır.")
     prompts = []
 
-    async def generate(prompt: str) -> str:
-        prompts.append(prompt)
+    async def generate(messages: list[dict[str, str]]) -> str:
+        prompts.append(messages)
         return json.dumps(
             {
                 "mode": "answer",
@@ -75,7 +75,8 @@ def test_model_never_writes_url_or_quote_only_evidence_ids(tmp_path) -> None:
         answer("Su aboneliği başvurusu nasıl yapılır?", store=store, embedder=HashingEmbedder(), generate=generate)
     )
     assert result.mode == "unknown"
-    assert prompts and "untrusted evidence data" in prompts[0]
+    assert prompts and [message["role"] for message in prompts[0]] == ["system", "user"]
+    assert "untrusted evidence data" in prompts[0][0]["content"]
 
 
 # -- the evidence thresholds, measured 26 Sep (DECISIONS #36) -------------------------------------
