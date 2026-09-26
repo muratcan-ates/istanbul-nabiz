@@ -330,9 +330,9 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     result = json.loads(run_node(tmp_path, source, str(SW)))
     stale = [
         "nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2", "nabiz-shell-v3", "nabiz-brief-v3",
-        "nabiz-shell-v4", "nabiz-brief-v4",
+        "nabiz-shell-v4", "nabiz-brief-v4", "nabiz-shell-v5", "nabiz-brief-v5",
     ]
-    assert result == {"version": "v5", "stale": stale}
+    assert result == {"version": "v6", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """
