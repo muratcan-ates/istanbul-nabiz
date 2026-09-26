@@ -37,6 +37,7 @@ from typing import Any
 
 from ibb_mcp.tools import Nabiz
 from nabiz.console.ports import OPERATOR, PortConflict
+from nabiz.console.rules_api import revoke_learned, rule_registry
 from nabiz.console.signals import CITY_WATCH, Incoming, alert_incoming, equipment_incoming
 from nexus_core import Approval, DecisionConflict, NexusEngine, Operator
 from nexus_core.approved import BOUND_ACTION
@@ -72,7 +73,7 @@ ACTION_TR = {"approve": "Onaylandı", "edit": "Düzenlenerek onaylandı", "rejec
 KIND_TR = {
     "equipment_fault": "ekipman arızası", "long_outage": "uzun süren arıza", "hub_faults": "aktarma merkezinde arızalar",
     "source_stale": "bayat kaynak", "parking_full": "otopark doluluğu", "air_quality": "hava kalitesi",
-    "bus_bunching": "otobüs yığılması",
+    "bus_bunching": "otobüs yığılması", "citizen_report": "vatandaş bildirimi",
 }  # fmt: skip
 LEVEL_TR = {"high": "yüksek", "medium": "orta", "low": "düşük"}
 MODE_TR = {"live": "canlı", "recorded": "kayıtlı", "schedule": "tarife", "unknown": "bilinmiyor"}
@@ -80,6 +81,10 @@ SOURCE_TR = {
     "metro_equipment": "Metro İstanbul arıza kaydı", "Metro İstanbul": "Metro İstanbul arıza kaydı", "ispark": "İSPARK",
     "aq_readings": "İBB hava kalitesi", "traffic": "İBB trafik indeksi", "iett": "İETT", "nabiz_alerts": "Nabız uyarıları",
 }  # fmt: skip
+#: Ledger steps with a fixed sentence: a table, so describe_step does not grow a branch per kind.
+OTHER_STEPS = {
+    "expired": "Süresi doldu: kart son karar zamanına kadar yanıtlanmadı; vatandaşa bir şey yayımlanmadı.",
+}
 
 
 def board_key(state_or_incoming: SignalState | Incoming) -> tuple[str, str, str | None]:
@@ -155,7 +160,7 @@ def describe_step(kind: str, detail: dict[str, Any]) -> str:  # noqa: PLR0911 - 
         reason = (detail.get("reason") or "gerekçe yazılmadı").rstrip(". ")
         published = detail.get("published_text")
         return f"{action}. Gerekçe: {reason}." + (f" Yayımlanan metin: {published}" if published else "")
-    return kind
+    return OTHER_STEPS.get(kind, kind)
 
 
 def titled(title: str, state: SignalState) -> str:
@@ -328,6 +333,14 @@ class NexusConsole:
             raise ValueError("Yalnız simüle operatör kural benimseyebilir.")
         adopted = await asyncio.to_thread(self.engine.drafts.adopt, draft_id, reason, Operator())
         return {"rule_id": adopted.rule_id, "expires_at": adopted.expires_at.isoformat()}
+
+    async def rules(self) -> dict[str, Any]:
+        return await asyncio.to_thread(rule_registry, self.engine, self._clock(), kind_names=KIND_TR)
+
+    async def revoke_rule(self, rule_id: str, *, reason: str, actor: str) -> dict[str, Any]:
+        if actor != OPERATOR:
+            raise ValueError("Yalnız simüle operatör kural geri alabilir.")
+        return await asyncio.to_thread(revoke_learned, self.engine, rule_id, reason, self._clock())
 
     async def simulate(self, fixture: str) -> dict[str, Any]:
         """Replay one recorded signal (never live data, never a made-up one) through the core."""

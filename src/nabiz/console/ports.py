@@ -70,6 +70,12 @@ class ConsolePort(Protocol):
 
     async def simulate(self, fixture: str) -> dict[str, Any]: ...
 
+    async def rules(self) -> dict[str, Any]:
+        """Every rule the router knows, learned ones first (``nabiz.console.rules_api``'s contract)."""
+        ...
+
+    async def revoke_rule(self, rule_id: str, *, reason: str, actor: str) -> dict[str, Any]: ...
+
 
 class UnwiredStepFree:
     """No equipment data bound: the lift status is unknown, and no alternative is offered."""
