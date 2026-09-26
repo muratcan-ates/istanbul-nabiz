@@ -309,7 +309,8 @@ def test_chat_turn_masks_before_the_model(monkeypatch, caplog) -> None:
     final = stream[-1][1]
     contents = [item["content"] for call in fake.calls for item in call["messages"] if item.get("content")]
     assert all(TCKN not in content and "4111111111111111" not in content for content in contents)
-    assert any("[TC KİMLİK]" in content and "[KART NO]" in content for content in contents)
+    # B01 hands the earlier questions over as their own user message, before the question.
+    assert any("[TC KİMLİK]" in content for content in contents) and any("[KART NO]" in content for content in contents)
     assert final["masked_count"] == 1 and final["masked_kinds"] == ["TC KİMLİK"]
     assert TCKN not in caplog.text and "4111111111111111" not in caplog.text
 

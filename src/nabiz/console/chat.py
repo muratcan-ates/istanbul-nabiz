@@ -3,7 +3,8 @@
     event: tool   data {"name", "status": "start"|"end"}      live, as the agent calls İBB tools
     event: token  data {"text"}                                the answer, in order
     event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion",
-                        "refused", "how", "mode", "steps", "emergency"}
+                        "refused", "how", "mode", "steps", "emergency", "guard",
+                        "masked_count", "masked_kinds"}
 
 **The answer streams after it is checked.** :class:`~nabiz.agent.NabizAgent` verifies every
 number in the model's prose against the tool results before it returns (and asks the model
@@ -31,7 +32,12 @@ run at a time, and what a turn spent is recorded even when the model failed half
 calls made (``usage["model_calls"]``) and their tokens, or :data:`TURN_CALLS` when nothing
 could be counted.
 
-**What a visitor sends stays a visitor's words**: the pure parts of the turn (the emergency and
+**What a visitor sends is checked, then masked**: the input guard (:mod:`~nabiz.console.text_guard`,
+E16) strips invisible text and stops an instruction change; the emergency and refusal verdicts read
+the unmasked text on this server; everything after them (the service-page index, the model, the
+earlier questions, the memory suggestion) sees it masked (:mod:`~nabiz.console.pii_guard`, E14), and
+every ``final`` says how much was masked (``masked_count``, ``masked_kinds``). A model answer with a
+link its sources do not carry, or a forbidden claim, becomes the unknown card. The pure parts of the turn (the emergency and
 refusal verdict, the earlier questions the model may see, the prompt, the events a finished turn
 writes) live in :mod:`nabiz.console.chat_pipeline`. An İBB failure reaches the model and the page
 as one Turkish sentence; its body (an HTML page, a SOAP fault, a URL) stays in the server log as
@@ -60,9 +66,11 @@ from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS
 from nabiz.agent.templates import OUT_OF_SCOPE
 from nabiz.console import chat_pipeline as pipeline
+from nabiz.console import text_guard
 from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import Mode, display_text, mode_for
 from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
+from nabiz.console.pii_guard import mask, mask_turn, pii_final_fields
 from nabiz.console.policy import functional_needs, memory_suggestion, names_a_price
 
 log = logging.getLogger("nabiz.console.chat")
@@ -198,21 +206,31 @@ class ChatService:
         started = time.perf_counter()
         trace = pipeline.TurnTrace()
         yield sse("session_started", {})
+        with trace.step("girdi"):
+            checked = text_guard.check_input(request.message)
+            trace.checks["girdi"] = checked.ok
         earlier = [turn.content for turn in request.history if turn.role == "user"]
+        masked = mask_turn(checked.text, earlier)
+        turn_fields = pii_final_fields(masked)
         needs = functional_needs(request.needs)
-        suggestion = memory_suggestion(request.message, earlier, needs)
-        early = await self._early_events(request, earlier, suggestion, started, trace)
+        suggestion = memory_suggestion(masked.message, list(masked.history), needs)
+        early = await self._early_events(checked, earlier, masked.message, suggestion, started, trace)
         if early is not None:
             for event in early:
-                yield event
+                yield pipeline.with_turn_fields(event, turn_fields)
             return
+        async for event in self._turn_events(request, masked.message, needs, suggestion, started, trace):
+            yield pipeline.with_turn_fields(event, turn_fields)
 
+    async def _turn_events(
+        self, request: ChatRequest, question: str, needs: list[str], suggestion: Any, started: float, trace: pipeline.TurnTrace
+    ) -> AsyncIterator[str]:
+        """Tools, model and answer on the masked question; the earlier questions masked the same way."""
+        with trace.step("maske"):
+            context = context_messages([mask(text)[0] for text in earlier_questions(request.history)])
         queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
         prompt = system_prompt(needs, self.base_prompt)
-        context = context_messages(earlier_questions(request.history))
-        task = asyncio.create_task(
-            self._run(request.message, prompt, lambda kind, data: queue.put_nowait((kind, data)), context)
-        )
+        task = asyncio.create_task(self._run(question, prompt, lambda kind, data: queue.put_nowait((kind, data)), context))
         task.add_done_callback(lambda done: queue.put_nowait(("done", None)))
         with trace.step("arac_bilgi"):
             try:
@@ -233,7 +251,7 @@ class ChatService:
                 yield event
             return
         answer, author = task.result()
-        for event in await self._answer_events(request.message, answer, author, suggestion, started, trace):
+        for event in await self._answer_events(question, answer, author, suggestion, started, trace):
             yield event
 
     async def _answer_events(
@@ -262,26 +280,30 @@ class ChatService:
             quoted = await self._from_knowledge(question, sensitive=False, suggestion=suggestion, started=started, trace=trace)
             if quoted:
                 return quoted
+        cited, shown = citations(answer, offline=self.offline), display_text(answer.text)
+        if (stopped := pipeline.output_guard(shown, cited, author, started, trace)) is not None:
+            return stopped  # checked as the page would show it: display_text already spells out "ETA"
         how = pipeline.how_block(answer, started, rule_id=None, trace=trace)
         fields = FinalFields(refused=False, how=how, mode="answer")
-        cited = citations(answer, offline=self.offline)
-        return pipeline.answer_events(display_text(answer.text), cited, author, suggestion, fields)
+        return pipeline.answer_events(shown, cited, author, suggestion, fields)
 
     async def _early_events(
         self,
-        request: ChatRequest,
+        checked: text_guard.InputVerdict,
         earlier: Sequence[str],
+        masked: str,
         suggestion: Any,
         started: float,
         trace: pipeline.TurnTrace,
     ) -> list[str] | None:
-        verdict = pipeline.early_verdict(request.message, earlier, trace)
+        """The verdicts read the checked, unmasked text; a quote for a refused question is looked up masked."""
+        verdict = pipeline.early_verdict(checked.text, earlier, trace, input_ok=checked.ok)
         if verdict == "emergency":
             return pipeline.emergency_events(suggestion, started, trace)
+        if verdict == "guard":
+            return pipeline.guard_events("input", checked.reason, checked.message or "", started, trace)
         if verdict == "sensitive":
-            quoted = await self._from_knowledge(
-                request.message, sensitive=True, suggestion=suggestion, started=started, trace=trace
-            )
+            quoted = await self._from_knowledge(masked, sensitive=True, suggestion=suggestion, started=started, trace=trace)
             return quoted or pipeline.traced_refusal(suggestion, started, trace)
         return None
 
@@ -313,9 +335,13 @@ class ChatService:
         trace.checks["kanit"] = bool(cited) and (not sensitive or found.mode == "quote_only")
         if sensitive and found.mode != "quote_only":
             return None  # no verified quote: the refusal, which also names 112
+        # E08: the page names the search it waited on, like any tool.
+        searched = [sse("tool", {"name": "ibb_services_search", "status": status}) for status in ("start", "end")]
+        if (stopped := pipeline.output_guard(display_text(found.text), cited, found.author, started, trace)) is not None:
+            return searched + stopped
         how = pipeline.empty_how(started, rule_id="knowledge", trace=trace)
         fields = FinalFields(refused=found.refused, how=how, mode=found.mode, steps=list(found.steps) or None)
-        return pipeline.answer_events(display_text(found.text), cited, found.author, suggestion, fields)
+        return searched + pipeline.answer_events(display_text(found.text), cited, found.author, suggestion, fields)
 
     def _reserve_rung(self) -> llm.LlmConfig | None:
         """The rung this turn runs on, with room for a whole turn held on it; ``None`` for the rules.

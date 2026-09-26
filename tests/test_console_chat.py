@@ -104,6 +104,7 @@ def ask(client: TestClient, message: str, *, needs: list[str] | None = None, his
     assert final[0] == "final"
     assert set(final[1]) == {
         "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
+        "guard", "masked_count", "masked_kinds",
     }
     tokens = "".join(data["text"] for kind, data in stream if kind == "token")
     assert tokens == final[1]["answer"], "the token events must add up to the final answer"

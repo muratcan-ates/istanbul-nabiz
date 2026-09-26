@@ -128,7 +128,9 @@ def test_answer_cards_keep_quotes_exact_and_hide_unknown_sources(tmp_path) -> No
         "const unknown = answerCard({mode:'unknown',answer_text:'ignored',author:'kural',"
         "citations,steps:['ignored'],how},'unknown-check');\n"
         "const emergency = answerCard({mode:'redirect',emergency:true,how},'emergency-check');\n"
-        "console.log(JSON.stringify({quoteHtml,unknown,emergency}));\n",
+        "const guard = answerCard({mode:'guard',refused:true,answer_text:'Bu isteği yerine getiremem.',author:'kural',"
+        "citations:[],how},'guard-check');\n"
+        "console.log(JSON.stringify({quoteHtml,unknown,emergency,guard}));\n",
         encoding="utf-8",
     )
     proc = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=60)
@@ -140,6 +142,10 @@ def test_answer_cards_keep_quotes_exact_and_hide_unknown_sources(tmp_path) -> No
     assert all(part not in result["unknown"] for part in ("KAYNAK", "NASIL YAPILIR", "Bu nasıl bulundu?", "chat-foot"))
     assert 'href="tel:112"' in result["emergency"] and 'href="tel:153"' in result["emergency"]
     assert "Bu nasıl bulundu?" not in result["emergency"]
+    # E16's input guard: its plain sentence and 153, nothing that suggests a sourced answer.
+    assert "Bu isteği yerine getiremem." in result["guard"] and 'href="tel:153"' in result["guard"]
+    hidden = ("KAYNAK", "Kaynak yok", "cevabı yazan", "feedback-slot", "Bu nasıl bulundu?")
+    assert all(part not in result["guard"] for part in hidden)
 
 
 def test_the_favicon_wears_the_primary_button_colours_of_both_themes() -> None:

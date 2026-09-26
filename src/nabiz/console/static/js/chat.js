@@ -66,6 +66,12 @@ function answerCard(data, turnId) {
       + '<a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>';
   }
 
+  if (mode === 'guard') {
+    // E16's input guard: its own plain sentence, with no source, author line or feedback slot.
+    return `<section class="answer-card is-unknown" data-card="guard"><p class="ac-fixed">${esc(data.answer_text ?? data.answer ?? '')}</p>`
+      + '<div class="btn-row"><a class="btn btn-primary" href="tel:153">153\'e sor</a></div></section>';
+  }
+
   const unknown = mode === 'unknown' || mode === 'refused';
   const answer = unknown ? UNKNOWN_TEXT : (data.answer_text ?? data.answer ?? '');
   const cited = Array.isArray(data.citations) ? data.citations.filter(Boolean) : [];

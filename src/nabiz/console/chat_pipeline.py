@@ -4,12 +4,13 @@
 service-page index); everything here takes values and returns values, with no I/O:
 
 - **before the model**: :func:`early_verdict` says whether the turn stops at the emergency
-  redirect or at the refusal rule. The refusal rule sees the person's earlier questions too, so a
+  redirect, at the input guard (E16: an instruction change or hidden text; the emergency still
+  comes first) or at the refusal rule. The refusal rule sees the person's earlier questions too, so a
   fee question split over two messages is still caught. Looking up a verified quote for a refused
   question reads the index, so it stays in :class:`~nabiz.console.chat.ChatService`.
 - **what the model sees of the conversation**: :func:`earlier_questions` keeps only the person's
   own earlier questions (never an "assistant" turn, which the page could forge, never a refused
-  one) and :func:`context_messages` hands them over as one ``user`` message, not inside the
+  one, never one the input guard stops) and :func:`context_messages` hands them over as one ``user`` message, not inside the
   system prompt.
 - **after**: :func:`final_body`, :func:`how_block`, :func:`refusal_events` and
   :func:`emergency_events` write the ``token`` and ``final`` events.
@@ -33,7 +34,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
-from nabiz.console import policy
+from ibb_mcp.knowledge.answer import UNKNOWN_TEXT
+from nabiz.console import policy, text_guard
 
 if TYPE_CHECKING:
     from nabiz.agent.agent import AgentAnswer
@@ -43,8 +45,9 @@ HISTORY_TURNS_KEPT = 8
 HISTORY_CHARS_KEPT = 600
 _WORDS_PER_TOKEN_EVENT = 3
 
-EarlyVerdict = Literal["emergency", "sensitive"]
-#: The turn's stages in order. B01 runs acil, hassas, arac_bilgi and cikti; the rest are wired in B01b.
+EarlyVerdict = Literal["emergency", "guard", "sensitive"]
+#: The turn's stages in order. Wired: girdi (E16), acil, hassas, maske (E14), arac_bilgi, cikti; katman
+#: (E15) and dil (E06) are still B01b's.
 STAGES = ("girdi", "acil", "hassas", "maske", "katman", "dil", "arac_bilgi", "cikti")
 #: The checks a ``final`` reports: ``True`` passed, ``False`` caught something, ``None`` not applied.
 CHECKS = ("girdi", "hassas", "sayi", "kanit", "cikti")
@@ -65,6 +68,7 @@ class FinalFields:
     mode: str
     steps: list[str] | None = None
     emergency: bool = False
+    guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
 
 
 def sse(event: str, data: dict[str, Any]) -> str:
@@ -107,13 +111,19 @@ class TurnTrace:
         return {"chain": [dict(item) for item in self.chain], "checks": {**self.checks, **(checks or {})}}
 
 
-def early_verdict(message: str, earlier: Sequence[str], trace: TurnTrace | None = None) -> EarlyVerdict | None:
-    """Whether the turn ends before any tool or model: an emergency first, then the refusal rule."""
+def early_verdict(
+    message: str, earlier: Sequence[str], trace: TurnTrace | None = None, *, input_ok: bool = True
+) -> EarlyVerdict | None:
+    """Whether the turn ends before any tool or model: an emergency first (a long or odd emergency
+    message still gets 112), then the input guard's verdict, then the refusal rule."""
     trace = trace if trace is not None else TurnTrace()
     with trace.step("acil"):
         if policy.emergency_intent(message):
             trace.mark("cevapladi")
             return "emergency"
+    if not input_ok:
+        trace.mark("cevapladi", "girdi")
+        return "guard"
     with trace.step("hassas"):
         sensitive = policy.refuses_in_context(message, earlier)
         trace.checks["hassas"] = not sensitive
@@ -124,9 +134,10 @@ def early_verdict(message: str, earlier: Sequence[str], trace: TurnTrace | None 
 
 
 def earlier_questions(history: Sequence[Turn]) -> list[str]:
-    """The person's own earlier questions: never an assistant turn, never a refused question."""
+    """The person's own earlier questions: never an assistant turn, never a refused question, never
+    one the input guard stops (an instruction change must not come back as context)."""
     asked = [turn.content[:HISTORY_CHARS_KEPT] for turn in history if turn.role == "user"]
-    return [text for text in asked if not policy.refuses(text)][-HISTORY_TURNS_KEPT:]
+    return [text for text in asked if not policy.refuses(text) and text_guard.check_input(text).ok][-HISTORY_TURNS_KEPT:]
 
 
 def context_messages(earlier: Sequence[str]) -> list[dict[str, str]]:
@@ -195,7 +206,17 @@ def final_body(
         "mode": fields.mode,
         "steps": fields.steps,
         "emergency": fields.emergency,
+        "guard": fields.guard,
     }
+
+
+def with_turn_fields(event: str, extra: Mapping[str, Any]) -> str:
+    """``event`` with ``extra`` added to its body when it is the ``final`` (E14's ``masked_count`` and
+    ``masked_kinds``, which belong to the turn, not to the path that ended it); any other event as is."""
+    if not extra or not event.startswith("event: final\n"):
+        return event
+    body = json.loads(event.split("data: ", 1)[1])
+    return sse("final", {**body, **extra})
 
 
 def answer_events(text: str, citations: list[dict[str, Any]], author: str, suggestion: Any, fields: FinalFields) -> list[str]:
@@ -224,6 +245,29 @@ def refusal_events(
 def traced_refusal(suggestion: Any, started: float, trace: TurnTrace) -> list[str]:
     """:func:`refusal_events` with the turn's trace in its ``how``."""
     return refusal_events(suggestion, started, how=empty_how(started, rule_id="refusal", trace=trace))
+
+
+def guard_events(stage: Literal["input", "output"], reason: str | None, text: str, started: float, trace: TurnTrace) -> list[str]:
+    """The input guard's plain refusal (``mode: "guard"``) or the output guard's unknown card. Both
+    are the rules' text: no tool result, no citation, no memory suggestion."""
+    how = empty_how(started, rule_id=f"guard_{stage}", trace=trace)
+    fields = FinalFields(
+        refused=stage == "input", how=how, mode="guard" if stage == "input" else "unknown",
+        guard={"stage": stage, "reason": str(reason)},
+    )  # fmt: skip
+    return answer_events(text, [], "kural", None, fields)
+
+
+def output_guard(
+    text: str, cited: list[dict[str, Any]], author: str, started: float, trace: TurnTrace
+) -> list[str] | None:
+    """E16 on a model answer: a link no citation carries, or a forbidden claim, ends at the unknown card."""
+    verdict = text_guard.check_output(text, cited, author=author)
+    if verdict.ok:
+        return None
+    trace.checks["cikti"] = False
+    trace.mark("cevapladi", "cikti")
+    return guard_events("output", verdict.reason, UNKNOWN_TEXT, started, trace)
 
 
 def emergency_events(suggestion: Any, started: float, trace: TurnTrace | None = None) -> list[str]:
