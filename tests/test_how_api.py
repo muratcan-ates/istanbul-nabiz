@@ -288,7 +288,7 @@ async def test_author_now_follows_the_chat_rule_not_the_ladder(monkeypatch, ctx)
     # What the chat itself does: record the rung ChatService._run hands the model, then fall to the rules.
     picked: list[str] = []
 
-    async def ask_model(self, tools, question, prompt, context, rung):
+    async def ask_model(self, tools, question, prompt, context, rung, lang="tr"):
         picked.append(llm.author_of(rung.provider))
         return None
 

@@ -18,7 +18,7 @@ from test_console_wiring import answer, evidence, fault
 
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import llm
-from nabiz.console import arena_seats, chat
+from nabiz.console import arena_seats
 from nabiz.console.arena_seats import ModelSeats
 from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.chat import TURN_CALLS
@@ -132,11 +132,6 @@ def test_pick_rung_keeps_the_first_rung_and_its_fallbacks_when_allowed() -> None
 def test_local_on_cap_is_on_unless_switched_off(value: str | None, on: bool) -> None:
     env = {} if value is None else {llm.LOCAL_ON_CAP_ENV: value}
     assert llm.local_on_cap(env) is on
-
-
-def test_author_for_is_an_alias_of_author_of() -> None:
-    assert chat.author_for(LOCAL) == llm.author_of("foundry_local") == "yerel model"
-    assert chat.author_for(CLOUD) == llm.author_of(CLOUD.provider) == "model"
 
 
 @pytest.mark.parametrize(

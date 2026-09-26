@@ -141,7 +141,10 @@ def test_answer_cards_keep_quotes_exact_and_hide_unknown_sources(tmp_path) -> No
     assert 'href="tel:153"' in result["unknown"]
     assert all(part not in result["unknown"] for part in ("KAYNAK", "NASIL YAPILIR", "Bu nasıl bulundu?", "chat-foot"))
     assert 'href="tel:112"' in result["emergency"] and 'href="tel:153"' in result["emergency"]
-    assert "Bu nasıl bulundu?" not in result["emergency"]
+    # The emergency card carries the "how was this found" panel outside its alert box (E38, decision 6);
+    # the legacy unknown path above still does not.
+    assert "Bu nasıl bulundu?" in result["emergency"]
+    assert result["emergency"].index("Bu nasıl bulundu?") > result["emergency"].index("</div></div></div>")
     # E16's input guard: its plain sentence and 153, nothing that suggests a sourced answer.
     assert "Bu isteği yerine getiremem." in result["guard"] and 'href="tel:153"' in result["guard"]
     hidden = ("KAYNAK", "Kaynak yok", "cevabı yazan", "feedback-slot", "Bu nasıl bulundu?")

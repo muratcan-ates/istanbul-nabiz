@@ -412,10 +412,11 @@ def test_a_foreign_emergency_opens_the_card_in_its_language_before_any_model(
     assert [kind for kind, _ in stream] == ["session_started", "final"]
 
 
-def test_a_non_emergency_final_carries_no_card_language(nabiz: Nabiz) -> None:
+def test_a_non_emergency_final_carries_the_turn_language(nabiz: Nabiz) -> None:
     with client_for(nabiz, llm.LlmConfig()) as client:
         _, final = ask(client, "fire sale at the bazaar")
-    assert final["emergency"] is False and final["lang"] is None and final["mode"] != "redirect"
+    # E38: final.lang is never null; off an emergency it is the turn's language (here detected, no page choice sent).
+    assert final["emergency"] is False and final["lang"] == "en" and final["mode"] != "redirect"
 
 
 def test_the_model_layer_opens_the_card_the_rules_missed(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -491,7 +492,7 @@ def test_an_assembly_area_question_is_not_an_emergency(nabiz: Nabiz) -> None:
 
 
 def test_a_broken_turn_still_ends_with_a_final_event(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None) -> Any:
+    async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None, **_: Any) -> Any:
         raise RuntimeError("bug")
 
     monkeypatch.setattr(chat_module.ChatService, "_run", broken)
@@ -623,7 +624,7 @@ def test_the_wider_vocabulary_leaves_city_questions_alone(question: str) -> None
 
 
 def test_a_timetable_or_a_reference_file_is_never_cited_as_live() -> None:
-    from nabiz.console.chat import source_mode
+    from nabiz.console.chat_pipeline import source_mode
 
     assert source_mode("iett_schedule", offline=False) == "schedule" and source_mode("gtfs", offline=False) == "schedule"
     assert source_mode("gazetteer", offline=False) == "recorded"

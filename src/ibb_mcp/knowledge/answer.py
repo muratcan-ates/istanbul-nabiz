@@ -173,26 +173,28 @@ def _display_text(text: str) -> str:
     return mask_personal(clean_for_display(text))
 
 
-def generation_messages(question: str, hits: Sequence[Hit]) -> list[dict[str, str]]:
-    """System and user messages for a generator: fixed instructions apart from the JSON-escaped data."""
+def generation_messages(
+    question: str, hits: Sequence[Hit], earlier: Sequence[str] = ()
+) -> list[dict[str, str]]:
+    """Keep fixed instructions separate from JSON-escaped conversation and source data."""
     sources = [{"evidence_id": hit.quote_id, "quote": hit.quote, "url": hit.url, "fetched_at": hit.fetched_at} for hit in hits]
-    return [
-        {"role": "system", "content": GENERATION_SYSTEM},
-        {"role": "user", "content": json.dumps({"question": question, "sources": sources}, ensure_ascii=False)},
-    ]
+    messages = [{"role": "system", "content": GENERATION_SYSTEM}]
+    if earlier:
+        messages.append({"role": "user", "content": json.dumps({"earlier_questions": list(earlier)[-8:]}, ensure_ascii=False)})
+    messages.append({"role": "user", "content": json.dumps({"question": question, "sources": sources}, ensure_ascii=False)})
+    return messages
 
 
 async def _answer_generated(
     question: str,
     hits: Sequence[Hit],
     store: KnowledgeStore,
-    generate: Callable[[str], Awaitable[str]],
+    generate: Callable[[list[dict[str, str]]], Awaitable[str]],
+    earlier: Sequence[str] = (),
 ) -> KnowledgeAnswer:
-    # ``generate`` takes one string today; a caller with a chat API should send generation_messages() as roles.
-    system, user = generation_messages(question, hits)
-    prompt = system["content"] + "\n\n" + user["content"]
+    messages = generation_messages(question, hits, earlier)
     try:
-        response = json.loads(await generate(prompt))
+        response = json.loads(await generate(messages))
         claims = response.get("claims")
         if response.get("mode") != "answer" or not isinstance(claims, list) or not claims:
             return _unknown()
@@ -229,7 +231,8 @@ async def answer(
     store: KnowledgeStore,
     embedder: Embedder | None,
     sensitive: bool = False,
-    generate: Callable[[str], Awaitable[str]] | None = None,
+    generate: Callable[[list[dict[str, str]]], Awaitable[str]] | None = None,
+    earlier: Sequence[str] = (),
 ) -> KnowledgeAnswer:
     """Return verified evidence; sensitivity is supplied by the caller, never guessed here.
 
@@ -260,4 +263,4 @@ async def answer(
         selected = tuple(shown)
         text = "\n\n".join(_source_text(hit) for hit in selected)
         return KnowledgeAnswer("answer", _display_text(text), selected)
-    return await _answer_generated(question, hits, store, generate)
+    return await _answer_generated(question, hits, store, generate, earlier)

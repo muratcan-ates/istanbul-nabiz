@@ -63,7 +63,12 @@ function answerCard(data, turnId) {
   if (mode === 'redirect' && data.emergency === true) {
     return `<div class="callout callout-warn" role="alert"><div><p>${EMERGENCY_TEXT}</p>`
       + '<div class="btn-row"><a class="btn btn-danger" href="tel:112">112 (Acil)</a>'
-      + '<a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>';
+      + '<a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>' + howPanel(how, turnId);
+  }
+
+  if (mode === 'small_talk' || mode === 'clarify') {
+    const text = esc(data.answer_text ?? data.answer ?? '');
+    return `<section class="answer-short"><p>${text}</p></section>`;
   }
 
   if (mode === 'guard') {
@@ -229,9 +234,9 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       }
     };
     try {
-      // js/i18n.js keeps the page language in the URL and on <html lang>; the server reads it from B01b on.
+      // Keep the selection in the URL and send it in the body for the server-side turn.
       const lang = new URLSearchParams(window.location.search).get('lang') || document.documentElement.lang || 'tr';
-      await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2) },
+      await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2), lang },
         onEvent, controller.signal);
       if (finalData) renderFinal(shell, finalData, question, streamed, turnId);
       else { shell.setAttribute('aria-busy', 'false'); say('Yanıt tamamlanmadı.'); }

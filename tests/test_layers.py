@@ -369,7 +369,8 @@ def test_chat_answers_a_greeting_without_the_model_once_wired(monkeypatch: pytes
     chat_nabiz = next(fixture)
     fake = FakeModel()
     monkeypatch.setattr(llm, "chat", fake)
-    _, final = ask(client_for(chat_nabiz, CLOUD), "Merhaba")
+    with client_for(chat_nabiz, CLOUD) as client:  # the app's lifespan builds app.state.chat
+        _, final = ask(client, "Merhaba")
     assert fake.calls == []
     assert final["mode"] == "small_talk"
     assert final["author"] == "kural"

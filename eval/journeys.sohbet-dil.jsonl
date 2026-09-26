@@ -1,0 +1,6 @@
+{"id":"sd-01","lang":"tr","journey":"E38","question":"Merhaba","history":[],"expect":{"mode":"small_talk","rule_id":"layer:greeting","lang":"tr"},"notes":"Türkçe selam modelsiz yanıtlanır."}
+{"id":"sd-02","lang":"en","journey":"E38","question":"Hello","history":[],"request_lang":"en","expect":{"mode":"small_talk","lang":"en"},"notes":"İngilizce sayfa seçimi selam dilini belirler."}
+{"id":"sd-03","lang":"tr","journey":"E38","question":"Durak nerede?","history":[],"expect":{"mode":"clarify","rule_id":"layer:clarify"},"notes":"Eksik durak adı netleştirilir."}
+{"id":"sd-04","lang":"tr","journey":"E38","question":"Peki M2'de?","history":["M1'de arıza var mı?"],"expect":{"rewritten":"M2'de arıza var mı?"},"notes":"Takip sorusu önceki hat sorusunu devralır."}
+{"id":"sd-05","lang":"tr","journey":"E38","question":"Kadıköy'de otopark ve hava nasıl?","history":[],"expect":{"rule_id":"layer:split"},"notes":"İki konu tek kartta birleştirilir."}
+{"id":"sd-06","lang":"en","journey":"E38","question":"Otopark cezası ne kadar?","history":[],"request_lang":"en","expect":{"mode":"refused","lang":"en"},"notes":"Hassas ücret sorusu seçilen dilde reddedilir."}

@@ -29,6 +29,21 @@ FIXED: dict[str, dict[str, str]] = {
             "the official page of the relevant institution. If this is an emergency, call 112."
         ),
     },
+    "HANDOFF": {
+        "tr": (
+            "İnsanla görüşmek için 153 Çözüm Merkezi'ni arayabilirsin; aramayı sen yaparsın, Nabız kimseyi arayamaz. "
+            "Görevliye sorununu, varsa hat, durak ya da ilçe adıyla kısaca anlat. Acil bir durumdaysan 112'yi ara."
+        ),
+        "en": (
+            "To talk to a person, you can call İBB's 153 Solution Centre; you make the call, Nabız cannot call anyone. "
+            "Tell the officer your problem briefly, with the line, stop or district name if there is one. "
+            "If this is an emergency, call 112."
+        ),
+    },
+    "TURN_FAILED": {
+        "tr": "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene; acil bir durumdaysan 112'yi ara.",
+        "en": "I cannot answer this question right now. Try again a little later; if this is an emergency, call 112.",
+    },
     "EMERGENCY": {
         "tr": "Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).",
         "en": "This may be an emergency. Please call directly: 112 (Emergency) or 153 (İBB).",
