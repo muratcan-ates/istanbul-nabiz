@@ -275,7 +275,7 @@ def create_app(settings: Settings | None = None, nabiz: Nabiz | None = None) -> 
             log.exception("freshness unavailable")
             return JSONResponse(
                 status_code=200,
-                content={"status": "degraded", "version": VERSION, "sources": None, "detail": str(exc)},
+                content={"status": "degraded", "version": VERSION, "sources": None, "detail": type(exc).__name__},
             )
         return JSONResponse({"status": "ok", "version": VERSION, "sources": sources})
 
