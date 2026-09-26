@@ -319,7 +319,8 @@ def test_brief_missing_message_names_the_cause(tmp_path: Path) -> None:
 def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source = "const fs=require('node:fs'),vm=require('node:vm');const self={location:{origin:'https://x'},addEventListener(){}};"
     source += "vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),{self,URL});"
-    source += "const keys=['nabiz-shell-v1','nabiz-brief-v1','nabiz-shell-v2','nabiz-brief-v2','nabiz-shell-v3','nabiz-brief-v3','baska-site'];"
+    source += "const keys=['nabiz-shell-v1','nabiz-brief-v1','nabiz-shell-v2','nabiz-brief-v2',"
+    source += "'nabiz-shell-v3','nabiz-brief-v3','baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
     stale = ["nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2"]
