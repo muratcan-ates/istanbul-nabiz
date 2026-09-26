@@ -193,7 +193,8 @@ def test_sw_rules_by_path(tmp_path: Path) -> None:
         ['/api/brief?stations=Kartal','GET','cors'], ['/api/chat','POST','cors'], ['/api/console/queue','GET','cors'],
         ['/console','GET','navigate'], ['/console.html','GET','navigate'], ['/js/console.js','GET','cors'],
         ['/css/console.css','GET','cors'], ['/mock/brief.json','GET','cors'], ['/api/arrival?line=500T','GET','cors'],
-        ['/healthz','GET','cors'], ['https://tile.openstreetmap.org/1/1/1.png','GET','cors'], ['/console/login','POST','cors']
+        ['/healthz','GET','cors'], ['https://tile.openstreetmap.org/1/1/1.png','GET','cors'], ['/console/login','POST','cors'],
+        ['/i18n/ar.json','GET','cors']
       ];
       const result = paths.map(([path, method, mode]) =>
         self.nabizSw.ruleFor(new URL(path, 'https://nabiz.test').href, method, mode));
@@ -202,7 +203,7 @@ def test_sw_rules_by_path(tmp_path: Path) -> None:
     result = json.loads(run_node(tmp_path, source, str(SW)))
     assert result["result"] == [
         "page", "page", "page", "page", "static", "static", "pass", "static", "static", "static", "static",
-        "brief", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass",
+        "brief", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "pass", "static",
     ]
 
 def test_shell_lists_only_files_that_exist(tmp_path: Path) -> None:
@@ -320,11 +321,11 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source = "const fs=require('node:fs'),vm=require('node:vm');const self={location:{origin:'https://x'},addEventListener(){}};"
     source += "vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),{self,URL});"
     source += "const keys=['nabiz-shell-v1','nabiz-brief-v1','nabiz-shell-v2','nabiz-brief-v2',"
-    source += "'nabiz-shell-v3','nabiz-brief-v3','baska-site'];"
+    source += "'nabiz-shell-v3','nabiz-brief-v3','nabiz-shell-v4','nabiz-brief-v4','baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
-    stale = ["nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2"]
-    assert result == {"version": "v3", "stale": stale}
+    stale = ["nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2", "nabiz-shell-v3", "nabiz-brief-v3"]
+    assert result == {"version": "v4", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """

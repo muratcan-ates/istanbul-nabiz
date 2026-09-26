@@ -225,7 +225,8 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       }
     };
     try {
-      const lang = new URLSearchParams(window.location.search).get('lang') || 'tr';
+      // js/i18n.js keeps the page language in the URL and on <html lang>; the server reads it from B01b on.
+      const lang = new URLSearchParams(window.location.search).get('lang') || document.documentElement.lang || 'tr';
       await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2) },
         onEvent, controller.signal);
       if (finalData) renderFinal(shell, finalData, question, streamed, turnId);

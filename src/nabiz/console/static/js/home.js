@@ -1,4 +1,5 @@
-/* The first-run question box, quick routes and per-page language choice. Language stays in the URL. */
+/* The first-run question box and quick routes. The Türkçe/English/عربي buttons belong to js/i18n.js alone:
+   it keeps the choice in the URL and on the device and follows the answer-language button (#chat-lang). */
 
 import { esc } from './format.js';
 
@@ -15,12 +16,6 @@ function quickCard(label, seedQuestion) {
   return `<button type="button" class="chip" role="button" tabindex="0" data-seed="${esc(seedQuestion)}">${esc(label)}</button>`;
 }
 
-function setLanguage(lang) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('lang', lang);
-  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-}
-
 function mountHome({ form, input }) {
   const cards = document.querySelector('#quick-cards');
   cards.innerHTML = QUICK_QUESTIONS.map(([label, seed]) => quickCard(label, seed)).join('');
@@ -29,18 +24,6 @@ function mountHome({ form, input }) {
     if (!button) return;
     input.value = button.dataset.seed;
     form.requestSubmit();
-  });
-
-  const current = new URL(window.location.href).searchParams.get('lang') === 'en' ? 'en' : 'tr';
-  document.querySelectorAll('[data-language]').forEach((button) => {
-    button.setAttribute('aria-pressed', String(button.dataset.language === current));
-    button.addEventListener('click', () => {
-      const selected = button.dataset.language;
-      setLanguage(selected);
-      document.querySelectorAll('[data-language]').forEach((choice) => {
-        choice.setAttribute('aria-pressed', String(choice.dataset.language === selected));
-      });
-    });
   });
 }
 

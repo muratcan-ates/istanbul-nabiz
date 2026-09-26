@@ -1,10 +1,10 @@
-/* v3 (cloud PRs: /nasil.html, the handoff card): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v3';
+/* v4 (E06: i18n.js, rtl.css and the tr/en/ar catalogues): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v4';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
 const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html', '/kolay.html', '/nasil.html'];
-const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/'];
+const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/', '/i18n/'];
 const STATIC_FILES = ['/icons.svg', '/manifest.webmanifest'];
 const OPERATOR_PREFIX = 'console';
 const NETWORK_TIMEOUT_MS = 4000;
@@ -29,6 +29,8 @@ const SHELL = [
   '/js/transcript.js', '/js/trip.js', '/js/trip_view.js',
   // cloud PRs (B02, B04): the how-it-works page and the handoff card
   '/nasil.html', '/css/how.css', '/js/how.js', '/css/handoff.css', '/js/handoff.js',
+  // E06: the page language switch, the Arabic sheet and the three catalogues
+  '/js/i18n.js', '/css/rtl.css', '/i18n/tr.json', '/i18n/en.json', '/i18n/ar.json',
 ];
 
 function ruleFor(url, method, mode) {
