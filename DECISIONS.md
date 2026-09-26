@@ -1484,3 +1484,76 @@ not allowed to touch (`app.py`, `index.html`, `console.html`, `chat.js`, `citize
   files (42 → 51 KB raw). No budget covers it yet; many modules also watch `#chat-log` with their own observer.
 - **AI notice** stays once in the chat log (`disclosure.js`); the home band question from #30 is still open.
   The "Resmî İBB hizmeti değildir" band is on every page, `kolay.html` included.
+
+## 32. Bulut PR'ları #1–#7 birleştirmesi (26 Eyl 2026): seven cloud PRs merged and wired
+
+**Date:** 2026-09-26 · **Status:** Accepted for `gun2/entegrasyon`; the owner reviews it before anything is pushed
+
+### Context
+
+Seven cloud sessions opened PRs against `gun2/entegrasyon`, all from `93c16bf`, before the wave-1 merge (#31):
+#2 B06 security review, #1 and #3 B01 chat chain (PR2 stacked on PR1), #7 B05 operator screen (G26), #4 B04
+153 handoff card, #5 B02 "Nasıl çalışır?", #6 B08 numbers sheet. Each PR text carried an "Entegratöre not"
+list for the shared files it did not own. GitHub's merge button was not used; the merges are local.
+
+### Decision
+
+- **Commit messages checked first**: no trailer, no "Generated", no assistant or model name in any of the
+  16 branch commits (the PR bodies carry a session link; they are not part of the history).
+- **Merges** (`git merge --no-ff`, order #2, #1, #3, #7, #4, #5, #6). One conflict, in #7: `console.html`
+  keeps wave-1's `#nx-organs` placeholder and adds B05's `#rules` section before it (the nav lists Kurallar
+  before NEXUS); `console.js` takes B05's `decided()`, which fires wave-1's `nabiz:decided` and
+  `nabiz:ledger-changed` (so `loadVerify` still runs). Two B05 tests assumed the wave-1 panels were not in the
+  page; they now require one placeholder each for `#nx-organs`, `#approval-health`, `#day`, and `console.js`
+  as the single entry with `console_rules.js` imported by it. Wave-1 had not touched `chat.py`, so B01's move
+  into `chat_pipeline.py` carried nothing over; `chat_gate` stays in `app.py`.
+- **Integrator notes applied**: `/api/how` and `/api/console/rules` routers before the static mount;
+  `/healthz` `within_budget` follows `llm.pick_rung` (true when no model is configured); `how_api` uses
+  `pick_rung`/`local_on_cap` and reads two rows from `eval/results/numbers.md` (tests passed, eval passed);
+  `handoff.js` after `feedback.js`; "Nasıl çalışır?" in both footers; `sw.js` v3 caches `/nasil.html`, its
+  sheet and module and the handoff card; `nasil.html` joins the static page checks; `chat.js` writes
+  `how.rule_id` to `data-rule-id`; `!eval/results/numbers.json` in `.gitignore`; `make numbers`;
+  `NABIZ_LADDER_LOCAL_ON_CAP=` in `.env.example`; web `/healthz` names only the exception type;
+  `httpx.Client(trust_env=False)` in the network-guard test (the cloud proxy's 403); the `stale-claims` row
+  in AGENTS §8. Already on the branch, nothing to do: B06's CSP lines (#31), B05's `arena_usd_per_call` and
+  `.env.example` line, E20's pause kinds (`kill_switch.py` picks `CHAT_PAUSED`/`CHAT_RESUMED` by `getattr`),
+  E19's organ map (lists both kinds), J9 (#31), `eval/run_eval.py` (records already take `answer.provider`).
+- **Wave-1 bridges on `chat_pipeline`** (left for B01 in #31): E16 input guard first (invisible text
+  stripped; the emergency still wins; an instruction change or hidden text ends at `mode: "guard"`,
+  `rule_id: "guard_input"`, before the refusal rule, tools or model; a guarded earlier question is not
+  context) and output guard on model answers as shown (unsourced link or forbidden claim → the unknown card,
+  `guard_output`); `chat.js` draws the guard card with no source, author line or feedback. E14: verdicts read
+  the unmasked text on the server; index, model, earlier questions and memory suggestion get it masked; every
+  final carries `masked_count`/`masked_kinds` (the skipped E14 chat test now runs; it expected context and
+  question in one message, B01 keeps them apart, so it checks each). E08: the service-page search emits
+  `ibb_services_search` tool events. The final body gains `guard`, `masked_count`, `masked_kinds`; the trace
+  lists `girdi` and `maske`, and `checks.girdi` is the input verdict.
+- **Gates** (26 Sep, sprint flag, this machine): `make lint` pass; `make lane-gates` 2965 passed, 3 skipped,
+  3 xfailed, architecture 8 checks 0 failed (the three WARNs B06/B08 reported: `eta.py`, `gtfs.py`,
+  `agent.py` 455, and `estimate_arrivals` PLR0913), guardrails 14 checks 0 failed; full `pytest tests` the
+  same; `make web-budget` 12 PASS, 1 TARGET, 0 FAIL; `make eval` 60/60; `stale-claims` PASS. The numbers
+  sheet was re-measured here (`scripts/demo_numbers.py --write`: 0 failed) and README follows it.
+- **Smoke** (`make console-offline CONSOLE_PORT=8192`, scratch `NEXUS_DB_PATH` and pause file, stopped by
+  pid): `/nasil.html` and `/api/how` (17 tools, 9 rules, author "kural", 8 metric rows); rule registry and
+  a learned rule adopted then revoked (ledger 40 → 41, card ended); "insanla görüşmek istiyorum" opens one
+  handoff card with the five lines, `tel:153`, `tel:112`; the answer's panel shows the Adımlar and
+  Kontroller rows; an instruction change gets the guard card. The browser pane refused the service worker
+  registration ("unknown error when fetching the script") although `/sw.js` answers 200; not verified here.
+
+### Consequences and open risks
+
+- **Still B01b**: E15 `classify_turn` (small talk, clarify, follow-up rewrite, split with merged citations)
+  needs the `small_talk`/`clarify` cards in `chat.js` and place names; `tests/test_layers.py` still skips.
+  E06 `lang` on `ChatRequest`, `fixed_text`/`quote_frame`, `lang` in the final. B06 note 4:
+  `generation_messages()` with separate system and user roles once the knowledge model path is wired.
+  B01 PR2 note 2 (the panel on refusal and emergency cards) now falls to E07's `fixedCard`; not done.
+  `chat.author_for` is dead and B01b deletes it. `chat.py` is 395 lines against its 400-line test.
+- **Owner decisions**: B02 G2 (keep the 12,94 dk / %27,3 / %41,7 rows on `/nasil.html`?); B05 lowercasing the
+  first letter of an action gives "nabız" in seven mission sentences (an exception table for proper names?);
+  B04 the 39-district list's source URL, the TİD address and 153's official name (`[BOŞLUK: Murat]`);
+  B06 Q1 = A and Q2 = E as merged; B08 the licence name (note 9) and the AGENTS sentence for cloud commits
+  (note 3); NOTICE.md's "İBB Açık Veri Lisansı (CC BY 4.0)" phrase (B02 note 10).
+- **Environment**: `pypdf` is not in `.venv`, so B06's PDF path is skipped here until the owner installs the
+  `knowledge` extra (network). Mission rules reviewed on 25 Sep read as stale from 2 Oct (B05).
+- The web budget still does not cover the console's citizen page (#31); `provenance.js`, `handoff.js` and
+  `how.js` added to that graph.
