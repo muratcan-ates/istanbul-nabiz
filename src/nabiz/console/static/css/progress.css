@@ -1,0 +1,45 @@
+.arrival-why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.arrival-why-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.arrival-why .tag {
+  white-space: nowrap;
+}
+
+.arrival-why-more {
+  flex-basis: 100%;
+}
+
+.arrival-why-more summary {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.chat-tool[data-phase] {
+  min-height: 1.5em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]):not([data-simple="on"]) .chat-tool.is-running .icon {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@media (forced-colors: active) {
+  .arrival-why .tag {
+    border: 1px solid CanvasText;
+  }
+}
