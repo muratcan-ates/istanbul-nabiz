@@ -1,9 +1,9 @@
-/* v2 (wave-1 modules and /kolay.html): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v2';
+/* v3 (cloud PRs: /nasil.html, the handoff card): bump VERSION when this worker's behavior or shell changes. */
+const VERSION = 'v3';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
-const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html', '/kolay.html'];
+const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html', '/kolay.html', '/nasil.html'];
 const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/'];
 const STATIC_FILES = ['/icons.svg', '/manifest.webmanifest'];
 const OPERATOR_PREFIX = 'console';
@@ -27,6 +27,8 @@ const SHELL = [
   '/js/conversations.js', '/js/easy_read.js', '/js/easy_read_listen.js', '/js/emergency.js', '/js/map_layers.js',
   '/js/my_stops.js', '/js/personas.js', '/js/pii_badge.js', '/js/service_status.js', '/js/tool_labels.js',
   '/js/transcript.js', '/js/trip.js', '/js/trip_view.js',
+  // cloud PRs (B02, B04): the how-it-works page and the handoff card
+  '/nasil.html', '/css/how.css', '/js/how.js', '/css/handoff.css', '/js/handoff.js',
 ];
 
 function ruleFor(url, method, mode) {
