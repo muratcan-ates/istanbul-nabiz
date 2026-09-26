@@ -2084,6 +2084,10 @@ project measured (guardrail `stale-claims`). AGENTS.md §4: no session calls an 
   `Nabiz` 27 public methods against 26 (the facade method the rules require). `agent.py` did not grow:
   the station route moved to `metro_route.py` and the traffic and freshness branches into one helper, so the
   new branch leaves `route`'s complexity where it was.
+  At the integration merge (26 Sep) the baseline was raised to these numbers (`scripts/architecture_baseline.json`:
+  server.py 540 -> 552, `Nabiz` public methods 26 -> 27). Reason: every MCP tool is one `Nabiz` method and one
+  registration in `server.py` by design (one tool layer, DECISIONS #2); splitting `server.py` two days before the
+  deadline risks the demo for no behaviour. The split stays owed after 1 Oct (ENGINEERING §13).
 - The i18n catalogue has no English strings for the new section yet; it shows Turkish in both languages.
 - Gates (26 Sep, sprint flag): `make lane-gates` 3075 passed, 2 skipped, 3 xfailed; architecture 0 failed;
   guardrails 14 checks 0 failed; `make eval` 66/66; `make smoke` 18 tools; `make web-budget` 12 PASS 1 TARGET
