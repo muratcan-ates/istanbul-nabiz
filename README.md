@@ -24,7 +24,7 @@ separate SOAP and REST endpoints. There is a Mobiett app, an İSPARK app, a CepH
 app, but no single conversational surface, no open integration layer, and no history to answer *"how full
 is it **usually** at this hour?"*.
 
-Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 17 tools) that any agent can call,
+Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 18 tools) that any agent can call,
 and ships a web page and a city agent as its first clients. Six journeys drive the design; each has six
 eval scenarios in `eval/journeys.jsonl`:
 
@@ -60,7 +60,8 @@ day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status
 | Layer | State | Where |
 |---|---|---|
 | İBB client, cache, models, GTFS repair, ETA engine | **working**; arrivals serve the untuned 120 s/stop since 23 Sep, the estimator with the better held-out score ([DECISIONS #18](DECISIONS.md)) | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py`, `src/ibb_mcp/eta_profile.py` |
-| 17 MCP tools behind one façade, plus the `ibb://attribution` resource | **working**: offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
+| 18 MCP tools behind one façade, plus the `ibb://attribution` resource | **working**: offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
+| İBB Open Data catalogue: `ibb_datasets_search`, the page's "İBB Açık Veri" section (`GET /api/datasets`), a catalogue mode for the knowledge index | **working offline** on a synthetic catalogue; the real one is written by the owner's `make capture-catalog` (at most 3 calls to `data.ibb.gov.tr`, [DECISIONS #37](DECISIONS.md)); until then every answer says there is no copy | `src/ibb_mcp/catalog.py`, `scripts/capture_ibb_catalog.py`, `src/nabiz/console/open_data_api.py` |
 | MCP over streamable HTTP | **working locally**: stateless, per-caller budget, optional API key, closed CORS, `/healthz`; not deployed | `src/ibb_mcp/server.py`, `tests/test_server_security.py` |
 | Derived tables | **committed, thin**: built on 13 Sep from the laptop's lake; see Results for what each supports | `data/reference/` |
 | Collector | **today:** the owner's laptop, under a supervisor; its lake holds watched-line snapshots on 4 of the 15 days from 8 to 22 Sep (DECISIONS #10). **Target:** five scheduled Container Apps Jobs, written and tested offline, not deployed | `scripts/collect_forever.py`, `src/nabiz/collector/job.py`, `infra/modules/collectorjobs.bicep` |
@@ -83,9 +84,9 @@ bir sayı sunumda söylenmez.
 |---|---|---|
 | Otobüs varış tahmininin ortalama mutlak hatası (ölçüldü; henüz iyi değil) | **12,94 dk** (n = 1.351) | `eval/results/eta.md` · `make eta` · 8–22 Eyl verisi |
 | Modelsiz ajan cevaplarında kaynağıyla eşleşen sayı (şablon cevap, model yok) | **126/126** | `eval/results/20260908T082619Z-agent-offline.md` · 8 Eyl |
-| MCP aracı | **17** | `eval/results/numbers.md` · `scripts/demo_numbers.py --write` · 26 Eyl |
-| Test | **2.965 geçti** (2.971 toplandı) | same |
-| Eval senaryosu | **60/60** geçti (72 senaryo; 12 tanesi yalnız ajan modunda, atlandı) | same |
+| MCP aracı | **18** | `eval/results/numbers.md` · `scripts/demo_numbers.py --write` · 26 Eyl |
+| Test | **3.075 geçti** (3.080 toplandı) | same |
+| Eval senaryosu | **66/66** geçti (78 senaryo; 12 tanesi yalnız ajan modunda, atlandı) | same |
 | Bilgi soru seti | 100 soru, şema doğrulandı; isabet ölçülmedi | same |
 
 Yeni satır aynı kurala uyar; sitede test ve eval sayıları `/nasil.html` sayfasında `eval/results/numbers.md`'den
@@ -122,7 +123,7 @@ flowchart LR
     AI[Application Insights<br/>allow-listed spans]
   end
   REF[(data/reference<br/>occupancy · reliability · ETA rates)]
-  TL[Tool layer · Nabiz<br/>17 tools · shared cache · PoliteClient]
+  TL[Tool layer · Nabiz<br/>18 tools · shared cache · PoliteClient]
   subgraph CL["Clients"]
     WEB[Nabız web page]
     AG[Nabız agent<br/>tool loop + faithfulness check]
@@ -408,7 +409,7 @@ Stated plainly, because a public-data project that hides these is not trustworth
 ## Türkçe
 
 **İstanbul Nabız**, İBB'nin kayıt istemeyen canlı açık verisini (İSPARK doluluk, İETT otobüs konumları,
-Metro arıza durumu, trafik indeksi, hava kalitesi) **17 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
+Metro arıza durumu, trafik indeksi, hava kalitesi) **18 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
 sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının yanında kaynağı ve zaman damgası vardır.
 
 > **Bu resmî bir İBB hizmeti değildir.** Bağımsız bir öğrenci projesidir; İBB, İETT, İSPARK veya Metro
@@ -442,7 +443,7 @@ sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının y
   çıktısında bulunmayan hiçbir sayıyı kabul etmez.
 
 **Durum (26 Eylül 2026):** hiçbir şey deploy edilmedi. Çalışan: İBB istemcisi, önbellek, modeller, GTFS
-onarımı, varış tahmini motoru, 17 araç ve **MCP sunucusu** (stdio gerçek bir MCP istemcisiyle doğrulandı; HTTP yerelde
+onarımı, varış tahmini motoru, 18 araç ve **MCP sunucusu** (stdio gerçek bir MCP istemcisiyle doğrulandı; HTTP yerelde
 durumsuz, çağıran başına bütçeli, `/healthz`'li), web sayfası, durumsuz uyarı motoru, modelsiz çalışan ajan.
 Toplayıcı bugün sahibinin dizüstünde çalışıyor; hedef, çevrimdışı test edilmiş beş zamanlanmış Container Apps
 Job'u (DECISIONS #10). `main`'deki CI 8–22 Eylül arasında 13 koşunun 13'ünde kırmızıydı; 23 Eylül'den beri

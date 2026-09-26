@@ -1,0 +1,68 @@
+/* İBB Açık Veri section (js/open_data.js): search, nine category chips, dataset cards. Tokens only. */
+
+.od-chips {
+  margin-block: var(--space-3);
+}
+
+.od-head,
+.od-foot,
+.od-empty {
+  margin: var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.od-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.od-card {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+}
+
+.od-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.od-title a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+
+.od-meta,
+.od-summary {
+  margin: var(--space-1) 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.od-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+}
+
+.od-updated {
+  color: var(--text-subtle);
+  font-size: var(--text-sm);
+}
+
+@media (forced-colors: active) {
+  .od-card { border: 1px solid CanvasText; }
+}

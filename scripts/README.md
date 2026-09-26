@@ -107,6 +107,17 @@ the İETT hourly budget.
 
 ---
 
+## `capture_ibb_catalog.py`: record the İBB Open Data catalogue (owner only)
+
+`make capture-catalog` reads every dataset on `data.ibb.gov.tr` from CKAN's `package_search`: at most 3
+calls, at least 6.5 s apart, each sent once through `PoliteClient`; one call is expected. It writes
+`data/reference/ibb_catalog.json` (gitignored) and `data/reference/ibb_catalog_summary.json` (counts by
+category, format and publisher, the 30 newest). Without `--live` it prints the plan and sends nothing.
+`ibb_datasets_search`, `GET /api/datasets` and `knowledge_ingest.py --catalog` read the file, never the
+portal ([DECISIONS #37](../DECISIONS.md)).
+
+---
+
 ## `build_places.py` — rebuild the gazetteer
 
 Regenerates `data/reference/places.csv`, the lookup table behind the `places_resolve` tool,

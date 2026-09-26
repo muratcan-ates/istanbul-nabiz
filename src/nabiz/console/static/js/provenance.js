@@ -13,6 +13,7 @@ const TOOL_TR = {
   metro_equipment_signals: 'Metro ekipman sinyalleri', check_alerts: 'şehir uyarıları',
   traffic_index: 'trafik indeksi', air_quality_now: 'hava kalitesi', air_quality_forecast: 'hava kalitesi tahmini',
   plan_journey: 'yolculuk karşılaştırması', line_reliability: 'hat güvenilirliği', city_freshness: 'veri tazeliği',
+  ibb_datasets_search: 'açık veri kataloğu',
 };
 
 const SOURCE_TR = {
@@ -36,6 +37,7 @@ const SOURCE_TR = {
   nexus_ledger: 'Nabız karar defteri',
   nexus_rules: 'Nabız kural kataloğu',
   'local:knowledge': 'Hizmet sayfaları (yerel dizin)',
+  ibb_catalog: 'İBB Açık Veri kataloğu',
 };
 
 const MODE_TR = { live: 'canlı', old: 'ölçüm', recorded: 'kayıtlı', schedule: 'tarifeye göre', unknown: 'bilinmiyor' };

@@ -7,7 +7,7 @@ a plausible-looking placeholder in a results table is worse than an admission.
 
 ```bash
 .venv/bin/python eval/run_eval.py --selftest                          # scenario file + metric helpers
-.venv/bin/python eval/run_eval.py --mode deterministic --offline      # 72 scenarios, no network
+.venv/bin/python eval/run_eval.py --mode deterministic --offline      # 78 scenarios, no network
 .venv/bin/python eval/run_eval.py --mode deterministic                # live İBB, budget-capped
 .venv/bin/python eval/run_eval.py --mode agent --offline              # adds the answer-level metrics
 .venv/bin/python eval/run_eval.py --mode agent --require-llm          # …and refuses to run without a model
@@ -69,25 +69,25 @@ conjunction of all four.
 
 ## The scenarios
 
-`journeys.jsonl` holds 72 scenarios across J1-J12, six each, 36 Turkish and 36 English. J1-J6 cover
+`journeys.jsonl` holds 78 scenarios across J1-J13, six each, 39 Turkish and 39 English. J1-J6 cover
 parking, bus arrivals, metro status and accessibility, air quality, cross-journey tools, and the
 equipment snapshot. J7-J8 are agent-only policy traps about rights, fares, fines, health, cash,
 rent, tips, and prompt injection. J9 checks step-free access, J10 checks ambiguous names, J11
-checks unknown requests and honest data limits, and J12 calls `ibb_services_search` on the local service-page index. `--selftest`, which also runs in the test suite (`tests/test_eval_harness.py`),
+checks unknown requests and honest data limits, J12 calls `ibb_services_search` on the local service-page index, and J13 calls `ibb_datasets_search` on the local İBB Open Data catalogue. `--selftest`, which also runs in the test suite (`tests/test_eval_harness.py`),
 requires every tool the MCP server registers to appear in at least one scenario. Every place, line and stop is real: 500T is the Tuzla Şifa Mahallesi ↔ 4.
 Levent Metro line, 3068 is the İSPARK lot at 15 Temmuz Şehitler Meydanı, 220641 is the
 Kavacık Köprüsü stop the 500T actually calls at.
 
 | Key | Meaning |
 |---|---|
-| `id`, `lang`, `journey` | `j2-en-1`, `tr`/`en`, `J1`–`J12` |
+| `id`, `lang`, `journey` | `j2-en-1`, `tr`/`en`, `J1`–`J13` |
 | `question` | what a person would type, in that language |
 | `expected_tools` | the tool chain the answer requires, in order |
 | `calls` | the same chain with concrete arguments, so the deterministic runner never has to guess them; a call may carry `"expect": "refusal"` and `error_contains` |
 | `expected_fields` | field assertions (grammar below) |
 | `forbidden_phrases` | overclaiming the answer must not contain |
 | `answer_must_contain_any` | agent mode only: the answer must contain at least one of these, so a refusal or a stated limit has to survive into the prose; ignored by the deterministic runner |
-| `modes` | optional; the modes the scenario can be scored in (default both). `j5-tr-2` is deterministic because the web agent does not offer `check_alerts`; J9-J12 are deterministic and J7-J8 are agent-only |
+| `modes` | optional; the modes the scenario can be scored in (default both). `j5-tr-2` is deterministic because the web agent does not offer `check_alerts`; J9-J13 are deterministic and J7-J8 are agent-only |
 | `policy` | optional policy-layer label. `"refuse"` marks J7-J8 for the separate refusal tests; the journey harness does not interpret this field |
 | `notes` | why the scenario exists and what the honest answer looks like |
 
@@ -287,7 +287,7 @@ model would eventually have to beat.
 
 ```
 eval/
-├── journeys.jsonl          72 scenarios, 36 TR / 36 EN, six per journey (J1-J12)
+├── journeys.jsonl          78 scenarios, 39 TR / 39 EN, six per journey (J1-J13)
 ├── run_eval.py             journey harness: runner, metrics, markdown report, --selftest
 ├── knowledge_questions.jsonl  locked 100-question acceptance set for G14
 ├── run_knowledge_eval.py   offline schema and bucket validator; fixed unknown mock only

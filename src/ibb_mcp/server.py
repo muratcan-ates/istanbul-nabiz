@@ -137,6 +137,9 @@ How to use these tools well:
 * `ibb_services_search` reads a local index of reviewed public-service pages, not a live
   service: answer only from the quotes it returns, give each quote's link and date, and when
   it returns `note` (no index, or no verifiable match) say that the search could not answer.
+* `ibb_datasets_search` answers "what data does İBB publish?" from a local copy of the İBB Open
+  Data catalogue: give each dataset's title, publisher, formats, last update and link, say how
+  old the catalogue copy is, and relay `note` when there is no copy.
 * A `rate_limited` error means wait `retry_after_seconds` before asking again; the limit
   protects İBB's shared request budget, so do not retry in a loop.
 """.strip()
@@ -213,7 +216,8 @@ def _error(exc: Exception) -> str:
 #: * local only (1): ``places_resolve`` (gazetteer), ``iett_stops_search`` (GTFS index),
 #:   ``ispark_typical_occupancy`` and ``line_reliability`` (committed tables),
 #:   ``city_freshness`` (process state), ``ibb_services_search`` (the local knowledge index;
-#:   its optional query embedding goes to the model endpoint, never to İBB).
+#:   its optional query embedding goes to the model endpoint, never to İBB), ``ibb_datasets_search``
+#:   (the local copy of the İBB Open Data catalogue, ``make capture-catalog``; no call at answer time).
 #: * ``metro_status``, ``metro_station_info``: one GET each (2).
 #: * ``metro_equipment_status``: the summary GET, one detail POST per equipment group (three)
 #:   and the station list (6).
@@ -235,6 +239,7 @@ TOOL_COSTS: dict[str, int] = {
     "line_reliability": 1,
     "city_freshness": 1,
     "ibb_services_search": 1,
+    "ibb_datasets_search": 1,
     "metro_status": 2,
     "metro_station_info": 2,
     "metro_equipment_status": 6,
@@ -911,7 +916,7 @@ def _register_derived(mcp: MCPServer, app: Nabiz) -> None:
 
 
 def _register_knowledge(mcp: MCPServer, app: Nabiz) -> None:
-    """Reviewed public-service pages, searched in a local index (``ibb_mcp.knowledge``)."""
+    """Local indexes: reviewed public-service pages (``ibb_mcp.knowledge``) and the open-data catalogue (``ibb_mcp.catalog``)."""
 
     @mcp.tool()
     @tool
@@ -927,6 +932,25 @@ def _register_knowledge(mcp: MCPServer, app: Nabiz) -> None:
         önceden kurulur ve `fetched_at` sayfanın alındığı tarihtir.
         """
         return await app.ibb_services_search(query=query, limit=limit)
+
+    @mcp.tool()
+    @tool
+    async def ibb_datasets_search(
+        query: Annotated[str, Field(max_length=200)],
+        category: str | None = None,
+        limit: Annotated[int, Field(ge=1, le=20)] = 5,
+    ) -> str:
+        """İBB Açık Veri Portalı'nda (data.ibb.gov.tr) hangi veri setlerinin olduğunu yerel katalog kaydında arar.
+
+        "Hangi veri var?", "açık veri", "veri seti" ve "İBB'nin X verisi var mı?" sorularında kullan. Her
+        sonuçta başlık, yayımlayan kurum, kategori, biçimler (CSV, JSON, API), son güncelleme, lisans ve
+        veri seti sayfasının bağlantısı döner; cevapta bağlantıyı ve güncelliği ver. `category` portalın
+        dokuz kategorisinden biridir (Bilgi ve İletişim Teknolojileri, Enerji, Ekonomi, Güvenlik, Mobilite,
+        Çevre, İnsan, Yönetişim, Yaşam). Sözcüksüz sorguda en son güncellenenler döner. Katalog kaydı
+        yoksa `note` döner; o zaman veri seti uydurma. Bu araç İBB'ye canlı istek atmaz: katalog önceden
+        kaydedilir ve `catalog.captured_at_utc` kaydın tarihidir.
+        """
+        return await app.ibb_datasets_search(query=query, category=category, limit=limit)
 
 
 def _register_runtime(mcp: MCPServer, app: Nabiz) -> None:

@@ -794,6 +794,12 @@ class Nabiz:
 
         return await search_local_index(query, limit, offline=self.settings.offline)
 
+    async def ibb_datasets_search(self, query: str, category: str | None = None, limit: int = 5) -> ToolResult:
+        """Datasets on the İBB Open Data portal, from the local catalogue file (``ibb_mcp.catalog``; no İBB call)."""
+        from ibb_mcp.catalog import search_catalog
+
+        return await asyncio.to_thread(search_catalog, query, category, limit)
+
     async def metro_equipment_signals(self) -> ToolResult:
         """The equipment snapshot as NEXUS signal candidates, for the console (not an MCP tool)."""
         from ibb_mcp.equipment_signals import equipment_signals

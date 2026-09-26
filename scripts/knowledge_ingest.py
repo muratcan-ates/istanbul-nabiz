@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch the reviewed source inventory and build the local SQLite knowledge index."""
+"""Fetch the reviewed source inventory and build the local SQLite knowledge index.
+
+With ``--catalog data/reference/ibb_catalog.json`` it fetches nothing: every dataset of the local İBB Open Data
+catalogue (``make capture-catalog``) becomes one page of the same index (``ibb_mcp.knowledge.catalog_pages``).
+"""
 
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from ibb_mcp.http import PoliteClient  # noqa: E402
+from ibb_mcp.knowledge.catalog_pages import index_catalog  # noqa: E402
 from ibb_mcp.knowledge.chunking import chunk_blocks  # noqa: E402
 from ibb_mcp.knowledge.embed import embedder_from_env  # noqa: E402
 from ibb_mcp.knowledge.ingest import (  # noqa: E402
@@ -106,19 +111,28 @@ async def _index_result(result, store: KnowledgeStore, embedder) -> tuple[str, s
         return result.source.url, "hata", 0
 
 
+def _print_rows(rows: list[tuple[str, str, int]]) -> None:
+    print("URL\tDurum\tParça")
+    for url, status, count in rows:
+        print(f"{url}\t{status}\t{count}")
+
+
 async def run(args: argparse.Namespace) -> int:
-    sources = parse_knowledge_sources(args.sources)
     store = KnowledgeStore(args.db)
     embedder = None if args.no_embed else embedder_from_env(store=store)
+    if args.catalog:
+        rows = await index_catalog(args.catalog, store, embedder)
+        _print_rows(rows)
+        print(f"Katalog veri seti sayfası: {len(rows)}; ağ isteği yok")
+        return 0
+    sources = parse_knowledge_sources(args.sources)
     async with PoliteClient(max_attempts=1) as client:
         fetched = await fetch_all(sources, client, args.cache, refresh=args.refresh)
     for result in fetched:
         if result.status == "404":
             store.mark_inactive(canonical_url(result.source.url))
     rows = [await _index_result(result, store, embedder) for result in fetched]
-    print("URL\tDurum\tParça")
-    for url, status, count in rows:
-        print(f"{url}\t{status}\t{count}")
+    _print_rows(rows)
     unverified = [source for source in sources if not source.verified]
     print(f"Doğrulanmış envanter satırı: {len(sources) - len(unverified)}; doğrulanmamış: {len(unverified)}")
     if unverified:
@@ -134,6 +148,9 @@ def parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache", type=pathlib.Path, default=ROOT / "data/knowledge/cache")
     parser.add_argument("--refresh", action="store_true", help="Revalidate cached pages with conditional requests")
     parser.add_argument("--no-embed", action="store_true", help="Build only the FTS index")
+    parser.add_argument(
+        "--catalog", type=pathlib.Path, help="Index the local İBB Open Data catalogue file instead of fetching pages (no network)"
+    )
     return parser
 
 

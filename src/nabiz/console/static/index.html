@@ -58,6 +58,7 @@
 <script type="module" src="/js/my_stops.js"></script>
 <script type="module" src="/js/history.js"></script>
 <script type="module" src="/js/compare.js"></script>
+<script type="module" src="/js/open_data.js"></script>
 <script type="module" src="/js/map.js"></script>
 <script type="module" src="/js/map_layers.js"></script>
 <script type="module" src="/js/trip.js"></script>
@@ -198,6 +199,19 @@
           <button type="submit" class="btn">Karşılaştır</button>
         </form>
         <div id="compare-result"></div>
+      </section>
+
+      <section id="acik-veri" aria-labelledby="acik-veri-title">
+        <div class="section-head">
+          <h2 id="acik-veri-title">İBB Açık Veri</h2>
+          <span class="section-note">hangi veri var, kim yayımlıyor, ne zaman güncellendi</span>
+        </div>
+        <form id="acik-veri-form" class="arrival-form" role="search" autocomplete="off">
+          <div class="field"><label for="acik-veri-q">Veri seti ara</label><input id="acik-veri-q" name="q" type="search" maxlength="200" placeholder="otopark, baraj, wifi"></div>
+          <button type="submit" class="btn">Ara</button>
+        </form>
+        <div class="chips od-chips" id="acik-veri-chips" role="group" aria-label="İBB Açık Veri kategorileri"></div>
+        <div id="acik-veri-result" aria-live="polite" aria-busy="false"></div>
       </section>
 
       <section id="equipment-history" aria-labelledby="equipment-history-title" hidden>

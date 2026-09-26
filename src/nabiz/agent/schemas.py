@@ -86,6 +86,13 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     "dönen alıntılara dayandır ve her alıntının bağlantısını ver. Dizin sunucuda kurulu değilse ya da doğrulanabilir eşleşme "
     "yoksa `note` döner; o zaman bilgi uydurma, bulunamadığını söyle. Bu araç İBB'ye canlı istek atmaz; dizin önceden kurulur "
     "ve `fetched_at` sayfanın alındığı tarihtir.",
+    "ibb_datasets_search": "İBB Açık Veri Portalı'nda (data.ibb.gov.tr) hangi veri setlerinin olduğunu yerel katalog kaydında "
+    "arar. \"Hangi veri var?\", \"açık veri\", \"veri seti\" ve \"İBB'nin X verisi var mı?\" sorularında kullan. Her sonuçta "
+    "başlık, yayımlayan kurum, kategori, biçimler (CSV, JSON, API), son güncelleme, lisans ve veri seti sayfasının bağlantısı "
+    "döner; cevapta bağlantıyı ve güncelliği ver. `category` portalın dokuz kategorisinden biridir (Bilgi ve İletişim "
+    "Teknolojileri, Enerji, Ekonomi, Güvenlik, Mobilite, Çevre, İnsan, Yönetişim, Yaşam). Sözcüksüz sorguda en son "
+    "güncellenenler döner. Katalog kaydı yoksa `note` döner; o zaman veri seti uydurma. Bu araç İBB'ye canlı istek atmaz: "
+    "katalog önceden kaydedilir ve `catalog.captured_at_utc` kaydın tarihidir.",
     "city_freshness": "Her veri kaynağının ne kadar güncel olduğunu ve kalan istek bütçesini döner. Bir cevabın ne kadar taze "
     "veriye dayandığını söylemen gerektiğinde bunu çağır. `data_age_seconds` verinin kendi yaşıdır (kaynak bir ölçüm zamanı "
     "bildiriyorsa `reported_at_utc`'den); `age_seconds` yalnızca kaynağın en son ne zaman okunduğudur. Tazelik sorulduğunda "
@@ -104,6 +111,7 @@ HIDDEN_PARAMS: dict[str, set[str]] = {"ispark_find_parking": {"with_tariff"}}
 PARAM_HINTS: dict[str, str] = {
     "place": "Yer adı, ör. 'Taksim', 'Kadıköy', 'Beşiktaş'.",
     "query": "Aranacak metin.",
+    "category": "İBB Açık Veri kategorisi, ör. 'Mobilite', 'Çevre'; verilmezse hepsi.",
     "line_code": "İETT hat kodu, ör. '500T', '34AS'.",
     "line": "Metro hat adı, ör. 'M4'.",
     "stop": "Durak adı veya durak kodu.",

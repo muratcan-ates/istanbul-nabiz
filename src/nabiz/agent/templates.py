@@ -222,6 +222,40 @@ def _r_freshness(d: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _day(raw: Any) -> str | None:
+    """"20.09.2026" from an ISO timestamp: a date, which the numeric check reads as no quantity."""
+    try:
+        moment = dt.datetime.fromisoformat(str(raw))
+    except ValueError:
+        return None
+    return moment.strftime("%d.%m.%Y")
+
+
+def _r_datasets(d: dict[str, Any]) -> list[str]:
+    """The open-data catalogue: each dataset with publisher, formats, last update and its page, all from the payload."""
+    catalog = d.get("catalog") or {}
+    if not catalog.get("available"):
+        return ["İBB Açık Veri kataloğunun kaydı bu sunucuda yok; hangi veri setlerinin olduğunu şu an söyleyemem."]
+    hits = d.get("datasets") or []
+    captured = _day(catalog.get("captured_at_utc"))
+    copy = f"katalog kaydı {captured}" if captured else "katalog kaydının tarihi bilinmiyor"
+    if not hits:
+        return [f"İBB Açık Veri kataloğunda eşleşen veri seti bulamadım ({copy})."]
+    if d.get("mode") == "search":
+        head = f"bulduğum veri setleri: {d.get('count')} tanesi, {d.get('total_matches')} eşleşmeden"
+    else:
+        head = f"en son güncellenen veri setleri, katalogdaki {catalog.get('datasets')} veri setinden"
+    lines = [f"İBB Açık Veri'de {head} ({copy})."]
+    for hit in hits:
+        updated = _day(hit.get("last_updated"))
+        bits = [hit.get("title"), hit.get("organization"), ", ".join(hit.get("categories") or [])]
+        bits.append(", ".join(hit.get("formats") or []))
+        bits.append(f"son güncelleme {updated}" if updated else "güncelleme tarihi yok")
+        lines.append("• " + " · ".join(str(bit) for bit in bits if bit))
+        lines.append(f"  {hit.get('url')}")
+    return lines
+
+
 def _r_generic(d: dict[str, Any]) -> list[str]:
     """Fallback: state availability and let the tool's own note carry the detail."""
     if isinstance(d, dict) and d.get("available") is False:
@@ -242,6 +276,7 @@ RENDERERS = {
     "iett_stops_search": _r_stops,
     "places_resolve": _r_places,
     "city_freshness": _r_freshness,
+    "ibb_datasets_search": _r_datasets,
 }
 
 

@@ -2031,3 +2031,60 @@ not Russian). Sums of the table's own numbers:
 - The Kolay page's own emergency box stays Turkish (as it stayed without 187 in #36).
 - The model layer is not measured against a real model here (no paid call); only the fake-client paths are
   tested (yes, no, gas, unreadable, error, timeout, ceiling, switch off, Turkish and English skipped).
+
+## 37. İBB Açık Veri kataloğu ürüne bağlandı (ibb-katalog) (26 Eyl): the eighteenth tool, a page section and a catalogue mode
+
+**Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep: "data.ibb.gov.tr'den ne varsa alalım ve bağlayalım")
+
+### Context
+
+Nabız read six İBB endpoints and the GTFS package, but could not say what else İBB publishes. The portal
+(`data.ibb.gov.tr`) is a CKAN site whose `package_search` lists every dataset with its publisher, categories,
+formats and last update. The retired "555 datasets" claim shows why a count may only come from a file this
+project measured (guardrail `stale-claims`). AGENTS.md §4: no session calls an İBB host; only the owner does.
+
+### Decision
+
+- **One capture, owner only**: `make capture-catalog` (NETWORK, marked in `make help`) runs
+  `scripts/capture_ibb_catalog.py --live`: `package_search?rows=1000&start=N` through `PoliteClient`
+  (`max_attempts=1`), at most **3 calls**, at least 6.5 s apart, a next page only while datasets remain.
+  One call is expected. Without `--live` it prints the plan and sends nothing; with `NABIZ_OFFLINE=1` it refuses.
+  A failed page writes nothing and is reported by status only. It writes `data/reference/ibb_catalog.json`
+  (gitignored: the portal's metadata, slimmed, notes cut to 600 characters) and
+  `data/reference/ibb_catalog_summary.json` (counts by category, format, publisher; the 30 newest).
+- **Everything else reads the file** (`ibb_mcp.catalog`, services layer): no request at answer time, the
+  copy's date travels with every answer (`catalog.captured_at_utc`, `provenance.observed_at`), and with no
+  copy every surface says so (`note`, API 503 `catalog_missing`) instead of an empty list. `NABIZ_IBB_CATALOG`
+  names another file; the suite points it at a file that never exists, and a copy marked `meta.synthetic`
+  says "SENTETİK" in every answer.
+- **MCP tool #18 `ibb_datasets_search(query, category=None, limit=5)`**: Turkish-folded token search over
+  title, tags, publisher, categories, description, resource names; question words ("veri", "var mı",
+  "İBB'nin") dropped; an empty query lists a category or the newest datasets. Price 1 token, 0 upstream
+  calls (`TOOL_COSTS`, `UPSTREAM_COLD`). A description that talks to a model is not passed on.
+- **Chat**: the rule path sends a question about data itself ("açık veri", "veri seti", "X verisi var mı")
+  to the catalogue before any other route (`nabiz.agent.open_data_route`), so "İBB'nin otopark verisi var mı?"
+  is no longer a parking question that asks for a place; a data *request* question stays on the service pages.
+  The answer lists datasets with publisher, formats, last update and link; each dataset is a citation
+  (`source: ibb_catalog`, mode `recorded`, never "canlı"), so the output guard admits its link on the model path.
+- **Page**: an "İBB Açık Veri" section (`js/open_data.js`, `css/open_data.css`, loaded with the section):
+  search box, the portal's nine categories as chips, result cards; `GET /api/datasets?q=&category=&limit=`.
+  Nothing is asked until the visitor acts. The service worker shell adds both files (v6).
+- **Knowledge**: `scripts/knowledge_ingest.py --catalog data/reference/ibb_catalog.json` indexes each dataset
+  as one page (URL the dataset page on the allowlisted `data.ibb.gov.tr`, `fetched_at` the capture,
+  `source_updated_at` CKAN's `metadata_modified`), with no request.
+- Counts move from 17 to 18 where they state today's tool list; J13 adds six deterministic scenarios; the
+  `stale-claims` fence now also retires "17 tools".
+
+### Consequences
+
+- Until the owner runs `make capture-catalog`, every catalogue answer says there is no copy. A container
+  built from the repository has none either (the file is gitignored); shipping one is a separate decision.
+- Architecture WARNs (sprint mode, FAIL at the integration merge; no baseline raised):
+  `src/ibb_mcp/server.py` 552 code lines against 540 (the tool's registration and cost line), and
+  `Nabiz` 27 public methods against 26 (the facade method the rules require). `agent.py` did not grow:
+  the station route moved to `metro_route.py` and the traffic and freshness branches into one helper, so the
+  new branch leaves `route`'s complexity where it was.
+- The i18n catalogue has no English strings for the new section yet; it shows Turkish in both languages.
+- Gates (26 Sep, sprint flag): `make lane-gates` 3075 passed, 2 skipped, 3 xfailed; architecture 0 failed;
+  guardrails 14 checks 0 failed; `make eval` 66/66; `make smoke` 18 tools; `make web-budget` 12 PASS 1 TARGET
+  0 FAIL; numbers sheet `eval/results/numbers.md`.

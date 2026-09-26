@@ -1,4 +1,4 @@
-/* v6 (DECISIONS #36: quota strip, example account, follows; operatör-çeviri: the request card and its sheet join the shell; DECISIONS #37: the 112 card's text in the visitor languages, js/emergency_text.js): bump VERSION when this worker's behavior or shell changes. */
+/* v6 (DECISIONS #36: quota strip, example account, follows; operatör-çeviri: the request card and its sheet join the shell; DECISIONS #37: the 112 card's text in the visitor languages, js/emergency_text.js; the İBB Açık Veri section joins the shell): bump VERSION when this worker's behavior or shell changes. */
 const VERSION = 'v6';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
@@ -37,6 +37,8 @@ const SHELL = [
   '/js/request_status.js', '/css/operator_requests.css',
   // DECISIONS #37: the emergency card's text in every card language, cached so the card opens offline
   '/js/emergency_text.js',
+  // DECISIONS #37: the İBB Açık Veri section
+  '/js/open_data.js', '/css/open_data.css',
 ];
 
 function ruleFor(url, method, mode) {
