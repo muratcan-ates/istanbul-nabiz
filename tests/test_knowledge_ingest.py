@@ -255,3 +255,49 @@ async def test_polite_client_get_hop_returns_the_redirect_unfollowed() -> None:
         await client.aclose()
     assert response.status_code == 302 and response.headers["location"] == "https://example.org/next"
     assert seen == ["https://www.iski.istanbul/a"]
+
+
+# -- robots.txt errors (RFC 9309 §2.3.1.3 and §2.3.1.4, DECISIONS #56) -------------------------
+def _robots_failing(statuses: list[int | None]):
+    """Robots answers fail with ``statuses`` in turn (None: no answer), then allow; pages answer 200."""
+    remaining = list(statuses)
+
+    async def handler(method, url, _headers):
+        if url.endswith("robots.txt") and remaining:
+            status = remaining.pop(0)
+            raise UpstreamUnavailable(f"knowledge: HTTP {status}", source="knowledge", status=status)
+        text = ALLOW_ROBOTS if url.endswith("robots.txt") else "<p>Su aboneliği başvurusu.</p>"
+        return httpx.Response(200, text=text, request=httpx.Request(method, url))
+
+    return handler
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 410])
+def test_robots_4xx_means_unavailable_and_the_host_is_crawled(tmp_path, status) -> None:
+    client = FakeClient(_robots_failing([status]))
+    rows = asyncio.run(fetch_all([source("https://www.iski.istanbul/a")], client, tmp_path / "cache", 0))
+    assert rows[0].status == "ok"
+    snapshot = json.loads((tmp_path / "robots" / "www.iski.istanbul.json").read_text(encoding="utf-8"))
+    assert snapshot["status"] == "robots-unavailable" and snapshot["robots_snapshot"]["status"] == status
+
+
+@pytest.mark.parametrize(("statuses", "robots_calls"), [([429], 1), ([503, 503], 2), ([None, None], 2)])
+def test_robots_429_5xx_or_no_answer_closes_the_host(monkeypatch, tmp_path, statuses, robots_calls) -> None:
+    monkeypatch.setattr("ibb_mcp.knowledge.ingest.ROBOTS_RETRY_DELAY_S", 0)
+    client = FakeClient(_robots_failing(statuses))
+    rows = asyncio.run(
+        fetch_all([source("https://iski.istanbul/a"), source("https://iski.istanbul/b")], client, tmp_path / "cache", 0)
+    )
+    assert [row.status for row in rows] == ["robots", "robots"]
+    assert [url for url, _ in client.calls] == ["https://iski.istanbul/robots.txt"] * robots_calls
+    snapshot = json.loads((tmp_path / "robots" / "iski.istanbul.json").read_text(encoding="utf-8"))
+    assert snapshot["status"] == "robots-unreachable"
+    assert not list((tmp_path / "robots").glob("*.txt")), "an unreachable robots.txt is asked again next run"
+
+
+def test_robots_timeout_gets_one_more_try(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("ibb_mcp.knowledge.ingest.ROBOTS_RETRY_DELAY_S", 0)
+    client = FakeClient(_robots_failing([None]))
+    rows = asyncio.run(fetch_all([source("https://iski.istanbul/a")], client, tmp_path / "cache", 0))
+    assert rows[0].status == "ok"
+    assert [url.rsplit("/", 1)[-1] for url, _ in client.calls] == ["robots.txt", "robots.txt", "a"]

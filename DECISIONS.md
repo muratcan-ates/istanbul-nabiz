@@ -2377,3 +2377,53 @@ come without a model.
 
 - The browser's speech provider may still hear the sentence (as before). Recognition stays `tr-TR` on the English
   page; the real recognition rate for station names is not measured.
+
+## 56. Why E39 indexed no İSKİ, İGDAŞ or Şehir Hatları page: two parser shells and robots.txt errors (26 Sep)
+
+### Context
+
+The owner's E39 ingest (26 Sep) grew the index from 258 to 267 documents, but of the 101 source rows naming İSKİ,
+İGDAŞ or Şehir Hatları only the four İSKİ PDFs were new. The run's terminal output was not kept; the causes below
+come from the cache, the robots snapshots and the code.
+
+- **Şehir Hatları (21 cached pages, 0 indexed).** The site is ASP.NET WebForms: one `<form id="aspnetForm">` wraps
+  the whole page, and `parsers.py` skips everything inside `form`, so every page parsed to zero blocks
+  (`unsupported_js`). `sosyalhizmetler.ibb.gov.tr` has the same shell (35 cached pages, never indexed).
+- **İSKİ Nuxt pages.** `grafikgoster.iski.gov.tr` carries the page body as HTML inside the attribute
+  `<vue-markdown source='...'>`, which a text parser never sees. `iski.istanbul` is likely the same app.
+- **İGDAŞ (33 rows, 0 requested).** `robots.txt` on both `www.igdas.istanbul` and `igdas.istanbul` answers 200 with
+  `User-agent: *` / `Disallow: /`. The rows are refused as `robots` before any request. That is correct.
+- **İSKİ hosts.** `iski.istanbul/robots.txt` gave no answer (snapshot status `null`, 49 s after the previous host's
+  last page, which fits the 45 s read timeout), so the whole host was closed for the run (10 rows `robots`). `www.iski.istanbul`,
+  `cdn.iski.istanbul`, `grafikgoster.iski.gov.tr` and `esube.iski.gov.tr` answered 404 for robots.txt; the code
+  already treated 404 as "crawl allowed" (their pages were requested and the PDFs indexed). The 15
+  `www.iski.istanbul/web/tr-TR/...` rows (section 6, Gemini, unverified) failed page by page; the site root answered
+  200 in the same minute, so these paths do not exist on the current site. The 13 uncached Şehir Hatları rows are
+  section 6 guesses too (about 2 s each: fast non-200 answers).
+- No earlier decision chose "robots 404 = skip"; the code's only rule was `status != 404` blocks the host.
+
+### Decision
+
+- **Page-form reading.** `html_to_blocks` keeps its strict reading. Only when that yields nothing and the page had
+  a `<form>` is it read again with the form open but its controls (`select`, `textarea`, `button`, `label`)
+  skipped, list items made only of link text (menus, breadcrumbs) dropped and a container whose id or class names
+  `cookie` skipped. The result counts only with at least `PAGE_FORM_MIN_CHARS` (200) characters. Pages the strict
+  reading accepts get the same blocks as before, so stored bodies and embeddings stay valid.
+- **`<vue-markdown source>`** is parsed as HTML (plain lines when it has no tag) in place.
+- **robots.txt errors follow RFC 9309.** A 4xx answer except 429 is "unavailable": the host may be crawled
+  (§2.3.1.3; this widens the old 404-only rule to 401, 403, 410). 429, 5xx, no answer or a refused redirect is
+  "unreachable": the host is closed for the run (§2.3.1.4), and the snapshot now says `robots-unreachable`.
+  A timeout or 5xx gets one more try after 5 s (`ROBOTS_ATTEMPTS = 2`), because one answer decides a whole host;
+  page requests keep one attempt. An unreachable robots.txt is not cached, so the next run asks again.
+- İGDAŞ's `Disallow: /` is obeyed; no code works around it.
+
+### Consequences and open risks
+
+- Offline dry run on a copy of the index with the cached bodies (no embeddings): 267 to 321 documents, 2695 to 3016
+  chunks: 18 Şehir Hatları pages (96 chunks), 1 İSKİ page, 35 `sosyalhizmetler.ibb.gov.tr` pages (224 chunks).
+  Still not indexed: `/tr/seferler/bogaz-turlari` and `/tr/iskeleler` (under 200 characters, their lists are
+  drawn by script) and `files.sehirhatlari.istanbul/tarife.pdf` (40 pages without a text layer; no OCR here).
+- İGDAŞ stays at 0 pages unless İGDAŞ allows crawling or another reviewed source is found.
+- `iski.istanbul` is still closed if its robots.txt times out twice in the next run.
+- www.ibb.gov.tr answered 401 for robots.txt; under the RFC rule its row is now requested.
+- Cached robots files never expire (RFC 9309 §2.4 says 24 hours); unchanged here.
