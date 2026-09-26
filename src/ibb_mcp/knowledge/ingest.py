@@ -25,6 +25,10 @@ TERMS_CATEGORIES = frozenset({"lisans", "terms", "kullanim-kosullari"})
 #: Hops followed for one page. Each is vetted before it is requested (``is_allowed_redirect``);
 #: the HTTP client never follows a redirect on its own here.
 MAX_REDIRECTS = 3
+#: robots.txt decides for a whole host, so a timeout or 5xx gets one more try before the host is closed
+#: for the run (pages keep the script's single attempt). 429 is not retried: it asks us to back off.
+ROBOTS_ATTEMPTS = 2
+ROBOTS_RETRY_DELAY_S = 5.0
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +91,16 @@ def is_allowed_redirect(url: str, allowlist: frozenset[str] = ALLOWLIST, *, from
         return False
     host = (urlsplit(url).hostname or "").lower().rstrip(".")
     return host in allowlist or (from_host is not None and host == from_host.lower().rstrip("."))
+
+
+def robots_error_allows_all(status: object) -> bool:
+    """RFC 9309 §2.3.1.3: a 4xx answer means robots.txt is *unavailable* and every path may be crawled.
+
+    429 is the exception (a rate signal, handled like 5xx). A 5xx answer, no answer (timeout, connection
+    error) or a refused redirect means *unreachable* (§2.3.1.4): the host is treated as fully disallowed.
+    DECISIONS #56.
+    """
+    return isinstance(status, int) and 400 <= status < 500 and status != 429
 
 
 def canonical_url(url: str) -> str:
@@ -191,6 +205,21 @@ class _FetchSession:
             current, current_host = target, target_host
         raise RedirectRefused("unreachable")  # pragma: no cover - the loop returns or raises
 
+    async def _get_robots(self, host: str, scheme: str):
+        """GET robots.txt, once more after a timeout or 5xx; a 4xx, 429 or refused redirect is final."""
+        for attempt in range(1, ROBOTS_ATTEMPTS + 1):
+            try:
+                return await self.request(f"{scheme}://{host}/robots.txt", host)
+            except RedirectRefused:
+                raise
+            except Exception as exc:
+                status = getattr(exc, "status", None)
+                if attempt == ROBOTS_ATTEMPTS or (isinstance(status, int) and status < 500):
+                    raise
+                log.warning("knowledge: robots.txt on %s failed (%s); one more try", host, status or "no answer")
+                await asyncio.sleep(ROBOTS_RETRY_DELAY_S)
+        raise RuntimeError("unreachable")  # pragma: no cover - the loop returns or raises
+
     async def _robots(self, host: str, scheme: str) -> RobotFileParser | None:
         digest = hashlib.sha256(host.encode()).hexdigest()
         path = self.cache.parent / "robots" / f"{digest}.txt"
@@ -200,7 +229,7 @@ class _FetchSession:
                 lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
                 snapshot = json.loads(snapshot_path.read_text(encoding="utf-8")) if snapshot_path.is_file() else {}
             else:
-                response = await self.request(f"{scheme}://{host}/robots.txt", host)
+                response = await self._get_robots(host, scheme)
                 body = response.content
                 lines = response.text.splitlines()
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -214,15 +243,16 @@ class _FetchSession:
                     "status": "ok",
                 }
         except Exception as exc:
+            allow_all = robots_error_allows_all(getattr(exc, "status", None))
             snapshot = {
                 "robots_snapshot": {
                     "fetched_at": dt.datetime.now(dt.UTC).isoformat(),
                     "status": getattr(exc, "status", "error"),
                     "body_sha256": None,
                 },
-                "status": "robots-unavailable",
+                "status": "robots-unavailable" if allow_all else "robots-unreachable",
             }
-            if getattr(exc, "status", None) != 404:
+            if not allow_all:
                 self.blocked[host] = "robots"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 snapshot_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
