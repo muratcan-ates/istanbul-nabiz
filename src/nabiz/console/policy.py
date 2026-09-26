@@ -99,13 +99,15 @@ _REFUSE_PREFIXES = (
     "doktor", "hekim", "tedavi", "teshis", "mevzuat", "kanun", "yonetmelik", "bedava", "bedel",
     "kurus", "refakat", "bilet", "astim", "hamile", "gebe", "health", "bahsis", "iade",
 )  # fmt: skip
+_NOT_RENT = ("kiralik", "kiralam", "kiralad", "kiralay", "kiralan", "kiraz")
 #: "hasta..." is a person's health ("hastasıyım"); "hastane..." is a place to travel to.
 _ILL, _HOSPITAL = "hasta", "hastane"
 #: Phrases, for the questions whose words are innocent alone.
 _REFUSE_PHRASES = (
     "kac para", "ne kadar tutar", "zararli mi", "zarar ver", "maske tak", "saglik", "engelli kart",
     "how much is", "for free", "free ride", "free of charge", "is it free", "disability card",
-    "free for", "the rent", "raise the rent", "rent increase", "tip the", "tipping", "kredi karti gec",
+    "free for", "the rent", "raise the rent", "rent increase", "rent assistance", "rent support",
+    "help with rent", "housing benefit", "tip the", "tipping", "kredi karti gec",
 )  # fmt: skip
 
 # G14 uses these terms to select quote-only answers. They do not change refusal behavior.
@@ -189,10 +191,16 @@ def _asks_a_price(text: str, words: Sequence[str]) -> bool:
     return any(word.startswith(_FARE_OBJECTS) for word in words)
 
 
+def _asks_about_rent(words: Sequence[str]) -> bool:
+    return any(word.startswith("kira") and not word.startswith(_NOT_RENT) for word in words)
+
+
 def refuses(question: str) -> bool:
     """Is this a rights, fare, fine or health question (R-06)?"""
     text = normalize_tr(question)
     words = text.split()
+    if _asks_about_rent(words):
+        return True
     if any(word in _REFUSE_WORDS for word in words):
         return True
     if any(word.startswith(_REFUSE_PREFIXES) for word in words):
