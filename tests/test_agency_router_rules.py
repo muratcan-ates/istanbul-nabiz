@@ -34,12 +34,22 @@ FIXES = [
     ("Çöp kamyonu gelmedi", None, "ilce", True),
     ("Çöplerim toplanmıyor", None, "ilce", True),
     ("Deniz otobüsü seferleri iptal mi?", "iett", None, None),
+    # DECISIONS #45, closed: litter in a rail station, on a ferry or at a pier goes to its operator, not the district.
+    ("Metro istasyonunda çöp birikmiş", "ilce", "metro", None),
+    ("Metroda çöp var", "ilce", "metro", None),
+    ("Tramvay durağında çöp birikmiş", "ilce", "metro", None),
+    ("Tramvayda çöp var", "ilce", "metro", None),
+    ("Vapurda çöp var", "ilce", "sehir_hatlari", None),
+    ("İskelede çöp birikmiş", "ilce", "sehir_hatlari", None),
+    ("Kadıköy iskelesinde çöpler toplanmamış", "ilce", "sehir_hatlari", None),
 ]
 
 KEEPS = [
     ("Metrobüs durağında asansör çalışmıyor", "iett"),
     ("Metrobüs üst geçidinde yürüyen merdiven arızalı", "iett"),
     ("Metrobüs durağında çöp birikmiş", "iett"),
+    ("Metrobüste çöp var", "iett"),
+    ("Lağım gibi kokuyor", "iski"),
     ("Metrobüste klima çalışmıyor", "iett"),
     ("İSPARK otoparkında lağım kokusu", "ispark"),
     ("Metro İstanbul'a lağım kokusunu bildirmek istiyorum", "metro"),

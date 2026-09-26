@@ -61,6 +61,7 @@ METRO_LINE_CODES = (
     "t1", "t3", "t4", "t5", "tf1", "tf2",
 )
 # No "ariza": m2 and m3 are also square and cubic metres ("100 m2 dairede arıza", "30 m3, sayaç arızalı").
+LITTER_WORDS = ("cop", "copu", "copum", "copun", "cope", "copler", "copleri", "coplerim", "coplerimiz")
 LINE_CONTEXT = (
     "istasyon", "hat", "sefer", "asansor", "merdiven", "bant", "durak", "peron",
     "aktarma", "metro", "tramvay", "funikuler",
@@ -79,9 +80,11 @@ RULES = (
     AgencyKeywordRule("iski", words=("su", "suyu", "suyum", "sular", "sulari", "susuz"),
          prefixes=("kanalizasyon", "rogar", "logar", "lagim", "foseptik"), phrases=("atik su",)),
     AgencyKeywordRule("igdas", words=("gaz", "gazim"), prefixes=("dogalgaz",), phrases=("dogal gaz", "gazi kesil")),
-    # Street and stop-area litter belongs to district municipalities; metrobus stations remain with IETT.
-    AgencyKeywordRule("ilce", words=("cop", "copu", "copum", "copun", "cope", "copler", "copleri", "coplerim", "coplerimiz"),
-         unless=("metrobus",)),
+    # Litter in a rail station or tram stop is Metro İstanbul's (it runs the trams too), on a ferry or at a pier
+    # Şehir Hatları's (owner's call, DECISIONS #45); metrobus stations remain with IETT; street litter is the district's.
+    AgencyKeywordRule("metro", words=LITTER_WORDS, context=("metro", "tramvay", "funikuler"), unless=("metrobus",)),
+    AgencyKeywordRule("sehir_hatlari", words=LITTER_WORDS, context=("vapur", "iskele")),
+    AgencyKeywordRule("ilce", words=LITTER_WORDS, unless=("metrobus",)),
     AgencyKeywordRule("iett", prefixes=("otobus", "metrobus"), unless=("deniz otobus",)),
     AgencyKeywordRule("metro", prefixes=("metro", "tramvay", "funikuler", "teleferik")),
     AgencyKeywordRule("metro", phrases=("yuruyen merdiven", "yuruyen bant"), unless=("marmaray", "avm", "alisveris")),

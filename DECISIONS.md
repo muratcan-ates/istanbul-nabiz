@@ -2210,8 +2210,10 @@ come without a model.
 
 - 22 misroutes fixed, 18 negative cases pinned; a new line in the fixture turns
   `test_line_codes_match_the_metro_station_list` red on purpose.
-- Open (owner's call): only "metrobüs" vetoes the litter rule, so litter at a metro station, on a ferry or at a tram
-  stop goes to the district; "lağım gibi kokuyor" as a figure of speech goes to İSKİ.
+- Closed (owner's call, 26 Sep): litter in a metro station or on a tram (Metro İstanbul runs the trams) goes to
+  Metro İstanbul, on a ferry or at a pier to Şehir Hatları, at a metrobüs stop still to İETT; street litter stays
+  with the district. "lağım gibi kokuyor" as a figure of speech still goes to İSKİ, on purpose.
+- İSKİ's link in `data/agencies.json` is the apex `https://iski.istanbul/`, the host the E39 allowlist names.
 
 ## 46. Knowledge sources: section 7, İSKİ, İGDAŞ and Şehir Hatları pages (E39, 26 Sep)
 
