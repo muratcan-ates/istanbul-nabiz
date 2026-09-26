@@ -129,7 +129,7 @@ def test_final_is_the_last_event(nabiz: Nabiz, monkeypatch: pytest.MonkeyPatch) 
     with client_for(nabiz, llm.LlmConfig()) as client:
         streams.append(ask(client, METRO_QUESTION)[0])
 
-    async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None) -> Any:
+    async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None, **_: Any) -> Any:
         raise RuntimeError("bug")
 
     monkeypatch.setattr(chat_module.ChatService, "_run", broken)
@@ -148,7 +148,7 @@ def chain_of(final: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def broken_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None) -> Any:
+    async def broken(self: Any, question: str, prompt: str, emit: Any, context: Any = None, **_: Any) -> Any:
         raise RuntimeError("bug")
 
     monkeypatch.setattr(chat_module.ChatService, "_run", broken)

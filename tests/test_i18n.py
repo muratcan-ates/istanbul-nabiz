@@ -18,7 +18,8 @@ from nabiz.agent.llm import LlmConfig
 from nabiz.agent.templates import NO_DATA, OUT_OF_SCOPE
 from nabiz.agent.templates_i18n import FIXED, SOURCE_IS_TURKISH, detect_lang, fixed_text, quote_frame
 from nabiz.agent.templates_i18n import LANGS as SERVER_LANGS
-from nabiz.console.policy import REFUSAL_TEXT
+from nabiz.console.chat import TURN_FAILED
+from nabiz.console.policy import HANDOFF_TEXT, REFUSAL_TEXT
 
 STATIC = REPO_ROOT / "src" / "nabiz" / "console" / "static"
 I18N = STATIC / "i18n"
@@ -162,6 +163,8 @@ def test_fixed_tr_values_match_their_single_sources() -> None:
     assert FIXED["OUT_OF_SCOPE"]["tr"] == OUT_OF_SCOPE["tr"]
     assert FIXED["OUT_OF_SCOPE"]["en"] == OUT_OF_SCOPE["en"]
     assert FIXED["SENSITIVE_REFUSAL"]["tr"] == REFUSAL_TEXT
+    assert FIXED["HANDOFF"]["tr"] == HANDOFF_TEXT
+    assert FIXED["TURN_FAILED"]["tr"] == TURN_FAILED
     chat = (STATIC / "js" / "chat.js").read_text(encoding="utf-8")
     disclosure = (STATIC / "js" / "disclosure.js").read_text(encoding="utf-8")
     unknown = re.search(r'^const UNKNOWN_TEXT = "([^"]*)";$', chat, re.MULTILINE)

@@ -12,6 +12,10 @@ service-page index); everything here takes values and returns values, with no I/
   own earlier questions (never an "assistant" turn, which the page could forge, never a refused
   one, never one the input guard stops) and :func:`context_messages` hands them over as one ``user`` message, not inside the
   system prompt.
+- **the turn's language and layers** (E38): :func:`turn_language`, :func:`with_default_lang` (``final.lang``
+  is never null), :func:`layer_turn` and :func:`layer_events` (E15's greeting, thanks, clarify, follow-up
+  and split), :func:`merge_answers` and :func:`merged_author` (a split question's one card).
+- **citations**: :func:`citations` and :func:`source_mode` turn the agent's citations into Provenance objects.
 - **after**: :func:`final_body`, :func:`how_block`, :func:`refusal_events` and
   :func:`emergency_events` write the ``token`` and ``final`` events.
 - **the trace**: :class:`TurnTrace` records the stages the turn really went through and the checks
@@ -26,17 +30,23 @@ name, so a test can record the order in which a turn consults them.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
-from ibb_mcp.knowledge.answer import UNKNOWN_TEXT
+from ibb_mcp.models import utcnow
+from nabiz.agent import templates_i18n
+from nabiz.agent.agent import detect_language
+from nabiz.agent.layers import LayerReply, TurnLayer, classify_turn, layer_reply
 from nabiz.console import policy, text_guard
+from nabiz.console.cards import Mode, mode_for
 from nabiz.console.emergency_model import MODEL_RULE_ID
+from nabiz.console.open_data_api import dataset_citations
 
 if TYPE_CHECKING:
     from nabiz.agent.agent import AgentAnswer
@@ -45,10 +55,12 @@ if TYPE_CHECKING:
 HISTORY_TURNS_KEPT = 8
 HISTORY_CHARS_KEPT = 600
 _WORDS_PER_TOKEN_EVENT = 3
+#: Sources that are a timetable or reference files (the open-data catalogue: the owner's capture), never a live reading.
+SCHEDULE_SOURCES = frozenset({"iett_schedule", "gtfs"})
+REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places", "ibb_catalog"})
 
 EarlyVerdict = Literal["emergency", "guard", "sensitive", "handoff"]
-#: The turn's stages in order. Wired: girdi (E16), acil, hassas, maske (E14), arac_bilgi, cikti; katman
-#: (E15) and dil (E06) are still B01b's.
+#: The turn's stages in order. Only a stage that runs is recorded in the answer's trace.
 STAGES = ("girdi", "acil", "hassas", "maske", "katman", "dil", "arac_bilgi", "cikti")
 #: The checks a ``final`` reports: ``True`` passed, ``False`` caught something, ``None`` not applied.
 CHECKS = ("girdi", "hassas", "sayi", "kanit", "cikti")
@@ -72,6 +84,99 @@ class FinalFields:
     guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
     hazard: str | None = None  # "gas" on a gas emergency: the 112 card also shows İGDAŞ's 187 line
     lang: str | None = None  # an emergency's card language (DECISIONS #40); None on every other turn
+
+
+@dataclass(frozen=True)
+class LayerOutcome:
+    """What the E15 layers made of a masked turn: a fixed reply, or the question(s) the tools answer."""
+
+    reply: LayerReply | None
+    question: str
+    parts: list[str]
+    kind: str
+
+
+@dataclass(frozen=True)
+class TurnContext:
+    """What every step of one turn carries (keeps the signatures under ruff's argument limit)."""
+
+    started: float
+    trace: TurnTrace
+    suggestion: Any
+    lang: str
+    fields: dict[str, Any]
+
+
+@dataclass
+class RunResults:
+    """The answers of a turn's question(s) in order, or the error that stopped them."""
+
+    answers: list[tuple[AgentAnswer, str]]
+    error: BaseException | None = None
+
+
+def turn_language(message: str, chosen: str | None) -> str:
+    """Use an explicit page choice when supported; otherwise detect Turkish or English."""
+    return templates_i18n.detect_lang(message, chosen=chosen) or detect_language(message)
+
+
+def _age_s(as_of: Any) -> int | None:
+    try:
+        moment = dt.datetime.fromisoformat(str(as_of))
+    except ValueError:
+        return None
+    moment = moment if moment.tzinfo else moment.replace(tzinfo=dt.UTC)
+    return int(max(0.0, (utcnow() - moment).total_seconds()))
+
+
+def source_mode(source: Any, *, offline: bool) -> Mode:
+    """A citation's mode: a timetable is "schedule", a reference file "recorded", a reading live or recorded."""
+    if source in SCHEDULE_SOURCES:
+        return "schedule"
+    if source in REFERENCE_SOURCES or str(source).startswith("local:"):
+        return "recorded"
+    return mode_for(offline)
+
+
+def citations(answer: AgentAnswer, *, offline: bool) -> list[dict[str, Any]]:
+    """The agent's citations as the contract's Provenance objects."""
+    result = []
+    for item in answer.citations:
+        if any(key in item for key in ("fetched_at", "source_updated_at", "institution", "quote")):
+            result.append(dict(item))
+            continue
+        as_of = item.get("as_of")
+        result.append({
+            "source": item.get("source"),
+            "url": item.get("source_url") or None,
+            "observed_at": as_of,
+            # Nothing was read (an unread stamp): no age and no mode, never "0 sn önce".
+            "age_s": _age_s(as_of) if as_of else None,
+            "mode": source_mode(item.get("source"), offline=offline) if as_of else "unknown",
+        })
+    return result + dataset_citations(answer.tool_calls)
+
+
+def with_default_lang(event: str, lang: str) -> str:
+    """Fill a missing final language while preserving a language chosen by an emergency card."""
+    if not event.startswith("event: final\n"):
+        return event
+    body = json.loads(event.split("data: ", 1)[1])
+    if body.get("lang") is not None:
+        return event
+    return sse("final", {**body, "lang": lang})
+
+
+def layer_turn(message: str, earlier: Sequence[str], places: Sequence[str], lang: str) -> LayerOutcome:
+    """Classify a masked turn and return fixed replies, a rewritten question or split parts."""
+    turn: TurnLayer = classify_turn(message, earlier, places=places)
+    localized = {**turn, "lang": lang}
+    return LayerOutcome(
+        reply=layer_reply(localized),
+        question=localized["message"],
+        parts=list(localized["parts"]),
+        kind=localized["kind"],
+    )
 
 
 def sse(event: str, data: dict[str, Any]) -> str:
@@ -156,13 +261,55 @@ def context_messages(earlier: Sequence[str]) -> list[dict[str, str]]:
     return [{"role": "user", "content": "\n".join([*lines, *(f"- {text}" for text in earlier)])}]
 
 
-def system_prompt(needs: Sequence[str], base: str) -> str:
-    """The agent's prompt, plus the person's functional constraints. Nothing a visitor typed."""
+def system_prompt(needs: Sequence[str], base: str, lang: str = "tr") -> str:
+    """The agent's prompt and functional constraints, with a fixed language direction if selected."""
     parts = [base]
     if block := policy.constraint_block(needs):
         parts.append(block)
     parts.append("## Yazım\n'ETA' kısaltmasını kullanma; 'tahmini varış' de. Varış süresi tek tam dakika: '7 dk'.")
+    if lang == "en":
+        parts.append(
+            "## Dil\nKişi İngilizce sayfayı seçti: cevabı İngilizce yaz. Kurum, hat, durak ve yer adlarını çevirme; "
+            "sayıları değiştirme."
+        )
     return "\n\n".join(parts)
+
+
+def layer_events(reply: LayerReply, suggestion: Any, started: float, trace: TurnTrace) -> list[str]:
+    """Write a fixed greeting, thanks or clarification without a tool or model call."""
+    with trace.step("katman"):
+        trace.mark("cevapladi")
+    fields = FinalFields(refused=False, how=empty_how(started, rule_id=reply["rule_id"], trace=trace), mode=reply["mode"])
+    return answer_events(reply["answer"], [], "kural", suggestion, fields)
+
+
+def merged_author(first: str, second: str) -> str:
+    """Keep the stronger writer when a single card combines two answers."""
+    rank = {"kural": 0, "yerel model": 1, "model": 2}
+    return max((first, second), key=lambda author: rank.get(author, -1))
+
+
+def merge_answers(first: AgentAnswer, second: AgentAnswer) -> AgentAnswer:
+    """Merge two sequential answers and deduplicate citations by their source identity."""
+    citations = []
+    seen: set[tuple[Any, Any, Any]] = set()
+    for citation in (*first.citations, *second.citations):
+        identity = (citation.get("source"), citation.get("url"), citation.get("observed_at"))
+        if identity not in seen:
+            seen.add(identity)
+            citations.append(citation)
+    reports = (first.faithfulness, second.faithfulness)
+    faithfulness = next((report for report in reports if report is not None and not report.passed), None)
+    if faithfulness is None:
+        faithfulness = next((report for report in reports if report is not None), None)
+    return replace(
+        first,
+        text=f"1) {first.text}\n\n2) {second.text}",
+        tool_calls=[*first.tool_calls, *second.tool_calls],
+        citations=citations,
+        faithfulness=faithfulness,
+        mode="llm" if first.mode == second.mode == "llm" else "deterministic",
+    )
 
 
 def how_block(
@@ -237,24 +384,16 @@ def answer_events(text: str, citations: list[dict[str, Any]], author: str, sugge
 
 
 def refusal_events(
-    suggestion: Any,
-    started: float,
-    *,
-    cited: list[dict[str, Any]] | None = None,
-    how: dict[str, Any] | None = None,
-    answer_text: str | None = None,
-    mode: str = "refused",
-    steps: list[str] | None = None,
+    suggestion: Any, started: float, *, lang: str = "tr", trace: TurnTrace | None = None
 ) -> list[str]:
     """The fixed refusal (it names 112 and 153), written by the rules."""
-    answer = answer_text or policy.REFUSAL_TEXT
-    fields = FinalFields(refused=True, how=how or empty_how(started, rule_id="refusal"), mode=mode, steps=steps)
-    return answer_events(answer, cited or [], "kural", suggestion, fields)
+    fields = FinalFields(refused=True, how=empty_how(started, rule_id="refusal", trace=trace), mode="refused")
+    return answer_events(templates_i18n.fixed_text("SENSITIVE_REFUSAL", lang), [], "kural", suggestion, fields)
 
 
-def traced_refusal(suggestion: Any, started: float, trace: TurnTrace) -> list[str]:
+def traced_refusal(suggestion: Any, started: float, trace: TurnTrace, lang: str = "tr") -> list[str]:
     """:func:`refusal_events` with the turn's trace in its ``how``."""
-    return refusal_events(suggestion, started, how=empty_how(started, rule_id="refusal", trace=trace))
+    return refusal_events(suggestion, started, lang=lang, trace=trace)
 
 
 def guard_events(stage: Literal["input", "output"], reason: str | None, text: str, started: float, trace: TurnTrace) -> list[str]:
@@ -269,7 +408,7 @@ def guard_events(stage: Literal["input", "output"], reason: str | None, text: st
 
 
 def output_guard(
-    text: str, cited: list[dict[str, Any]], author: str, started: float, trace: TurnTrace
+    text: str, cited: list[dict[str, Any]], author: str, started: float, trace: TurnTrace, lang: str = "tr"
 ) -> list[str] | None:
     """E16 on a model answer: a link no citation carries, or a forbidden claim, ends at the unknown card."""
     verdict = text_guard.check_output(text, cited, author=author)
@@ -277,14 +416,14 @@ def output_guard(
         return None
     trace.checks["cikti"] = False
     trace.mark("cevapladi", "cikti")
-    return guard_events("output", verdict.reason, UNKNOWN_TEXT, started, trace)
+    return guard_events("output", verdict.reason, templates_i18n.fixed_text("UNKNOWN", lang), started, trace)
 
 
-def handoff_events(suggestion: Any, started: float, trace: TurnTrace | None = None) -> list[str]:
+def handoff_events(suggestion: Any, started: float, trace: TurnTrace | None = None, lang: str = "tr") -> list[str]:
     """A request for a person: the fixed pointer to 153, and ``layer:handoff`` so the page opens its
     "İnsanla görüş" card (js/handoff.js). No index search, no tool, no model."""
     fields = FinalFields(refused=False, how=empty_how(started, rule_id="layer:handoff", trace=trace), mode="handoff")
-    return answer_events(policy.HANDOFF_TEXT, [], "kural", suggestion, fields)
+    return answer_events(templates_i18n.fixed_text("HANDOFF", lang), [], "kural", suggestion, fields)
 
 
 def emergency_events(
