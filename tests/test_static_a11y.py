@@ -149,7 +149,9 @@ def test_disclosure_texts_have_one_source_and_kvkk_repeats_the_short_notice(tmp_
     assert "chat-ai-notice" not in (STATIC / "js" / "disclosure.js").read_text(encoding="utf-8")
     pages = [*STATIC.rglob("*.js"), *STATIC.rglob("*.html")]
     matches = [path for path in pages if values["ai"] in path.read_text(encoding="utf-8")]
-    assert matches == [STATIC / "js" / "disclosure.js"]
+    # disclosure.js is the source; the home band repeats it as first-paint text, kept equal by
+    # test_kucuk_duzeltmeler.test_one_ai_sentence_everywhere and the tr.json page-text check.
+    assert sorted(matches) == [STATIC / "index.html", STATIC / "js" / "disclosure.js"]
     kvkk = (STATIC / "kvkk.html").read_text(encoding="utf-8")
     assert values["privacy"] in kvkk and values["warning"] in kvkk
 

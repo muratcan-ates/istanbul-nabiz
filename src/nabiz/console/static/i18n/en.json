@@ -27,7 +27,7 @@
   ],
   "page.answer_lang": "Answer language:",
   "page.quick_label": "Quick questions",
-  "band.ai": "Answers are written by an AI assistant and based on İBB open data. If I cannot find a source, I do not guess.",
+  "band.ai": "I am the Istanbul city information assistant and I use artificial intelligence. I am not an official who makes decisions.",
   "page.data_mode": "Sample data: server is not connected",
   "page.cards_title": "City status",
   "page.cards_refresh": "Refresh cards",
