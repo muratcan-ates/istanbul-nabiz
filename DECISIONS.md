@@ -2196,3 +2196,49 @@ come without a model.
 - Open risk (reported, not fixed): `model_api` reads the app-wide `state.guard`; when one person's daily quota
   (`MeteredGuard`, #38) closes the model for them, the citizen note does not say so. The chat's own `quota` field
   does.
+
+## 45. Agency router: sewer to İSKİ, escalators and line codes to Metro İstanbul, litter to the district (E36, 26 Sep)
+
+### Decision
+
+- Order of evidence: an agency's name beats a topic (lağım, çöp), a topic beats a transport mode; a question the
+  router is not sure of stays at 153. Marmaray and the sea bus are not İBB agencies.
+- Metro line codes come from the Metro station fixture's line list; "arıza" is not a line context, because m2/m3 are
+  also square and cubic metres ("100 m2 dairede arıza var" stays at 153).
+
+### Consequences
+
+- 22 misroutes fixed, 18 negative cases pinned; a new line in the fixture turns
+  `test_line_codes_match_the_metro_station_list` red on purpose.
+- Open (owner's call): only "metrobüs" vetoes the litter rule, so litter at a metro station, on a ferry or at a tram
+  stop goes to the district; "lağım gibi kokuyor" as a figure of speech goes to İSKİ.
+
+## 46. Knowledge sources: section 7, İSKİ, İGDAŞ and Şehir Hatları pages (E39, 26 Sep)
+
+### Decision
+
+- `sources.txt` section 7: 45 rows from a verified list (4 repeats of section 5 left out); counts 418 rows, 407
+  crawlable, 11 not, 401 crawled.
+- Six exact hosts join the knowledge allowlist (iski.istanbul, cdn.iski.istanbul, grafikgoster.iski.gov.tr,
+  esube.iski.gov.tr, www.sehirhatlari.istanbul, files.sehirhatlari.istanbul); suffixes unchanged. A new `oturum`
+  category marks sign-in pages, which are never crawled.
+
+### Consequences
+
+- The index grows only when the owner runs the ingest (network, paid embeddings); a copy of the index is kept first
+  for the recalibration (E42).
+
+## 47. Small fixes: kolay 187 and handoff, rent is sensitive, one AI notice sentence (E37, 26 Sep)
+
+### Decision
+
+- The kolay page shows 187 only on a gas emergency and after 112, with the same handoff card as the main page.
+- Rent (ev kirası, kira yardımı, kiracı) is a sensitive topic (R-06); renting a bike or a car is not; "kiraz"
+  (Kirazlı, a name) is not rent.
+- The home band says the AI notice in one sentence, the same as `AI_NOTICE`.
+- The heading-quote change was measured and reverted: answered-with-gold fell from 26 to 22 and gold-first from 13
+  to 10, so the quote selection stays as it was.
+
+### Consequences
+
+- The #36 risk "no 187 or handoff card on the kolay page" is closed.
