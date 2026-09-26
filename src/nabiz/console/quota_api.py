@@ -1,4 +1,4 @@
-"""The quota strip's route and the chat turn's quota hook (DECISIONS #36).
+"""The quota strip's route and the chat turn's quota hook (DECISIONS #38).
 
 ``GET /api/quota`` answers what the page's strip shows ("Bugün kalan: 14/20 soru").
 

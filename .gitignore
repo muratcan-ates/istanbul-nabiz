@@ -14,7 +14,7 @@ data/lake/
 data/nexus/
 # The product app's daily model-spend count (nabiz.console.budget): local state, not source.
 data/console/
-# Example accounts (e-mail, followed topics) and the e-mail outbox (DECISIONS #36): personal data, never committed.
+# Example accounts (e-mail, followed topics) and the e-mail outbox (DECISIONS #38): personal data, never committed.
 data/accounts/
 data/outbox/
 data/reference/gtfs/

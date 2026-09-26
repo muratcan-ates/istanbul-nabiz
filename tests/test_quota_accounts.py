@@ -1,4 +1,4 @@
-"""Quota tiers, example accounts and the chat's quota hook (DECISIONS #36).
+"""Quota tiers, example accounts and the chat's quota hook (DECISIONS #38).
 
 The model is never reached: ``nabiz.agent.llm.chat`` is a scripted fake, İBB is the recorded
 fixtures, the account file and the outbox live in ``tmp_path``. Example addresses use the RFC 2606

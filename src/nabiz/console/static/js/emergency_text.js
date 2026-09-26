@@ -1,5 +1,5 @@
 // The 112 card's fixed text in every card language: a copy of src/nabiz/console/emergency_text.py
-// (DECISIONS #37), held equal by tests/test_emergency_multilingual.py. Change both or the test fails.
+// (DECISIONS #40), held equal by tests/test_emergency_multilingual.py. Change both or the test fails.
 // No model and no network behind any of it: the card must open with the connection gone.
 export const REVIEWED_LANGS = Object.freeze(["tr", "en"]);
 export const RTL_LANGS = Object.freeze(["ar", "fa"]);

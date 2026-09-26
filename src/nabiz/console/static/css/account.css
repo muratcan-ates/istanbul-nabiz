@@ -1,4 +1,4 @@
-/* Hesap bağla, Takip ettiklerim and the quota strip (DECISIONS #36). Tokens only. */
+/* Hesap bağla, Takip ettiklerim and the quota strip (DECISIONS #38). Tokens only. */
 .quota-strip { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--text-sm); }
 .quota-strip.is-empty { color: var(--warn); }
 .acct-band { box-sizing: border-box; max-width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--warn); border-radius: var(--radius-control); background: var(--warn-wash); color: var(--text); font-size: var(--text-sm); }

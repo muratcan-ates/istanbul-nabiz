@@ -1,4 +1,4 @@
-"""The multilingual 112 card (DECISIONS #37): rules per card language, the optional model layer, the card.
+"""The multilingual 112 card (DECISIONS #40): rules per card language, the optional model layer, the card.
 
 No test here reaches a model: ``nabiz.agent.llm.chat`` is replaced by scripted fakes. The card's markup is
 built by node from ``static/js/emergency.js``; a test skips when node is missing, as ``test_emergency`` does.

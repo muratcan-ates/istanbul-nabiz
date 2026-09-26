@@ -1,7 +1,7 @@
 """Example accounts: an e-mail and followed topics, kept on the server only with explicit consent.
 
 This is the one exception to "no personal data server-side" (``docs/NABIZ.md`` §1.3), decided
-by the owner on 26 Sep 2026 and recorded as DECISIONS #36. Its limits are the design:
+by the owner on 26 Sep 2026 and recorded as DECISIONS #38. Its limits are the design:
 
 * **Nothing without consent.** :meth:`AccountStore.create` refuses (:class:`ConsentRequired`)
   before it opens a transaction when the consent box was not ticked; no row, no outbox file.

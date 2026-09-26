@@ -1,7 +1,7 @@
 """The 112 card's fixed text in every card language: the one source, with no model behind it.
 
 The page speaks Turkish and English (DECISIONS #35); only the emergency card speaks the languages of
-the visitors İstanbul receives most (DECISIONS #37). ``static/js/emergency_text.js`` is a copy of these
+the visitors İstanbul receives most (DECISIONS #40). ``static/js/emergency_text.js`` is a copy of these
 values, held equal by ``tests/test_emergency_multilingual.py``: change both or the test fails.
 
 Every translation except Turkish and English is the project's own and unchecked by a native reader, so

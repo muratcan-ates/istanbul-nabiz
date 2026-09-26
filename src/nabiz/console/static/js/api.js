@@ -117,7 +117,7 @@ async function post(path, payload) {
   return body;
 }
 
-/** DELETE, for the example account and its follows (DECISIONS #36). */
+/** DELETE, for the example account and its follows (DECISIONS #38). */
 async function del(path) {
   let response;
   try {

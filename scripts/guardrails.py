@@ -850,7 +850,7 @@ ALLOWED_EMAILS = {
     "noreply@github.com": "GitHub's own committer for merges made in the web UI",
 }
 #: Domains reserved for documentation by RFC 2606 §3: no person can hold an address there, so an
-#: example account's placeholder (DECISIONS #36) is not personal data. Exact second-level names only:
+#: example account's placeholder (DECISIONS #38) is not personal data. Exact second-level names only:
 #: ``example.invalid`` (the tests' stand-in for a real address) and look-alikes stay findings.
 EXAMPLE_DOMAINS = frozenset({"example.com", "example.org", "example.net"})
 #: Home directories that belong to a machine role, not to a person.

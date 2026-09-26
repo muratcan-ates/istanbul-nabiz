@@ -1,4 +1,4 @@
-/* The example account screen's markup (DECISIONS #36). Pure: no DOM, no network, so node can test it.
+/* The example account screen's markup (DECISIONS #38). Pure: no DOM, no network, so node can test it.
  * Every provider card and every signed-in view carries the example band: no real İBB, İstanbulkart or
  * Google connection exists, and the page must never let anyone think otherwise. */
 

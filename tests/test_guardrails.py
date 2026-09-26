@@ -338,7 +338,7 @@ def test_only_the_noreply_addresses_are_allowed(tmp_path: pathlib.Path) -> None:
     ],
 )
 def test_only_the_rfc_2606_example_domains_pass_as_placeholders(tmp_path: pathlib.Path, address: str, status: str) -> None:
-    """DECISIONS #36: the example account's placeholder address is not personal data; nothing else widens."""
+    """DECISIONS #38: the example account's placeholder address is not personal data; nothing else widens."""
     write(tmp_path, "docs/x.md", f"E-posta: {address}\n")
     assert guardrails.check_no_personal_data(tmp_path).status == status
 
@@ -540,7 +540,7 @@ def test_files_from_checks_exactly_the_listed_files_even_under_a_skipped_directo
     checked by CI and not by ci-local. With the published list handed over, both see it."""
     monkeypatch.setattr(guardrails, "FILES_FROM", None)  # restored after the test, whatever main() sets
     write(tmp_path, "src/app.py", "x = 1\n")
-    write(tmp_path, "logs/mcp-http.log", f"started by someone{AT}example.invalid\n")  # example.com is a placeholder (#36)
+    write(tmp_path, "logs/mcp-http.log", f"started by someone{AT}example.invalid\n")  # example.com is a placeholder (#38)
     write(tmp_path, "notes.md", "not published\n")
     assert guardrails.check_no_personal_data(tmp_path).status == guardrails.PASS, "the walk skips logs/"
 

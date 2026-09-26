@@ -228,7 +228,7 @@ DEPENDENCY_SETS: dict[str, frozenset[str]] = {
     "nabiz.console": CORE | {"fastapi", "starlette", "uvicorn"},
     # the `qr` extra, imported under ImportError: without it the stop card prints its address as text
     "nabiz.console.stop_card": CORE | {"fastapi", "starlette", "uvicorn", "segno"},
-    # the `email` extra (azure-communication-email), imported only when the digest really sends (DECISIONS #36)
+    # the `email` extra (azure-communication-email), imported only when the digest really sends (DECISIONS #38)
     "nabiz.console.email_sender": CORE | {"azure"},
     "nabiz.collector": CORE | {"azure", "deltalake", "pyarrow"},
     "nabiz.agent": CORE | {"openai", "agent_framework", "azure", "opentelemetry"},

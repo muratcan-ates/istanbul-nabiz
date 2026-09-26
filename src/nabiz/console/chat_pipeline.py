@@ -71,7 +71,7 @@ class FinalFields:
     emergency: bool = False
     guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
     hazard: str | None = None  # "gas" on a gas emergency: the 112 card also shows İGDAŞ's 187 line
-    lang: str | None = None  # an emergency's card language (DECISIONS #37); None on every other turn
+    lang: str | None = None  # an emergency's card language (DECISIONS #40); None on every other turn
 
 
 def sse(event: str, data: dict[str, Any]) -> str:

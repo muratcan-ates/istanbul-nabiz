@@ -1,7 +1,7 @@
 """The second, optional emergency layer: one short model call for a message the rules did not catch.
 
 The rules (:func:`nabiz.console.policy.emergency_intent`) always run first and never wait for this. The
-model is asked only when all of these hold (DECISIONS #37):
+model is asked only when all of these hold (DECISIONS #40):
 
 - the rules found no emergency and the input guard let the message through;
 - the message is not Turkish or English by :func:`~nabiz.console.emergency_lang.guess_language`: those two

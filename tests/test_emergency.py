@@ -300,7 +300,7 @@ def test_card_markup_has_the_actions(tmp_path: Path) -> None:
         assert required in tr
     assert re.findall(r'href="(tel:[^"]+)"', tr) == ["tel:112", "tel:153"]
     assert "Call 112" in en and "Not an official İBB service" in en
-    # DECISIONS #37 (supersedes #35 for the card only): Arabic is a card language again, right to left inside
+    # DECISIONS #40 (supersedes #35 for the card only): Arabic is a card language again, right to left inside
     # the card; an unknown code still falls back to Turkish.
     assert 'lang="ar" dir="rtl"' in arabic and "اتصل بالرقم 112" in arabic
     assert re.findall(r'href="(tel:[^"]+)"', arabic) == ["tel:112", "tel:153"]

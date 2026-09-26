@@ -114,7 +114,7 @@ calls, at least 6.5 s apart, each sent once through `PoliteClient`; one call is 
 `data/reference/ibb_catalog.json` (gitignored) and `data/reference/ibb_catalog_summary.json` (counts by
 category, format and publisher, the 30 newest). Without `--live` it prints the plan and sends nothing.
 `ibb_datasets_search`, `GET /api/datasets` and `knowledge_ingest.py --catalog` read the file, never the
-portal ([DECISIONS #37](../DECISIONS.md)).
+portal ([DECISIONS #41](../DECISIONS.md)).
 
 ---
 

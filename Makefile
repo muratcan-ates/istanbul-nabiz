@@ -114,7 +114,7 @@ console:  ## serve the product app: citizen face (/) and simulated-operator cons
 console-offline:  ## the product app from recordings only: no İBB call, no .env read, no model probe, sprint flag on (CONSOLE_PORT=)
 	NABIZ_ENV_FILE=/dev/null NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 NABIZ_SPRINT_MODE=1 NABIZ_CONSOLE_PORT=$(CONSOLE_PORT) $(PY) -m nabiz.console
 
-notify-digest:  ## WRITES data/outbox: the follow digest for example accounts, offline from recordings; never sends (DECISIONS #36)
+notify-digest:  ## WRITES data/outbox: the follow digest for example accounts, offline from recordings; never sends (DECISIONS #38)
 	NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 $(PY) scripts/notify_digest.py
 
 eval:  ## run the journey eval offline into reports/eval (gitignored); never writes eval/results (EVAL_ARGS='--mode agent')

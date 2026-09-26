@@ -1,4 +1,4 @@
-/* Profilim > Hesap bağla (DECISIONS #36): three example sign-ins, the quota table, the consent line,
+/* Profilim > Hesap bağla (DECISIONS #38): three example sign-ins, the quota table, the consent line,
  * and for a linked account its facts, its e-mail previews and one-tap deletion. No real İBB,
  * İstanbulkart or Google account is contacted; every card says so (js/account_view.js). */
 

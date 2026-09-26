@@ -1,4 +1,4 @@
-"""Daily question and model-call quotas, in three tiers, counted in memory (DECISIONS #36).
+"""Daily question and model-call quotas, in three tiers, counted in memory (DECISIONS #38).
 
 **Three tiers.** A visitor with no account is counted by a random id their own browser made
 (``X-Nabiz-Device``) together with a pseudonym of their address; a visitor who linked an example

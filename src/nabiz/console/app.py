@@ -205,7 +205,7 @@ async def citizen_chat(request: Request, body: ChatRequest) -> Response:
         return paused
     service: ChatService = request.app.state.chat
     limiter: TurnLimiter = request.app.state.chat_limiter
-    # DECISIONS #36: an emergency is never limited or counted; the daily quota closes only the model.
+    # DECISIONS #38: an emergency is never limited or counted; the daily quota closes only the model.
     turn = plan_turn(request, body.message)
     if not turn.emergency and not limiter.allow(request.client.host if request.client else "unknown"):
         return port_problem(429, "too_many_turns", "Çok sık soru geldi. Bir dakika sonra yeniden dene.")
@@ -256,7 +256,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     owned = state.nabiz is None
     if owned:
         state.nabiz = Nabiz(SourceContext.create(settings=state.settings))
-    # The chat's guard also meters each person's daily model calls (DECISIONS #36); /healthz reads the plain one.
+    # The chat's guard also meters each person's daily model calls (DECISIONS #38); /healthz reads the plain one.
     state.chat = ChatService(state.nabiz, state.chat_config, MeteredGuard(state.guard), offline=state.settings.offline)
     release = None
     if state.wire_nexus:

@@ -1,6 +1,6 @@
 """The emergency rules in the card languages, and a guess at the language a message is written in.
 
-This is the first, synchronous layer of the multilingual emergency check (DECISIONS #37): fixed words,
+This is the first, synchronous layer of the multilingual emergency check (DECISIONS #40): fixed words,
 no model, no I/O, compiled once at import. :func:`nabiz.console.policy.emergency_intent` asks it after
 the Turkish rules, so a plea in Russian, Persian or Spanish stops the chat before any tool or model runs,
 exactly as a Turkish one does. The optional model layer (:mod:`emergency_model`) only ever adds an

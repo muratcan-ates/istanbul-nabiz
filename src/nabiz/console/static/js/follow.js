@@ -1,4 +1,4 @@
-/* Takip ettiklerim (DECISIONS #36). The chat offers "Takip edilecek konu: M2 · onayla" after an answer
+/* Takip ettiklerim (DECISIONS #38). The chat offers "Takip edilecek konu: M2 · onayla" after an answer
  * (chat.js fires nabiz:follow-suggestion); only the visitor's yes adds it.
  *
  * Without an account a topic stays in this browser (nabiz.follows.v1, at most three) and changes are

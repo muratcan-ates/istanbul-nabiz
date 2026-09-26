@@ -1771,11 +1771,11 @@ Nobody opened them; the path patterns may be guesses.
   `pytest` 3035 passed, 1 skipped, 3 xfailed; `make architecture` 8 checks 0 failed (existing eta.py WARN);
   `make eval` 60/60 offline. No network call was made; the ingest itself was not run.
 
-## 36. Hesap, kota ve takip (hesap-kota-takip, 26 Eyl, Murat kararı): an explicit-consent account exception
+## 38. Hesap, kota ve takip (hesap-kota-takip, 26 Eyl, Murat kararı): an explicit-consent account exception
 
 **Date:** 2026-09-26 · **Status:** Accepted by the owner (26 Sep); the example sign-in and the outbox are live, real
-e-mail and real İBB/İstanbulkart sign-in wait for the owner's steps below. Another branch may have taken #36 too; the
-number is fixed at the merge.
+e-mail and real İBB/İstanbulkart sign-in wait for the owner's steps below. Numbered #36 on its branch; renumbered #38 at the
+integration merge (26 Sep).
 
 ### Context
 
@@ -1843,10 +1843,10 @@ through Azure Communication Services, whose resource does not exist yet.
   feature is not an MCP tool path; `tests/test_quota_accounts.py`, `tests/test_follow_digest.py` and
   `tests/test_account_static.py` hold it.
 
-## 36. Operatöre aktar + çeviri (operatör-çeviri) (26 Eyl, Murat isteği): a person answers what the assistant could not, in the visitor's language
+## 39. Operatöre aktar + çeviri (operatör-çeviri) (26 Eyl, Murat isteği): a person answers what the assistant could not, in the visitor's language
 
 **Date:** 2026-09-26 · **Status:** Accepted for `gun3/operator-ceviri`; the owner reviews it before the merge. The
-number may collide with another branch's #36; renumber at the merge.
+branch numbered it #36; renumbered #39 at the integration merge (26 Sep).
 
 ### Context
 
@@ -1928,7 +1928,7 @@ replacement for 112.**
   with an operator-written translation showed the English text, "Türkçesi" folded and the matching label. "There is
   a fire in the metro" opened the 112 card and stored nothing. A guard card got the "Operatöre sor" offer.
 
-## 37. Çok dilli acil kartı (acil-çok-dil, 26 Eyl): the 112 card speaks the visitors' languages, the page does not
+## 40. Çok dilli acil kartı (acil-çok-dil, 26 Eyl): the 112 card speaks the visitors' languages, the page does not
 
 **Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep) — supersedes #35 for the emergency card only
 
@@ -2032,7 +2032,7 @@ not Russian). Sums of the table's own numbers:
 - The model layer is not measured against a real model here (no paid call); only the fake-client paths are
   tested (yes, no, gas, unreadable, error, timeout, ceiling, switch off, Turkish and English skipped).
 
-## 37. İBB Açık Veri kataloğu ürüne bağlandı (ibb-katalog) (26 Eyl): the eighteenth tool, a page section and a catalogue mode
+## 41. İBB Açık Veri kataloğu ürüne bağlandı (ibb-katalog) (26 Eyl): the eighteenth tool, a page section and a catalogue mode
 
 **Date:** 2026-09-26 · **Status:** Accepted (owner's request, 26 Sep: "data.ibb.gov.tr'den ne varsa alalım ve bağlayalım")
 

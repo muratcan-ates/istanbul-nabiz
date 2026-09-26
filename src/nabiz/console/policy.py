@@ -17,7 +17,7 @@ own data.
 **An emergency comes first** (:func:`emergency_intent`): the page shows 112 before any model,
 tool or refusal. "acil" and "düştü" count only with company ("acil yardım", "annem düştü"); a gas
 leak or smell ("gaz kaçağı", "doğalgaz kokusu") counts alone. After the Turkish rules come the fixed
-rules of the other card languages (:mod:`~nabiz.console.emergency_lang`, DECISIONS #37): "помогите,
+rules of the other card languages (:mod:`~nabiz.console.emergency_lang`, DECISIONS #40): "помогите,
 пожар" stops the chat the same way, and :func:`emergency_card` names the language the card speaks.
 
 **Needs are functional constraints, nothing else.** The page may send a few profile keys

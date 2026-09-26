@@ -1,4 +1,4 @@
-/* "Bugün kalan: 14/20 soru · daha fazlası için hesap bağla" under the question box (DECISIONS #36).
+/* "Bugün kalan: 14/20 soru · daha fazlası için hesap bağla" under the question box (DECISIONS #38).
  * It asks /api/quota on load, after each answer and when the account changes. */
 
 import { get } from './api.js';

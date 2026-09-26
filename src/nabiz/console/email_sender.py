@@ -8,7 +8,7 @@
   imported only when a send happens). It is off unless both ``NABIZ_ACS_CONNECTION_STRING`` and
   ``NABIZ_ACS_SENDER`` are set, and :func:`sender_from_env` returns it only when the caller asks
   for real delivery too. No ACS resource exists yet; creating one, verifying the sender domain and
-  the first real send are the owner's steps (DECISIONS #36).
+  the first real send are the owner's steps (DECISIONS #38).
 
 The example sign-in never verifies an address, so the verification e-mail always goes to the
 outbox, whatever is configured.

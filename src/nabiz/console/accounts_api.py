@@ -1,4 +1,4 @@
-"""The example-account and follow routes (DECISIONS #36).
+"""The example-account and follow routes (DECISIONS #38).
 
 ``X-Nabiz-Account`` carries the sign-in token the page keeps on the device; nothing else opens
 an account. Every body is JSON in a POST, never a query string, so an address never reaches an

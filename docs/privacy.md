@@ -7,7 +7,7 @@
 > Hesap bağlamadıkça sunucuda silinecek bir kaydınız yok; çerez yok. Her şeyi silmek için tarayıcınızdaki
 > site verisini temizlemeniz yeterlidir (aşağıda §6).
 >
-> **Tek istisna, açık rızayla (DECISIONS #36):** isteğe bağlı örnek hesap bağlarsanız e-posta adresiniz ve
+> **Tek istisna, açık rızayla (DECISIONS #38):** isteğe bağlı örnek hesap bağlarsanız e-posta adresiniz ve
 > takip ettiğiniz konular (hat, istasyon ya da anahtar kelime; asla konum) sunucuda saklanır; hesabı
 > silene ya da 12 ay kullanmayana kadar. "Hesabımı ve verilerimi sil" tek dokunuşla hepsini siler (§10).
 
@@ -264,7 +264,7 @@ Alerts are derived from İBB Açık Veri Portalı data:
 Alerts are estimates, not official İBB announcements, and air-quality alerts are not health advice.
 Both disclaimers ship inside the alert payload itself, not only in this document.
 
-## 10. The explicit-consent account exception (DECISIONS #36)
+## 10. The explicit-consent account exception (DECISIONS #38)
 
 The owner decided on 26 Sep 2026 that one kind of personal data may live on the server: what a person
 chooses to keep there, with explicit consent, to get a higher daily quota and a daily digest of the

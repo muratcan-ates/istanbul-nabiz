@@ -2,7 +2,7 @@ import { CARD_TEXT, REVIEWED_LANGS, RTL_LANGS, TR_BLOCK, UNVERIFIED_LABEL } from
 
 export const EMERGENCY_EVENT = 'nabiz:emergency';
 // The card's text lives in emergency_text.js (a copy of the server's emergency_text.py). The page itself
-// stays Turkish or English (DECISIONS #35); only this card speaks the detected language (DECISIONS #37).
+// stays Turkish or English (DECISIONS #35); only this card speaks the detected language (DECISIONS #40).
 export { CARD_TEXT };
 
 let activeDocument = null;

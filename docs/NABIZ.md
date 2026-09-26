@@ -64,7 +64,7 @@ tool result.
 - **No personal data is stored server-side.** Any feature involving a user's location, profile or history must be
   designed *privacy-first*: on-device state, explicit opt-in, data minimisation, no server logs of location.
   KVKK (Turkish data protection law) applies; treat it as a hard design constraint, not a footnote.
-  One recorded exception (DECISIONS #36, 26 Sep 2026): with explicit consent, an example account keeps an e-mail
+  One recorded exception (DECISIONS #38, 26 Sep 2026): with explicit consent, an example account keeps an e-mail
   address and followed topics (a line, a station, a keyword; never a location) until it is deleted or unused for
   12 months; [`docs/privacy.md`](privacy.md) §10 is its design.
 - Outputs carry disclaimers: bus ETAs are estimates; air-quality output is not health advice.

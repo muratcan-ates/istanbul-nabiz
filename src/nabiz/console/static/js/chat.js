@@ -176,7 +176,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       });
       finalEl.appendChild(box);
     }
-    // DECISIONS #36: js/follow.js draws "Takip edilecek konu: M2 · onayla" into this answer.
+    // DECISIONS #38: js/follow.js draws "Takip edilecek konu: M2 · onayla" into this answer.
     if (data.follow_suggestion) {
       document.dispatchEvent(new CustomEvent('nabiz:follow-suggestion', { detail: { suggestion: data.follow_suggestion, host: finalEl } }));
     }

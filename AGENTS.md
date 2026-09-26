@@ -72,7 +72,7 @@ Short on purpose, and binding. Last verified: 2026-09-23.
   tokens or keys, no real vehicle number plates.
 - Bus number plates are dropped at the parser (`BusPosition.from_fleet_raw`, DECISIONS #7) and must not
   reappear anywhere — recorded fixtures included, because fixtures are published with the code.
-- No personal data server-side (charter §1.3, KVKK), except the açık rızalı hesap istisnası (DECISIONS #36):
+- No personal data server-side (charter §1.3, KVKK), except the açık rızalı hesap istisnası (DECISIONS #38):
   with explicit consent, an e-mail address and followed topics, never a location. A user's location lives on
   their device; [`docs/privacy.md`](docs/privacy.md) is the design and names the tests that hold it.
 - Logs, the data lake and raw eval JSON stay out of git (`.gitignore`). A tracked log once carried local paths.

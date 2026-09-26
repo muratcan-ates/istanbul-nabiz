@@ -1,4 +1,4 @@
-/* Who this browser is, for the quota and the example account (DECISIONS #36). Pure storage helpers:
+/* Who this browser is, for the quota and the example account (DECISIONS #38). Pure storage helpers:
  * no DOM, no network, so node can import it in tests.
  *
  * nabiz.device.v1   a random id this browser made; not personal data. It goes only with the chat, the

@@ -103,7 +103,7 @@ def ask(client: TestClient, message: str, *, needs: list[str] | None = None, his
     stream = events(response.text)
     final = stream[-1]
     assert final[0] == "final"
-    # DECISIONS #36: every final carries the day's quota; a follow request adds its suggestion.
+    # DECISIONS #38: every final carries the day's quota; a follow request adds its suggestion.
     assert set(final[1]) - {"follow_suggestion"} == {
         "answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode", "steps", "emergency",
         "guard", "hazard", "lang", "masked_count", "masked_kinds", "quota",

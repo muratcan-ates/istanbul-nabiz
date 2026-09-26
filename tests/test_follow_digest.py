@@ -1,4 +1,4 @@
-"""Followed topics, the daily digest and the e-mail senders (DECISIONS #36).
+"""Followed topics, the daily digest and the e-mail senders (DECISIONS #38).
 
 İBB is the recorded fixtures (M7 carries a works notice, Etiler a recorded lift fault); the account
 file and the outbox live in ``tmp_path``; no e-mail leaves the test.

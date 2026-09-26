@@ -1,4 +1,4 @@
-"""The page half of DECISIONS #36: the example band on every sign-in, the quota strip's sentence,
+"""The page half of DECISIONS #38: the example band on every sign-in, the quota strip's sentence,
 the identity headers, and the wiring in index.html, kvkk.html and the service worker."""
 
 from __future__ import annotations

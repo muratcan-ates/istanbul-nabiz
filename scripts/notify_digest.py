@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare the daily follow digest for every example account (DECISIONS #36).
+"""Prepare the daily follow digest for every example account (DECISIONS #38).
 
 For each account with followed topics, at most once per Istanbul day: evaluate the topics through
 the one facade (alert engine, station list, service-page index), keep only the essential changes
