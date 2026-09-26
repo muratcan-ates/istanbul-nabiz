@@ -2264,3 +2264,36 @@ come without a model.
   duration is computed. "Çalıştırılmıyor" records sit under their own heading, without comment.
 - `map_equipment.js` is loaded lazily by `map_layers.js` and is in the service worker shell (v9), so the rail
   section still builds offline.
+
+## 50. Chat bridges: the page's language, the E15 layers, split questions, the how panel (E38, 26 Sep)
+
+### Decision
+
+- The request carries the page's language (`ChatRequest.lang`); fixed texts come from `fixed_text`; the model is
+  instructed in English and told the answer language. `final.lang` is never null: on an emergency it is the card's
+  language, on every other turn `tr` or `en`. This replaces #40's "`null` otherwise".
+- The E15 layers answer in the chat: greetings and thanks (a light card), a clarifying question, a follow-up ("Peki
+  M2'de?"), and a question split in two ("1) … 2)") answered in one card whose author is the stronger of the two.
+- Refusal and emergency cards also carry "Bu nasıl bulundu?", outside the `role="alert"` box.
+- The knowledge generator gets role-separated messages, not one string (B06 note 4); `author_for` is gone.
+- A split question sends the masked question, never the raw message, to the index and the price filter.
+
+### Consequences
+
+- `chat.py` is 389 lines. The knowledge index's model path is still not wired. The input guard's sentence
+  (`text_guard.py`) and "Doğrulamak için 153 Çözüm Merkezi'ni ara." stay Turkish on the English page.
+
+## 51. The new sections in English (E40, 26 Sep)
+
+### Decision
+
+- Account, quota strip, follows, open data and operator requests read the catalogues through `i18n_text.js`, a
+  side-effect-free `t(key, turkishFallback, vars)`; server text stays Turkish and carries `lang="tr"`. No Arabic.
+- The console translates only its Talepler section, and only with `?lang=en`.
+- Service worker v10 (i18n_text.js in the shell, with E35's map_equipment.js kept).
+
+### Consequences
+
+- `kvkk.html` and the consent text stay Turkish legal text; an English version needs a legal review.
+- `quick_chips.js` reads the language from the profile, not the page; `model_strip.js` prints the server's Turkish
+  note without `lang="tr"`. Both are open.
