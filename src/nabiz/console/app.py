@@ -44,21 +44,29 @@ from nabiz.console.access import (
     is_operator_path,
     login_page,
 )
+from nabiz.console.agency_api import agency_routes
+from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
 from nabiz.console.brief import Freshness, build_brief, split_csv
 from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.compare_api import compare_routes
+from nabiz.console.day_api import day_routes
+from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
 from nabiz.console.feedback_api import feedback_routes
 from nabiz.console.history_api import history_routes
 from nabiz.console.journey_api import accessible_journey_route
+from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
+from nabiz.console.map_layers_api import map_layers_routes
 from nabiz.console.nearby_api import nearby_router
 from nabiz.console.operator import operator_routes, port_problem
+from nabiz.console.organs_api import organs_routes
 from nabiz.console.policy import functional_needs
 from nabiz.console.ports import Ports, UnwiredStepFree
+from nabiz.console.stop_card import stop_card_router
 
 log = logging.getLogger("nabiz.console")
 
@@ -80,6 +88,8 @@ CONSOLE_HEADERS = {
             "img-src 'self' data: " + " ".join(OSM_TILE_SOURCES),
             "connect-src 'self'",
             "font-src 'self'",
+            "worker-src 'self'",
+            "manifest-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
@@ -183,6 +193,8 @@ async def operator_login(request: Request) -> Response:
 
 @citizen_routes.post("/api/chat")
 async def citizen_chat(request: Request, body: ChatRequest) -> Response:
+    if (paused := chat_gate(request)) is not None:
+        return paused
     service: ChatService = request.app.state.chat
     limiter: TurnLimiter = request.app.state.chat_limiter
     if not limiter.allow(request.client.host if request.client else "unknown"):
@@ -290,7 +302,15 @@ def build_console_app(
     app.include_router(feedback_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
+    app.include_router(map_layers_routes)
+    app.include_router(agency_routes)
     app.include_router(operator_routes)
+    app.include_router(day_routes)
+    app.include_router(approval_health_routes)
+    app.include_router(organs_routes)
+    app.include_router(drill_routes)
+    app.include_router(kill_switch_routes)
+    app.include_router(stop_card_router)
     # Last, so every /api route wins the match ahead of the page's files.
     if CONSOLE_STATIC_DIR.is_dir():
         app.mount("/", StaticFiles(directory=CONSOLE_STATIC_DIR, html=True), name="static")
