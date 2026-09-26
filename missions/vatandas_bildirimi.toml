@@ -1,0 +1,30 @@
+# Vatandaşın asansör bildirimi İBB çalışanının kararına gider.
+# Bildirim kamu kartını tek başına değiştirmez; refleks yok.
+# Katlama penceresi ve dakika sınırı tasarım parametresidir, ölçüm değildir.
+# Alan adlarının kaynağı: src/nabiz/console/report_api.py.
+
+[mission]
+id = "vatandas-bildirimi"
+title = "Vatandaş bildirimi"
+intent = "Asansörü kapalı bulan vatandaşın tek dokunuşluk bildirimini, katlanmış kişi sayısıyla İBB çalışanının kararına getirmek; kamu kartı insan onayı olmadan değişmez."
+reviewed_on = 2026-09-25
+
+# R-10 EĞER bir vatandaş asansörün kapalı olduğunu ya da kaydın yanlış göründüğünü bildirdiyse
+# O ZAMAN İBB çalışanına getir. Refleks yok: bir bildirim kamu kartını tek başına değiştirmez.
+[[rules]]
+id = "R-10"
+path = "arena"
+expires_days = 30
+
+[rules.when]
+kind = "citizen_report"
+conditions = [
+  { field = "station", op = "present" },
+  { field = "report_text", op = "present" },
+]
+
+[rules.then]
+action = "publish_card"
+card_kind = "metro_equipment"
+title = "Vatandaş bildirimi: {station}"
+card_template = "{station} istasyonunda {report_text}. Bu bilgi vatandaş bildirimidir; İBB kaydıyla doğrulanmadı."
