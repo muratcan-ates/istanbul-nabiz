@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "kategoriler": [
+    {
+      "id": "ulasim",
+      "ad_tr": "Ulaşım",
+      "ad_en": "Transport"
+    },
+    {
+      "id": "istanbulkart",
+      "ad_tr": "İstanbulkart",
+      "ad_en": "İstanbulkart"
+    },
+    {
+      "id": "iski-fatura",
+      "ad_tr": "İSKİ/Fatura",
+      "ad_en": "İSKİ and bills"
+    },
+    {
+      "id": "sosyal-destek",
+      "ad_tr": "Sosyal Destek",
+      "ad_en": "Social support"
+    },
+    {
+      "id": "sorun-153",
+      "ad_tr": "Sorun Bildir / 153",
+      "ad_en": "Report a problem / 153"
+    }
+  ],
+  "sorular": [
+    {
+      "id": "live-varis-500t",
+      "kategori": "ulasim",
+      "kind": "live",
+      "soru_tr": "500T 4. Levent metro durağına ne zaman gelir?",
+      "soru_en": "When does the 500T arrive at 4. Levent Metro stop?",
+      "arac": "iett_next_arrivals",
+      "kaynak": "tests/test_faithfulness.py:351",
+      "source_url": null
+    },
+    {
+      "id": "live-adimsiz-yenikapi",
+      "kategori": "ulasim",
+      "kind": "live",
+      "soru_tr": "Yenikapı istasyonunda merdivensiz bir yol var mı?",
+      "soru_en": "Can I travel step-free through Yenikapı station?",
+      "arac": "metro_station_info",
+      "kaynak": "eval/journeys.jsonl#j9-tr-2",
+      "source_url": null
+    },
+    {
+      "id": "live-otopark-taksim",
+      "kategori": "ulasim",
+      "kind": "live",
+      "soru_tr": "Taksim'e 20 dakika sonra varıyorum, yakınında hangi otoparkta yer var?",
+      "soru_en": "Which car parks near Taksim have free spaces?",
+      "arac": "ispark_find_parking",
+      "kaynak": "eval/journeys.jsonl#j1-tr-1",
+      "source_url": null
+    },
+    {
+      "id": "live-metro-m4",
+      "kategori": "ulasim",
+      "kind": "live",
+      "soru_tr": "M4'te arıza veya çalışma var mı?",
+      "soru_en": "Is there a disruption on the M4 line?",
+      "arac": "metro_status",
+      "kaynak": "eval/journeys.jsonl#j3-tr-1",
+      "source_url": null
+    },
+    {
+      "id": "k-ulasim-15",
+      "kategori": "ulasim",
+      "kind": "knowledge",
+      "soru_tr": "Vapur sefer saatlerini nereden öğrenirim?",
+      "soru_en": null,
+      "eval_id": "k-ulasim-15",
+      "source_url": "https://sehirhatlari.istanbul/"
+    },
+    {
+      "id": "k-ulasim-03",
+      "kategori": "istanbulkart",
+      "kind": "knowledge",
+      "soru_tr": "İstanbulkart Plus nedir, nasıl başvurulur?",
+      "soru_en": null,
+      "eval_id": "k-ulasim-03",
+      "source_url": "https://www.istanbulkart.istanbul/"
+    },
+    {
+      "id": "k-ulasim-13",
+      "kategori": "istanbulkart",
+      "kind": "knowledge",
+      "soru_tr": "QR ile ulaşımda nasıl ödeme yaparım?",
+      "soru_en": null,
+      "eval_id": "k-ulasim-13",
+      "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"
+    },
+    {
+      "id": "k-genel-06",
+      "kategori": "iski-fatura",
+      "kind": "knowledge",
+      "soru_tr": "İstanbul Senin’de hangi faturaları ödeyebilirim?",
+      "soru_en": null,
+      "eval_id": "k-genel-06",
+      "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"
+    },
+    {
+      "id": "k-genel-08",
+      "kategori": "sosyal-destek",
+      "kind": "knowledge",
+      "soru_tr": "Askıda Fatura’dan nasıl destek olurum?",
+      "soru_en": null,
+      "eval_id": "k-genel-08",
+      "source_url": "https://istanbulsenin.istanbul/"
+    },
+    {
+      "id": "k-genel-09",
+      "kategori": "sosyal-destek",
+      "kind": "knowledge",
+      "soru_tr": "Sosyal yardım için 153 dışında hangi kanallar var?",
+      "soru_en": null,
+      "eval_id": "k-genel-09",
+      "source_url": "https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142"
+    },
+    {
+      "id": "k-genel-01",
+      "kategori": "sorun-153",
+      "kind": "knowledge",
+      "soru_tr": "153’e nasıl başvuru yaparım?",
+      "soru_en": null,
+      "eval_id": "k-genel-01",
+      "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"
+    },
+    {
+      "id": "k-genel-02",
+      "kategori": "sorun-153",
+      "kind": "knowledge",
+      "soru_tr": "153 başvurumu nereden takip ederim?",
+      "soru_en": null,
+      "eval_id": "k-genel-02",
+      "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"
+    },
+    {
+      "id": "k-genel-03",
+      "kategori": "sorun-153",
+      "kind": "knowledge",
+      "soru_tr": "İstanbul Senin’den şikâyet oluşturabilir miyim?",
+      "soru_en": null,
+      "eval_id": "k-genel-03",
+      "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"
+    },
+    {
+      "id": "k-genel-05",
+      "kategori": "sorun-153",
+      "kind": "knowledge",
+      "soru_tr": "153’e WhatsApp’tan yazabilir miyim?",
+      "soru_en": null,
+      "eval_id": "k-genel-05",
+      "source_url": "https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142"
+    }
+  ]
+}
