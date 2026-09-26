@@ -15,6 +15,9 @@
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/components.css">
 <link rel="stylesheet" href="/css/console.css">
+<link rel="stylesheet" href="/css/console_day.css">
+<link rel="stylesheet" href="/css/console_health.css">
+<link rel="stylesheet" href="/css/console_organs.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/console.js">
 <link rel="modulepreload" href="/js/api.js">
@@ -25,7 +28,16 @@
 <link rel="modulepreload" href="/js/format.js">
 <link rel="modulepreload" href="/js/icons.js">
 <link rel="modulepreload" href="/js/theme.js">
+<link rel="modulepreload" href="/js/console_health.js">
+<link rel="modulepreload" href="/js/console_day.js">
+<link rel="modulepreload" href="/js/console_organs.js">
+<link rel="modulepreload" href="/js/console_kill.js">
 <script type="module" src="/js/console.js"></script>
+<!-- Wave-1 panels (E17-E20): each fills its own section; the placeholders below fix their order. -->
+<script type="module" src="/js/console_health.js"></script>
+<script type="module" src="/js/console_day.js"></script>
+<script type="module" src="/js/console_organs.js"></script>
+<script type="module" src="/js/console_kill.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -76,6 +88,9 @@
     </ul>
   </section>
 
+  <section id="day" class="day" aria-labelledby="day-title"><h2 id="day-title">Günün kararları</h2></section>
+  <section id="approval-health" class="health" aria-labelledby="health-title"><h2 id="health-title">Onay sağlığı</h2></section>
+
   <div class="console-grid">
     <section id="queue" aria-labelledby="queue-title">
       <div class="section-head">
@@ -100,6 +115,13 @@
         seçenekleri, üç koltuğun görüşünü ve itiraz özetini gösterir; onay kanıt açılmadan verilmez.</p></div>
     </section>
   </div>
+
+  <section id="nx-organs" aria-labelledby="nx-organs-title">
+    <div class="section-head"><h2 id="nx-organs-title">NEXUS organları</h2>
+      <span class="section-note">Defterden canlı okunur · kişi bazında metrik yok</span></div>
+    <p class="sr-only" id="nx-status" role="status" aria-live="polite"></p>
+    <div id="nx-organs-content"></div>
+  </section>
 
   <section aria-labelledby="drafts-title">
     <div class="section-head">

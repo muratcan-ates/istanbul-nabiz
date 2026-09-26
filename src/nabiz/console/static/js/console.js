@@ -162,6 +162,8 @@ async function decide(action) {
     loadQueue();
     loadStats();
     loadVerify();
+    // The day's decisions panel (console_day.js) refreshes at once instead of on its minute.
+    document.dispatchEvent(new CustomEvent('nabiz:decided'));
   } catch (err) {
     status.className = 'status-line is-bad';
     status.textContent = `Karar yazılamadı: ${err.message}`;
@@ -256,6 +258,7 @@ async function adopt(form) {
     status.textContent = `Kural benimsendi: ${res.rule_id || form.dataset.id}, son geçerlilik ${res.expires_at || 'bilinmiyor'}.`;
     loadDrafts();
     loadVerify();
+    document.dispatchEvent(new CustomEvent('nabiz:decided'));
   } catch (err) {
     status.className = 'status-line is-bad';
     status.textContent = `Kural benimsenemedi: ${err.message}`;
