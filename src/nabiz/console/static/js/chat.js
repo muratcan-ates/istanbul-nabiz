@@ -5,12 +5,15 @@
  * Screen readers: the log is aria-live and aria-busy while a reply streams, so it is read once when
  * the reply is complete rather than word by word; #chat-status says the state in one sentence. */
 
+import { renderAnswerCard } from './answer_card.js';
 import { stream } from './api.js';
 import { HISTORY_TURNS } from './config.js';
+import { compactionNote } from './conversations.js';
 import { aiNoticeMarkup } from './disclosure.js';
 import { dateTime, esc, has, int, num } from './format.js';
 import { icon } from './icons.js';
 import { AUTHOR_TR, TOOL_TR, ageText, howPanel, sourceLabel, sourceLink } from './provenance.js';
+import { progressLine } from './tool_labels.js';
 
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
 const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';
@@ -102,9 +105,11 @@ function answerCard(data, turnId) {
 
 /**
  * Wire the panel. `getNeeds` returns the functional constraints allowed to leave the device;
- * `onMemorySuggestion(suggestion)` stores a confirmed suggestion and returns true when it did.
+ * `onMemorySuggestion(suggestion)` stores a confirmed suggestion and returns true when it did;
+ * `onTurn(turn)` hands each finished turn to Sohbetlerim (js/conversations.js), which keeps it on
+ * this device only. `loadHistory(turns)` reopens a saved conversation in the log.
  */
-function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggestion }) {
+function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggestion, onTurn = () => {} }) {
   const history = [];
   let controller = null;
   let sessionStarted = false;
@@ -112,6 +117,18 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
 
   const say = (text) => { status.textContent = text; };
   const scrollDown = () => { log.scrollTop = log.scrollHeight; };
+  const turn = (item) => { try { onTurn(item); } catch { /* Saving on the device must never break the chat. */ } };
+
+  function showCompaction() {
+    const note = compactionNote(history.length, HISTORY_TURNS);
+    let el = log.querySelector('.chat-compaction');
+    if (!note) { el?.remove(); return; }
+    if (!el) {
+      el = message('is-notice chat-compaction', '<p class="field-hint"></p>');
+      log.appendChild(el);
+    }
+    el.querySelector('p').textContent = note;
+  }
 
   function renderFinal(shell, data, question, streamed, turnId) {
     const textEl = shell.querySelector('.chat-text');
@@ -121,12 +138,25 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     textEl.hidden = true;
     textEl.textContent = '';
     if (data.refused || mode === 'unknown') shell.classList.add('is-refused');
-    if (mode === 'redirect' && data.emergency === true) shell.classList.add('is-emergency');
-    finalEl.innerHTML = answerCard({ ...data, answer_text: answer }, turnId);
+    if (mode === 'redirect' && data.emergency === true) {
+      shell.classList.add('is-emergency');
+      // js/emergency.js also watches the class; the event carries the answer language for its card.
+      if (typeof document !== 'undefined') {
+        const lang = data.lang || new URLSearchParams(window.location.search).get('lang') || document.documentElement.lang || 'tr';
+        document.dispatchEvent(new CustomEvent('nabiz:emergency', { detail: { lang } }));
+      }
+    }
+    // The sourced answer card (js/answer_card.js) draws answers, quotes and the fixed cards; the
+    // emergency card and any mode it does not know stay on answerCard below.
+    finalEl.innerHTML = renderAnswerCard({ ...data, answer_text: answer }, { turnId })
+      || answerCard({ ...data, answer_text: answer }, turnId);
     // The refusal text is not context. The refused question stays so the server can refuse a
     // follow-up to it ("peki öğrenciler için?"); the server never hands it to the model.
     if (!data.emergency) history.push({ role: 'user', content: question });
     if (!data.refused && !data.emergency && mode !== 'unknown') history.push({ role: 'assistant', content: answer });
+    turn({ role: 'user', content: question, emergency: data.emergency === true, sensitive: data.refused === true, mode });
+    turn({ role: 'assistant', content: answer, emergency: data.emergency === true, sensitive: data.refused === true, mode });
+    showCompaction();
     if (data.memory_suggestion && onMemorySuggestion) {
       const box = suggestionBox(data.memory_suggestion);
       box.addEventListener('click', (evt) => {
@@ -172,11 +202,14 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
         textEl.textContent = streamed;
         scrollDown();
       } else if (event === 'tool') {
-        const running = data && data.status === 'start';
+        // js/tool_labels.js says what is being asked, in Turkish, and never claims success.
+        const step = progressLine(data);
+        if (!step) return;
         toolEl.hidden = false;
-        toolEl.className = `chat-tool ${running ? 'is-running' : 'is-done'}`;
-        toolEl.innerHTML = `${icon(running ? 'refresh' : 'circle-check')}<span>${running ? 'Araç çalışıyor' : 'Araç tamamlandı'}: `
-          + `${esc(TOOL_TR[data && data.name] || 'İBB aracı')}</span>`;
+        toolEl.className = step.className;
+        toolEl.dataset.phase = step.phase;
+        toolEl.innerHTML = step.html;
+        say(step.sentence);
       } else if (event === 'final') {
         finalData = data;
       } else if (event === 'error') {
@@ -217,7 +250,25 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     input.focus();
   });
 
-  return { ask };
+  /** Show a saved conversation (Sohbetlerim) and make it the context of the next question. */
+  function loadHistory(turns) {
+    if (controller) controller.abort();
+    log.querySelectorAll('.chat-msg:not(.is-notice), .chat-compaction').forEach((node) => node.remove());
+    history.length = 0;
+    (Array.isArray(turns) ? turns : []).forEach((item) => {
+      if (!item || (item.role !== 'user' && item.role !== 'assistant')) return;
+      const content = String(item.content ?? '');
+      const who = item.role === 'user' ? 'Siz' : 'Asistan';
+      log.appendChild(message(item.role === 'user' ? 'is-user' : 'is-assistant',
+        `<p class="chat-who">${who}</p><p class="chat-text">${esc(content)}</p>`));
+      if (content && content !== '[acil yönlendirme]') history.push({ role: item.role, content });
+    });
+    showCompaction();
+    say(history.length ? 'Kayıtlı sohbet açıldı.' : 'Yeni sohbet başladı.');
+    scrollDown();
+  }
+
+  return { ask, loadHistory };
 }
 
 export { mountChat, refusalNote, answerCard, UNKNOWN_TEXT };

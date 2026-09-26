@@ -4,8 +4,10 @@
 import { MOCK, get } from './api.js';
 import { alternativeCard, arrivalCard, cardsSentence, cityCard, errorCard, skeleton } from './cards.js';
 import { mountChat } from './chat.js';
+import { mountConversations } from './conversations-ui.js';
+import { newConversation, purgeOlderThan, saveTurn } from './conversations.js';
 import { mountHome } from './home.js';
-import { DEFAULT_ARRIVAL, DEFAULT_LINES, DEFAULT_STATIONS, REFRESH_MS } from './config.js';
+import { DEFAULT_ARRIVAL, DEFAULT_LINES, DEFAULT_STATIONS, HISTORY_TURNS, REFRESH_MS } from './config.js';
 import { dateTime, esc } from './format.js';
 import { icon } from './icons.js';
 import {
@@ -272,6 +274,30 @@ function acceptSuggestion(suggestion) {
     : 'Bu tarayıcıda Hafızam\'a eklendi. Sunucuya gönderilmesi için Profilim\'de onay kutusunu işaretle.';
 }
 
+/* ---- Sohbetlerim: conversations stay on this device (js/conversations.js), 30 days ----------- */
+let conversationId = null;
+let saving = Promise.resolve();
+let savedList = null;
+
+function keepTurn(turn) {
+  saving = saving.then(async () => {
+    if (!conversationId) conversationId = (await newConversation()).id;
+    await saveTurn(conversationId, turn);
+    savedList?.refresh();
+  }).catch(() => {});
+}
+
+function mountSaved(chat) {
+  purgeOlderThan(30).catch(() => {});
+  const root = $('#convo-root');
+  if (!root) return;
+  savedList = mountConversations({
+    root,
+    onOpen: (conversation) => { conversationId = conversation.id; chat.loadHistory(conversation.turns.slice(-HISTORY_TURNS * 2)); },
+    onNew: (conversation) => { conversationId = conversation.id; chat.loadHistory([]); },
+  });
+}
+
 /* ---- boot -------------------------------------------------------------------------------- */
 function boot() {
   mountToggles();
@@ -286,10 +312,11 @@ function boot() {
     loadArrival(arrivalForm.line.value.trim() || DEFAULT_ARRIVAL.line, arrivalForm.stop.value.trim() || DEFAULT_ARRIVAL.stop);
   });
   $('#cards-refresh').addEventListener('click', () => refreshAll(true));
-  mountChat({
+  const chat = mountChat({
     log: $('#chat-log'), form: $('#chat-form'), input: $('#chat-input'), submit: $('#chat-submit'), status: $('#chat-status'),
-    getNeeds: needs, onMemorySuggestion: acceptSuggestion,
+    getNeeds: needs, onMemorySuggestion: acceptSuggestion, onTurn: keepTurn,
   });
+  mountSaved(chat);
   mountHome({ form: $('#chat-form'), input: $('#chat-input') });
   document.querySelectorAll('.chip[data-ask]').forEach((chip) => {
     chip.addEventListener('click', () => { $('#chat-input').value = chip.dataset.ask; $('#chat-form').requestSubmit(); });
