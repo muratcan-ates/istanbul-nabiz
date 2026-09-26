@@ -1,0 +1,2 @@
+.report-triage p { margin-block: var(--space-1); }
+.report-triage code { font-size: var(--text-sm); }
