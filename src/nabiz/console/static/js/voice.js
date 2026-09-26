@@ -19,7 +19,7 @@ function recognitionMessage(code) {
 }
 
 function confirmPrompt(transcript) {
-  return `Seni şöyle anladım: "${transcript}"`;
+  return `Sizi şöyle anladım: "${transcript}"`;
 }
 
 function mountVoice() {
@@ -106,11 +106,10 @@ function mountVoice() {
     panel.id = 'voice-confirm';
     panel.addEventListener('click', (event) => {
       const button = event.target.closest('button');
-      if (!button || !panel.contains(button)) return;
-      const prompt = panel.querySelector('#voice-confirm-text');
-      if (!prompt) return;
-      const prefix = 'Seni şöyle anladım: "';
-      const transcript = prompt.textContent.slice(prefix.length, -1);
+      if (!button || !panel.contains(button)
+          || !['voice-confirm-yes', 'voice-confirm-edit'].includes(button.id)) return;
+      const transcript = panel.dataset.transcript;
+      if (transcript === undefined) return;
       input.value = transcript;
       removeConfirmation();
       focusInput();
@@ -138,8 +137,14 @@ function mountVoice() {
     edit.className = 'btn';
     edit.id = 'voice-confirm-edit';
     edit.textContent = 'Düzelt';
-    confirmation.append(text, accept, edit);
+    confirmation.dataset.transcript = transcript;
+    confirmation.append(text);
     region.insertBefore(confirmation, status);
+    const proceed = document.dispatchEvent(new CustomEvent('nabiz:voice-transcript', {
+      cancelable: true, detail: { transcript, panel: confirmation },
+    }));
+    if (!proceed) return;
+    confirmation.append(accept, edit);
     say('Anlaşılan metni onaylayın.');
   }
 
