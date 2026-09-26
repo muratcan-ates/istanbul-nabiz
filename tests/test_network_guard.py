@@ -29,8 +29,10 @@ def test_a_raw_connection_off_the_machine_is_refused(_no_outbound_network: list[
 
 
 def test_a_client_built_outside_ctx_is_refused_too(_no_outbound_network: list[str]) -> None:
-    # The gap the guard closes: this client never went through the ctx fixture.
-    with httpx.Client() as client, pytest.raises(httpx.ConnectError):
+    # The gap the guard closes: this client never went through the ctx fixture. trust_env=False keeps a
+    # machine's proxy variables out of the result: a proxy on loopback would answer before the guard sees
+    # the İBB host (the cloud sessions' ProxyError 403).
+    with httpx.Client(trust_env=False) as client, pytest.raises(httpx.ConnectError):
         client.get("https://api.ibb.gov.tr/")
     assert _no_outbound_network and all("api.ibb.gov.tr" in a for a in _no_outbound_network)
     _no_outbound_network.clear()
