@@ -1609,6 +1609,9 @@ host list and question coverage in `data/knowledge/SOURCES-EXPANDED.md`.
 
 ## 34. E06 oturum B: çok dilli yüzey bağlandı (26 Eyl): the citizen page switches between Turkish, English and Arabic
 
+*(26 Sep: superseded by #35 for its Arabic part — yerini #35 aldı (Arapça kısmı). The Turkish/English switch,
+one owner for the page language and `nabiz.lang.v1` stand.)*
+
 ### Context
 
 E06 session A had already merged `templates_i18n.py` and the tr/en/ar catalogues. Session B (branch
@@ -1636,3 +1639,37 @@ E06 session A had already merged `templates_i18n.py` and the tr/en/ar catalogues
 - Gates (26 Sep, sprint flag): `make lint` pass; `make lane-gates` pass (architecture 0 failed with the
   existing sprint WARNs; guardrails 14 checks 0 failed); full `pytest tests` 2980 passed, 1 skipped,
   3 xfailed; `make web-budget` 12 PASS 1 TARGET 0 FAIL; `make eval` 60/60 offline.
+
+## 35. Arapça kaldırıldı (26 Eyl, Murat kararı): ürün Türkçe ve İngilizce
+
+**Date:** 2026-09-26 · **Status:** Accepted — supersedes the Arabic part of #34
+
+### Context
+
+#34 wired an Arabic page language with a draft label, because no native reader had checked the text. The
+owner decided: "Arapça çeviri olmasın, Türkçe ve İngilizce yeterli." Gerekçe: çeviri doğrulanamıyor ve demo
+kapsamı. An unchecked translation on a city-help page is a risk we cannot sign off in the sprint.
+
+### Decision
+
+- The product speaks Turkish and English. `i18n.js` knows only `tr` and `en`: the عربي button, the RTL
+  sheet loader (`#i18n-rtl-css`), `AR_REVIEWED` and the `.i18n-draft` label are gone; `<html dir>` is `ltr`.
+- Deleted: `static/i18n/ar.json`, `static/css/rtl.css`, and the `switch.ar_draft` key in `tr.json`/`en.json`.
+- `templates_i18n.py`: `LANGS = ("tr", "en")`, no Arabic fixed texts, no `RTL_LANGS`/`text_dir`, no Arabic script
+  detection. `detect_lang` returns only an explicit tr/en choice; `fixed_text(key, "ar")` falls back to Turkish.
+- `selamlar.toml` and `layers.py`: no Arabic greeting, thanks, clarify or handoff text; an Arabic message is not
+  small talk and classifies as Turkish.
+- `emergency.js`: the 112 card and location messages have no Arabic copy; `lang=ar` renders the Turkish card.
+- The service worker goes to `v5` and drops `ar.json` and `rtl.css` from the shell; `v4` caches are deleted.
+- **Kept on purpose, input only:** the Arabic words in `console/emergency.py` still stop the chat and raise the
+  112 card (now in the page language), and `pii_guard.py` still folds Arabic-Indic digits before it masks an
+  ID number. Both are safety nets on what a person types, not a language the page speaks.
+
+### Consequences and open risks
+
+- A `?lang=ar` link or a stored `ar` choice falls back like any unknown code (URL, then device, then profile).
+- Gates (26 Sep, sprint flag): `make lint` pass; `make lane-gates` pass (pytest 2980 passed, 1 skipped,
+  3 xfailed; architecture 8 checks 0 failed with the existing sprint WARNs; guardrails 14 checks 0 failed,
+  1 warning); full `pytest tests` 2980 passed, 1 skipped, 3 xfailed; `make web-budget` 12 PASS 1 TARGET 0 FAIL;
+  `make eval` 60/60 offline. Smoke on `make console-offline` (port 8190): only Türkçe/English buttons,
+  `/i18n/ar.json` and `/css/rtl.css` 404, English sets `lang=en`, `?lang=ar` stays `ltr`.
