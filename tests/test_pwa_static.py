@@ -325,14 +325,16 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source += "vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),{self,URL});"
     source += "const keys=['nabiz-shell-v1','nabiz-brief-v1','nabiz-shell-v2','nabiz-brief-v2',"
     source += "'nabiz-shell-v3','nabiz-brief-v3','nabiz-shell-v4','nabiz-brief-v4','nabiz-shell-v5','nabiz-brief-v5',"
+    source += "'nabiz-shell-v6','nabiz-brief-v6',"
     source += "'baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
     stale = [
         "nabiz-shell-v1", "nabiz-brief-v1", "nabiz-shell-v2", "nabiz-brief-v2", "nabiz-shell-v3", "nabiz-brief-v3",
-        "nabiz-shell-v4", "nabiz-brief-v4",
+        "nabiz-shell-v4", "nabiz-brief-v4", "nabiz-shell-v5", "nabiz-brief-v5",
     ]
-    assert result == {"version": "v5", "stale": stale}
+    # v6: DECISIONS #36 added the quota strip, the example account and the follows to the shell.
+    assert result == {"version": "v6", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """

@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="/css/answer_card.css">
 <link rel="stylesheet" href="/css/personas.css">
 <link rel="stylesheet" href="/css/conversations.css">
+<link rel="stylesheet" href="/css/account.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/citizen.js">
 <link rel="modulepreload" href="/js/api.js">
@@ -76,6 +77,10 @@
 <script type="module" src="/js/char_counter.js"></script>
 <script type="module" src="/js/service_status.js"></script>
 <script type="module" src="/js/personas.js"></script>
+<!-- DECISIONS #36: the quota strip, the example account (Profilim > Hesap bağla) and Takip ettiklerim. -->
+<script type="module" src="/js/quota_strip.js"></script>
+<script type="module" src="/js/account.js"></script>
+<script type="module" src="/js/follow.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -101,6 +106,7 @@
     <nav class="topbar-nav" aria-label="Sayfa bölümleri">
       <a href="#asistan">Asistan</a>
       <a href="#profilim">Profilim</a>
+      <a href="#takip">Takip</a>
       <a href="#hafizam">Hafızam</a>
       <a href="/kolay.html">Kolay ekran</a>
     </nav>
@@ -132,6 +138,7 @@
       </div>
       <p class="field-error" hidden>Bir soru yazın.</p>
       <p class="chat-hint" id="chat-hint">Profilinizden yalnız işlevsel kısıtlar gider (örnek: adımsız erişim). İnsanla konuşmak için <a href="tel:153">153</a>, acil durumda <a href="tel:112">112</a><span data-pending="tid" hidden>; işitme engelliyseniz <a href="#" data-pending-url="tid-istanbul-senin">TİD görüntülü görüşme (İstanbul Senin)</a> seçeneğini kullanabilirsiniz</span>.</p>
+      <p class="quota-strip" id="quota-strip" hidden></p>
       <p id="chat-lang">Cevap dili: <button type="button" class="btn" id="chat-lang-en" aria-pressed="false">English</button></p>
     </form>
     <div id="my-stops"></div>
@@ -266,6 +273,31 @@
       <div class="callout profile-wide" id="profile-review" hidden></div>
       <p class="status-line profile-wide" id="profile-status" role="status"></p>
     </form>
+  </section>
+
+  <section id="hesap" aria-labelledby="account-title">
+    <div class="section-head">
+      <h2 id="account-title">Hesap bağla (örnek)</h2>
+      <span class="section-note">isteğe bağlı, açık rızayla; hesapsız kullanım bu cihazda kalır</span>
+    </div>
+    <p>Hesap bağlarsanız günlük soru hakkınız artar ve takip ettiğiniz konular için günde en çok bir özet e-posta hazırlanır.
+      Giriş bir gösterimdir: gerçek İBB, İstanbulkart ya da Google hesabına bağlanılmaz.</p>
+    <div id="acct-body"></div>
+    <p class="status-line" id="acct-status" role="status"></p>
+  </section>
+
+  <section id="takip" aria-labelledby="follow-title">
+    <div class="section-head">
+      <h2 id="follow-title">Takip ettiklerim</h2>
+      <span class="section-note">hat, istasyon ya da anahtar kelime; konum değil</span>
+    </div>
+    <p id="follow-where"></p>
+    <p class="field-hint">Asistana "M2 hattını takip et" ya da "Etiler asansörünü takip et" yazın; onayınızla eklenir. Verisi olmayan konular
+      (su, doğalgaz, elektrik kesintisi) açıkça söylenir.</p>
+    <div class="callout" id="follow-unsubscribe" hidden></div>
+    <ul class="follow-list" id="follow-list"></ul>
+    <p class="memory-empty" id="follow-empty">Henüz takip edilen konu yok.</p>
+    <p class="status-line" id="follow-status" role="status"></p>
   </section>
 
   <section id="hafizam" aria-labelledby="memory-title">

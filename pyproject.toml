@@ -65,6 +65,9 @@ web = ["fastapi>=0.115", "uvicorn>=0.30", "jinja2>=3.1"]
 # The stop card's QR code (nabiz.console.stop_card, E12). Imported under ImportError: without it
 # /d/{code} still serves the card and prints the address as text instead of a QR image.
 qr = ["segno>=1.6.6"]
+# Azure Communication Services e-mail for the follow digest (nabiz.console.email_sender, DECISIONS #36).
+# Imported only when a real send is asked for; without it every e-mail goes to the local outbox.
+email = ["azure-communication-email>=1.0"]
 agent = ["agent-framework>=1.0", "openai>=1.40", "azure-monitor-opentelemetry>=1.6"]
 dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6"]
 

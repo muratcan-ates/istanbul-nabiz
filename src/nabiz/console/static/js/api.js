@@ -5,6 +5,7 @@
  * state (decisions taken, the simulated signal) makes the demo flow read naturally. */
 
 import { API_BASE, isMock } from './config.js';
+import { identityHeaders } from './identity.js';
 
 const MOCK = isMock(window.location.search);
 const OFFLINE = 'Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.';
@@ -89,7 +90,7 @@ async function get(path, params, signal) {
   if (MOCK) return mockGet(path);
   let response;
   try {
-    response = await fetch(url(path, params), { headers: { Accept: 'application/json' }, signal });
+    response = await fetch(url(path, params), { headers: { Accept: 'application/json', ...identityHeaders(path) }, signal });
   } catch (err) {
     if (signal && signal.aborted) throw err;
     throw failure(0, { message: OFFLINE });
@@ -105,9 +106,22 @@ async function post(path, payload) {
   try {
     response = await fetch(url(path), {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...identityHeaders(path) },
       body: JSON.stringify(payload || {}),
     });
+  } catch (err) {
+    throw failure(0, { message: OFFLINE });
+  }
+  const body = await readJson(response);
+  if (!response.ok) throw failure(response.status, body);
+  return body;
+}
+
+/** DELETE, for the example account and its follows (DECISIONS #36). */
+async function del(path) {
+  let response;
+  try {
+    response = await fetch(url(path), { method: 'DELETE', headers: { Accept: 'application/json', ...identityHeaders(path) } });
   } catch (err) {
     throw failure(0, { message: OFFLINE });
   }
@@ -157,7 +171,7 @@ async function stream(path, payload, onEvent, signal) {
   try {
     response = await fetch(url(path), {
       method: 'POST',
-      headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json' },
+      headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json', ...identityHeaders(path) },
       body: JSON.stringify(payload || {}),
       signal,
     });
@@ -186,4 +200,4 @@ async function stream(path, payload, onEvent, signal) {
   return undefined;
 }
 
-export { MOCK, get, post, stream, parseBlock };
+export { MOCK, get, post, del, stream, parseBlock };

@@ -849,6 +849,10 @@ ALLOWED_EMAILS = {
     "135648847+muratcan-ates@users.noreply.github.com": "the owner's GitHub noreply address, the identity commits carry",
     "noreply@github.com": "GitHub's own committer for merges made in the web UI",
 }
+#: Domains reserved for documentation by RFC 2606 §3: no person can hold an address there, so an
+#: example account's placeholder (DECISIONS #36) is not personal data. Exact second-level names only:
+#: ``example.invalid`` (the tests' stand-in for a real address) and look-alikes stay findings.
+EXAMPLE_DOMAINS = frozenset({"example.com", "example.org", "example.net"})
 #: Home directories that belong to a machine role, not to a person.
 ALLOWED_HOMES = {
     "/home/runner": "the GitHub-hosted runner's fixed home; appears when a CI log is quoted",
@@ -864,6 +868,12 @@ _NOT_A_DOMAIN = re.compile(r"\.(?:png|jpe?g|gif|svg|webp|ico|js|mjs|css|py|json|
 #: A home directory followed by a real name. ``/Users/<name>`` in prose is a placeholder:
 #: ``<`` is not a name character, so it does not match.
 HOME_PATH = re.compile(r"(?:/Users/|/home/)[A-Za-z0-9._-]+|[A-Za-z]:\\+Users\\+[A-Za-z0-9._ -]+")
+
+
+def _not_personal(address: str) -> bool:
+    """A noreply identity, an asset name that looks like an address, or an RFC 2606 example domain."""
+    lowered = address.lower()
+    return lowered in ALLOWED_EMAILS or bool(_NOT_A_DOMAIN.search(address)) or lowered.rsplit("@", 1)[1] in EXAMPLE_DOMAINS
 
 
 def check_no_personal_data(repo: pathlib.Path) -> CheckResult:
@@ -890,7 +900,7 @@ def check_no_personal_data(repo: pathlib.Path) -> CheckResult:
         for lineno, line in enumerate(source.splitlines(), start=1):
             for match in EMAIL.finditer(line):
                 address = match.group(0)
-                if address.lower() in ALLOWED_EMAILS or _NOT_A_DOMAIN.search(address):
+                if _not_personal(address):
                     continue
                 if (name, address) not in PERSONAL_DATA_EXCEPTIONS:
                     findings.append(Finding(f"{name}:{lineno}", f"e-mail address {address!r} in a public file"))
