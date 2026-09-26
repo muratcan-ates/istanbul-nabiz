@@ -154,6 +154,7 @@ def test_open_now_is_computed_in_istanbul_time() -> None:
         "text": "Kayda göre şu an açık · kapanış 22.00",
         "closes_at": "22.00",
         "opens_next": None,
+        "opens_on": None,
     }
 
 
@@ -163,6 +164,10 @@ def test_closed_says_when_it_opens_next() -> None:
     assert state["state"] == "closed"
     assert state["text"] == "Kayda göre şu an kapalı · açılış Çarşamba 09.00"
     assert state["opens_next"] == "Çarşamba 09.00"
+    assert state["opens_on"] == {"weekday": 2, "today": False, "time": "09.00"}
+    early = venue_state(venue(), dt.datetime(2026, 9, 29, 7, 0, tzinfo=ISTANBUL))
+    assert early["text"] == "Kayda göre şu an kapalı · açılış bugün 09.00"
+    assert early["opens_on"] == {"weekday": 1, "today": True, "time": "09.00"}
     weekday_closed = venue(hours="10:00 - 18:00", days="Salı-Pazar")
     monday = dt.datetime(2026, 9, 28, 12, 0, tzinfo=ISTANBUL)
     assert venue_state(weekday_closed, monday)["opens_next"] == "Salı 10.00"
@@ -173,7 +178,7 @@ def test_closed_says_when_it_opens_next() -> None:
 
 def test_seven_twenty_four_is_always_open() -> None:
     state = venue_state(venue(hours="7/24", days=None), dt.datetime(2026, 9, 27, 3, tzinfo=ISTANBUL))
-    assert state == {"state": "open", "text": "Kayda göre 7/24 açık", "closes_at": None, "opens_next": None}
+    assert state == {"state": "open", "text": "Kayda göre 7/24 açık", "closes_at": None, "opens_next": None, "opens_on": None}
 
 
 def test_a_district_lists_only_its_venues_sorted_open_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -210,6 +215,25 @@ def test_district_matching_folds_turkish_letters(tmp_path: Path, monkeypatch: py
     for requested, expected in (("kadikoy", "Kadıköy"), ("KAĞITHANE", "Kağıthane"), ("Kâğıthane", "Kağıthane")):
         body = client().get("/api/culture", params={"district": requested}).json()
         assert {item["district"] for item in body["venues"]} == {expected}
+    load_venues.cache_clear()
+
+
+def test_one_district_spelled_two_ways_is_listed_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The real library capture spells Küçükçekmece both "K.Çekmece" and "Küçükçekmece".
+    load_venues.cache_clear()
+    monkeypatch.setattr(culture_api, "CULTURE_DIR", DATA_DIR)
+    venues, _ = load_venues(DATA_DIR)
+    spellings = {item.district for item in venues if item.district in {"K.Çekmece", "Küçükçekmece"}}
+    assert spellings == {"K.Çekmece", "Küçükçekmece"}
+    expected = sum(item.district in spellings for item in venues)
+    api = client()
+    districts = api.get("/api/culture").json()["districts"]
+    assert "Küçükçekmece" in districts and "K.Çekmece" not in districts
+    assert len(districts) == len(set(districts))
+    for requested in ("Küçükçekmece", "K.Çekmece"):
+        body = api.get("/api/culture", params={"district": requested}).json()
+        assert body["district"] == "Küçükçekmece" and body["counts"]["total"] == expected
+        assert {item["district"] for item in body["venues"]} == {"Küçükçekmece"}
     load_venues.cache_clear()
 
 
@@ -286,3 +310,57 @@ def test_no_request_leaves_the_machine(_no_outbound_network: list[str]) -> None:
     assert response.status_code == 200
     assert _no_outbound_network == []
     load_venues.cache_clear()
+
+
+HARNESS = """
+const made = [];
+const node = () => ({ dataset: {}, options: [{}], setAttribute() {}, addEventListener() {}, insertAdjacentHTML() {},
+  querySelector() { return node(); }, insertAdjacentElement(where, el) { made.push(el); } });
+globalThis.window = { location: { search: '' }, addEventListener() {},
+  localStorage: { getItem() { return null; }, setItem() {} } };
+globalThis.document = { getElementById: (id) => (id === 'yakinimda-mount' ? node() : null),
+  createElement: () => node(), querySelector: () => null, head: node() };
+globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ districts: [] }) });
+const i18n = await import(@I18N@);
+const culture = await import(@CULTURE@);
+const open = { state: 'open', closes_at: '22.00', kind: 'library', name: 'Ad', phones: ['0 (212) 249 95 65 Dahili: 12'] };
+const closed = { state: 'closed', opens_on: { weekday: 2, today: false, time: '09.00' } };
+const today = { state: 'closed', opens_on: { weekday: 1, today: true, time: '09.00' } };
+const line = culture.stateLine;
+const tr = [line(open), line(closed), line(today), line({ state: 'unknown' })];
+i18n.setCatalogs('en', @EN@, @TR@);
+const en = [line(open), line(closed), line({ state: 'open' })];
+const row = culture.venueMarkup(open);
+console.log(JSON.stringify({ mounted: made.length, tr, en, tel: culture.telHref(open.phones[0]), row }));
+"""
+
+
+def test_the_section_mounts_and_speaks_the_page_language(tmp_path: Path) -> None:
+    """Import the real module with a minimal DOM: it must mount (no use before definition) and translate."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    catalogs = {lang: (STATIC / "i18n" / f"{lang}.json").read_text(encoding="utf-8") for lang in ("tr", "en")}
+    urls = {name: json.dumps((STATIC / "js" / f"{name}.js").as_uri()) for name in ("i18n_text", "culture")}
+    script = (
+        HARNESS.replace("@I18N@", urls["i18n_text"])
+        .replace("@CULTURE@", urls["culture"])
+        .replace("@EN@", catalogs["en"])
+        .replace("@TR@", catalogs["tr"])
+    )
+    harness = tmp_path / "culture_harness.mjs"
+    harness.write_text(script, encoding="utf-8")
+    result = subprocess.run([node, str(harness)], capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    values = json.loads(result.stdout)
+    assert values["mounted"] == 1
+    assert values["tr"] == [
+        "Kayda göre şu an açık · kapanış 22.00",
+        "Kayda göre şu an kapalı · açılış Çarşamba 09.00",
+        "Kayda göre şu an kapalı · açılış bugün 09.00",
+        "Çalışma saati kayıtta yok",
+    ]
+    assert values["tel"] == "02122499565"
+    assert 'href="tel:02122499565"' in values["row"] and 'lang="tr"' in values["row"]
+    if "ui.culture.open_until" in json.loads(catalogs["en"]):
+        assert values["en"][1].endswith("Wednesday 09:00")

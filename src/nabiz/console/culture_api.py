@@ -31,6 +31,9 @@ DAY_NAMES = ("Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi
 DAY_INDEX = {fold_tr(name): index for index, name in enumerate(DAY_NAMES)}
 HOURS_PATTERN = re.compile(r"([0-2]?\d)[:.]([0-5]\d)\s*-\s*([0-2]?\d)[:.]([0-5]\d)")
 WEEKDAY_RANGE = re.compile(r"([a-z]+)\s*-\s*([a-z]+)")
+#: The library capture spells one district two ways ("K.Çekmece" beside "Küçükçekmece"); the selector
+#: shows the district once and both spellings match it. The record itself is not rewritten.
+DISTRICT_ALIASES = {fold_tr("K.Çekmece"): "Küçükçekmece"}
 
 NOTES = (
     "Doluluk bilgisi yok: İBB kütüphane ve müze doluluğunu açık veri olarak yayımlamıyor.",
@@ -150,6 +153,13 @@ def parse_hours(text: str | None) -> tuple[dt.time, dt.time] | Literal["always"]
     return (start, end) if end > start else None
 
 
+def district_name(raw: str | None) -> str | None:
+    """The district as the selector shows it: the record's spelling unless it is a known abbreviation."""
+    if raw is None:
+        return None
+    return DISTRICT_ALIASES.get(fold_tr(raw), raw)
+
+
 def _schedule(venue: Venue) -> tuple[frozenset[int] | None, tuple[dt.time, dt.time] | Literal["always"] | None]:
     days = parse_days(venue.days_text)
     hours = parse_hours(venue.hours_text) or parse_hours(venue.days_text)
@@ -176,9 +186,9 @@ def venue_state(venue: Venue, now_local: dt.datetime) -> dict[str, Any]:
     """Describe the recorded schedule at an İstanbul-local instant."""
     days, hours = _schedule(venue)
     if hours == "always":
-        return {"state": "open", "text": "Kayda göre 7/24 açık", "closes_at": None, "opens_next": None}
+        return {"state": "open", "text": "Kayda göre 7/24 açık", "closes_at": None, "opens_next": None, "opens_on": None}
     if days is None or hours is None:
-        return {"state": "unknown", "text": "Çalışma saati kayıtta yok", "closes_at": None, "opens_next": None}
+        return {"state": "unknown", "text": "Çalışma saati kayıtta yok", "closes_at": None, "opens_next": None, "opens_on": None}
     now = _local(now_local)
     opening, closing = hours
     if now.weekday() in days and opening <= now.time() < closing:
@@ -188,17 +198,21 @@ def venue_state(venue: Venue, now_local: dt.datetime) -> dict[str, Any]:
             "text": f"Kayda göre şu an açık · kapanış {closes}",
             "closes_at": closes,
             "opens_next": None,
+            "opens_on": None,
         }
     next_open = _next_opening(days, opening, now)
     if next_open is None:
-        return {"state": "unknown", "text": "Çalışma saati kayıtta yok", "closes_at": None, "opens_next": None}
-    day_text = "bugün" if next_open.date() == now.date() else DAY_NAMES[next_open.weekday()]
+        return {"state": "unknown", "text": "Çalışma saati kayıtta yok", "closes_at": None, "opens_next": None, "opens_on": None}
+    today = next_open.date() == now.date()
+    day_text = "bugün" if today else DAY_NAMES[next_open.weekday()]
     opens = next_open.strftime("%H.%M")
     return {
         "state": "closed",
         "text": f"Kayda göre şu an kapalı · açılış {day_text} {opens}",
         "closes_at": None,
         "opens_next": f"{day_text} {opens}",
+        # The same moment without Turkish words, so the page can say it in its own language.
+        "opens_on": {"weekday": next_open.weekday(), "today": today, "time": opens},
     }
 
 
@@ -259,9 +273,12 @@ async def culture(
         return port_problem(422, "bad_kinds", display_text("Kütüphane ya da müze türünü seçin."))
     selected = list(dict.fromkeys(selected))
     all_venues, metadata = load_venues(Path(CULTURE_DIR))
-    districts_by_key = {fold_tr(item.district): item.district for item in all_venues if item.district}
+    districts_by_key: dict[str, str] = {}
+    for item in all_venues:
+        if (name := district_name(item.district)) is not None:
+            districts_by_key.setdefault(fold_tr(name), name)
     districts = sorted(districts_by_key.values(), key=lambda name: (fold_tr(name), name))
-    canonical = districts_by_key.get(fold_tr(district)) if district else None
+    canonical = districts_by_key.get(fold_tr(district_name(district))) if district else None
     if district and districts and canonical is None:
         return port_problem(422, "unknown_district", display_text("Bu ilçe adı kayıtlarda yok."))
 
@@ -273,7 +290,7 @@ async def culture(
         ranked = [
             (venue, venue_state(venue, now_local))
             for venue in all_venues
-            if venue.kind in selected and venue.district and fold_tr(venue.district) == fold_tr(canonical)
+            if venue.kind in selected and fold_tr(district_name(venue.district)) == fold_tr(canonical)
         ]
         ranked.sort(key=lambda entry: _sort_key(entry, now_local))
         for venue, state in ranked[:40]:
@@ -282,7 +299,7 @@ async def culture(
                     "kind": venue.kind,
                     "kind_tr": _display("Kütüphane" if venue.kind == "library" else "Müze"),
                     "name": _display(venue.name),
-                    "district": _display(venue.district),
+                    "district": _display(district_name(venue.district)),
                     "address": _display(venue.address),
                     "phones": [_display(phone) for phone in venue.phones],
                     "hours_text": _display(venue.hours_text),
@@ -292,6 +309,7 @@ async def culture(
                     "state_text": _display(state["text"]),
                     "closes_at": state["closes_at"],
                     "opens_next": state["opens_next"],
+                    "opens_on": state["opens_on"],
                 }
             )
 
