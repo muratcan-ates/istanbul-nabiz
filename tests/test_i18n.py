@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import warnings
 from html.parser import HTMLParser
 
@@ -259,3 +261,98 @@ def test_fixed_text_falls_back_to_turkish() -> None:
     assert fixed_text("sensitive_refusal", "ar") == FIXED["SENSITIVE_REFUSAL"]["ar"]
     with pytest.raises(KeyError):
         fixed_text("input_refusal", "en")
+
+
+def test_bindings_point_at_keys_and_ids() -> None:
+    source = (STATIC / "js" / "i18n.js").read_text(encoding="utf-8")
+    bindings = re.findall(r"^\s*\['([^']+)', '([\w.]+)', '(text|lead|segments|aria|placeholder|title)'\],$", source, re.MULTILINE)
+    assert len(bindings) >= 30
+    catalog = _catalog("tr")
+    page = (STATIC / "index.html").read_text(encoding="utf-8")
+    disclosure = (STATIC / "js" / "disclosure.js").read_text(encoding="utf-8")
+    ids = set(re.findall(r'\bid="([\w-]+)"', page))
+    for selector, key, _mode in bindings:
+        assert key in catalog, key
+        for element_id in re.findall(r"#([\w-]+)", selector):
+            if element_id == "privacy-band":
+                assert 'id="privacy-band"' in disclosure
+            else:
+                assert element_id in ids, (selector, element_id)
+    assert re.search(r"^export const AR_REVIEWED = (true|false);$", source, re.MULTILINE)
+    assert ".quote-box blockquote" in source and ".chat-msg.is-user .chat-text" in source
+    assert ".chat-msg.is-user,'" not in source
+
+
+def test_catalogs_and_modules_are_served(ctx) -> None:
+    from test_console_api import app_client
+
+    nabiz = Nabiz(ctx)
+    with app_client(nabiz) as client:
+        catalog = client.get("/i18n/ar.json")
+        module = client.get("/js/i18n.js")
+        stylesheet = client.get("/css/rtl.css")
+    assert catalog.status_code == 200
+    assert "application/json" in catalog.headers["content-type"]
+    assert module.status_code == 200
+    assert stylesheet.status_code == 200
+    assert "Content-Security-Policy" in module.headers
+
+
+def test_rtl_css_is_scoped_logical_and_colourless() -> None:
+    css = (STATIC / "css" / "rtl.css").read_text(encoding="utf-8")
+    physical = r"\b(margin|padding|border)-(left|right)\b|(?<![\w-])(left|right)\s*:|text-align\s*:\s*(left|right)|\bfloat\s*:"
+    assert re.search(physical, css) is None
+    assert re.search(r"#[0-9a-f]{3,8}\b|(?:rgb|hsl)a?\s*\(|oklch\s*\(", css, re.IGNORECASE) is None
+    rules = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    for selector, _declarations in re.findall(r"([^{}]+)\{([^{}]*)\}", rules):
+        selector = selector.strip()
+        if selector.startswith("@media"):
+            continue
+        assert '[dir="rtl"]' in selector or '[lang="ar"]' in selector, selector
+
+
+def test_i18n_js_holds_no_copy() -> None:
+    source = (STATIC / "js" / "i18n.js").read_text(encoding="utf-8")
+    assert "innerHTML" not in source
+    assert re.search(r"[çğıöşüÇĞİÖŞÜ]", re.sub(r"Türkçe", "", source)) is None
+
+
+def _node_json(tmp_path, script: str):
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    harness = tmp_path / "i18n_harness.mjs"
+    harness.write_text(script, encoding="utf-8")
+    result = subprocess.run(
+        [node, str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_lookup_falls_back_to_turkish(tmp_path) -> None:
+    module = (STATIC / "js" / "i18n.js").as_uri()
+    values = _node_json(
+        tmp_path,
+        f"import {{ lookup }} from {json.dumps(module)};\n"
+        "console.log(JSON.stringify([lookup({}, {a:'x'}, 'a'), lookup({a:''}, {a:'x'}, 'a'), lookup({}, {}, 'a')]));",
+    )
+    assert values == ["x", "x", None]
+
+
+def test_pick_lang_precedence(tmp_path) -> None:
+    module = (STATIC / "js" / "i18n.js").as_uri()
+    values = _node_json(
+        tmp_path,
+        f"import {{ pickLang }} from {json.dumps(module)};\n"
+        "console.log(JSON.stringify(["
+        "pickLang({url:'https://example.test/?lang=en',stored:'ar',profileLang:'tr'}),"
+        "pickLang({url:'?lang=ar',stored:'en',profileLang:'tr'}),"
+        "pickLang({url:'?lang=fr',stored:'ar',profileLang:'en'}),"
+        "pickLang({url:'?lang=fr',stored:'fr',profileLang:'tr'}),"
+        "pickLang({url:'',stored:'fr',profileLang:'en'})]));",
+    )
+    assert values == ["en", "ar", "ar", "tr", "en"]
