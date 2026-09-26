@@ -42,6 +42,7 @@ from ibb_mcp.text import normalize_tr
 from ibb_mcp.tools import Nabiz
 from nabiz.agent import injection, llm
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
+from nabiz.agent.metro_route import metro_route
 from nabiz.agent.minutes import with_shown_minutes
 from nabiz.agent.schemas import TOOL_DESCRIPTIONS, build_tool_schemas
 from nabiz.agent.templates import (
@@ -479,8 +480,7 @@ class NabizAgent:
             if stop:
                 return "iett_next_arrivals", {"line_code": line_code, "stop": stop}
         if _has(text, "metro") or _METRO_LINE_RE.search(question):
-            line = _METRO_LINE_RE.search(question)
-            return "metro_status", {"line": line.group(1).upper() if line else None}
+            return metro_route(text, _METRO_LINE_RE.search(question))
         if _has(text, "parking"):
             if not place:
                 return "", _NEEDS_PLACE_REASON

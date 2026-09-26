@@ -770,7 +770,8 @@ def _register_transit(mcp: MCPServer, app: Nabiz) -> None:
         """Metro İstanbul hatlarındaki canlı arıza ve çalışma duyurularını döner.
 
         Servis yalnızca duyurusu olan hatları döndürür; bir hat listede yoksa o hat için
-        bildirilmiş bir aksaklık yok demektir.
+        bildirilmiş bir aksaklık yok demektir. Gece metrosu, çalışma günleri, sefer saatleri ya da
+        yolcu hakları gibi hizmet bilgisi için değildir: onlar için `ibb_services_search`.
         """
         return await app.metro_status(line=line)
 
@@ -919,8 +920,8 @@ def _register_knowledge(mcp: MCPServer, app: Nabiz) -> None:
     ) -> str:
         """İstanbul'daki kamu hizmeti sayfalarından derlenmiş yerel dizinde arama yapar.
 
-        Her sonuçta kaynak cümlesi, bağlantısı ve alınma tarihi döner. Abonelik, başvuru, belge ve
-        benzeri hizmet sorularında kullan. Cevabı yalnızca dönen alıntılara dayandır ve her alıntının
+        Her sonuçta kaynak cümlesi, bağlantısı ve alınma tarihi döner. Abonelik, başvuru, belge,
+        gece metrosu ve sefer saatleri gibi hizmet sorularında kullan. Cevabı yalnızca dönen alıntılara dayandır ve her alıntının
         bağlantısını ver. Dizin sunucuda kurulu değilse ya da doğrulanabilir eşleşme yoksa `note`
         döner; o zaman bilgi uydurma, bulunamadığını söyle. Bu araç İBB'ye canlı istek atmaz; dizin
         önceden kurulur ve `fetched_at` sayfanın alındığı tarihtir.

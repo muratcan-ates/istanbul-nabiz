@@ -41,7 +41,8 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     "varsayılan olarak kalibre edilmemiş 120 sn'dir; `diagnostics` içindeki `rate_mode`, `rate_source` ve `rate_reason` hangi "
     "oranın neden kullanıldığını söyler. BU BİR TAHMİNDİR, resmi İETT bilgisi değildir; kullanıcıya böyle söyle.",
     "metro_status": "Metro İstanbul hatlarındaki canlı arıza ve çalışma duyurularını döner. Servis yalnızca duyurusu "
-    "olan hatları döndürür; bir hat listede yoksa o hat için bildirilmiş bir aksaklık yok demektir.",
+    "olan hatları döndürür; bir hat listede yoksa o hat için bildirilmiş bir aksaklık yok demektir. Gece metrosu, "
+    "çalışma günleri, sefer saatleri ya da yolcu hakları gibi hizmet bilgisi için değildir: onlar için `ibb_services_search`.",
     "metro_station_info": "Bir metro istasyonunun hattını, sırasını ve erişilebilirlik bilgisini döner. "
     "Asansör, yürüyen merdiven, WC, bebek bakım odası ve mescit bilgisi içerir.",
     "metro_equipment_status": "Metro İstanbul'un kullanılamaz olarak kaydettiği asansör, yürüyen merdiven ve yürüyen bantları "
@@ -80,7 +81,8 @@ TOOL_DESCRIPTIONS: dict[str, str] = {
     "kaçırılan geçişler yüzünden üst sınırdır. Yeterli gözlem yoksa `available: false` ve gerekçe döner "
     "(kaynak: data/reference/line_reliability.json).",
     "ibb_services_search": "İstanbul'daki kamu hizmeti sayfalarından derlenmiş yerel dizinde arama yapar. Her sonuçta kaynak "
-    "cümlesi, bağlantısı ve alınma tarihi döner. Abonelik, başvuru, belge ve benzeri hizmet sorularında kullan. Cevabı yalnızca "
+    "cümlesi, bağlantısı ve alınma tarihi döner. Abonelik, başvuru, belge, gece metrosu ve sefer saatleri gibi hizmet "
+    "sorularında kullan. Cevabı yalnızca "
     "dönen alıntılara dayandır ve her alıntının bağlantısını ver. Dizin sunucuda kurulu değilse ya da doğrulanabilir eşleşme "
     "yoksa `note` döner; o zaman bilgi uydurma, bulunamadığını söyle. Bu araç İBB'ye canlı istek atmaz; dizin önceden kurulur "
     "ve `fetched_at` sayfanın alındığı tarihtir.",
