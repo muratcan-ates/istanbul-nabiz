@@ -202,7 +202,7 @@ def test_agency_card_renders_link_call_and_district_picker(tmp_path):
     rendered = node_json(
         tmp_path,
         {"agency": "js/agency.js"},
-        "const data = {agency:'iski', name:'İSKİ', url:'https://www.iski.istanbul/', "
+        "const data = {agency:'iski', name:'İSKİ', url:'https://iski.istanbul/', "
         "text:`Bu, İSKİ'nin işi.`, matched:'su', district_needed:false};"
         "const district = {agency:'ilce', name:'İlçe belediyesi', url:null, text:'Hangi ilçedesiniz?', "
         "matched:'nikah', district_needed:true, districts:Array.from({length:39},(_,i)=>'İlçe '+i)};"
@@ -211,7 +211,7 @@ def test_agency_card_renders_link_call_and_district_picker(tmp_path):
         "emergency:agency.shouldShow({agency:'iski',emergency:true})};"
         "console.log(JSON.stringify(out));",
     )
-    assert 'https://www.iski.istanbul/' in rendered["card"]
+    assert 'https://iski.istanbul/' in rendered["card"]
     assert 'rel="noopener noreferrer"' in rendered["card"] and 'tel:153' in rendered["card"]
     assert 'tel:153' not in rendered["noCall"] and '<form' not in rendered["card"]
     assert rendered["district"].count("<option") == 39

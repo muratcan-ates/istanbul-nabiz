@@ -4,7 +4,7 @@
   "call": "153",
   "agencies": [
     {"id": "ibb", "name": "İBB", "possessive": "İBB'nin", "url": "https://ibb.istanbul/"},
-    {"id": "iski", "name": "İSKİ", "possessive": "İSKİ'nin", "url": "https://www.iski.istanbul/"},
+    {"id": "iski", "name": "İSKİ", "possessive": "İSKİ'nin", "url": "https://iski.istanbul/"},
     {"id": "igdas", "name": "İGDAŞ", "possessive": "İGDAŞ'ın", "url": "https://www.igdas.istanbul/"},
     {"id": "iett", "name": "İETT", "possessive": "İETT'nin", "url": "https://iett.istanbul/"},
     {"id": "metro", "name": "Metro İstanbul", "possessive": "Metro İstanbul'un", "url": "https://www.metro.istanbul/"},
