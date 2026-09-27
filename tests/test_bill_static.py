@@ -314,7 +314,10 @@ def test_ui_keys_and_fallbacks_match_the_local_catalogues() -> None:
         assert CATALOG["tr"][key] == fallback, key
         assert set(re.findall(r"\{(\w+)\}", CATALOG["tr"][key])) == set(re.findall(r"\{(\w+)\}", CATALOG["en"][key])), key
     current_tr = json.loads((STATIC / "i18n" / "tr.json").read_text(encoding="utf-8"))
-    assert not (set(CATALOG["tr"]) & set(current_tr))
+    current_en = json.loads((STATIC / "i18n" / "en.json").read_text(encoding="utf-8"))
+    # P00 G5: the keys moved into the page catalogues, unchanged
+    assert all(current_tr[k] == v for k, v in CATALOG["tr"].items())
+    assert all(current_en[k] == v for k, v in CATALOG["en"].items())
 
 
 def test_module_has_no_bare_turkish_or_forbidden_visible_text() -> None:

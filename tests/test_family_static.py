@@ -310,7 +310,9 @@ def test_family_fallbacks_hold_all_turkish_copy_and_use_no_forbidden_dashes() ->
                 start, end = match.span(group)
                 assert any(left <= start and end <= right for left, right in fallback_spans), (name, value)
         assert "—" not in source and "–" not in source and "canlı" not in source.lower()
-    assert not (set(CATALOG["tr"]) & set(json.loads((STATIC / "i18n" / "tr.json").read_text(encoding="utf-8"))))
+    for lang in ("tr", "en"):  # P00 G5: the keys moved into the page catalogues, unchanged
+        surface = json.loads((STATIC / "i18n" / f"{lang}.json").read_text(encoding="utf-8"))
+        assert all(surface[k] == v for k, v in CATALOG[lang].items())
 
 
 def test_family_modules_parse_when_node_is_available(tmp_path) -> None:

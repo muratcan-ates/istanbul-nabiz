@@ -3011,3 +3011,80 @@ answers citing the gold page first.
 
 - After each knowledge ingest, `tests/test_visitor.py -k local_index` must run against the real index, or a question
   can drop silently.
+
+## 92. Family code: two-sided consent, share only what is chosen, no location (E52, 27 Sep)
+
+### Decision
+
+- Family code (E52): two-sided consent, share only what is chosen, no location; an example on example accounts, no
+  real İBB or e-Devlet family link.
+- Family rows live in the accounts database with cascading deletes, so deleting the account deletes them. The privacy
+  page's account table now says the account is shared with no one unless the family feature is turned on.
+
+### Consequences
+
+- The daily wrong-code limit is per account and accounts are free to open (THREAT_MODEL §4).
+
+## 93. İstanbulkart troubleshooting: reviewed official quotes, device-only answers (E60, 27 Sep)
+
+### Decision
+
+- İstanbulkart troubleshooting: a reviewed flow of official quotes, shown only while their page still contains them;
+  answers device-only (E60). `GET /api/istanbulkart/flows` takes no parameter.
+
+### Consequences
+
+- The pending top-up, lost card and card pairing branches end with "no source yet": the official FAQ renders with
+  JavaScript and was not captured.
+
+## 94. Digital access recovery: official sentences only; capture.json stays out (E76, 27 Sep)
+
+### Decision
+
+- Digital access recovery: official sentences only, no invented step, device-only answers, hand-off to İstanbulkart
+  troubleshooting (E76).
+- capture.json: (b), dosya dışarıda (27 Eyl varsayılanı). The security page's text carries the operator's corporate
+  e-mail address, which guardrail `no-personal-data` refuses; no guardrail exception is added. The eight security
+  quotes drop honestly and their check nodes are `skip`.
+
+### Consequences
+
+- Recovery must ship together with E60: its İstanbulkart branch hands off to `#kart-sorun`.
+
+## 95. Bill explainer: user-entered, device-only, sourced, no verdict (E61, 27 Sep)
+
+### Decision
+
+- Bill explainer: user-entered, device-only, sourced, no verdict (E61). The 1.5 day average ratio is Nabız's own
+  design threshold, not an İSKİ criterion. Only `GET /api/bill/catalog` reaches the server; entries never do.
+
+### Consequences
+
+- `bill.js` is 782 lines and `bill.css` 450; when the page loads them in D2 they grow the page budget.
+
+## 96. Household outage watch: the home on the device, a consented 7-day queue (E69, 27 Sep)
+
+### Decision
+
+- Household outage watch: official İSKİ pointers and 2023-2024 history; the home stays on the device; a consented
+  confirmation goes to a separate 7-day simulated queue, never to İSKİ; the ledger keeps area and count only (E69).
+- Privacy text, P00 default decision 2 (a): the text says what the code does. The ledger line keeps the request code,
+  district, neighbourhood, confirmation count and the masked note's length, never the note.
+- Raw captures stay out of git; only the district and neighbourhood summary is read at run time.
+
+### Consequences
+
+- Its `ui.outage.*` keys stay in the module for now: one Turkish literal compares a source quote's text, and the
+  page's bare-Turkish check cannot tell it from display text. Either the module matches the quote by an id, or the
+  owner allows that one literal in the check.
+
+## 97. Disaster preparedness file: AKOM's kit list and a device-only plan (E70, 27 Sep)
+
+### Decision
+
+- Disaster preparedness file: AKOM's quoted kit list, a device-only family plan, no building assessment, no assembly
+  area (none in the İBB catalogue) (E70). `GET /api/disaster-kit` takes only `lang`.
+
+### Consequences
+
+- The AKOM page is dated 2022-09-30; if it changes, `data/reference/disaster_kit/akom_sss.json` is captured again.

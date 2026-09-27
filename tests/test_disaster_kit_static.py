@@ -129,7 +129,7 @@ def test_module_fallbacks_equal_the_two_language_catalogue() -> None:
         assert set(re.findall(r"\{(\w+)\}", tr)) == set(re.findall(r"\{(\w+)\}", en)), key
     for language in ("tr", "en"):
         existing = json.loads((STATIC / f"i18n/{language}.json").read_text(encoding="utf-8"))
-        assert not (set(CATALOG[language]) & set(existing))
+        assert all(existing[k] == v for k, v in CATALOG[language].items())  # P00 G5: moved, unchanged
 
 
 def test_module_has_no_bare_turkish_or_forbidden_display_text() -> None:

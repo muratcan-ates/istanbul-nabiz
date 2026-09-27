@@ -257,7 +257,8 @@ def test_catalog_fallbacks_and_translations_are_complete() -> None:
         assert set(re.findall(r"\{(\w+)\}", tr[key])) == set(re.findall(r"\{(\w+)\}", en[key]))
     existing_tr = json.loads((STATIC / "i18n/tr.json").read_text(encoding="utf-8"))
     existing_en = json.loads((STATIC / "i18n/en.json").read_text(encoding="utf-8"))
-    assert not (set(tr) & set(existing_tr)) and not (set(en) & set(existing_en))
+    # P00 G5: the keys moved into the page catalogues, unchanged
+    assert all(existing_tr[k] == v for k, v in tr.items()) and all(existing_en[k] == v for k, v in en.items())
     for module in sources.values():
         all_keys = {key for _, key in UI_KEY.findall(module)}
         assert all_keys <= set(existing_tr) | set(tr)

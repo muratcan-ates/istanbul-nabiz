@@ -304,12 +304,16 @@ def test_static_modules_and_css_keep_the_feature_fences(tmp_path) -> None:
         assert not re.search(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(|\boklch\(", css)
     untouched_paths = (
         REPO_ROOT / "src/nabiz/console/static/index.html",
-        REPO_ROOT / "src/nabiz/console/static/console.html",
         REPO_ROOT / "src/nabiz/console/static/sw.js",
-        REPO_ROOT / "src/nabiz/console/app.py",
     )
     for path in untouched_paths:
         assert "outage_watch" not in path.read_text(encoding="utf-8")
+    # P00 G5 wired the back end and the console panel; the citizen page and its cache wait for D2.
+    app_source = (REPO_ROOT / "src/nabiz/console/app.py").read_text(encoding="utf-8")
+    assert "from nabiz.console.outage_watch_api import outage_routes" in app_source
+    console_html = (REPO_ROOT / "src/nabiz/console/static/console.html").read_text(encoding="utf-8")
+    assert '<script type="module" src="/js/console_outage_watch.js"></script>' in console_html
+    assert 'id="outage-watch-mount"' in console_html
     assert len(citizen.splitlines()) <= 350
     node = shutil.which("node")
     if node is None:

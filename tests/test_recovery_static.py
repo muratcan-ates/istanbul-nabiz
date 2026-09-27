@@ -532,3 +532,10 @@ def test_copy_helpers_smoke(tmp_path) -> None:
     assert node_json(tmp_path, {"view": "js/recovery_view.js"}, "console.log(JSON.stringify(view.emptyState()));") == {
         "version": 1, "node": None, "path": [], "checks": {}, "at": 0,
     }
+
+
+def test_the_page_catalogues_carry_the_recovery_keys_unchanged() -> None:
+    """P00 G5: the ui.erisim.* keys moved into the page catalogues, unchanged, in both languages."""
+    for lang in ("tr", "en"):
+        surface = json.loads((STATIC / "i18n" / f"{lang}.json").read_text(encoding="utf-8"))
+        assert all(surface[k] == v for k, v in CATALOG[lang].items())

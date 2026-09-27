@@ -144,3 +144,14 @@ def test_family_router_uses_only_body_or_path_parameters(tmp_path) -> None:
     for route in family_routes.routes:
         assert route.path.startswith("/api/account/family")
         assert not route.dependant.query_params
+
+
+def test_the_product_app_refuses_family_without_an_account(tmp_path, monkeypatch) -> None:
+    """P00 G5: the router is wired into the real app; without the account header it answers 401."""
+    from conftest import offline_settings
+
+    from nabiz.console.app import build_console_app
+
+    monkeypatch.setenv("NABIZ_ACCOUNTS_DB", str(tmp_path / "accounts.sqlite"))
+    with TestClient(build_console_app(settings=offline_settings())) as client:
+        assert client.get("/api/account/family").status_code == 401

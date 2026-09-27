@@ -40,7 +40,7 @@ function addStylesheetPanel(section, res) {
 }
 
 function mountConsole(doc) {
-  const anchor = doc.getElementById('citizen-requests');
+  const anchor = doc.getElementById('outage-watch-mount') || doc.getElementById('citizen-requests');
   if (!anchor) return null;
   const section = doc.getElementById('outage-watch') || doc.createElement('section');
   section.id = 'outage-watch'; section.setAttribute('aria-labelledby', 'outage-watch-title');
