@@ -1,0 +1,132 @@
+#ibb-yerleri {
+  min-width: 0;
+  margin-block: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+#ibb-yerleri .section-head { margin-block-end: var(--space-3); }
+#ibb-yerleri h2,
+#ibb-yerleri h3 { min-width: 0; overflow-wrap: anywhere; }
+#ibb-yerleri h2:focus-visible,
+#ibb-yerleri h3:focus-visible { outline: 3px solid var(--nd-accent, var(--accent)); outline-offset: 2px; }
+
+.ibb-yerleri-intro,
+.ibb-yerleri-disclaimer,
+.ibb-yerleri-status,
+.ibb-yerleri-mock { overflow-wrap: anywhere; }
+
+.ibb-yerleri-disclaimer { color: var(--text-muted); }
+
+.ibb-yerleri-categories {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: var(--space-4) 0;
+  padding: 0;
+  border: 0;
+}
+
+.ibb-yerleri-categories legend { margin-block-end: var(--space-2); font-weight: var(--weight-bold); }
+
+.ibb-yerleri-choice {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ibb-yerleri-choice:has(input:checked) { border-color: var(--nd-accent, var(--accent)); }
+.ibb-yerleri-choice:focus-within { outline: 3px solid var(--nd-accent, var(--accent)); outline-offset: 2px; }
+.ibb-yerleri-choice input { flex: none; margin: 0; }
+.ibb-yerleri-choice span { min-width: 0; overflow-wrap: anywhere; }
+.ibb-yerleri-choice small { display: block; color: var(--text-muted); font-size: var(--text-sm); }
+
+.ibb-yerleri-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ibb-yerleri-controls label { flex-basis: 100%; font-weight: var(--weight-bold); }
+.ibb-yerleri-controls select {
+  box-sizing: border-box;
+  flex: 1 1 12rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.ibb-yerleri-controls select:focus-visible,
+.ibb-yerleri-controls .btn:focus-visible,
+.ibb-yerleri-retry:focus-visible,
+.ibb-yerleri-sources summary:focus-visible,
+.ibb-yerleri-list summary:focus-visible {
+  outline: 3px solid var(--nd-accent, var(--accent));
+  outline-offset: 2px;
+}
+
+.ibb-yerleri-controls .btn,
+.ibb-yerleri-retry { min-height: 44px; max-width: 100%; overflow-wrap: anywhere; }
+.ibb-yerleri-status { color: var(--text-muted); }
+.ibb-yerleri-results,
+.ibb-yerleri-row-body,
+.ibb-yerleri-sources { min-width: 0; overflow-wrap: anywhere; }
+.ibb-yerleri-results h3 { margin-block: var(--space-4) var(--space-2); }
+
+.ibb-yerleri-list,
+.ibb-yerleri-sources ul {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: var(--space-3) 0;
+  padding-inline-start: var(--space-5);
+}
+
+.ibb-yerleri-list li,
+.ibb-yerleri-list details { min-width: 0; }
+.ibb-yerleri-list summary {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ibb-yerleri-row-body { padding-inline: var(--space-3); color: var(--text-muted); }
+.ibb-yerleri-row-body p { margin-block: var(--space-2); }
+.ibb-yerleri-sources { margin-block-start: var(--space-4); }
+.ibb-yerleri-sources summary { min-height: 44px; padding-block: var(--space-2); cursor: pointer; }
+.ibb-yerleri-sources li { min-width: 0; overflow-wrap: anywhere; }
+.ibb-yerleri-sources a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--link);
+  overflow-wrap: anywhere;
+}
+.ibb-yerleri-sources a:focus-visible { outline: 3px solid var(--nd-accent, var(--accent)); outline-offset: 2px; }
+
+@media (max-width: 40rem) {
+  #ibb-yerleri { padding: var(--space-3); }
+  .ibb-yerleri-controls { align-items: stretch; }
+  .ibb-yerleri-controls select,
+  .ibb-yerleri-controls .btn { flex-basis: 100%; width: 100%; }
+}
