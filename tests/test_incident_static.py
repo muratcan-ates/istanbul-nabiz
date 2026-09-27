@@ -38,6 +38,7 @@ CATALOG = {
         "ui.inc.photoNoProof": "Fotoğraf tek başına kanıt değildir.",
         "ui.inc.sourceLedger": "defter",
         "ui.inc.sourceRecord": "kurum kaydı",
+        "ui.inc.equipmentLift": "asansör",
         "ui.inc.sourceCitizen": "vatandaş (doğrulanmamış)",
         "ui.inc.repeatFactor": "{people} kişi, {cards} kart. Tekrar kodu: {repeat}. Pencere: {days} gün.",
         "ui.inc.waitingFactor": "En eski açık kart {hours} saattir bekliyor; eşik {threshold} saat.",
@@ -128,6 +129,7 @@ CATALOG = {
         "ui.inc.photoNoProof": "A photo alone is not evidence.",
         "ui.inc.sourceLedger": "ledger",
         "ui.inc.sourceRecord": "institution record",
+        "ui.inc.equipmentLift": "lift",
         "ui.inc.sourceCitizen": "citizen (unverified)",
         "ui.inc.repeatFactor": "{people} people, {cards} cards. Repeat code: {repeat}. Window: {days} days.",
         "ui.inc.waitingFactor": "The oldest open card has waited {hours} hours; the threshold is {threshold} hours.",
@@ -330,7 +332,6 @@ const formData = JSON.parse({json.dumps(json.dumps(form_data))});
 const form = {{kind: 'priority', level: 'normal'}};
 const output = {{
   keys: m.I18N_KEYS,
-  fallback: m.FALLBACK,
   empty: m.listMarkup({{items: []}}),
   list: m.listMarkup(listData, {{selectedId: 'inc-1'}}),
   detail: m.detailMarkup(incident, {{data: detailData, form: null}}),
@@ -370,8 +371,11 @@ def test_markup_escapes_and_keeps_sources_and_operator_choice_distinct() -> None
 
 def test_catalogs_match_module_fallbacks_and_have_identical_placeholders() -> None:
     result = _node_result()
-    expected = {f"ui.inc.{key}": value for key, value in result["fallback"].items()}
-    assert set(result["keys"]) == set(result["fallback"])
+    # P00 D2a: each text is a literal t('ui.inc.key', 'Türkçe', v) call now, read from the source.
+    source = JS.read_text(encoding="utf-8")
+    calls = re.finditer(r"t\('(ui\.inc\.\w+)', ('|\")((?:\\.|(?!\2).)*)\2", source)
+    expected = {match.group(1): match.group(3).replace("\\'", "'").replace('\\"', '"') for match in calls}
+    assert {f"ui.inc.{key}" for key in result["keys"]} == set(expected)
     assert CATALOG["tr"] == expected
     assert set(CATALOG["tr"]) == set(CATALOG["en"])
     for key in CATALOG["tr"]:

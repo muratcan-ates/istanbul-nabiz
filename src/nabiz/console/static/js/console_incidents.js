@@ -2,28 +2,29 @@
 import { MOCK, get, post } from './api.js';
 import { dateTime, esc } from './format.js';
 import { onLang, t } from './i18n_text.js';
-const FALLBACK = {
-  title: 'Olay dosyaları', description: 'Aynı istasyondaki vatandaş bildirimleri, fotoğraflar ve İBB kaydı bir arada. Öncelik bir öneridir; karar sizindir.', empty: 'Bu pencerede olay dosyası yok. Vatandaş bildirimi gelince burada görünür.', mock: 'Örnek veri modunda olay dosyaları gösterilmez.',
-  loading: 'Olay dosyaları yükleniyor.', loadError: 'Olay dosyaları şu an yüklenemedi.', count: '{count} olay dosyası', priorityHigh: 'Yüksek', priorityMedium: 'Orta', priorityNormal: 'Olağan', suggestion: 'Öneri: {level}',
-  operatorDecision: 'Operatör kararı: {level}', reportsPhotos: '{reports} bildirim · {photos} fotoğraf · {record}', recordYes: 'İBB kaydı var', recordNo: 'İBB kaydı yok', people: '{count} kişi bildirdi',
-  reportGroup: 'Vatandaş bildirimleri (doğrulanmamış)', photoGroup: 'Fotoğraflar (vatandaş ekledi)', equipmentGroup: 'Resmî kayıt (kurum kaydı)', noPhotos: 'Fotoğraf modülü bu sunucuda yok.',
-  photoNoProof: 'Fotoğraf tek başına kanıt değildir.', sourceLedger: 'defter', sourceRecord: 'kurum kaydı', sourceCitizen: 'vatandaş (doğrulanmamış)', repeatFactor: '{people} kişi, {cards} kart. Tekrar kodu: {repeat}. Pencere: {days} gün.',
-  waitingFactor: 'En eski açık kart {hours} saattir bekliyor; eşik {threshold} saat.', accessVerified: 'Kurum kaydında {equipment} için {status}.', accessUnverified: 'Erişim etkisi vatandaş bildirimiyle sınırlı; kurum kaydı yok.',
-  interchange: 'Aktarma istasyonu ({line}).', conflictFactor: 'Bildirim ile kurum kaydı çelişiyor: {text}. Yerinde kontrol gerekebilir.', noConflict: 'Kaynak çelişkisi yok.', statusAwaiting: 'onay bekliyor', statusApproved: 'onaylandı',
-  statusRejected: 'reddedildi', statusDeferred: 'ertelendi', statusExpired: 'süresi doldu', statusReceived: 'alındı', openCard: 'Kartı aç', split: 'Ayır', merge: 'Başka olayla birleştir', changePriority: 'Önceliği değiştir',
-  returnSuggestion: 'Öneriye dön', undo: 'Geri al', history: 'Geçmiş', howCalculated: 'Nasıl hesaplandı?', calculationNote: 'Eşikler tasarım kararıdır: bekleme {wait} saat, tekrar eşiği {support} kişi. Doğrulanmış erişim etkisi yalnız İBB kaydından gelir.',
-  agency: 'Önerilen kurum: {name}', agencyFallback: '153 Çözüm Merkezi', agencyNote: 'Öneri. Nabız hiçbir ekibe iş atamaz; karar ve iletme İBB çalışanınındır.',
-  noRecord: 'Bu istasyon için İBB arıza kaydında satır yok. Kayıtta olmamak çalıştığını kanıtlamaz.', multiStation: 'Bu olay birden çok istasyonu içeriyor.', reasonLabel: 'Gerekçe',
-  reasonHelp: '5 ile 280 karakter. Kişisel bilgi yazmayın.', reasonInvalid: 'Gerekçe 5 ile 280 karakter olmalı ve kişisel bilgi içermemelidir.', save: 'Kaydet', cancel: 'Vazgeç', targetLabel: 'Hedef olay', levelLabel: 'Öncelik düzeyi',
-  prioritySaved: 'Öncelik kaydedildi. Defter #{entry}.', splitSaved: 'Üye ayrıldı. Defter #{entry}.', mergeSaved: 'Olaylar birleştirildi. Defter #{entry}.', undoSaved: 'Eylem geri alındı. Defter #{entry}.',
-  saveError: 'İşlem kaydedilemedi: {message}', actionSplit: 'Üye ayrıldı', actionMerge: 'Olay birleştirildi', actionUndo: 'Eylem geri alındı', ledgerRow: 'defter #{entry}', undone: 'geri alındı',
-  reasonHistory: 'Gerekçe: {reason}', at: 'kayıtlı · {time}', photoAlt: 'Vatandaşın gönderdiği fotoğraf: {category}, {station}', repeatCode: 'var', repeatNoCode: 'yok', waitOver: 'bekleme eşiği {threshold} saat aşıldı',
-  waitUnder: 'bekleme eşiği {threshold} saat aşılmadı', waitNone: 'Açık kart yok; bekleme eşiği {threshold} saat.', thresholds: 'Önerinin dayanakları',
-  incidentLink: 'Bu bildirim {station} olay dosyasında: {reports} bildirim, {photos} fotoğraf.', openIncident: 'Olay dosyasını aç', noReports: 'Bu olay dosyasına bağlı vatandaş bildirimi yok.', noPhotosAttached: 'Bu olay dosyasına bağlı fotoğraf yok.',
-  escalatorContext: 'Yürüyen merdiven kaydı erişilebilir güzergâhı doğrulamaz.', agencyLink: 'resmî sayfa',
+// Literal t() calls (P00 D2a): the page's catalogue check reads each key beside its Turkish.
+const TEXT = {
+  title: (v) => t('ui.inc.title', 'Olay dosyaları', v), description: (v) => t('ui.inc.description', 'Aynı istasyondaki vatandaş bildirimleri, fotoğraflar ve İBB kaydı bir arada. Öncelik bir öneridir; karar sizindir.', v), empty: (v) => t('ui.inc.empty', 'Bu pencerede olay dosyası yok. Vatandaş bildirimi gelince burada görünür.', v), mock: (v) => t('ui.inc.mock', 'Örnek veri modunda olay dosyaları gösterilmez.', v),
+  loading: (v) => t('ui.inc.loading', 'Olay dosyaları yükleniyor.', v), loadError: (v) => t('ui.inc.loadError', 'Olay dosyaları şu an yüklenemedi.', v), count: (v) => t('ui.inc.count', '{count} olay dosyası', v), priorityHigh: (v) => t('ui.inc.priorityHigh', 'Yüksek', v), priorityMedium: (v) => t('ui.inc.priorityMedium', 'Orta', v), priorityNormal: (v) => t('ui.inc.priorityNormal', 'Olağan', v), suggestion: (v) => t('ui.inc.suggestion', 'Öneri: {level}', v),
+  operatorDecision: (v) => t('ui.inc.operatorDecision', 'Operatör kararı: {level}', v), reportsPhotos: (v) => t('ui.inc.reportsPhotos', '{reports} bildirim · {photos} fotoğraf · {record}', v), recordYes: (v) => t('ui.inc.recordYes', 'İBB kaydı var', v), recordNo: (v) => t('ui.inc.recordNo', 'İBB kaydı yok', v), people: (v) => t('ui.inc.people', '{count} kişi bildirdi', v),
+  reportGroup: (v) => t('ui.inc.reportGroup', 'Vatandaş bildirimleri (doğrulanmamış)', v), photoGroup: (v) => t('ui.inc.photoGroup', 'Fotoğraflar (vatandaş ekledi)', v), equipmentGroup: (v) => t('ui.inc.equipmentGroup', 'Resmî kayıt (kurum kaydı)', v), noPhotos: (v) => t('ui.inc.noPhotos', 'Fotoğraf modülü bu sunucuda yok.', v),
+  photoNoProof: (v) => t('ui.inc.photoNoProof', 'Fotoğraf tek başına kanıt değildir.', v), sourceLedger: (v) => t('ui.inc.sourceLedger', 'defter', v), sourceRecord: (v) => t('ui.inc.sourceRecord', 'kurum kaydı', v), equipmentLift: (v) => t('ui.inc.equipmentLift', 'asansör', v), sourceCitizen: (v) => t('ui.inc.sourceCitizen', 'vatandaş (doğrulanmamış)', v), repeatFactor: (v) => t('ui.inc.repeatFactor', '{people} kişi, {cards} kart. Tekrar kodu: {repeat}. Pencere: {days} gün.', v),
+  waitingFactor: (v) => t('ui.inc.waitingFactor', 'En eski açık kart {hours} saattir bekliyor; eşik {threshold} saat.', v), accessVerified: (v) => t('ui.inc.accessVerified', 'Kurum kaydında {equipment} için {status}.', v), accessUnverified: (v) => t('ui.inc.accessUnverified', 'Erişim etkisi vatandaş bildirimiyle sınırlı; kurum kaydı yok.', v),
+  interchange: (v) => t('ui.inc.interchange', 'Aktarma istasyonu ({line}).', v), conflictFactor: (v) => t('ui.inc.conflictFactor', 'Bildirim ile kurum kaydı çelişiyor: {text}. Yerinde kontrol gerekebilir.', v), noConflict: (v) => t('ui.inc.noConflict', 'Kaynak çelişkisi yok.', v), statusAwaiting: (v) => t('ui.inc.statusAwaiting', 'onay bekliyor', v), statusApproved: (v) => t('ui.inc.statusApproved', 'onaylandı', v),
+  statusRejected: (v) => t('ui.inc.statusRejected', 'reddedildi', v), statusDeferred: (v) => t('ui.inc.statusDeferred', 'ertelendi', v), statusExpired: (v) => t('ui.inc.statusExpired', 'süresi doldu', v), statusReceived: (v) => t('ui.inc.statusReceived', 'alındı', v), openCard: (v) => t('ui.inc.openCard', 'Kartı aç', v), split: (v) => t('ui.inc.split', 'Ayır', v), merge: (v) => t('ui.inc.merge', 'Başka olayla birleştir', v), changePriority: (v) => t('ui.inc.changePriority', 'Önceliği değiştir', v),
+  returnSuggestion: (v) => t('ui.inc.returnSuggestion', 'Öneriye dön', v), undo: (v) => t('ui.inc.undo', 'Geri al', v), history: (v) => t('ui.inc.history', 'Geçmiş', v), howCalculated: (v) => t('ui.inc.howCalculated', 'Nasıl hesaplandı?', v), calculationNote: (v) => t('ui.inc.calculationNote', 'Eşikler tasarım kararıdır: bekleme {wait} saat, tekrar eşiği {support} kişi. Doğrulanmış erişim etkisi yalnız İBB kaydından gelir.', v),
+  agency: (v) => t('ui.inc.agency', 'Önerilen kurum: {name}', v), agencyFallback: (v) => t('ui.inc.agencyFallback', '153 Çözüm Merkezi', v), agencyNote: (v) => t('ui.inc.agencyNote', 'Öneri. Nabız hiçbir ekibe iş atamaz; karar ve iletme İBB çalışanınındır.', v),
+  noRecord: (v) => t('ui.inc.noRecord', 'Bu istasyon için İBB arıza kaydında satır yok. Kayıtta olmamak çalıştığını kanıtlamaz.', v), multiStation: (v) => t('ui.inc.multiStation', 'Bu olay birden çok istasyonu içeriyor.', v), reasonLabel: (v) => t('ui.inc.reasonLabel', 'Gerekçe', v),
+  reasonHelp: (v) => t('ui.inc.reasonHelp', '5 ile 280 karakter. Kişisel bilgi yazmayın.', v), reasonInvalid: (v) => t('ui.inc.reasonInvalid', 'Gerekçe 5 ile 280 karakter olmalı ve kişisel bilgi içermemelidir.', v), save: (v) => t('ui.inc.save', 'Kaydet', v), cancel: (v) => t('ui.inc.cancel', 'Vazgeç', v), targetLabel: (v) => t('ui.inc.targetLabel', 'Hedef olay', v), levelLabel: (v) => t('ui.inc.levelLabel', 'Öncelik düzeyi', v),
+  prioritySaved: (v) => t('ui.inc.prioritySaved', 'Öncelik kaydedildi. Defter #{entry}.', v), splitSaved: (v) => t('ui.inc.splitSaved', 'Üye ayrıldı. Defter #{entry}.', v), mergeSaved: (v) => t('ui.inc.mergeSaved', 'Olaylar birleştirildi. Defter #{entry}.', v), undoSaved: (v) => t('ui.inc.undoSaved', 'Eylem geri alındı. Defter #{entry}.', v),
+  saveError: (v) => t('ui.inc.saveError', 'İşlem kaydedilemedi: {message}', v), actionSplit: (v) => t('ui.inc.actionSplit', 'Üye ayrıldı', v), actionMerge: (v) => t('ui.inc.actionMerge', 'Olay birleştirildi', v), actionUndo: (v) => t('ui.inc.actionUndo', 'Eylem geri alındı', v), ledgerRow: (v) => t('ui.inc.ledgerRow', 'defter #{entry}', v), undone: (v) => t('ui.inc.undone', 'geri alındı', v),
+  reasonHistory: (v) => t('ui.inc.reasonHistory', 'Gerekçe: {reason}', v), at: (v) => t('ui.inc.at', 'kayıtlı · {time}', v), photoAlt: (v) => t('ui.inc.photoAlt', 'Vatandaşın gönderdiği fotoğraf: {category}, {station}', v), repeatCode: (v) => t('ui.inc.repeatCode', 'var', v), repeatNoCode: (v) => t('ui.inc.repeatNoCode', 'yok', v), waitOver: (v) => t('ui.inc.waitOver', 'bekleme eşiği {threshold} saat aşıldı', v),
+  waitUnder: (v) => t('ui.inc.waitUnder', 'bekleme eşiği {threshold} saat aşılmadı', v), waitNone: (v) => t('ui.inc.waitNone', 'Açık kart yok; bekleme eşiği {threshold} saat.', v), thresholds: (v) => t('ui.inc.thresholds', 'Önerinin dayanakları', v),
+  incidentLink: (v) => t('ui.inc.incidentLink', 'Bu bildirim {station} olay dosyasında: {reports} bildirim, {photos} fotoğraf.', v), openIncident: (v) => t('ui.inc.openIncident', 'Olay dosyasını aç', v), noReports: (v) => t('ui.inc.noReports', 'Bu olay dosyasına bağlı vatandaş bildirimi yok.', v), noPhotosAttached: (v) => t('ui.inc.noPhotosAttached', 'Bu olay dosyasına bağlı fotoğraf yok.', v),
+  escalatorContext: (v) => t('ui.inc.escalatorContext', 'Yürüyen merdiven kaydı erişilebilir güzergâhı doğrulamaz.', v), agencyLink: (v) => t('ui.inc.agencyLink', 'resmî sayfa', v),
 };
-const I18N_KEYS = Object.keys(FALLBACK);
-const tx = (key, vars = {}) => esc(t(`ui.inc.${key}`, FALLBACK[key] || '', Object.fromEntries(
+const I18N_KEYS = Object.keys(TEXT);
+const tx = (key, vars = {}) => esc((TEXT[key] || (() => ''))(Object.fromEntries(
   Object.entries(vars).map(([name, value]) => [name, esc(value)]),
 )));
 const levelKey = (level) => ({ high: 'priorityHigh', medium: 'priorityMedium', normal: 'priorityNormal' }[level] || 'priorityNormal'); const levelName = (level) => tx(levelKey(level)); const at = (value) => value ? tx('at', { time: dateTime(value) }) : '';
@@ -50,7 +51,7 @@ export function factorLines(suggestion = {}) {
         + tx(values.over ? 'waitOver' : 'waitUnder', { threshold: values.threshold_hours ?? 0 });
     if (factor.key === 'access') {
       text = factor.verified
-        ? tx('accessVerified', { equipment: values.equipment_type || 'asansör', status: values.status_type || 'kurum kaydı' })
+        ? tx('accessVerified', { equipment: values.equipment_type || TEXT.equipmentLift(), status: values.status_type || TEXT.sourceRecord() })
         : tx('accessUnverified');
       if (values.interchange) text += ` ${tx('interchange', { line: values.line || '' })}`;
       if (values.escalator_recorded) text += ` ${tx('escalatorContext')}`;
@@ -296,4 +297,4 @@ function mount() {
   }
   void load().then(attachDecision);
 }
-if (typeof document !== 'undefined') mount(); export { FALLBACK, I18N_KEYS };
+if (typeof document !== 'undefined') mount(); export { I18N_KEYS };

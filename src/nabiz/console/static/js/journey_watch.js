@@ -101,10 +101,6 @@ function cardModel(result, choice, previousFingerprint) {
   };
 }
 
-function fallback(key, tr, vars) {
-  return t(`ui.jw.${key}`, tr, vars || {});
-}
-
 function safeStore() {
   try { return window.localStorage; } catch (err) { return null; }
 }
@@ -115,71 +111,69 @@ function formatTime(value) {
 
 function formatRecorded(value) {
   const timestamp = Date.parse(value || '');
-  if (!Number.isFinite(timestamp)) return fallback('unknown_time', 'zaman bilinmiyor');
+  if (!Number.isFinite(timestamp)) return t('ui.jw.unknown_time', 'zaman bilinmiyor');
   const locale = currentLang() === 'en' ? 'en-GB' : 'tr-TR';
   const text = new Intl.DateTimeFormat(locale, {
     timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(timestamp);
-  return fallback('recorded_at', 'kayıtlı · {when}', { when: text });
+  return t('ui.jw.recorded_at', 'kayıtlı · {when}', { when: text });
 }
 
 function needLabel(key) {
-  return key === 'step_free' ? fallback('step_free', 'Adımsız yol') : fallback('slow_walk', 'Az yürüme');
+  return key === 'step_free' ? t('ui.jw.step_free', 'Adımsız yol') : t('ui.jw.slow_walk', 'Az yürüme');
 }
 
 function templateMarkup(state, storageReady, accountMode) {
   const accountExtra = accountMode
-    ? `<div id="jw-account-consent-group"><label class="jw-check"><input id="jw-account-consent" type="checkbox" aria-describedby="jw-account-hint">${esc(fallback('account_consent', 'Hesabımda saklanmasını ve belirtilen toplu kullanımı ayrı açık rızayla kabul ediyorum.'))}</label><p class="jw-hint" id="jw-account-hint">${esc(fallback('account_hint', 'Açık rızamla kayıtlı yolculuklarımın başlangıç, varış, saat ve kısıt bilgilerinin hesabıma bağlı olarak saklanmasını kabul ediyorum. İstediğim an silebilirim; 90 gün kullanılmazsa silinir. Yolculuklar adınız ve cihazınız olmadan yalnız toplam sayı olarak İBB operatörünün etki senaryolarında kullanılabilir.'))}</p></div>`
+    ? `<div id="jw-account-consent-group"><label class="jw-check"><input id="jw-account-consent" type="checkbox" aria-describedby="jw-account-hint">${esc(t('ui.jw.account_consent', 'Hesabımda saklanmasını ve belirtilen toplu kullanımı ayrı açık rızayla kabul ediyorum.'))}</label><p class="jw-hint" id="jw-account-hint">${esc(t('ui.jw.account_hint', 'Açık rızamla kayıtlı yolculuklarımın başlangıç, varış, saat ve kısıt bilgilerinin hesabıma bağlı olarak saklanmasını kabul ediyorum. İstediğim an silebilirim; 90 gün kullanılmazsa silinir. Yolculuklar adınız ve cihazınız olmadan yalnız toplam sayı olarak İBB operatörünün etki senaryolarında kullanılabilir.'))}</p></div>`
     : '';
-  const unavailable = storageReady ? '' : `<p class="jw-error" role="status">${esc(fallback('storage_unavailable', 'Bu tarayıcı kayıt tutamıyor. Bu bölümde yolculuk saklanamaz.'))}</p>`;
+  const unavailable = storageReady ? '' : `<p class="jw-error" role="status">${esc(t('ui.jw.storage_unavailable', 'Bu tarayıcı kayıt tutamıyor. Bu bölümde yolculuk saklanamaz.'))}</p>`;
   return `<details class="more account-detail jw-detail" id="yolculuklarim-detail">`
-    + `<summary>${esc(fallback('section_title', 'Kayıtlı yolculuklarım'))}</summary>`
-    + `<div class="jw-content"><p class="jw-note">${esc(fallback('section_note', 'Yalnız bu cihazda, isteğe bağlı.'))}</p>`
+    + `<summary>${esc(t('ui.jw.section_title', 'Kayıtlı yolculuklarım'))}</summary>`
+    + `<div class="jw-content"><p class="jw-note">${esc(t('ui.jw.section_note', 'Yalnız bu cihazda, isteğe bağlı.'))}</p>`
     + unavailable
     + `<form id="jw-form" class="jw-form"${storageReady ? '' : ' hidden'}>`
-    + `<div class="jw-fields"><div class="field"><label for="jw-from">${esc(fallback('start', 'Başlangıç'))}</label><input id="jw-from" name="from" maxlength="60" autocomplete="off" required aria-describedby="jw-error"></div>`
-    + `<div class="field"><label for="jw-to">${esc(fallback('destination', 'Varış'))}</label><input id="jw-to" name="to" maxlength="60" autocomplete="off" required aria-describedby="jw-error"></div>`
-    + `<div class="field"><label for="jw-time">${esc(fallback('time', 'Saat (isteğe bağlı)'))}</label><input id="jw-time" name="time" type="time"></div></div>`
-    + `<fieldset class="jw-needs"><legend>${esc(fallback('needs_legend', 'Yolculuk tercihleriniz'))}</legend>`
-    + `<label class="jw-check"><input name="needs" type="checkbox" value="step_free">${esc(fallback('step_free', 'Adımsız yol'))}</label>`
-    + `<label class="jw-check"><input name="needs" type="checkbox" value="slow_walk">${esc(fallback('slow_walk', 'Az yürüme'))}</label></fieldset>`
-    + `<label class="jw-check jw-consent"><input id="jw-consent" type="checkbox" aria-describedby="jw-consent-hint jw-error">${esc(fallback('consent', 'Anladım, bu yolculuğu bu cihazda saklamak istiyorum.'))}</label>`
-    + `<p class="jw-hint" id="jw-consent-hint">${esc(fallback('consent_hint', 'Sunucuya yalnız kontrol anında başlangıç, varış ve kısıt gider; orada saklanmaz. Kimlik, konum ya da sağlık bilgisi istenmez.'))}</p>`
+    + `<div class="jw-fields"><div class="field"><label for="jw-from">${esc(t('ui.jw.start', 'Başlangıç'))}</label><input id="jw-from" name="from" maxlength="60" autocomplete="off" required aria-describedby="jw-error"></div>`
+    + `<div class="field"><label for="jw-to">${esc(t('ui.jw.destination', 'Varış'))}</label><input id="jw-to" name="to" maxlength="60" autocomplete="off" required aria-describedby="jw-error"></div>`
+    + `<div class="field"><label for="jw-time">${esc(t('ui.jw.time', 'Saat (isteğe bağlı)'))}</label><input id="jw-time" name="time" type="time"></div></div>`
+    + `<fieldset class="jw-needs"><legend>${esc(t('ui.jw.needs_legend', 'Yolculuk tercihleriniz'))}</legend>`
+    + `<label class="jw-check"><input name="needs" type="checkbox" value="step_free">${esc(t('ui.jw.step_free', 'Adımsız yol'))}</label>`
+    + `<label class="jw-check"><input name="needs" type="checkbox" value="slow_walk">${esc(t('ui.jw.slow_walk', 'Az yürüme'))}</label></fieldset>`
+    + `<label class="jw-check jw-consent"><input id="jw-consent" type="checkbox" aria-describedby="jw-consent-hint jw-error">${esc(t('ui.jw.consent', 'Anladım, bu yolculuğu bu cihazda saklamak istiyorum.'))}</label>`
+    + `<p class="jw-hint" id="jw-consent-hint">${esc(t('ui.jw.consent_hint', 'Sunucuya yalnız kontrol anında başlangıç, varış ve kısıt gider; orada saklanmaz. Kimlik, konum ya da sağlık bilgisi istenmez.'))}</p>`
     + accountExtra
-    + `<p class="jw-error" id="jw-error" role="status"></p><button class="btn btn-primary" type="submit">${esc(fallback('save', 'Kaydet'))}</button></form>`
-    + `<div class="jw-list-head"><h3>${esc(fallback('list_title', 'Yolculuklarınız'))}</h3><button id="jw-check" class="btn btn-quiet" type="button"${storageReady ? '' : ' disabled'}>${icon('refresh')} ${esc(fallback('check', 'Şimdi kontrol et'))}</button></div>`
+    + `<p class="jw-error" id="jw-error" role="status"></p><button class="btn btn-primary" type="submit">${esc(t('ui.jw.save', 'Kaydet'))}</button></form>`
+    + `<div class="jw-list-head"><h3>${esc(t('ui.jw.list_title', 'Yolculuklarınız'))}</h3><button id="jw-check" class="btn btn-quiet" type="button"${storageReady ? '' : ' disabled'}>${icon('refresh')} ${esc(t('ui.jw.check', 'Şimdi kontrol et'))}</button></div>`
     + `<div id="jw-list" aria-live="polite" aria-busy="false"></div></div></details>`;
 }
 
 function listRow(journey, state, accountMode) {
   const result = state.last[journey.id] && state.last[journey.id].result;
-  const statusKey = result && result.level === 'affected' ? 'status_affected'
-    : result && result.level === 'unverified' ? 'status_unverified'
-      : result && result.level === 'clear' ? 'status_clear' : 'status_waiting';
-  const statusText = result ? fallback(statusKey,
-    result.level === 'affected' ? 'Etkileniyor' : result.level === 'unverified' ? 'Doğrulanamadı'
-      : result.level === 'clear' ? 'Etkileyen kayıt yok' : 'Henüz kontrol edilmedi')
-    : fallback('status_waiting', 'Henüz kontrol edilmedi');
+  // Literal t() calls (P00 D2a): the page's catalogue check reads each key beside its Turkish.
+  const statusText = result && result.level === 'affected' ? t('ui.jw.status_affected', 'Etkileniyor')
+    : result && result.level === 'unverified' ? t('ui.jw.status_unverified', 'Doğrulanamadı')
+      : result && result.level === 'clear' ? t('ui.jw.status_clear', 'Etkileyen kayıt yok')
+        : t('ui.jw.status_waiting', 'Henüz kontrol edilmedi');
   const when = result && result.checked_at ? `<span class="jw-recorded">${esc(formatRecorded(result.checked_at))}</span>` : '';
   const detour = result && result.alternative && journey.needs.includes('slow_walk') && !journey.needs.includes('step_free')
-    ? `<span class="jw-recorded" lang="tr">${esc(fallback('slow_walk_detour', 'Planlayıcı asansör durumuna göre {station} istasyonunu atladı; yolculuk yaklaşık {minutes} dk uzadı.', {
+    ? `<span class="jw-recorded" lang="tr">${esc(t('ui.jw.slow_walk_detour', 'Planlayıcı asansör durumuna göre {station} istasyonunu atladı; yolculuk yaklaşık {minutes} dk uzadı.', {
       station: result.alternative.station,
       minutes: Number.isFinite(Number(result.alternative.extra_minutes)) ? result.alternative.extra_minutes : 'bilinmiyor',
     }))}</span>` : '';
   const choices = journey.needs.map(needLabel).join(', ');
-  const removeLabel = fallback('remove', 'Sil');
+  const removeLabel = t('ui.jw.remove', 'Sil');
   return `<article class="jw-row"><div class="jw-row-copy"><p class="jw-trip"><strong>${esc(journey.from)} → ${esc(journey.to)}</strong>`
     + `${journey.time ? ` · ${esc(formatTime(journey.time))}` : ''} · ${esc(choices)}</p>`
     + `<span class="jw-badge jw-badge-${esc(result && result.level || 'quiet')}">${esc(statusText)}</span>${when}${detour}</div>`
-    + `<button class="btn btn-quiet jw-remove" type="button" data-remove="${esc(journey.id)}" aria-label="${esc(removeLabel)} ${esc(journey.from)} ${esc(fallback('to', 'ile'))} ${esc(journey.to)}">${esc(removeLabel)}</button></article>`;
+    + `<button class="btn btn-quiet jw-remove" type="button" data-remove="${esc(journey.id)}" aria-label="${esc(removeLabel)} ${esc(journey.from)} ${esc(t('ui.jw.to', 'ile'))} ${esc(journey.to)}">${esc(removeLabel)}</button></article>`;
 }
 
 function impactMarkup(result, model, choice) {
   if (!model.show) return '';
   const title = `${result.from} → ${result.to}${result.time ? ` (${formatTime(result.time)})` : ''}`;
   const status = result.level === 'affected'
-    ? fallback('card_affected', 'Kayıtlı yolculuğunuz etkileniyor: {trip}.', { trip: title })
-    : fallback('card_unverified', 'Kayıtlı yolculuğunuz doğrulanamadı: {trip}.', { trip: title });
+    ? t('ui.jw.card_affected', 'Kayıtlı yolculuğunuz etkileniyor: {trip}.', { trip: title })
+    : t('ui.jw.card_unverified', 'Kayıtlı yolculuğunuz doğrulanamadı: {trip}.', { trip: title });
   const needNames = (result.affected_needs || []).map(needLabel).join(', ');
   const reasonMarkup = model.reasons.filter((item) => !item.informational).slice(0, 2).map((item) => (
     `<li lang="tr">${esc(item.text)}<span class="jw-reason-source">${esc(item.source)}${item.observed_at ? ` · ${esc(formatRecorded(item.observed_at))}` : ''}</span></li>`
@@ -192,36 +186,36 @@ function impactMarkup(result, model, choice) {
     : sourceLabel ? `<span>${esc(sourceLabel)}</span>` : '';
   const timeNote = result.time_note ? `<p class="jw-time-note" lang="tr">${esc(result.time_note)}</p>` : '';
   const warning = result.level === 'unverified'
-    ? `<p class="jw-warning" lang="tr">${esc(fallback('unverified_detail', 'Kaynak şu an doğrulanamadı; yola çıkmadan önce yeniden kontrol edin.'))}</p>` : '';
-  const isNew = model.isNew ? `<span class="jw-new">${esc(fallback('new', 'Yeni'))}</span>` : '';
+    ? `<p class="jw-warning" lang="tr">${esc(t('ui.jw.unverified_detail', 'Kaynak şu an doğrulanamadı; yola çıkmadan önce yeniden kontrol edin.'))}</p>` : '';
+  const isNew = model.isNew ? `<span class="jw-new">${esc(t('ui.jw.new', 'Yeni'))}</span>` : '';
   const alt = model.alternative;
   let action = '';
   if (alt && !choice) {
     const extra = Number.isFinite(Number(alt.extra_minutes))
-      ? fallback('extra_minutes', 'yaklaşık {minutes} dk ek', { minutes: alt.extra_minutes }) : '';
-    const proposed = fallback('alternative_text', 'Önerilen: {station} ({line}), {extra}', {
+      ? t('ui.jw.extra_minutes', 'yaklaşık {minutes} dk ek', { minutes: alt.extra_minutes }) : '';
+    const proposed = t('ui.jw.alternative_text', 'Önerilen: {station} ({line}), {extra}', {
       station: esc(alt.station), line: esc(alt.line || ''), extra: esc(extra),
     });
     const approval = alt.operator_approved === true
-      ? `<p class="jw-approval" lang="tr">${esc(alt.approved_text || alt.reason || '')} <span>${esc(fallback('approved_badge', 'Simüle operatör onayladı'))}</span></p>` : '';
+      ? `<p class="jw-approval" lang="tr">${esc(alt.approved_text || alt.reason || '')} <span>${esc(t('ui.jw.approved_badge', 'Simüle operatör onayladı'))}</span></p>` : '';
     action = `<div class="jw-alternative"><p lang="tr">${proposed}</p>${approval}<div class="jw-actions">`
-      + `<button class="btn btn-primary" type="button" data-choice="alternative" data-id="${esc(result.id)}">${esc(fallback('select_alternative', 'Alternatifi seç'))}</button>`
-      + `<button class="btn btn-quiet" type="button" data-choice="later" data-id="${esc(result.id)}">${esc(fallback('later', 'Şimdilik değil'))}</button></div></div>`;
+      + `<button class="btn btn-primary" type="button" data-choice="alternative" data-id="${esc(result.id)}">${esc(t('ui.jw.select_alternative', 'Alternatifi seç'))}</button>`
+      + `<button class="btn btn-quiet" type="button" data-choice="later" data-id="${esc(result.id)}">${esc(t('ui.jw.later', 'Şimdilik değil'))}</button></div></div>`;
   } else if (choice && choice.value === 'alternative' && alt) {
-    action = `<p class="jw-selected">${esc(fallback('selected', 'Alternatifi seçtiniz: {station}. Durum değişirse yeniden sorarız.', { station: alt.station }))}</p>`;
+    action = `<p class="jw-selected">${esc(t('ui.jw.selected', 'Alternatifi seçtiniz: {station}. Durum değişirse yeniden sorarız.', { station: alt.station }))}</p>`;
   } else if (choice && choice.value === 'later') {
-    action = `<p class="jw-selected">${esc(fallback('deferred', 'Şimdilik yeniden karar vermediniz. Durum değişirse kartı gösteririz.'))}</p>`;
+    action = `<p class="jw-selected">${esc(t('ui.jw.deferred', 'Şimdilik yeniden karar vermediniz. Durum değişirse kartı gösteririz.'))}</p>`;
   } else if (!alt) {
     const anchor = typeof document !== 'undefined' ? document.querySelector('#alternative') : null;
-    action = anchor ? `<a class="btn btn-quiet" href="#alternative" data-focus-alternative>${esc(fallback('open_alternative', 'Adımsız yol bölümüne git'))}</a>` : '';
+    action = anchor ? `<a class="btn btn-quiet" href="#alternative" data-focus-alternative>${esc(t('ui.jw.open_alternative', 'Adımsız yol bölümüne git'))}</a>` : '';
   }
   const more = (result.uncertainty || []).length
-    ? `<details class="jw-more"><summary>${esc(fallback('more', 'Ayrıntı'))}</summary><ul>${result.uncertainty.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></details>` : '';
+    ? `<details class="jw-more"><summary>${esc(t('ui.jw.more', 'Ayrıntı'))}</summary><ul>${result.uncertainty.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></details>` : '';
   return `<section class="jw-impact jw-impact-${model.tone}" aria-labelledby="jw-impact-title"><div class="jw-card-head">`
     + `<h2 id="jw-impact-title">${esc(status)}</h2>${isNew}</div>`
-    + `${needNames ? `<p class="jw-preference">${esc(fallback('affected_need', 'Etkilenen tercih: {need}', { need: needNames }))}</p>` : ''}`
+    + `${needNames ? `<p class="jw-preference">${esc(t('ui.jw.affected_need', 'Etkilenen tercih: {need}', { need: needNames }))}</p>` : ''}`
     + `${reasonMarkup ? `<ul class="jw-reasons">${reasonMarkup}</ul>` : ''}${timeNote}${warning}${action}${more}`
-    + `${sourceMarkup ? `<p class="jw-source">${esc(fallback('source', 'Kaynak'))}: ${sourceMarkup}</p>` : ''}</section>`;
+    + `${sourceMarkup ? `<p class="jw-source">${esc(t('ui.jw.source', 'Kaynak'))}: ${sourceMarkup}</p>` : ''}</section>`;
 }
 
 function install() {
@@ -265,7 +259,7 @@ function install() {
     if (!listHost) return;
     const state = currentState();
     const rows = state.journeys.map((journey) => listRow(journey, state, accountMode)).join('');
-    listHost.innerHTML = rows || `<p class="jw-empty">${esc(fallback('empty', 'Henüz kayıtlı yolculuk yok.'))}</p>`;
+    listHost.innerHTML = rows || `<p class="jw-empty">${esc(t('ui.jw.empty', 'Henüz kayıtlı yolculuk yok.'))}</p>`;
   }
 
   function renderImpact() {
@@ -300,7 +294,7 @@ function install() {
       const more = document.createElement('a');
       more.className = 'btn btn-quiet jw-more-journeys';
       more.href = '#yolculuklarim-detail';
-      more.textContent = fallback('more_journeys', '+{count} yolculuk daha', { count: items.length - 1 });
+      more.textContent = t('ui.jw.more_journeys', '+{count} yolculuk daha', { count: items.length - 1 });
       shell.querySelector('section').append(more);
     }
   }
@@ -321,14 +315,14 @@ function install() {
       return;
     }
     if (existing) {
-      existing.textContent = fallback('save_current', 'Bu yolculuğu kaydet');
+      existing.textContent = t('ui.jw.save_current', 'Bu yolculuğu kaydet');
       return;
     }
     const button = document.createElement('button');
     button.id = 'jw-save-current';
     button.type = 'button';
     button.className = 'btn btn-quiet';
-    button.textContent = fallback('save_current', 'Bu yolculuğu kaydet');
+    button.textContent = t('ui.jw.save_current', 'Bu yolculuğu kaydet');
     result.after(button);
     button.addEventListener('click', () => {
       const origin = document.querySelector('#journey-from');
@@ -369,7 +363,7 @@ function install() {
   async function checkNow({ announce = false } = {}) {
     if (!deviceState.journeys.length) return;
     if (MOCK) {
-      showMessage(fallback('mock_unavailable', 'Örnek modda yolculuk kontrolü yapılmaz.'), true);
+      showMessage(t('ui.jw.mock_unavailable', 'Örnek modda yolculuk kontrolü yapılmaz.'), true);
       return;
     }
     const prior = { ...deviceState.last };
@@ -414,9 +408,9 @@ function install() {
           checked_at: response.checked_at,
         },
       }));
-      if (announce) showMessage(fallback('checked', 'Yolculuk kayıtları kontrol edildi.'), false);
+      if (announce) showMessage(t('ui.jw.checked', 'Yolculuk kayıtları kontrol edildi.'), false);
     } catch (error) {
-      showMessage(error && error.message ? error.message : fallback('check_error', 'Kontrol tamamlanamadı. Yeniden deneyin.'), true);
+      showMessage(error && error.message ? error.message : t('ui.jw.check_error', 'Kontrol tamamlanamadı. Yeniden deneyin.'), true);
     } finally {
       if (listHost) listHost.setAttribute('aria-busy', 'false');
       const refreshedCard = document.querySelector('#jw-impact');
@@ -438,7 +432,7 @@ function install() {
     const consentGroup = form.querySelector('#jw-account-consent-group');
     if (accountMode && !consentGroup) {
       const hint = form.querySelector('#jw-consent-hint');
-      hint.insertAdjacentHTML('afterend', `<div id="jw-account-consent-group"><label class="jw-check"><input id="jw-account-consent" type="checkbox" aria-describedby="jw-account-hint">${esc(fallback('account_consent', 'Hesabımda saklanmasını ve belirtilen toplu kullanımı ayrı açık rızayla kabul ediyorum.'))}</label><p class="jw-hint" id="jw-account-hint">${esc(fallback('account_hint', 'Açık rızamla kayıtlı yolculuklarımın başlangıç, varış, saat ve kısıt bilgilerinin hesabıma bağlı olarak saklanmasını kabul ediyorum. İstediğim an silebilirim; 90 gün kullanılmazsa silinir. Yolculuklar adınız ve cihazınız olmadan yalnız toplam sayı olarak İBB operatörünün etki senaryolarında kullanılabilir.'))}</p></div>`);
+      hint.insertAdjacentHTML('afterend', `<div id="jw-account-consent-group"><label class="jw-check"><input id="jw-account-consent" type="checkbox" aria-describedby="jw-account-hint">${esc(t('ui.jw.account_consent', 'Hesabımda saklanmasını ve belirtilen toplu kullanımı ayrı açık rızayla kabul ediyorum.'))}</label><p class="jw-hint" id="jw-account-hint">${esc(t('ui.jw.account_hint', 'Açık rızamla kayıtlı yolculuklarımın başlangıç, varış, saat ve kısıt bilgilerinin hesabıma bağlı olarak saklanmasını kabul ediyorum. İstediğim an silebilirim; 90 gün kullanılmazsa silinir. Yolculuklar adınız ve cihazınız olmadan yalnız toplam sayı olarak İBB operatörünün etki senaryolarında kullanılabilir.'))}</p></div>`);
     } else if (!accountMode && consentGroup) {
       consentGroup.remove();
     }
@@ -467,7 +461,7 @@ function install() {
       render();
       if (deviceState.journeys.length) await checkNow();
     } catch (error) {
-      showMessage(error && error.message ? error.message : fallback('account_load_error', 'Hesap yolculukları yüklenemedi.'), true);
+      showMessage(error && error.message ? error.message : t('ui.jw.account_load_error', 'Hesap yolculukları yüklenemedi.'), true);
     }
   }
 
@@ -477,7 +471,7 @@ function install() {
     if (!storageReady) return;
     const data = new FormData(form);
     if (!form.querySelector('#jw-consent').checked) {
-      showMessage(fallback('consent_required', 'Kaydetmeden önce bu cihazda saklamaya izin verdiğinizi işaretleyin.'), true);
+      showMessage(t('ui.jw.consent_required', 'Kaydetmeden önce bu cihazda saklamaya izin verdiğinizi işaretleyin.'), true);
       form.querySelector('#jw-consent').focus();
       return;
     }
@@ -489,18 +483,18 @@ function install() {
     };
     const journey = cleanJourney(raw);
     if (!journey) {
-      showMessage(fallback('invalid_form', 'Başlangıç, varış ve yolculuk tercihlerinizi kontrol edin.'), true);
+      showMessage(t('ui.jw.invalid_form', 'Başlangıç, varış ve yolculuk tercihlerinizi kontrol edin.'), true);
       return;
     }
     const accountConsent = Boolean(accountMode && form.querySelector('#jw-account-consent').checked);
     if (accountConsent && MOCK) {
-      showMessage(fallback('mock_unavailable', 'Örnek modda yolculuk kontrolü yapılmaz.'), true);
+      showMessage(t('ui.jw.mock_unavailable', 'Örnek modda yolculuk kontrolü yapılmaz.'), true);
       return;
     }
     const next = deviceState.journeys.filter((item) => item.id !== journey.id);
     const localCount = next.filter((item) => !(deviceState.account_ids || []).includes(item.id)).length;
     if (!accountConsent && localCount >= DEVICE_LIMIT) {
-      showMessage(fallback('device_limit', 'Bu cihazda en çok 3 yolculuk saklayabilirsiniz.'), true);
+      showMessage(t('ui.jw.device_limit', 'Bu cihazda en çok 3 yolculuk saklayabilirsiniz.'), true);
       return;
     }
     if (accountConsent) {
@@ -508,14 +502,14 @@ function install() {
         await post('/api/account/journeys', { journey, consent: true });
         deviceState.account_ids = [...new Set([...(deviceState.account_ids || []), journey.id])];
       } catch (error) {
-        showMessage(error && error.message ? error.message : fallback('account_save_error', 'Hesap yolculuğu saklanamadı.'), true);
+        showMessage(error && error.message ? error.message : t('ui.jw.account_save_error', 'Hesap yolculuğu saklanamadı.'), true);
         return;
       }
     } else {
       if ((deviceState.account_ids || []).includes(journey.id)) {
         try { await del(`/api/account/journeys/${encodeURIComponent(journey.id)}`); }
         catch (error) {
-          showMessage(error && error.message ? error.message : fallback('account_delete_error', 'Hesap yolculuğu silinemedi.'), true);
+          showMessage(error && error.message ? error.message : t('ui.jw.account_delete_error', 'Hesap yolculuğu silinemedi.'), true);
           return;
         }
       }
@@ -525,7 +519,7 @@ function install() {
     deviceState = { ...deviceState, consent_at: new Date().toISOString(), journeys: next };
     if (!saveDevice()) {
       deviceState.journeys = deviceState.journeys.filter((item) => item.id !== journey.id);
-      showMessage(fallback('storage_unavailable', 'Bu tarayıcı kayıt tutamıyor. Bu bölümde yolculuk saklanamaz.'), true);
+      showMessage(t('ui.jw.storage_unavailable', 'Bu tarayıcı kayıt tutamıyor. Bu bölümde yolculuk saklanamaz.'), true);
       return;
     }
     form.reset();
@@ -541,12 +535,12 @@ function install() {
       const id = remove.getAttribute('data-remove');
       if ((deviceState.account_ids || []).includes(id)) {
         if (MOCK) {
-          showMessage(fallback('mock_unavailable', 'Örnek modda yolculuk kontrolü yapılmaz.'), true);
+          showMessage(t('ui.jw.mock_unavailable', 'Örnek modda yolculuk kontrolü yapılmaz.'), true);
           return;
         }
         try { await del(`/api/account/journeys/${encodeURIComponent(id)}`); }
         catch (error) {
-          showMessage(error && error.message ? error.message : fallback('account_delete_error', 'Hesap yolculuğu silinemedi.'), true);
+          showMessage(error && error.message ? error.message : t('ui.jw.account_delete_error', 'Hesap yolculuğu silinemedi.'), true);
           return;
         }
         deviceState.account_ids = deviceState.account_ids.filter((item) => item !== id);

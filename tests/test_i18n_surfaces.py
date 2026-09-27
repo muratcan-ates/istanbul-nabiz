@@ -20,6 +20,8 @@ MODULES = (
     "disaster_kit.js",
     # P00 D2a (K): E69 picks its quote by id now, so its Turkish lives only in t() fallbacks
     "outage_watch.js", "console_outage_watch.js",
+    # P00 D2a (K): E65, E67, E77 and E79 write literal t() calls now (their tables became closures)
+    "journey_watch.js", "console_incidents.js", "console_scenario.js", "ibb_yerleri.js", "ibb_yerleri_view.js",
 )
 # P00 D2a: the chat shell (P01) and history and memory (P02) look their keys up through tables
 # (``t(`ui.memory.${key}`, COPY[key])``), so the literal-call scan above cannot see them. Their catalogues
@@ -39,6 +41,16 @@ LANE_UNTRANSLATED = {
     "Kültür ve sanat", "Müze", "Kütüphane", "Doğa", "Çocuk etkinlikleri",
     "Yavaş yürüyorum", "Yavaş yürüyüş", "Adımsız erişim", "Adımsız erişim (asansör, rampa)", "Bebek arabası",
     "Uzun yürümek istemiyorum", "Merdivensiz ulaşım tercih ediyorum",
+}
+# home.js keeps its quick topics and examples as Turkish and English side by side (P01); both languages are in
+# the module, so they never needed the catalogue. Seen once the scan stopped hiding code after a line comment.
+LANE_OWN_PAIRS = {
+    "Ulaşım", "İstanbul ulaşımı için resmî bilgi nerede?", "İstanbulkart", "İstanbulkart işlemleri için resmî bilgi nerede?",
+    "İSKİ/Fatura", "İSKİ ve fatura işlemleri için nereye başvurabilirim?", "Sosyal destek başvuruları için resmî bilgi nerede?",
+    "İstanbul etkinliklerini nereden öğrenebilirim?", "İBB’ye bir sorunu nasıl bildirebilirim?",
+    "Where can I find official information about İstanbulkart services?", "İSKİ / Bills",
+    "Where can I get help with İSKİ services and bills?", "How can I report a problem to İBB?",
+    "How can I get from Kadıköy to Levent without stairs?",
 }
 JS_DIR = STATIC / "js"
 I18N = STATIC / "i18n"
@@ -65,6 +77,12 @@ def js_fallback(value: str) -> str:
 
 def ui_calls(source: str) -> dict[str, str]:
     return {match.group(2): js_fallback(match.group(4)) for match in UI_CALL.finditer(source)}
+
+
+def strip_comments(source: str) -> str:
+    """Block comments across lines, then whole-line ``//`` comments one line at a time. (One pattern with
+    ``re.S`` let a line comment's ``.*`` run to the end of the file and hid the rest of a module; P00 D2a.)"""
+    return re.sub(r"^\s*//.*$", "", re.sub(r"/\*.*?\*/", "", source, flags=re.S), flags=re.M)
 
 
 def blank_regex_literals(source: str) -> str:
@@ -200,7 +218,7 @@ def test_lane_catalogues_are_in_the_shared_files_and_cover_their_modules() -> No
         source = (JS_DIR / name).read_text(encoding="utf-8")
         keys = {key for _, key in UI_KEY.findall(source)}
         assert keys <= set(tr) and keys <= set(en), name
-        clean = list(blank_regex_literals(re.sub(r"/\*.*?\*/|^\s*//.*$", "", source, flags=re.S | re.M)))
+        clean = list(blank_regex_literals(strip_comments(source)))
         for start, end, chunks in template_literals("".join(clean)):
             assert not any(TURKISH_CHARS.search(chunk) for chunk in chunks), name
             clean[start:end] = [" "] * (end - start)
@@ -208,7 +226,7 @@ def test_lane_catalogues_are_in_the_shared_files_and_cover_their_modules() -> No
             value = js_fallback(next(part for part in match.groups() if part is not None))
             if TURKISH_CHARS.search(value) and value not in shown:
                 left.add(value)
-    assert left <= LANE_UNTRANSLATED, sorted(left - LANE_UNTRANSLATED)
+    assert left <= LANE_UNTRANSLATED | LANE_OWN_PAIRS, sorted(left - LANE_UNTRANSLATED - LANE_OWN_PAIRS)
 
 
 def test_every_t_call_has_both_catalog_entries() -> None:
@@ -228,9 +246,11 @@ def test_new_surfaces_have_no_bare_turkish() -> None:
     categories = {
         "Bilgi ve İletişim Teknolojileri", "Enerji", "Ekonomi", "Güvenlik", "Mobilite", "Çevre", "İnsan", "Yönetişim", "Yaşam",
     }
-    allowlist = categories | {"Türkçe"}
+    # E77's sample routes are station names the operator can run, data rather than copy (P00 D2a).
+    sample_routes = {"Zeytinburnu > Bağcılar", "Bostancı > Kartal"}
+    allowlist = categories | sample_routes | {"Türkçe"}
     for name, source in surface_sources().items():
-        clean = blank_regex_literals(re.sub(r"/\*.*?\*/|^\s*//.*$", "", source, flags=re.S | re.M))
+        clean = blank_regex_literals(strip_comments(source))
         fallback_spans = [match.span(4) for match in UI_CALL.finditer(clean)]
         literal_source = list(clean)
         for start_template, end_template, chunks in template_literals(clean):
