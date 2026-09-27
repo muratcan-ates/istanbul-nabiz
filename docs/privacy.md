@@ -282,7 +282,7 @@ on the device. The code is `src/nabiz/console/accounts.py`, `accounts_api.py`, `
 | Sign-in token | Its SHA-256 only, same file; the token itself on the device (`nabiz.account.v1`) | Nobody can read it back | With the account |
 | Followed topics (a metro line, a station, a bus line or a keyword) and the public alert sentences last seen for each | Same file | Same | With the account |
 | Prepared e-mails (address, subject, text) | `data/outbox/` (`NABIZ_OUTBOX_DIR`, gitignored), shown in Profilim as a preview | Same | Deleted with the account; files older than 30 days removed by the digest run |
-| Daily question and model-call counts | Server memory: a salted SHA-256 of the device id (`nabiz.device.v1`, random, made by the browser), of the address (IPv6 by /64) or of the account id | Nobody: the salt is new on every start | One Istanbul day, or until restart |
+| Daily question and model-call counts | `data/accounts/quota.sqlite` (`NABIZ_QUOTA_DB`, gitignored; P13, P00 D2a): a salted SHA-256 of the device id (`nabiz.device.v1`, random, made by the browser), of the address (IPv6 by /64) or of the account id, with that day's two counts | Nobody: the salt is stored in the same file and never leaves it | Two Istanbul days (purged at every start); an account's counts with the account |
 
 What holds it:
 

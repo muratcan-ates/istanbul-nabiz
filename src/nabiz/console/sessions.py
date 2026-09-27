@@ -14,7 +14,10 @@ from dataclasses import dataclass
 
 from fastapi import Response
 
+from ibb_mcp.config import REPO_ROOT
+
 COOKIE = "nabiz_session"
+DEFAULT_DB = "data/accounts/sessions.sqlite"
 FLOW_SECONDS = 600
 SESSION_SECONDS = 12 * 3600
 
@@ -61,6 +64,12 @@ class SessionStore:
                 );
                 CREATE INDEX IF NOT EXISTS sessions_by_account ON sessions(account_id);
             """)
+
+    @classmethod
+    def from_env(cls) -> SessionStore:
+        """``NABIZ_SESSIONS_DB`` (gitignored), relative to the repository when not absolute (P00 D2a)."""
+        path = pathlib.Path(os.environ.get("NABIZ_SESSIONS_DB") or DEFAULT_DB).expanduser()
+        return cls(path if path.is_absolute() else REPO_ROOT / path)
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:

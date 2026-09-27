@@ -3104,3 +3104,23 @@ answers citing the gold page first.
 ### Consequences
 
 - `.env.example` names `NABIZ_AZURE_MAPS_KEY`; the page does not call the route yet (D2b).
+
+## 99. Quota and sign-in sessions on disk, calls claimed before the model runs (P13, P00 D2a, 27 Sep)
+
+### Decision
+
+- The product app counts the day's questions and model calls in P13's `PersistentQuotaBook` (`NABIZ_QUOTA_DB`,
+  default `data/accounts/quota.sqlite`) and keeps sign-in flows and sessions in `SessionStore` (`NABIZ_SESSIONS_DB`,
+  default `data/accounts/sessions.sqlite`). A restart or a second replica no longer hands out a fresh day. The file
+  holds salted pseudonyms and two numbers per day; its salt never leaves it. Days older than two and expired flows and
+  sessions are purged at every start.
+- A chat turn claims its model calls atomically (`reserve_calls`) before the provider is reserved, keeps the calls it
+  made and refunds the rest on release (`refund_calls`); a turn cut off mid-way refunds what it still holds when its
+  stream closes (`TurnPlan.events`). An emergency is still neither counted nor metered.
+- Tests: every test gets its own quota and session files (`tests/conftest.py`), so nothing is written under `data/`.
+- kvkk and `docs/privacy.md` now say the counts are on disk for two days, not in memory until restart.
+
+### Consequences
+
+- The sign-in routes that use `SessionStore` come with the identity work (J or D2b); today only the store and its
+  purge are wired. Account erasure of the quota and session rows is the erasure chain's (H).

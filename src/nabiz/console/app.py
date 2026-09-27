@@ -93,8 +93,9 @@ from nabiz.console.policy import functional_needs
 from nabiz.console.poll_api import poll_routes
 from nabiz.console.ports import Ports, UnwiredStepFree
 from nabiz.console.quick_api import quick_routes
-from nabiz.console.quota import MeteredGuard, QuotaBook
+from nabiz.console.quota import MeteredGuard
 from nabiz.console.quota_api import plan_turn, quota_routes
+from nabiz.console.quota_store import PersistentQuotaBook
 from nabiz.console.receipt_api import receipt_routes
 from nabiz.console.recovery_api import recovery_routes
 from nabiz.console.report_api import report_routes
@@ -106,6 +107,7 @@ from nabiz.console.requests_api import request_routes
 from nabiz.console.route_steps_api import route_steps_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
+from nabiz.console.sessions import SessionStore
 from nabiz.console.skills_api import skills_routes
 from nabiz.console.stop_card import stop_card_router
 from nabiz.console.street_route_api import street_route_router
@@ -330,6 +332,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         state.nabiz = Nabiz(SourceContext.create(settings=state.settings))
     # The chat's guard also meters each person's daily model calls (DECISIONS #38); /healthz reads the plain one.
     state.chat = ChatService(state.nabiz, state.chat_config, MeteredGuard(state.guard), offline=state.settings.offline)
+    # P13: quota days older than two and expired sign-in flows and sessions leave the disk at every start.
+    state.quota.purge_old_days()
+    state.sessions.purge_expired()
     release = None
     if state.wire_nexus:
         from nabiz.console.wiring import wire_ports
@@ -469,7 +474,9 @@ def build_console_app(
     state.guard = guard or SpendGuard(BudgetConfig.from_env())
     state.access = access or OperatorAccess.from_env()
     state.chat_limiter = TurnLimiter(env_seconds("NABIZ_CHAT_TURNS_PER_MIN", CHAT_TURNS_PER_MIN))
-    state.quota = QuotaBook.from_env()
+    # P13: the day's counts and sign-in sessions survive a restart and a second replica (NABIZ_QUOTA_DB, NABIZ_SESSIONS_DB).
+    state.quota = PersistentQuotaBook.from_env()
+    state.sessions = SessionStore.from_env()
     state.fresh = Freshness(
         offline=state.settings.offline,
         card_stale_after_s=env_seconds("NABIZ_CARD_STALE_S", CARD_STALE_DEFAULT_S),
