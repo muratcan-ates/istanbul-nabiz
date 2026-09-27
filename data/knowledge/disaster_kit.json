@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "captured_at": "2026-09-27T00:39:29.139542+00:00",
+  "sources": {
+    "akom_sss": {
+      "url": "https://akom.ibb.istanbul/sikca-sorulan-sorular/",
+      "title": "Sıkça Sorulan Sorular - AKOM",
+      "institution": "İBB AKOM",
+      "fetched_at": "2026-09-27T00:39:29.139542+00:00",
+      "source_updated_at": "2022-09-30T13:18:42+03:00",
+      "capture_file": "data/reference/disaster_kit/akom_sss.json"
+    },
+    "seferberlik": {
+      "url": "https://depremzemin.ibb.istanbul/tr/istanbul-deprem-seferberlik-plani",
+      "title": "İstanbul Deprem Seferberlik Planı - IBB - Deprem Zemin",
+      "institution": "İBB",
+      "fetched_at": "2026-09-26T07:20:38.376866+00:00",
+      "source_updated_at": null,
+      "note": {
+        "tr": "2019 tarihli plan; toplanma ve barınma alanlarını plan başlığı olarak anar, alan listesi vermez.",
+        "en": "The 2019 plan names assembly and shelter areas as a topic; it does not list locations."
+      }
+    },
+    "bina_sss": {
+      "url": "https://binatespiti.ibb.istanbul/sikcasorulansorular/",
+      "title": "Sıkça Sorulan Sorular - İBB | Bina Tespiti - İstanbul Büyükşehir Belediyesi",
+      "institution": "İBB",
+      "fetched_at": "2026-09-26T07:24:32.843446+00:00",
+      "source_updated_at": null
+    }
+  },
+  "kit_items": [
+    {"id": "gida", "group": 1, "label": {"tr": "Dayanıklı, enerji veren gıdalar (bisküvi v.b.)", "en": "Durable, energy-giving food (such as biscuits)"}, "source": "akom_sss", "quote": "Dayanıklı, enerji veren gıdalar (bisküvi v.b.)"},
+    {"id": "su", "group": 1, "label": {"tr": "Su", "en": "Water"}, "source": "akom_sss", "quote": "Su"},
+    {"id": "eldiven", "group": 1, "label": {"tr": "Hijyenik Eldiven", "en": "Hygienic gloves"}, "source": "akom_sss", "quote": "Hijyenik Eldiven"},
+    {"id": "yarabandi", "group": 1, "label": {"tr": "Yarabandı", "en": "Adhesive bandage"}, "source": "akom_sss", "quote": "Yarabandı"},
+    {"id": "sargi_bezi", "group": 1, "label": {"tr": "Sargı Bezi", "en": "Gauze bandage"}, "source": "akom_sss", "quote": "Sargı Bezi"},
+    {"id": "pamuk", "group": 1, "label": {"tr": "Pamuk", "en": "Cotton"}, "source": "akom_sss", "quote": "Pamuk"},
+    {"id": "kolonya", "group": 1, "label": {"tr": "Kolonya", "en": "Cologne"}, "source": "akom_sss", "quote": "Kolonya"},
+    {"id": "makas", "group": 1, "label": {"tr": "Makas", "en": "Scissors"}, "source": "akom_sss", "quote": "Makas"},
+    {"id": "cekic", "group": 1, "label": {"tr": "Çekiç", "en": "Hammer"}, "source": "akom_sss", "quote": "Çekiç"},
+    {"id": "duduk", "group": 1, "label": {"tr": "Düdük", "en": "Whistle"}, "source": "akom_sss", "quote": "Düdük"},
+    {"id": "radyo", "group": 1, "label": {"tr": "Yedek pilleriyle radyo", "en": "Radio with spare batteries"}, "source": "akom_sss", "quote": "Yedek pilleriyle radyo"},
+    {"id": "fener", "group": 1, "label": {"tr": "Yedek pilleriyle fener", "en": "Flashlight with spare batteries"}, "source": "akom_sss", "quote": "Yedek pilleriyle fener"},
+    {"id": "bicak", "group": 1, "label": {"tr": "Çok amaçlı bıçak", "en": "Multipurpose knife"}, "source": "akom_sss", "quote": "Çok amaçlı bıçak"},
+    {"id": "evrak_dosyasi", "group": 2, "label": {"tr": "İçinde önemli telefon numaralarının, iletişime geçilecek kişilerin bilgilerinin, önemli evrakların fotokopilerinin bulunduğu su geçirmeyen bir dosya", "en": "A waterproof folder with important phone numbers, contact details, and copies of important documents"}, "source": "akom_sss", "quote": "İçinde önemli telefon numaralarının, iletişime geçilecek kişilerin bilgilerinin, önemli evrakların fotokopilerinin bulunduğu su geçirmeyen bir dosya"},
+    {"id": "bozuk_para", "group": 3, "label": {"tr": "Bozuk para", "en": "Coins"}, "source": "akom_sss", "quote": "Bozuk para"},
+    {"id": "telefon_karti", "group": 3, "label": {"tr": "Telefon kartı", "en": "Phone card"}, "source": "akom_sss", "quote": "Telefon kartı"},
+    {"id": "mendil", "group": 3, "label": {"tr": "Mendil", "en": "Tissues"}, "source": "akom_sss", "quote": "Mendil"},
+    {"id": "ozel_ilac", "group": 3, "label": {"tr": "Sürekli kullanılan özel ilaç", "en": "Regularly used prescription medicine"}, "source": "akom_sss", "quote": "Sürekli kullanılan özel ilaç"},
+    {"id": "yagmurluk", "group": 3, "label": {"tr": "Yağmurluk", "en": "Raincoat"}, "source": "akom_sss", "quote": "Yağmurluk"}
+  ],
+  "kit_care": [
+    {"id": "tasinabilir", "text": {"tr": "Malzemeleri kolay taşınabilecek bir yerde tutun.", "en": "Keep the items somewhere easy to carry."}, "source": "akom_sss", "quote": "Yukarıda sıralanan malzemeleri kolay taşınabilecek (sırt çantası vb) bir yerde tutun."},
+    {"id": "aile_yeri", "text": {"tr": "Çantayı ailenizin bildiği ve kolay ulaşacağı yerde tutun. Daha küçük eşini arabanızın bagajında bulundurun.", "en": "Keep the bag where your family knows it is and can reach it. Keep a smaller one in your car trunk."}, "source": "akom_sss", "quote": "Çantayı tüm aile fertlerinin bildiği, ulaşması kolay bir yerde tutun. Bu çantanın daha küçük bir eşini de arabanızın bagajında bulundurun."},
+    {"id": "su_gida", "text": {"tr": "Şişe suları ve kutulanmış yiyecekleri 6 ayda bir değiştirin.", "en": "Replace bottled water and packaged food every 6 months."}, "source": "akom_sss", "quote": "Şişe suları 6 ayda bir değiştirerek tazeliğini koruyun, kutulanmış yiyecekleri 6 ayda bir değiştirin."},
+    {"id": "yillik_gozden_gecirme", "text": {"tr": "Takımların içeriğini ve ailenizin gereksinimlerini yılda en az bir kez gözden geçirin.", "en": "Review your kits and your family's needs at least once a year."}, "source": "akom_sss", "quote": "Yılda en az bir kez takımların muhteviyatını ve ailenizin gereksinimlerini gözden geçirin."},
+    {"id": "pil", "text": {"tr": "Pilleri yenileyin.", "en": "Replace the batteries."}, "source": "akom_sss", "quote": "Pilleri yenileyin."},
+    {"id": "receteli_ilac", "text": {"tr": "Reçeteli ilaçların saklanması konusunda doktorunuza danışın.", "en": "Ask your doctor about storing prescription medicines."}, "source": "akom_sss", "quote": "Reçeteli ilaçların saklanması konusunda doktorunuza danışın."}
+  ],
+  "contact_basis": {
+    "source": "akom_sss",
+    "quote": "İçinde önemli telefon numaralarının, iletişime geçilecek kişilerin bilgilerinin, önemli evrakların fotokopilerinin bulunduğu su geçirmeyen bir dosya"
+  },
+  "assembly": {
+    "dataset_found": false,
+    "catalog_check": {
+      "file": "data/reference/ibb_catalog.json",
+      "captured_at_utc": "2026-09-26T10:38:20+00:00",
+      "count": 557,
+      "terms": ["toplanma", "assembly", "gathering"],
+      "matches": [
+        {
+          "name": "istanbul-da-devredilen-sozlesmeli-iskeleler",
+          "title": "Contracted Piers Transferred in Istanbul",
+          "notes": "This dataset includes the locations of the piers, which were given to the Şehir Hatları by the decision of the IMM assembly, but whose users are other cooperatives (Dentur, Turyol, Mavi Marmara, etc.).",
+          "organization": "Şehir Hatları Inc.",
+          "groups": ["Mobilite"],
+          "tags": ["devredilen", "devredilen iskele", "istanbul", "sözleşmeli", "sözleşmeli iskele", "şehir hatları", "şehir hatları iskeleleri"],
+          "license_title": "Istanbul Metropolitan Municipality Open Data License",
+          "metadata_modified": "2025-03-05T07:43:07+00:00",
+          "num_resources": 1,
+          "resources": [
+            {
+              "name": "İstanbul'da Devredilen Sözleşmeli İskeleler",
+              "format": "KML",
+              "url": "https://data.ibb.gov.tr/dataset/2d38af5b-0453-481b-9e5f-2872efdd1edd/resource/a14b2155-0354-4b24-9c78-4d87c667f03a/download/istanbul-devredilen-sozlemeli-iskeleler.kml",
+              "last_modified": "2025-03-05T07:43:07+00:00",
+              "datastore_active": false
+            }
+          ]
+        }
+      ]
+    },
+    "plan_mention": {"source": "seferberlik", "quote": "Afet sonrası toplanma / barınma alanları"},
+    "afis": {
+      "source": "akom_sss",
+      "quote": "Hayır, deprem konteynırları AKOM’a ait değildir. Bu konteynırlar İstanbul Valiliği’nin İl Afet ve Acil Durum Müdürlüğü tarafından İstanbul’da Her Mahalleye Afet İstasyonu Projesi (AFİS) kapsamında kaymakamlıklarca tespit edilen noktalara konuşlandırılmıştır."
+    }
+  },
+  "building": {
+    "quotes": [
+      {"source": "bina_sss", "quote": "Hızlı Tarama yöntemiyle tespit yaptırmak için herhangi bir kat malikinin/yetkilisinin veya kiracının müracaat etmesi yeterlidir."},
+      {"source": "bina_sss", "quote": "Belediyemizce yürütülmekte olan bina inceleme çalışması ücretsiz olarak gerçekleştirilmektedir."},
+      {"source": "bina_sss", "quote": "Bu nedenle bildirilen sonuçlar kesin nitelik arz etmemektedir."}
+    ]
+  },
+  "channels": {"call": "153", "agency_url": "https://ibb.istanbul/"}
+}
