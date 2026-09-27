@@ -1,0 +1,307 @@
+.poll-console {
+  min-inline-size: 0;
+  margin-block: var(--space-6);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--nd-line);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.poll-console h3 {
+  margin-block: var(--space-4) var(--space-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+}
+
+.poll-console .section-note,
+.poll-console-meta,
+.poll-results-disclaimer,
+.poll-character-count {
+  color: var(--text-muted);
+  line-height: var(--leading-body);
+}
+
+.poll-results-disclaimer {
+  max-inline-size: 65ch;
+  margin-block: var(--space-3);
+}
+
+.poll-new {
+  margin-block-start: var(--space-4);
+  border: 1px solid var(--nd-line);
+  border-radius: var(--nd-radius-surface);
+  background: var(--surface-raised);
+}
+
+.poll-last-closed {
+  margin-block-start: var(--space-4);
+  border: 1px solid var(--nd-line);
+  border-radius: var(--nd-radius-surface);
+}
+
+.poll-last-closed summary {
+  min-block-size: var(--tap);
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.poll-new summary {
+  min-block-size: var(--tap);
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.poll-create {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.poll-create label,
+.poll-dialog label {
+  font-weight: var(--weight-semibold);
+}
+
+.poll-create input,
+.poll-create textarea,
+.poll-create select,
+.poll-dialog textarea {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: var(--tap);
+  border: 1px solid var(--nd-line-strong);
+  border-radius: var(--nd-radius-control);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.poll-create textarea,
+.poll-dialog textarea {
+  resize: vertical;
+}
+
+.poll-create fieldset {
+  min-inline-size: 0;
+  margin: var(--space-2) 0;
+  padding: 0;
+  border: 0;
+}
+
+.poll-create legend {
+  margin-block-end: var(--space-2);
+  font-weight: var(--weight-semibold);
+}
+
+.poll-console-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.poll-console-option label {
+  grid-column: 1 / -1;
+}
+
+.poll-console-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+.poll-console-active,
+.poll-console-draft {
+  min-inline-size: 0;
+  margin-block-start: var(--space-4);
+}
+
+.poll-console-meta {
+  margin-block: var(--space-2);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.poll-results {
+  inline-size: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-results caption {
+  padding-block: var(--space-2);
+  text-align: start;
+  font-weight: var(--weight-semibold);
+}
+
+.poll-results th,
+.poll-results td {
+  min-block-size: 36px;
+  box-sizing: border-box;
+  padding: var(--space-2);
+  border-block-end: 1px solid var(--nd-line);
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.poll-results th:first-child {
+  inline-size: 48%;
+}
+
+.poll-results th:nth-child(2) {
+  inline-size: 20%;
+}
+
+.poll-results th:last-child {
+  inline-size: 32%;
+}
+
+.poll-results td:last-child > span:first-child {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+}
+
+.poll-bar {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 10rem;
+  block-size: 8px;
+  margin-block-start: var(--space-1);
+  border-radius: var(--nd-radius-control);
+  background: var(--surface-sunken);
+}
+
+.poll-bar::after {
+  display: block;
+  inline-size: clamp(0%, var(--share), 100%);
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--nd-accent);
+  content: "";
+}
+
+.poll-dialog {
+  box-sizing: border-box;
+  inline-size: min(32rem, calc(100vw - 2rem));
+  max-block-size: calc(100dvh - 2rem);
+  overflow: auto;
+  padding: var(--space-5);
+  border: 1px solid var(--nd-line-strong);
+  border-radius: var(--nd-radius-composer);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.poll-dialog::backdrop {
+  background: var(--surface-sunken);
+}
+
+.poll-dialog h3 {
+  margin-block-start: 0;
+}
+
+.poll-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+  line-height: var(--leading-body);
+}
+
+.poll-confirm input {
+  flex: 0 0 auto;
+  inline-size: 1.2em;
+  block-size: 1.2em;
+  margin-block-start: .15em;
+  accent-color: var(--nd-accent);
+}
+
+.poll-console :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.poll-console .field-error[hidden],
+.poll-dialog .field-error[hidden] {
+  display: none;
+}
+
+.poll-preview .poll-card {
+  margin-block: var(--space-3);
+}
+
+@media (max-width: 24rem) {
+  .poll-console-option {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .poll-console-option label {
+    grid-column: auto;
+  }
+
+  .poll-results thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .poll-results,
+  .poll-results tbody,
+  .poll-results tr {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .poll-results tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 var(--space-2);
+    padding-block: var(--space-1);
+    border-block-end: 1px solid var(--nd-line);
+  }
+
+  .poll-results th,
+  .poll-results td {
+    min-inline-size: 0;
+    border: 0;
+  }
+
+  .poll-results th:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .poll-results td:last-child {
+    grid-column: 1 / -1;
+    padding-block-start: 0;
+  }
+
+  .poll-results td:last-child::before {
+    content: attr(data-label) ": ";
+    color: var(--text-muted);
+  }
+
+  .poll-bar {
+    max-inline-size: 100%;
+  }
+
+  .poll-dialog {
+    inline-size: calc(100vw - 1rem);
+    max-block-size: calc(100dvh - 1rem);
+    margin: auto;
+    padding: var(--space-3);
+  }
+}
