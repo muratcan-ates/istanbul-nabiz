@@ -2478,6 +2478,52 @@ come from the cache, the robots snapshots and the code.
   byte-for-byte with the console.
 - The screens themselves change in E44 (citizen), E45 (answer card) and E46 (console); E43 changes button states only.
 
+## 59. Knowledge thresholds re-measured after E39: 16 / 0.5 kept (E42, 26 Sep)
+
+**Date:** 2026-09-26 · **Status:** Accepted (integrator; supersedes the numbers, not the rule, of #36)
+
+### Context
+
+#36 set the offline evidence floor on the 258-document index: `|bm25| ≥ 16`, coverage `≥ 0.5`, and said the BM25
+scale moves when the index grows. The E39 ingest took the index to 326 active documents (Şehir Hatları and İSKİ
+pages; İGDAŞ stays out, `robots.txt` `Disallow: /`, #56). E42 re-measured with `scripts/knowledge_calibration.py`
+(offline, no embedding, no model), on 217 questions: the 150-question research seed and 67 calibration rows
+(20 HAFİFLETİYOR, 6 demo, 17 new `kurum-sayfasi`, 24 negatives; n-15 and n-16 moved to `kurum-sayfasi` under the
+same ids, four new negatives that share the new pages' words). Selection rule, written before the run: no negative
+answered; the highest negative `|bm25|` whose coverage passes the floor at least 2 below `fts_min`; then the most
+answers citing the gold page first.
+
+### Decision
+
+- **16 / 0.5 stays.** Numbers from `eval/results/knowledge-calibration.md` (reproduced byte for byte by the
+  integrator): old index at 16 / 0.5 answers 27 (13 gold first, 14 other, 0 negatives); new index at 16 / 0.5
+  answers 37 (15 gold first, 22 other, 0 negatives).
+- **The rule's pick, 10 / 0.6, is rejected.** It passes the rule only because at coverage 0.6 no negative passes the
+  coverage floor, so the margin term is empty; 8 / 0.6 measures the same, i.e. the BM25 floor stops mattering and
+  0.6 is the grid's edge, with 10 / 0.5 already answering 2 negatives. It answers 37 too, but 13 gold first, not
+  15: it drops "Gece metrosu hangi günler çalışıyor?" and "Gece metrosu seferleri saat kaçta başlıyor?" (gold page,
+  coverage 0.5), which `test_a_stronger_bm25_match_is_better_evidence_not_worse` and
+  `test_the_first_quote_carries_the_verdict` pin, and the chat answers "Öğrenci kartı vizesi" from the
+  sports-school page (`spor.istanbul/spor-okullari`). Those two tests measure behaviour (the Gece Metrosu
+  sentence answers its question), so they were not rewritten.
+- **The next grid point that meets the rule with coverage ≤ 0.5 is 18**: 9 gold first at 18 / 0.5 (10 at 18 / 0.4),
+  it drops "Deniz taksi nasıl çağrılır?" (gold Şehir Hatları page, 17.7) and keeps Gece Metrosu by 0.1. Not taken.
+
+### Consequences and open risks
+
+- **The margin condition is not met at 16.** The nearest negative is again "Kredi kartı borcumu nasıl
+  yapılandırırım?", now 15.45 at coverage 0.5 (from the deniz taksi FAQ), 0.55 under the floor; #36's margin was
+  2.9. It is not answered today; the next ingest can tip it. Re-run the script after every ingest.
+- Still "bilmiyorum" at 16 / 0.5: "Hızlı bina taraması nedir?" (11.2), "153 Çözüm Merkezi'ne nasıl ulaşırım?"
+  (14.0), "Öğrenci kartı vizesi" (its first quote is a sports-school page). No rule was written for them.
+- Of the new pages, "Deniz taksi nasıl çağrılır?" is answered from its gold page; the Şehir Hatları accessibility
+  question from a sibling Şehir Hatları page; the İSKİ cancellation question finds its gold page first but its
+  first quote covers 0.17 of the question, so "bilmiyorum". 37 gold URLs are not in the index (list in the report;
+  all İGDAŞ ones by robots).
+- The cosine floor (0.35), the online path with a query embedding and a real model are still unmeasured.
+- `scripts/knowledge_calibration.py --grid` and `--grid-json` are the tools for the next re-measurement; the report
+  marks the applied row `**seçildi**` and the rule's pick `**kural**` when they differ.
+
 ## 60. The citizen page: the composer is the hero (E44, 26 Sep)
 
 ### Decision
