@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import json
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from types import SimpleNamespace
@@ -11,6 +12,7 @@ from typing import Any
 
 from ibb_mcp.text import fold_tr, squash_punctuation
 from nabiz.console.report_api import REPORT_KIND
+from nabiz.console.report_link import photo_ref
 from nabiz.console.report_triage import SUPPORT_MANY, record_conflict, report_priority
 
 # These are design parameters, not measured thresholds or counts.
@@ -54,20 +56,13 @@ def _state_parts(state: Mapping[str, Any]) -> tuple[Mapping[str, Any], Mapping[s
 
 
 def _base_incident(key: str, members: Mapping[str, list[dict[str, Any]]]) -> dict[str, Any]:
-    stations = sorted({str(m["station"]) for k in MEMBER_KINDS for m in members[k] if m.get("station")}, key=fold_tr)
-    report_times = [
-        parsed
-        for member in members["report"]
-        if member.get("status") in _OPEN and (parsed := _time(member.get("received_at"))) is not None
-    ]
-    return {
+    incident = {
         "id": f"inc-{hashlib.sha256(key.encode('utf-8')).hexdigest()[:10]}",
         "station_key": key,
-        "stations": stations,
-        "title_station": stations[0] if stations else "",
         "members": {kind: list(members[kind]) for kind in MEMBER_KINDS},
-        "oldest_open_at": min(report_times).isoformat() if report_times else None,
     }
+    _refresh_incident(incident)
+    return incident
 
 
 def _station_key(name: str) -> str:
@@ -162,29 +157,21 @@ def equipment_members(states: Iterable[Mapping[str, Any]]) -> list[dict[str, Any
 
 
 def photo_members(items: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """Project station-level photo reports; district-level photos stay unattached."""
+    """Project photo reports: station-level ones, and any photo the citizen linked to a report (P07)."""
     members: list[dict[str, Any]] = []
     for item in items:
         place = item.get("place") if isinstance(item.get("place"), Mapping) else {}
-        if place.get("kind") != "station":
-            continue
-        code = str(item.get("code") or "")
-        station = str(place.get("name") or "")
+        code, linked = str(item.get("code") or ""), item.get("linked_signal_id")
+        station = str(place.get("name") or "") if place.get("kind") == "station" else ""
         key = _station_key(station)
-        if not code or not key:
+        if not code or not (key or linked):
             continue
-        members.append(
-            {
-                "ref": f"photo:{hashlib.sha256(code.encode('utf-8')).hexdigest()[:12]}",
-                "photo_code": code,
-                "station": station,
-                "station_key": key,
-                "category": item.get("category"),
-                "status": item.get("status"),
-                "created_at": _iso(item.get("created_at")),
-                "has_photo": bool(item.get("has_photo", True)),
-            }
-        )
+        members.append({
+            "ref": photo_ref(code), "photo_code": code, "station": station, "station_key": key,
+            "linked_ref": f"report:{linked}" if linked else None, "report_code": item.get("linked_report_code"),
+            "category": item.get("category"), "status": item.get("status"),
+            "created_at": _iso(item.get("created_at")), "has_photo": bool(item.get("has_photo", True)),
+        })
     return sorted(members, key=lambda item: (item["created_at"] or "", item["ref"]))
 
 
@@ -193,11 +180,17 @@ def auto_incidents(
     photos: Iterable[dict[str, Any]],
     equipment: Iterable[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Group only citizen reports or station photos; equipment enriches those groups."""
+    """Group only citizen reports or station photos; equipment enriches those groups.
+
+    A photo linked to a report joins that report's incident even when its station name differs.
+    """
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(lambda: {kind: [] for kind in MEMBER_KINDS})
+    reports = list(reports)
+    report_keys = {member["ref"]: member.get("station_key") for member in reports}
     for kind, values in (("report", reports), ("photo", photos)):
         for member in values:
-            key = str(member.get("station_key") or _station_key(str(member.get("station") or "")))
+            key = report_keys.get(member.get("linked_ref")) or member.get("station_key")
+            key = str(key or _station_key(str(member.get("station") or "")))
             if key:
                 grouped[key][kind].append(dict(member))
     for member in equipment:
@@ -210,8 +203,6 @@ def auto_incidents(
 def _action_data(action: Mapping[str, Any]) -> dict[str, Any]:
     value = action.get("data") or {}
     if isinstance(value, str):
-        import json
-
         try:
             value = json.loads(value)
         except (TypeError, ValueError):
