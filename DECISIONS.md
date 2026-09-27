@@ -3181,3 +3181,21 @@ answers citing the gold page first.
 ### Consequences
 
 - The books are in memory; their SQLite persistence is the data-root work (I). Account erasure purges appeals (H).
+
+## 103. Web app: a closed preparation in main.bicep (P10a, P00 D2a, 27 Sep)
+
+### Decision
+
+- `infra/main.bicep` calls `modules/webapp.bicep` only when `deployWebApp` is true, the MCP Container App environment
+  is deployed and `webContainerImage` names a reviewed image; `deployWebApp` defaults to false in the template and in
+  `main.parameters.json` (`DEPLOY_WEB_APP=false`), so a provision today creates nothing new.
+- The storage key and the console token reach the module as `@secure()` parameters (`NABIZ_WEB_STATE_KEY`,
+  `NABIZ_WEB_OPERATOR_TOKEN` in the local azd environment); the template reads no key. Without the key only the state
+  storage, its share and the budget alerts are created, never the app. No model value is passed: paid model calls stay
+  closed. One replica.
+- `docs/deploy.md` has a "Web app (closed preparation)" section before Troubleshooting. Switching it on, and every
+  `azd` step, is MURAT ONAYI.
+
+### Consequences
+
+- The app's data root on the share (`/var/lib/nabiz`) and the env names the module sets are the data-root work (I).

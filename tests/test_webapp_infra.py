@@ -110,3 +110,22 @@ def test_release_remains_closed_without_account_approval() -> None:
     assert "param modelName string = ''" in BICEP
     assert "param modelApiKey string = ''" in BICEP
     assert "param stateStorageKey string = ''" in BICEP
+
+
+def test_main_calls_the_web_module_only_when_switched_on_and_passes_no_model_value() -> None:
+    """P00 D2a: the closed preparation. Off by default in main.bicep and in the azd parameters."""
+    import json
+
+    main = (ROOT / "infra/main.bicep").read_text(encoding="utf-8")
+    params = json.loads((ROOT / "infra/main.parameters.json").read_text(encoding="utf-8"))["parameters"]
+    assert "param deployWebApp bool = false" in main
+    assert "var deployWeb = deployWebApp && deployContainerApp && !empty(webContainerImage)" in main
+    assert "module webapp 'modules/webapp.bicep' = if (deployWeb) {" in main
+    call = main[main.index("module webapp 'modules/webapp.bicep'"):]
+    call = call[:call.index("\n}\n")]
+    assert "stateStorageKey: webStateStorageKey" in call and "operatorToken: operatorToken" in call
+    assert not any(name in call for name in ("modelBaseUrl", "modelName", "modelApiKey", "DailyCalls", "DailyUsd"))
+    assert params["deployWebApp"] == {"value": "${DEPLOY_WEB_APP=false}"}
+    assert params["webStateStorageKey"] == {"value": "${NABIZ_WEB_STATE_KEY=}"}
+    deploy = (ROOT / "docs/deploy.md").read_text(encoding="utf-8")
+    assert deploy.index("## Web app (closed preparation)") < deploy.index("## 9. Troubleshooting")

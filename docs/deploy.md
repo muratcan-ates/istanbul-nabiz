@@ -595,6 +595,37 @@ soft-deleted, so there is no undo. Before running it:
 
 ---
 
+## Web app (closed preparation)
+
+`infra/modules/webapp.bicep` (P10a) runs the citizen page and the simulated-operator console as one
+Container App in the environment above. `infra/main.bicep` calls it only when **all three** hold:
+`DEPLOY_WEB_APP=true`, `WEB_CONTAINER_IMAGE` names a reviewed image built from `infra/web/Dockerfile`,
+and the MCP Container App is deployed (the web app joins its environment). The default is off: an
+`azd provision` today creates nothing new. Switching it on is the owner's decision (MURAT ONAYI),
+because the storage account, its transactions and the app can incur charges.
+
+What it creates, once switched on:
+
+- a separate StorageV2 account and an Azure Files share (5 GiB quota) mounted at `/var/lib/nabiz`, where
+  the app keeps its SQLite files;
+- advisory monthly budget alerts for the resource group (`NABIZ_WEB_BUDGET_USD`, default 25; alerts at
+  5 and 20 USD). An alert does not stop spending;
+- the web app itself, scaled to zero and at most **one** replica: SQLite locking and the in-process
+  upstream budget do not scale out. It runs offline by default, and paid model calls stay closed (the
+  module's daily ceilings default to 0; `main.bicep` passes no model values).
+
+The template never reads a storage key. So the first provision creates the storage account, share and
+budget, but not the app. The operator then reads the key in the portal, sets it with
+`azd env set NABIZ_WEB_STATE_KEY ...` (it stays in the local, gitignored `.azure/<env>/.env`) and
+provisions again; only then is the mount and the app created. `NABIZ_WEB_OPERATOR_TOKEN` sets the
+console's sign-in token; empty keeps the public console locked. Every secret reaches the app as a
+secret reference, never as a plain value.
+
+Outputs: `SERVICE_WEB_NAME`, `SERVICE_WEB_URI` and `NABIZ_WEB_STATE_STORAGE_ACCOUNT`, all empty while
+the web app is off.
+
+---
+
 ## 9. Troubleshooting
 
 | Symptom | Cause | Fix |
