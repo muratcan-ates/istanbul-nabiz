@@ -144,7 +144,7 @@ function boardMarkup(data, previous = null, canSave = true, nextSaveAt = null, l
     + `<div class="ob-groups">${groups}</div>`
     + `<details class="ob-how"><summary>${TEXT.how}</summary><ul>${GROUP_METHODS.map((line) => `<li>${esc(line)}</li>`).join('')}`
     + `<li>${esc(TEXT.minRule(data?.min_n || 10))}</li></ul></details>`
-    + `<button type="button" class="btn btn-primary" data-ob-save${disabled}>${TEXT.save}</button>${cooldown}`
+    + `<button type="button" class="btn" data-ob-save${disabled}>${TEXT.save}</button>${cooldown}`
     + `<p class="ob-status" role="status" aria-live="polite"></p></section>`;
 }
 
@@ -160,7 +160,7 @@ function placeBoard() {
   const existing = document.getElementById('outcome-board');
   if (existing) return existing;
   const board = document.createElement('section');
-  const anchor = document.getElementById('approval-health') || document.getElementById('day');
+  const anchor = document.getElementById('outcomes-mount') || document.getElementById('approval-health') || document.getElementById('day');
   if (anchor) anchor.after(board);
   else document.querySelector('main#main')?.append(board);
   return board.isConnected ? board : null;

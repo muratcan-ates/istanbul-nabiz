@@ -396,3 +396,10 @@ def test_node_syntax() -> None:
         pytest.skip("node is not installed")
     result = subprocess.run([node, "--check", str(JS)], capture_output=True, text=True, timeout=60, check=False)
     assert result.returncode == 0, result.stderr
+
+
+def test_the_page_catalogues_carry_the_chronic_keys_unchanged() -> None:
+    """P00 G2: the ui.chronic.* keys moved into the page catalogues, unchanged, in both languages."""
+    for lang in ("tr", "en"):
+        surface = json.loads((STATIC / "i18n" / f"{lang}.json").read_text(encoding="utf-8"))
+        assert all(surface[k] == v for k, v in CATALOG[lang].items())

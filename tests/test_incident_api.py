@@ -83,7 +83,7 @@ def test_incident_routes_require_operator_access_and_replay_split_merge(tmp_path
         assert len(listing["items"]) == 2
         sanayi = next(item for item in listing["items"] if item["title_station"] == "Sanayi Mahallesi")
         assert sanayi["members"]["reports"] == 2 and sanayi["members"]["equipment"] == 1
-        assert listing["photos_available"] is False
+        assert listing["photos_available"] is True  # E51 joined in P00 G2; before it the adapter said False
         detail = client.get(f"/api/console/incidents/{sanayi['id']}", headers=headers).json()
         assert {member["source"] for member in detail["members"]["equipment"]} == {"Metro İstanbul"}
         assert detail["record_note"] is None

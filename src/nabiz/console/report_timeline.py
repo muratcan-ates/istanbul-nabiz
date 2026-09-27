@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS report_timeline_expiry ON report_timeline (expires_at
 """
 
 
-class TransitionError(Exception):
+class TimelineTransitionError(Exception):
     """A requested transition is not allowed from the current stage."""
 
 
@@ -145,7 +145,7 @@ class TimelineStore:
             target = next_stage(current, actor, to or action)
             if target is None:
                 conn.execute("ROLLBACK")
-                raise TransitionError(current)
+                raise TimelineTransitionError(current)
             now = self.now()
             record = self._event(actor, action, target, text, agency_id, now)
             data = json.loads(row["data"])

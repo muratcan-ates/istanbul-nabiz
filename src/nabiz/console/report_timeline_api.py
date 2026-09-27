@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
-import re
 from typing import Any, Literal
 
 from fastapi import APIRouter, Request, Response
@@ -21,7 +20,7 @@ from nabiz.console.report_api import REPORT_KIND, report_engine
 from nabiz.console.report_outcome_api import find_outcome, outcome_view, report_code
 from nabiz.console.report_timeline import (
     TimelineStore,
-    TransitionError,
+    TimelineTransitionError,
     load_agencies,
     timeline_view,
 )
@@ -50,24 +49,6 @@ class _TimelineRoute(APIRoute):
 
 
 timeline_routes = APIRouter(route_class=_TimelineRoute)
-
-
-class _TimelineLogFilter(logging.Filter):
-    """Mask short report codes in the shared access log without touching the app module."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        if record.name == "nabiz.console" and isinstance(record.args, tuple):
-            record.args = tuple(
-                re.sub(r"(/api/(?:console/report-timeline|report/timeline)/)[^/]+", r"\1{code}", value)
-                if isinstance(value, str) else value
-                for value in record.args
-            )
-        return True
-
-
-_access_logger = logging.getLogger("nabiz.console")
-if not any(isinstance(item, _TimelineLogFilter) for item in _access_logger.filters):
-    _access_logger.addFilter(_TimelineLogFilter())
 
 
 class CitizenResponse(BaseModel):
@@ -180,7 +161,7 @@ def _apply_citizen(store: TimelineStore, state: SignalState, code: str, body: Ci
                  str(payload.get("report_kind") or ""), state.received_at)
     try:
         row = store.apply(code, "citizen", body.action, text=body.text)
-    except TransitionError:
+    except TimelineTransitionError:
         return None, port_problem(409, "not_now", "Bu adımda bu yanıt verilemez.")
     except ValueError:
         return None, port_problem(400, "note_required", "Lütfen en az 5 karakter yazın.")
@@ -266,7 +247,7 @@ async def console_advance(request: Request, code: str, body: OperatorAdvance, re
                  str(payload.get("report_kind") or ""), state.received_at)
     try:
         row = store.apply(normalized, "operator", body.to, to=body.to, text=body.note, agency_id=body.agency_id)
-    except TransitionError:
+    except TimelineTransitionError:
         return _problem(response, 409, "not_allowed", "Bu adım bu bildirim için kullanılamaz.")
     except ValueError:
         return _problem(response, 400, "details_required", "Not veya geçerli kurum bilgisi gerekli.")

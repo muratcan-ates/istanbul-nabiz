@@ -118,7 +118,7 @@ function addStylesheet(doc) {
 async function mountPhotoReportsConsole(doc) {
   const win = doc && doc.defaultView;
   if (!doc || isMock((win && win.location.search) || '')) return null;
-  const anchor = doc.getElementById('citizen-requests');
+  const anchor = doc.getElementById('photo-reports-mount') || doc.getElementById('citizen-requests');
   const main = doc.getElementById('main');
   if (!anchor && !main) return null;
   if (win && new URLSearchParams(win.location.search).get('lang') === 'en') await loadCatalogs('en');

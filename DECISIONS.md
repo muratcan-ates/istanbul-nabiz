@@ -2740,3 +2740,102 @@ answers citing the gold page first.
 - data.ibb.gov.tr `/api/` was used as developer access; requests at least 10 s apart; the crawler rules
   ("tarayıcı kuralları") were applied in knowledge collection (Murat, 27 Sep; the handoff note said this was not
   yet written into the repository).
+
+## 73. Photo reports: consented, metadata stripped twice, photo gone on close (E51, 27 Sep)
+
+### Decision
+
+- Photo reports (E51): consented, metadata stripped twice (canvas and server), 30 days, photo gone on close, read
+  only behind the console door; no automatic face or plate blurring in this version, one warning sentence instead
+  (Murat, 27 Sep).
+- The console queue sits in "Bildirimler" (P00 default decision 5; the E51 note had said "Vatandaş talepleri": a
+  photo is a report, and E67 gathers it into the same incident). The citizen form waits for P01's chat card (D2).
+- The door's JSON refusal (401, 403, 503) carries `Cache-Control: no-store`. It returns before any route runs, so
+  no router could add the header itself (E51 note).
+
+### Consequences
+
+- The status write and its ledger line are not one SQLite transaction: a failed ledger write answers 503 while the
+  status may have changed (E51 note). A phone photo with GPS EXIF and an iOS HEIC file were not tried.
+
+## 74. Report timeline: resolved only when the citizen confirms (E66, 27 Sep)
+
+### Decision
+
+- Report timeline: operator moves along allowed steps only; 'resolved' only when the citizen confirms, 'still
+  broken' reopens it; referral names an agency from the catalogue and never claims the agency confirmed (E66).
+- The table sits in "Bildirimler"; the console's first screen shows only "Sizi bekleyen bildirim: n". E66's own
+  log filter is removed, since the request log writes the route template (#66). Its `TransitionError` is now
+  `TimelineTransitionError`: E71 defines a different one, and a public name has one meaning.
+
+### Consequences
+
+- Whoever knows a report code sees its timeline; the privacy page says not to share the code (THREAT_MODEL §4).
+- One report still has three ids (the E33/E66 code, the E51 photo code, E67's member refs); one report identity is
+  P07-arka's work.
+
+## 75. Incident file: reports, photos and lift records per station (E67, 27 Sep)
+
+### Decision
+
+- Incident file: reports, photos and lift records grouped per station; priority shown as a sourced suggestion apart
+  from the operator's decision; split, merge and undo each need a reason and a ledger line (E67).
+- With E51 joined, the photo adapter reports `photos_available: true`; the API test that assumed E51 absent says so.
+
+### Consequences
+
+- Its `ui.inc.*` keys stay in the module's own table for now: two Turkish defaults outside the table (the access
+  factor's equipment and status) fail the page's bare-Turkish check, and fixing them changes the module and its
+  catalogue. Until then the English console shows this panel in Turkish.
+- The access factor prints the record's equipment code ("elevator") inside the Turkish sentence.
+
+## 76. Outcome board: every rate with its denominator (E75, 27 Sep)
+
+### Decision
+
+- Outcome board: every rate shows its denominator; below 10 samples it says not measured yet; 'resolved' counts only
+  citizen confirmations (E75).
+- It takes E66's stage names from `report_timeline.STAGES`, not a copy. "Ölçümü kaydet" is a secondary `.btn`, so
+  the console keeps one primary button. It sits under "Sistem durumu", after approval health.
+
+### Consequences
+
+- On demo data most rates say not measured yet, on purpose. The board keeps totals only (90 days, 500 rows).
+
+## 77. Recurring disruptions: three read days before "recurring" (E57, 27 Sep)
+
+### Decision
+
+- Recurring disruptions: separate days on Metro's unusable list and line notices, from Nabız's own discontinuous
+  reads; three read days before anything is called recurring; an institution suggestion, never an assignment (E57).
+
+### Consequences
+
+- Not measured on the real archive: how long the first 30-day read takes is unknown.
+
+## 78. Escort support request: a prepared file for a simulated queue (E71, 27 Sep)
+
+### Decision
+
+- Escort support request: a prepared file sent to a simulated queue only with explicit consent (special-category
+  data), tracked or cancelled by code, never presented as an arranged escort; 153 remains the official channel (E71).
+- The console table sits in "Vatandaş talepleri"; the first screen shows only "Yeni destek talebi: n". The
+  code-free request log (#66) was in place before this router joined, as the E71 note required.
+
+### Consequences
+
+- The citizen form waits for P01's card (D2).
+
+## 79. Ask Istanbul: a one-question poll a person publishes (E54, 27 Sep)
+
+### Decision
+
+- Ask Istanbul: an operator's one-question poll, published only after a person confirms; one vote per device, the
+  choice counted apart from the device; results always carry 'not representative, only Nabız voters' (E54).
+- The console module is `console_poll.js`, not `poll_console.js`, so the service worker's `console` prefix keeps it
+  out of the citizen cache. The first screen shows "Yayın bekleyen anket taslağı: n".
+
+### Consequences
+
+- A citizen sees no results after voting (not built); if added, the same sentence goes on the citizen card.
+- Whether the decision engine's human-approval count includes poll publications and closures is still open.

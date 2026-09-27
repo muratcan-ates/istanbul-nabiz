@@ -5,7 +5,7 @@ import { clock, dateTime, esc } from './format.js';
 import { loadCatalogs, onLang, t } from './i18n_text.js';
 import { cardMarkup, resultsMarkup } from './poll_view.js';
 
-const ANCHORS = [['#citizen-requests', 'afterend'], ['#day', 'afterend']];
+const ANCHORS = [['#polls-mount', 'afterend'], ['#citizen-requests', 'afterend'], ['#day', 'afterend']];
 const POLL_MS = 20_000;
 const POLL_STYLESHEET = '/css/poll.css';
 const CONSOLE_STYLESHEET = '/css/console_poll.css';

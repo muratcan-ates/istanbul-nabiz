@@ -33,6 +33,7 @@
       <li><a href="#kvkk-cihaz">Cihazda kalan bilgiler</a></li>
       <li><a href="#kvkk-sunucu">Sunucuya giden bilgiler</a></li>
       <li><a href="#kvkk-hesap">Hesap ve takip (açık rıza)</a></li>
+      <li><a href="#kvkk-foto">Fotoğraflı bildirim</a></li>
       <li><a href="#kvkk-model">Yapay zekâ hizmeti</a></li>
       <li><a href="#kvkk-ses">Sesle yazma</a></li>
       <li><a href="#kvkk-toplanmayan">Toplanmayan bilgiler</a></li>
@@ -45,7 +46,7 @@
     <p class="sr-only" role="status" aria-live="polite">Gizlilik bilgileri sayfası.</p>
 
     <h2 id="kvkk-kisa">Kısa özet</h2>
-    <p>Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesapsız kullanımda sunucuda kişisel veri saklanmaz; operatöre ilettiğiniz talepler maskelenerek 30 gün tutulur. Sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.</p>
+    <p>Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesapsız kullanımda sunucuda kişisel veri saklanmaz; operatöre ilettiğiniz talepler ve fotoğraflı bildirimler maskelenerek 30 gün tutulur. Sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.</p>
     <p>Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
     <p>Bu sayfa bugünkü teknik davranışın tam metnidir.</p>
 
@@ -80,6 +81,7 @@
           <tr><td>Asansör bildirimi işareti (30 dk)</td><td><code>nabiz.report.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Bildirimlerim: bildirim durum kimlikleri (30 gün)</td><td><code>nabiz.report-codes.v1</code></td><td>Bildirimlerim listesinde Bu cihazdan kaldır ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Operatöre ilettiğiniz taleplerin kodları (30 gün)</td><td><code>nabiz.requests.v1</code></td><td>Talep kartında Kartı bu cihazdan kaldır.</td></tr>
+          <tr><td>Konsol: sonuç panosunda seçilen dönem (7 ya da 30 gün)</td><td><code>nabiz.outcome-board.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Çevrimdışı kayıtlı şehir kartları ve çevrimdışı süre notu</td><td><code>nabiz-brief-v2</code>, <code>nabiz.pwa.offlineSince</code>, <code>nabiz.pwa.iosHintClosed</code></td><td>Profilim bölümünde Profili sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
         </tbody>
       </table>
@@ -93,6 +95,10 @@
     <p>Operatöre ilet isteğe bağlıdır ve yalnız onay kutusunu işaretleyip gönderdiğinizde çalışır. Sorunuz ve seçtiğiniz dil sunucuya gider; telefon, TC kimlik, IBAN, kart numarası, e-posta ve plaka maskelenir. Maskeli soru, Türkçe çevirisi, konu tahmini ve operatörün cevabı sunucuda ayrı bir tabloda 30 gün saklanır, sonra silinir. Adres veya ad gibi bilgiler otomatik maskelenmeyebilir; bunları yazmayın. Karar defterine sorunuzun metni yazılmaz; cevabın maskeli kısa özeti yazılır. Acil durumlar operatöre iletilmez; 112 gösterilir.</p>
     <p>Operatöre aktarılan talepler, bilgi eksiğini bulmak için yalnız maskeli hâliyle ve 30 günlük saklama süresi içinde çevrimdışı aranır; bu işlem yeni kişisel veri toplamaz.</p>
     <p>Asansör bildiriminde yalnız istasyon adı, bildirim türü (asansör kapalıydı ya da kayıt yanlış görünüyor) ve zaman aralığı (şimdi ya da bugün) sunucuya gider; metin, konum ve kimlik gönderilmez. Bağlantı adresiniz yalnız dakikalık bildirim sınırı için sunucu belleğinde tutulur, diske ve günlüğe yazılmaz. Bildirim kamu kartını değiştirmez; bir İBB çalışanı (simüle operatör) karar verir.</p>
+    <p>Bildirim zaman çizgisi bildirim kodu başına sunucuda 30 gün tutulur; her güncelleme süreyi yeniden başlatır. "Çözüldü" yalnız sizin teyidinizle yazılır. Not eklerseniz not yalnız açık rızanızla ve maskelenerek saklanır; IP adresi, cihaz ve ad tutulmaz. Bildirim kodunuzu paylaşmayın; kodu bilen zaman çizgisini görebilir.</p>
+    <p>Erişilebilir destek ve refakat talebinde destek ihtiyacınız sağlıkla ilgili özel nitelikli kişisel veridir; dosya ancak açık rızanızla sunucuya gider, notunuz maskelenir, en geç 30 gün sonra (ya da seçtiğiniz günün gece yarısı) silinir. IP adresiniz kayda yazılmaz; saatlik sınır yalnız bellekte tutulur. Bu dosya karar defterine yazılmaz.</p>
+    <p>İstanbul'a Sor anketinde sunucuda anketin sorusu ve seçenekleri, tercihinizle ilişkilendirilmeyen toplu sayımlar ve aynı cihazdan ikinci oyu önlemek için anket başına tuzlanmış cihaz özeti tutulur. Seçiminiz cihaz özetinizle eşleştirilmez. Bağlantı adresiniz saatlik sınır için yalnız bellekte geçici olarak işlenir. Anket, cihaz özeti ve sayımlar bitişten 30 gün sonra silinir. Serbest metin yanıtı veya konum bilgisi alınmaz.</p>
+    <p>Sonuç panosu yalnız toplam sayı tutar (90 gün).</p>
     <p>İsteğe bağlı geri bildirimde yalnız rastgele cevap kimliği, oy ve seçilen neden kodu gönderilir. Soru, cevap, ad, hesap, IP adresi ve tarayıcı bilgisi uygulama günlüğüne yazılmaz.</p>
 
     <h2 id="kvkk-hesap">Hesap ve takip (açık rıza)</h2>
@@ -111,6 +117,22 @@
       </table>
     </div>
 
+    <h2 id="kvkk-foto">Fotoğraflı bildirim (açık rıza)</h2>
+    <p>Fotoğraflı bildirim isteğe bağlıdır ve yalnız rıza kutusunu işaretleyip gönderdiğinizde çalışır. Fotoğrafın konum ve cihaz bilgisi (EXIF) önce cihazınızda, sonra sunucuda silinir. Fotoğrafta kişi yüzü ya da araç plakası olmamasına dikkat edin.</p>
+    <div class="kvkk-table" role="region" aria-label="Fotoğraflı bildirimde saklanan bilgiler tablosu" tabindex="0">
+      <table>
+        <thead><tr><th>Soru</th><th>Cevap</th></tr></thead>
+        <tbody>
+          <tr><td>Hangi veri</td><td>EXIF bilgisi silinmiş fotoğraf, kategori, maskeli açıklama, istasyon ya da ilçe adı ve rıza metninin sürümü.</td></tr>
+          <tr><td>Neden</td><td>Sorunu simüle operatörün görmesi.</td></tr>
+          <tr><td>Hukuki dayanak</td><td>Gönderirken işaretlediğiniz açık rıza.</td></tr>
+          <tr><td>Ne kadar süre</td><td>30 gün. Bildirim kapatılınca fotoğraf hemen silinir.</td></tr>
+          <tr><td>Kim görür</td><td>Yalnız simüle operatör ve sunucuyu işleten proje sahibi. İBB'ye gönderilmez.</td></tr>
+          <tr><td>Nasıl silinir</td><td>Kod kartındaki Bildirimi sil düğmesi.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h2 id="kvkk-model">Yapay zekâ hizmeti</h2>
     <p>Yapay zekâ hizmeti ayarlıysa yazdığınız soru, konuşmadaki önceki sorular ve gerekli araç sonuçları model sağlayıcısına gider. Operatöre ilettiğiniz sorunun maskeli metni ve operatörün cevabı da çeviri için aynı sağlayıcıya gider. Sağlayıcı yurt dışında olabilir. Profiliniz, adınız ve e-posta adresiniz bu istekle gönderilmez. Hizmet sorularında sorunuz ve ilgili İBB sayfası alıntıları cevabı yazması için modele gönderilir; saklanmaz.</p>
     <p>Sorunuzun metninde kendiniz kişisel bilgi paylaşabilirsiniz. Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
@@ -119,7 +141,7 @@
     <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir. Sesle bildirimde söylediğiniz cümle cihazınızda kalır; Nabız sunucusuna yalnız istasyon adı, durum ve zaman gider.</p>
 
     <h2 id="kvkk-toplanmayan">Toplanmayan bilgiler</h2>
-    <p>Uygulama kamera görüntüsü, konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
+    <p>Uygulama, fotoğraflı bildirimde sizin seçip gönderdiğiniz fotoğraf dışında kamera görüntüsü toplamaz; konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
 
     <h2 id="kvkk-silme">Bilgileri silme</h2>
     <p>Profilinizi Profilim bölümündeki Profili sil düğmesiyle, hafıza öğelerini Hafızam bölümündeki Tümünü sil düğmesiyle kaldırabilirsiniz. Erişilebilirlik panelindeki Sıfırla tercihleri başlangıç değerlerine döndürür. Geri bildirim sayaçlarını silmek için tarayıcı ayarlarından bu siteye ait verileri temizleyin.</p>

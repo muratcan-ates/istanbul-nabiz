@@ -300,26 +300,32 @@ def test_the_console_first_screen_is_the_work_desk_and_the_tables_sit_in_closed_
     assert "knowledge-planning" not in nav and nav.count("<li>") == 8
 
 
+#: A DOM just big enough for console_work_counters.js: lists, details, headings, focus (P00).
+FAKE_DOM = """
+      class El {
+        constructor(tag, id = '') { this.tagName = tag.toUpperCase(); this.id = id; this.children = [];
+          this.dataset = {}; this.hidden = false; this.attrs = {}; this.parent = null; this.textContent = ''; }
+        append(child) { child.parent = this; this.children.push(child); }
+        get firstElementChild() { return this.children[0]; }
+        addEventListener(kind, fn) { this.onclick = fn; }
+        matches(sel) { return sel.split(',').map((s) => s.trim().toUpperCase()).includes(this.tagName); }
+        querySelector(sel) { for (const c of this.children) { if (c.matches(sel)) return c;
+          const hit = c.querySelector(sel); if (hit) return hit; } return null; }
+        closest(sel) { let el = this; while (el && !el.matches(sel)) el = el.parent; return el; }
+        hasAttribute(n) { return n in this.attrs; }
+        setAttribute(n, v) { this.attrs[n] = v; }
+        focus() { doc.focused = this; }
+      }
+"""
+
+
 def test_a_work_counter_at_zero_hides_and_its_link_opens_the_table(tmp_path) -> None:
     node = shutil.which("node")
     if node is None:  # pragma: no cover - CI without node still runs the static checks above
         pytest.skip("node is not installed")
     module = (STATIC / "js" / "console_work_counters.js").as_uri()
     script = f"""
-      class El {{
-        constructor(tag, id = '') {{ this.tagName = tag.toUpperCase(); this.id = id; this.children = [];
-          this.dataset = {{}}; this.hidden = false; this.attrs = {{}}; this.parent = null; this.textContent = ''; }}
-        append(child) {{ child.parent = this; this.children.push(child); }}
-        get firstElementChild() {{ return this.children[0]; }}
-        addEventListener(kind, fn) {{ this.onclick = fn; }}
-        matches(sel) {{ return sel.split(',').map((s) => s.trim().toUpperCase()).includes(this.tagName); }}
-        querySelector(sel) {{ for (const c of this.children) {{ if (c.matches(sel)) return c;
-          const hit = c.querySelector(sel); if (hit) return hit; }} return null; }}
-        closest(sel) {{ let el = this; while (el && !el.matches(sel)) el = el.parent; return el; }}
-        hasAttribute(n) {{ return n in this.attrs; }}
-        setAttribute(n, v) {{ this.attrs[n] = v; }}
-        focus() {{ doc.focused = this; }}
-      }}
+      {FAKE_DOM}
       const list = new El('ul', 'work-counters'); list.hidden = true;
       const details = new El('details'); const section = new El('section', 'report-timeline');
       const h2 = new El('h2'); details.append(new El('summary')); details.append(section); section.append(h2);
@@ -343,3 +349,31 @@ def test_a_work_counter_at_zero_hides_and_its_link_opens_the_table(tmp_path) -> 
     assert out["open"] and out["focused"] and out["tabindex"] == "-1" and out["prevented"]
     assert out["missing"] is None
     assert len((STATIC / "js" / "console_work_counters.js").read_text(encoding="utf-8").splitlines()) <= 60
+
+
+def test_the_three_counters_count_only_what_waits_for_the_operator(tmp_path) -> None:
+    """P00 G2: the E66, E71 and E54 counters read their panels' endpoints; a failed read shows no counter."""
+    node = shutil.which("node")
+    if node is None:  # pragma: no cover - CI without node still runs the static checks above
+        pytest.skip("node is not installed")
+    module = (STATIC / "js" / "console_work_counters.js").as_uri()
+    bodies = {
+        "/api/console/report-timeline": {"items": [{"waiting_on": w} for w in ("operator", "citizen", "operator")]},
+        "/api/console/escort": {"items": [{"status": "received"}, {"status": "seen"}]},
+    }
+    script = f"""
+      {FAKE_DOM}
+      const list = new El('ul', 'work-counters'); list.hidden = true;
+      const doc = {{ getElementById: (id) => (id === 'work-counters' ? list : null), createElement: (t) => new El(t),
+        querySelector: () => null, focused: null }};
+      const m = await import({json.dumps(module)});
+      const bodies = {json.dumps(bodies)};
+      await m.refreshWorkCounters(async (path) => {{ if (!(path in bodies)) throw new Error('503'); return bodies[path]; }}, doc);
+      console.log(JSON.stringify({{ listHidden: list.hidden,
+        rows: list.children.map((li) => [li.dataset.counter, li.firstElementChild.textContent, li.hidden]) }}));
+    """
+    result = subprocess.run([node, "--input-type=module", "-e", script], capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    out = json.loads(result.stdout)
+    assert out["listHidden"] is False
+    assert sorted(out["rows"]) == [["escort", "Yeni destek talebi: 1", False], ["timeline", "Sizi bekleyen bildirim: 2", False]]

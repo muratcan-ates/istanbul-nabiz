@@ -226,7 +226,9 @@ def test_catalogues_cover_every_key_and_match_fallbacks() -> None:
     for key, fallback in calls.items():
         assert CATALOG["tr"][key] == fallback, key
         assert set(re.findall(r"\{(\w+)\}", CATALOG["tr"][key])) == set(re.findall(r"\{(\w+)\}", CATALOG["en"][key])), key
-    assert not (set(CATALOG["tr"]) & set(json.loads((STATIC / "i18n" / "tr.json").read_text(encoding="utf-8"))))
+    for lang in ("tr", "en"):  # P00 G2: the keys moved into the page catalogues, unchanged
+        surface = json.loads((STATIC / "i18n" / f"{lang}.json").read_text(encoding="utf-8"))
+        assert all(surface[k] == v for k, v in CATALOG[lang].items())
     all_copy = "\n".join([*CATALOG["tr"].values(), *CATALOG["en"].values()])
     assert "\u2013" not in all_copy and "\u2014" not in all_copy
     assert "ETA" not in all_copy and "canlı" not in all_copy and "İBB onaylı" not in all_copy
@@ -249,6 +251,7 @@ def test_anchors_timing_styles_districts_and_cache_scope() -> None:
     assert "#city-cards" in POLL.read_text(encoding="utf-8") and "#asistan" in POLL.read_text(encoding="utf-8")
     assert "setInterval" not in POLL.read_text(encoding="utf-8")
     assert "#citizen-requests" in POLL_CONSOLE.read_text(encoding="utf-8") and "#day" in POLL_CONSOLE.read_text(encoding="utf-8")
+    assert "['#polls-mount', 'afterend'], ['#citizen-requests'" in POLL_CONSOLE.read_text(encoding="utf-8")  # P00 G2 mount first
     assert "POLL_MS = 20_000" in POLL_CONSOLE.read_text(encoding="utf-8")
     for stylesheet in (POLL_CSS, POLL_CONSOLE_CSS):
         source = re.sub(r"/\*.*?\*/", "", stylesheet.read_text(encoding="utf-8"), flags=re.S)

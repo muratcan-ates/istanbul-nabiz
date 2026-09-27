@@ -1,8 +1,6 @@
-// İşler (P00): the decision desk's first-screen counters, one line each under #desk-title.
-// A counter at 0 is hidden, and the list hides when no counter shows: nothing irrelevant on the first
-// screen. The full tables stay in the closed disclosures; a counter's link opens the one that holds
-// its table and gives focus to that table's heading. The panels call setWorkCounter; this file
-// fetches nothing and keeps no state of its own.
+// İşler (P00): the decision desk's first-screen counters under #desk-title. A counter at 0 is hidden and
+// the list hides when none shows. A counter's link opens the closed disclosure that holds its table and
+// gives focus to that table's heading. Nothing here is stored.
 
 export function setWorkCounter(id, label, count, href, doc = globalThis.document) {
   const list = doc?.getElementById('work-counters');
@@ -35,4 +33,27 @@ export function openTarget(href, event, doc = globalThis.document) {
   if (focusable === heading && !heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
   focusable.focus();
   return true;
+}
+
+// The three counters (P00 G2), each from its panel's own endpoint; a failed read shows no counter, not a zero.
+const COUNTERS = [
+  ['timeline', 'Sizi bekleyen bildirim', '#report-timeline-console', '/api/console/report-timeline',
+    (body) => (body.items || []).filter((item) => item.waiting_on === 'operator').length],
+  ['escort', 'Yeni destek talebi', '#escort-console', '/api/console/escort',
+    (body) => (body.items || []).filter((item) => item.status === 'received').length],
+  ['poll', 'Yayın bekleyen anket taslağı', '#istanbula-sor-konsol', '/api/console/polls', (body) => (body.draft ? 1 : 0)],
+];
+
+export async function refreshWorkCounters(getJson, doc = globalThis.document) {
+  await Promise.all(COUNTERS.map(async ([id, label, href, path, count]) => {
+    try { setWorkCounter(id, label, count(await getJson(path)), href, doc); } catch { /* no counter */ }
+  }));
+}
+
+if (typeof window !== 'undefined' && document.getElementById('work-counters')) {
+  const { MOCK, get } = await import('./api.js');
+  if (!MOCK) {
+    refreshWorkCounters(get);
+    window.addEventListener('nabiz:ledger-changed', () => refreshWorkCounters(get));
+  }
 }

@@ -163,7 +163,7 @@ function sectionShell() {
 }
 function mount() {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
-  const anchor = document.getElementById('report-map') || document.getElementById('day');
+  const anchor = document.getElementById('incidents-mount') || document.getElementById('report-map') || document.getElementById('day');
   if (!anchor) return;
   let section = document.getElementById('incidents');
   if (!section) {

@@ -89,7 +89,7 @@ function mount(doc) {
     + '<div class="rt-console-table-wrap"><table><thead><tr>'
     + ['code', 'station', 'kind', 'stage', 'waiting', 'updated'].map((key) => '<th scope="col">' + LABELS.tr[key] + '</th>').join('')
     + '</tr></thead><tbody></tbody></table></div>';
-  const grid = doc.querySelector('.console-grid');
+  const grid = doc.getElementById('report-timeline-mount') || doc.querySelector('.console-grid');
   if (grid) grid.after(host); else main.append(host);
   const state = { items: [], agencies: [], open: '', formTo: '', error: '', failed: false };
   const statusLine = host.querySelector('.rt-console-status');

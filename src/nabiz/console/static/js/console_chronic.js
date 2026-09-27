@@ -6,7 +6,7 @@ import { loadCatalogs, t } from './i18n_text.js';
 
 const PATH = '/api/console/chronic';
 const STYLESHEET = '/css/console_chronic.css';
-const ANCHORS = ['#report-map', '#day'];
+const ANCHORS = ['#chronic-mount', '#report-map', '#day'];
 const MARKER = '#decision';
 const VISIBLE_ROWS = 10;
 const STALE_MS = 300_000;

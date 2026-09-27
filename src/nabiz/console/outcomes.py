@@ -12,6 +12,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from nabiz.console.report_timeline import STAGES
 from nabiz.console.wiring import ledger_path
 from nexus_core.signals import as_utc, system_clock
 from nexus_core.state import SignalState
@@ -21,6 +22,8 @@ MIN_N, WINDOWS, DEFAULT_WINDOW = MIN_RULINGS_FOR_WARNING, (7, 30), 30
 PATH_ENV, TTL_DAYS, MAX_SNAPSHOTS = "NABIZ_OUTCOMES_DB_PATH", 90, 500
 SAVE_COOLDOWN = dt.timedelta(minutes=5)
 
+# E66's stage names, not a copy: a resolution was reported, then confirmed, or reopened (a state outside STAGES).
+RESOLUTION_REACHED = frozenset((*STAGES[STAGES.index("resolution_reported"):], "reopened"))
 REQUEST_SOURCE, CARD_SOURCE, TIMELINE_SOURCE = (
     "Karar defteri, vatandaş talepleri", "Karar defteri, insan kararına giden kartlar", "Bildirim zaman çizgisi"
 )
@@ -176,7 +179,7 @@ def timeline_metrics(
     current = as_utc(now)
     recent = [r for r in rows if _in_window(r.get("created_at"), current, days)]
     reached = [r for r in recent if any(h.get("stage") == "resolution_reported" for h in _history(r))
-               or r.get("stage") in {"resolution_reported", "confirmed", "reopened"}]
+               or r.get("stage") in RESOLUTION_REACHED]
     cutoff = current - dt.timedelta(days=7)
     no_reply = sum(
         row.get("stage") == "resolution_reported"

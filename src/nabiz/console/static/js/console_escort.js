@@ -76,7 +76,7 @@ function addStylesheet(doc) {
 
 function mountConsoleEscort(doc) {
   if (MOCK || doc.querySelector('#escort-console')) return null;
-  const grid = doc.querySelector('.console-grid'), main = doc.querySelector('main');
+  const grid = doc.querySelector('#escort-mount') || doc.querySelector('.console-grid'), main = doc.querySelector('main');
   const host = doc.createElement('section'); host.className = 'escort-console'; host.id = 'escort-console';
   host.setAttribute('aria-labelledby', 'escort-console-title');
   if (grid?.parentNode) grid.insertAdjacentElement('afterend', host);

@@ -235,3 +235,12 @@ def test_snapshot_path_uses_env_or_ledger_sibling(tmp_path: pathlib.Path) -> Non
 
     assert snapshots_path({PATH_ENV: str(tmp_path / "custom.db")}) == tmp_path / "custom.db"
     assert snapshots_path({"NEXUS_DB_PATH": str(tmp_path / "nexus.db")}) == tmp_path / "outcomes.db"
+
+
+def test_the_board_takes_its_stage_names_from_the_timeline() -> None:
+    """P00 G2 (E75 note): the board reads E66's rows, so its stage names come from report_timeline, never a copy."""
+    from nabiz.console import outcomes, report_timeline
+
+    assert outcomes.STAGES is report_timeline.STAGES
+    assert {"resolution_reported", "confirmed", "reopened"} == outcomes.RESOLUTION_REACHED
+    assert set(report_timeline.WAITING_ON) >= outcomes.RESOLUTION_REACHED
