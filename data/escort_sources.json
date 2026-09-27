@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cozum_153",
+    "title": "Çözüm Merkezi Alo 153",
+    "agency_id": "cozum_153",
+    "url": "https://cozummerkezi.ibb.istanbul/",
+    "summary_tr": "İBB'nin resmî başvuru ve iletişim kanalı. Destek ya da refakat olanağı olup olmadığını buradan sorabilirsiniz.",
+    "summary_en": "İBB's official contact channel. You can ask whether support or an escort option is available."
+  },
+  {
+    "id": "metro_access",
+    "title": "Metro İstanbul: Erişilebilirlik Hizmetleri",
+    "agency_id": "metro",
+    "url": "https://www.metro.istanbul/icerik/eri%C5%9Filebilirlik-hizmetleri",
+    "summary_tr": "İstasyonlardaki asansör, rampa, hissedilebilir zemin ve yönlendirme düzenini anlatır.",
+    "summary_en": "Describes station lifts, ramps, tactile paving, and wayfinding."
+  },
+  {
+    "id": "metro_contact",
+    "title": "Metro İstanbul: Bize Ulaşın",
+    "agency_id": "metro",
+    "url": "https://www.metro.istanbul/BizeUlasin/Index",
+    "summary_tr": "Metro İstanbul'un iletişim sayfası.",
+    "summary_en": "Metro İstanbul's contact page."
+  },
+  {
+    "id": "ibb_disability_centers",
+    "title": "İBB Sosyal Hizmetler: Engelli Merkezleri",
+    "agency_id": "ibb",
+    "url": "https://sosyalhizmetler.ibb.gov.tr/engellimerkezleri.aspx",
+    "summary_tr": "İBB'nin engelli merkezlerinin listesi; adres ve telefonlar resmî sayfada.",
+    "summary_en": "A list of İBB disability centres; addresses and phone numbers are on the official page."
+  },
+  {
+    "id": "ferry_disabled",
+    "title": "Şehir Hatları: Engelli Yolcularımız İçin",
+    "agency_id": "sehir_hatlari",
+    "url": "https://sehirhatlari.istanbul/tr/bilgiler/engelli-yolcularimiz-icin-186",
+    "summary_tr": "Vapur ve deniz otobüslerindeki erişim olanaklarını anlatır; koşulları sefer öncesi teyit edin.",
+    "summary_en": "Describes access on ferries and sea buses; check conditions before your trip."
+  }
+]

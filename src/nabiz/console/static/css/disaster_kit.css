@@ -1,0 +1,251 @@
+.disaster-section {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin-block-start: var(--space-4);
+}
+
+.disaster-block {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+}
+
+.disaster-block > legend,
+.disaster-block > h3,
+.disaster-block > summary h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.disaster-block > legend {
+  float: inline-start;
+  width: 100%;
+  padding: 0;
+}
+
+.disaster-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--nd-accent);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.disaster-items,
+.disaster-care,
+.disaster-building-quotes {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.disaster-item {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+.disaster-item input,
+.disaster-consent input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--nd-accent);
+}
+
+.disaster-item span,
+.disaster-care p,
+.disaster-source,
+.disaster-notice,
+.disaster-state,
+.disaster-block > p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.disaster-state,
+.disaster-source,
+.disaster-data-note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.disaster-notice {
+  max-width: 70ch;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 3px solid var(--nd-accent);
+}
+
+.disaster-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.disaster-source a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  color: var(--link);
+  overflow-wrap: anywhere;
+}
+
+.disaster-source a .icon { width: 1rem; height: 1rem; }
+
+.disaster-quote {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.disaster-quote > summary {
+  justify-self: start;
+  min-height: var(--tap);
+}
+
+.disaster-quote blockquote {
+  max-width: 72ch;
+  margin: 0;
+  padding: var(--space-3);
+  border-inline-start: 2px solid var(--nd-accent);
+  background: var(--surface-sunken);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.disaster-care > li,
+.disaster-building-quotes > li,
+.disaster-block article {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--border);
+}
+
+.disaster-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.disaster-field > label,
+.disaster-field > h4 {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}
+
+.disaster-field textarea,
+.disaster-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.disaster-field textarea { resize: vertical; }
+
+.disaster-error {
+  max-width: 65ch;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.disaster-contact-list,
+.disaster-contact-fields {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.disaster-contact {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.disaster-contact > legend { padding-inline: var(--space-1); }
+.disaster-contact-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.disaster-consent { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); }
+.disaster-consent span { overflow-wrap: anywhere; }
+.disaster-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.disaster-actions .btn-primary { order: 0; white-space: normal; text-align: center; }
+.disaster-review { display: grid; gap: var(--space-2); min-width: 0; }
+.disaster-review ul { display: grid; gap: var(--space-2); margin: 0; padding-inline-start: 1.25rem; }
+.disaster-review li { min-width: 0; }
+.disaster-print-footer { display: none; }
+
+@media (max-width: 42rem) {
+  .disaster-contact-fields { grid-template-columns: minmax(0, 1fr); }
+  .disaster-actions { align-items: stretch; }
+  .disaster-actions > * { max-width: 100%; }
+}
+
+@media print {
+  html.nd-print-afet body * { visibility: hidden !important; }
+  html.nd-print-afet #afet-detail,
+  html.nd-print-afet #afet-detail * { visibility: visible !important; }
+  html.nd-print-afet #afet-detail {
+    position: absolute;
+    inset: 0 0 auto;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+  html.nd-print-afet #afet-detail > summary,
+  html.nd-print-afet .disaster-actions,
+  html.nd-print-afet .disaster-consent,
+  html.nd-print-afet .disaster-remove,
+  html.nd-print-afet #afet-add-person,
+  html.nd-print-afet #afet-state-status,
+  html.nd-print-afet .disaster-error,
+  html.nd-print-afet .disaster-print-option,
+  html.nd-print-afet .disaster-state:not(#afet-kit-count),
+  html.nd-print-afet .disaster-review button { display: none !important; }
+  html.nd-print-afet #afet-dosyasi { display: grid; gap: var(--space-3); }
+  html.nd-print-afet .disaster-block { break-inside: avoid; box-shadow: none; }
+  html.nd-print-afet #afet-detail[data-print-contacts="false"] .disaster-contact-list { display: none !important; }
+  html.nd-print-afet input,
+  html.nd-print-afet textarea { border-color: var(--border); background: transparent; }
+  html.nd-print-afet a[href^="http"]::after { content: " (" attr(href) ")"; overflow-wrap: anywhere; }
+  html.nd-print-afet .disaster-print-footer { display: block; padding-block-start: var(--space-3); }
+  html.nd-print-afet .disaster-print-footer span { display: block; }
+  html.nd-print-afet .disaster-quote[open] blockquote { display: block; }
+  html.nd-print-afet { color-scheme: light; }
+}

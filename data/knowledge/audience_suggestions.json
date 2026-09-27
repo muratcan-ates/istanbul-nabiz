@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "gruplar": [
+    {"id": "ogrenci", "tur": "yas", "oneriler": ["b-ogrenci-kart", "k-istanbulkart", "s-kitaplik", "a-m2-ariza", "s-ismek", "b-kutuphane"], "kisayollar": ["kultur", "compare"], "profil": [], "kolay": false},
+    {"id": "calisan", "tur": "yas", "oneriler": ["a-500t", "a-m4-ariza", "a-otopark-taksim", "k-istanbulkart", "b-kart-plus"], "kisayollar": ["my-stops", "compare", "takip"], "profil": [], "kolay": false},
+    {"id": "yas65", "tur": "yas", "oneriler": ["s-yasli-hizmetleri", "s-evde-saglik", "s-sosyal-yasamevi", "a-taksim-asansor", "k-istanbulkart"], "kisayollar": ["alternative", "kultur"], "profil": [], "kolay": true},
+    {"id": "tekerlekli", "tur": "ihtiyac", "oneriler": ["a-yenikapi-adimsiz", "a-taksim-asansor", "s-metro-erisilebilirlik", "s-vapur-engelli", "s-engelli-hizmetleri"], "kisayollar": ["journey-section", "alternative", "harita"], "profil": ["step_free"], "kolay": false},
+    {"id": "gorme", "tur": "ihtiyac", "oneriler": ["s-metro-erisilebilirlik", "s-engelli-merkezleri", "a-m2-ariza", "s-engelli-hizmetleri", "b-engelli-merkezi"], "kisayollar": ["journey-section"], "profil": ["low_vision"], "kolay": false},
+    {"id": "isitme", "tur": "ihtiyac", "oneriler": ["a-m4-ariza", "s-engelli-merkezleri", "s-istanbulsenin-sss", "s-engelli-hizmetleri", "b-whatsapp-153"], "kisayollar": ["takip"], "profil": ["hearing"], "kolay": false},
+    {"id": "bilissel", "tur": "ihtiyac", "oneriler": ["a-m2-ariza", "k-istanbulkart", "k-vapur", "b-153-basvuru"], "kisayollar": ["my-stops"], "profil": ["plain_language"], "kolay": true},
+    {"id": "turist", "tur": "ihtiyac", "oneriler": ["k-vapur", "a-m2-ariza", "s-seyahat-kartlari", "s-metro-kurallar", "s-sehirhatlari", "b-qr-odeme", "b-vapur-saat"], "kisayollar": ["compare", "kultur", "harita"], "profil": [], "kolay": false}
+  ],
+  "oneriler": [
+    {"id": "a-yenikapi-adimsiz", "tur": "arac", "arac": "metro_station_info", "metin_tr": "Yenikapı istasyonunda merdivensiz bir yol var mı?", "metin_en": "Can I travel step-free through Yenikapı station?"},
+    {"id": "a-taksim-asansor", "tur": "arac", "arac": "metro_equipment_status", "metin_tr": "Taksim istasyonunda asansör çalışıyor mu?", "metin_en": "Is the lift at Taksim station working?"},
+    {"id": "a-m2-ariza", "tur": "arac", "arac": "metro_status", "metin_tr": "M2'de arıza var mı?", "metin_en": "Is there a disruption on the M2 line?"},
+    {"id": "a-m4-ariza", "tur": "arac", "arac": "metro_status", "metin_tr": "M4'te arıza veya çalışma var mı?", "metin_en": "Is there a disruption on the M4 line?"},
+    {"id": "a-500t", "tur": "arac", "arac": "iett_next_arrivals", "metin_tr": "500T 4. Levent metro durağına ne zaman gelir?", "metin_en": "When does the 500T arrive at 4. Levent Metro stop?"},
+    {"id": "a-otopark-taksim", "tur": "arac", "arac": "ispark_find_parking", "metin_tr": "Taksim'e 20 dakika sonra varıyorum, yakınında hangi otoparkta yer var?", "metin_en": "Which car parks near Taksim have free spaces?"},
+    {"id": "k-istanbulkart", "tur": "kurum", "kurum": "istanbulkart", "metin_tr": "İstanbulkart işlemleri için nereye başvurabilirim?", "metin_en": "Where can I go for İstanbulkart matters?"},
+    {"id": "k-vapur", "tur": "kurum", "kurum": "sehir_hatlari", "metin_tr": "Vapur seferleri için nereye başvurabilirim?", "metin_en": "Where can I go for Şehir Hatları ferry matters?"},
+    {"id": "b-ogrenci-kart", "tur": "bilgi", "eval_id": "k-ulasim-01", "metin_tr": "Öğrenci İstanbulkart’a nasıl başvururum?", "metin_en": null, "source_url": "https://www.istanbulkart.istanbul/"},
+    {"id": "b-kart-plus", "tur": "bilgi", "eval_id": "k-ulasim-03", "metin_tr": "İstanbulkart Plus nedir, nasıl başvurulur?", "metin_en": null, "source_url": "https://www.istanbulkart.istanbul/"},
+    {"id": "b-kutuphane", "tur": "bilgi", "eval_id": "k-genel-20", "metin_tr": "İBB kütüphanelerine nasıl üye olurum?", "metin_en": null, "source_url": "https://ataturkkitapligi.ibb.gov.tr/"},
+    {"id": "b-engelli-merkezi", "tur": "bilgi", "eval_id": "k-genel-15", "metin_tr": "Bana en yakın engelli merkezi nerede?", "metin_en": null, "source_url": "https://sosyalhizmetler.ibb.gov.tr/engellimerkezleri.aspx"},
+    {"id": "b-whatsapp-153", "tur": "bilgi", "eval_id": "k-genel-05", "metin_tr": "153’e WhatsApp’tan yazabilir miyim?", "metin_en": null, "source_url": "https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142"},
+    {"id": "b-153-basvuru", "tur": "bilgi", "eval_id": "k-genel-01", "metin_tr": "153’e nasıl başvuru yaparım?", "metin_en": null, "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"},
+    {"id": "b-qr-odeme", "tur": "bilgi", "eval_id": "k-ulasim-13", "metin_tr": "QR ile ulaşımda nasıl ödeme yaparım?", "metin_en": null, "source_url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/"},
+    {"id": "b-vapur-saat", "tur": "bilgi", "eval_id": "k-ulasim-15", "metin_tr": "Vapur sefer saatlerini nereden öğrenirim?", "metin_en": null, "source_url": "https://sehirhatlari.istanbul/"},
+    {"id": "s-metro-erisilebilirlik", "tur": "sayfa", "url": "https://www.metro.istanbul/icerik/eri%C5%9Filebilirlik-hizmetleri", "metin_tr": "Metro İstanbul: erişilebilirlik hizmetleri", "metin_en": "Metro Istanbul: accessibility services (Turkish page)"},
+    {"id": "s-vapur-engelli", "tur": "sayfa", "url": "https://sehirhatlari.istanbul/tr/bilgiler/engelli-yolcularimiz-icin-186", "metin_tr": "Şehir Hatları: engelli yolcularımız için", "metin_en": "Şehir Hatları ferries: passengers with disabilities (Turkish page)"},
+    {"id": "s-engelli-hizmetleri", "tur": "sayfa", "url": "https://sosyalhizmetler.ibb.gov.tr/mudurlukdetay.aspx?ID=9", "metin_tr": "İBB Engelli Hizmetleri Şube Müdürlüğü", "metin_en": "İBB disability services office (Turkish page)"},
+    {"id": "s-engelli-merkezleri", "tur": "sayfa", "url": "https://sosyalhizmetler.ibb.gov.tr/engellimerkezleri.aspx", "metin_tr": "İBB engelli merkezleri ve adresleri", "metin_en": "İBB disability centres and addresses (Turkish page)"},
+    {"id": "s-yasli-hizmetleri", "tur": "sayfa", "url": "https://saglik.ibb.istanbul/yasli-hizmetleri/", "metin_tr": "İBB Sağlık: yaşlı hizmetleri", "metin_en": "İBB Health: services for older people (Turkish page)"},
+    {"id": "s-evde-saglik", "tur": "sayfa", "url": "https://saglik.ibb.istanbul/evde-saglik-hizmeti-2-2/", "metin_tr": "İBB Sağlık: evde sağlık hizmeti", "metin_en": "İBB Health: home health care (Turkish page)"},
+    {"id": "s-sosyal-yasamevi", "tur": "sayfa", "url": "https://sosyalhizmetler.ibb.gov.tr/sayfadetay.aspx?ID=1027", "metin_tr": "İBB Sosyal Yaşamevleri", "metin_en": "İBB social living centres (Turkish page)"},
+    {"id": "s-kitaplik", "tur": "sayfa", "url": "https://ataturkkitapligi.ibb.gov.tr/", "metin_tr": "İBB Atatürk Kitaplığı", "metin_en": "İBB Atatürk Library (Turkish page)"},
+    {"id": "s-ismek", "tur": "sayfa", "url": "https://enstitu.ibb.istanbul/", "metin_tr": "Enstitü İstanbul İSMEK kursları", "metin_en": "Enstitü İstanbul İSMEK courses (Turkish page)"},
+    {"id": "s-seyahat-kartlari", "tur": "sayfa", "url": "https://www.metro.istanbul/icerik/seyahatkartlari", "metin_tr": "Metro İstanbul: seyahat kartları", "metin_en": "Metro Istanbul: travel cards (Turkish page)"},
+    {"id": "s-metro-kurallar", "tur": "sayfa", "url": "https://www.metro.istanbul/icerik/yolculuk_kurallari", "metin_tr": "Metro İstanbul: yolculuk kuralları", "metin_en": "Metro Istanbul: rules for passengers (Turkish page)"},
+    {"id": "s-sehirhatlari", "tur": "sayfa", "url": "https://sehirhatlari.istanbul/", "metin_tr": "Şehir Hatları: vapur seferleri", "metin_en": "Şehir Hatları: ferry timetables (Turkish page)"},
+    {"id": "s-istanbulsenin-sss", "tur": "sayfa", "url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/", "metin_tr": "İstanbul Senin: sıkça sorulan sorular", "metin_en": "İstanbul Senin: frequently asked questions (Turkish page)"}
+  ],
+  "kisayollar": [
+    {"id": "kultur", "hedef": "kultur", "dosya": "js/culture.js", "metin_tr": "Kütüphane ve müze: şu an açık mı?", "metin_en": "Libraries and museums: open now?"},
+    {"id": "compare", "hedef": "compare", "dosya": "index.html", "metin_tr": "Metro mu, otobüs mü?", "metin_en": "Metro or bus?"},
+    {"id": "my-stops", "hedef": "my-stops", "dosya": "index.html", "metin_tr": "Duraklarım", "metin_en": "My stops"},
+    {"id": "takip", "hedef": "takip", "dosya": "index.html", "metin_tr": "Takip ettiklerim", "metin_en": "Following"},
+    {"id": "alternative", "hedef": "alternative", "dosya": "index.html", "metin_tr": "Adımsız yol", "metin_en": "Step-free route"},
+    {"id": "journey-section", "hedef": "journey-section", "dosya": "js/journey.js", "metin_tr": "Erişilebilir yolculuk", "metin_en": "Accessible journey"},
+    {"id": "harita", "hedef": "harita", "dosya": "js/map.js", "metin_tr": "Harita", "metin_en": "Map"}
+  ]
+}

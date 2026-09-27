@@ -33,6 +33,7 @@
       <li><a href="#kvkk-cihaz">Cihazda kalan bilgiler</a></li>
       <li><a href="#kvkk-sunucu">Sunucuya giden bilgiler</a></li>
       <li><a href="#kvkk-hesap">Hesap ve takip (açık rıza)</a></li>
+      <li><a href="#kvkk-foto">Fotoğraflı bildirim</a></li>
       <li><a href="#kvkk-model">Yapay zekâ hizmeti</a></li>
       <li><a href="#kvkk-ses">Sesle yazma</a></li>
       <li><a href="#kvkk-toplanmayan">Toplanmayan bilgiler</a></li>
@@ -45,7 +46,7 @@
     <p class="sr-only" role="status" aria-live="polite">Gizlilik bilgileri sayfası.</p>
 
     <h2 id="kvkk-kisa">Kısa özet</h2>
-    <p>Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesapsız kullanımda sunucuda kişisel veri saklanmaz; operatöre ilettiğiniz talepler maskelenerek 30 gün tutulur. Sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.</p>
+    <p>Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesapsız kullanımda sunucuda kişisel veri saklanmaz; operatöre ilettiğiniz talepler, fotoğraflı bildirimler ve aldığınız örnek kütüphane randevuları 30 gün tutulur. Sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.</p>
     <p>Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
     <p>Bu sayfa bugünkü teknik davranışın tam metnidir.</p>
 
@@ -80,6 +81,7 @@
           <tr><td>Asansör bildirimi işareti (30 dk)</td><td><code>nabiz.report.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Bildirimlerim: bildirim durum kimlikleri (30 gün)</td><td><code>nabiz.report-codes.v1</code></td><td>Bildirimlerim listesinde Bu cihazdan kaldır ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Operatöre ilettiğiniz taleplerin kodları (30 gün)</td><td><code>nabiz.requests.v1</code></td><td>Talep kartında Kartı bu cihazdan kaldır.</td></tr>
+          <tr><td>Konsol: sonuç panosunda seçilen dönem (7 ya da 30 gün)</td><td><code>nabiz.outcome-board.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Çevrimdışı kayıtlı şehir kartları ve çevrimdışı süre notu</td><td><code>nabiz-brief-v2</code>, <code>nabiz.pwa.offlineSince</code>, <code>nabiz.pwa.iosHintClosed</code></td><td>Profilim bölümünde Profili sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
         </tbody>
       </table>
@@ -91,7 +93,21 @@
     <p>Sohbet için yazdığınız soru ve konuşmadaki önceki sorular sunucuya gider; sohbet soruları sunucu günlüğüne yazılmaz. Hesap bağlamadıkça ya da operatöre talep iletmedikçe sunucuda kişisel veri saklanmaz; hesap bağlarsanız ne saklandığı aşağıda, Hesap ve takip bölümündedir; operatöre ilettiğiniz talepler için aşağıdaki paragrafa bakın.</p>
     <p>Günlük soru kotası için tarayıcınızın ürettiği rastgele cihaz kimliği ve bağlantı adresiniz yalnız tuzlanmış özet (hash) olarak, sunucu belleğinde ve o gün için tutulur; diske yazılmaz, günlüğe yazılmaz, sunucu yeniden başlayınca silinir.</p>
     <p>Operatöre ilet isteğe bağlıdır ve yalnız onay kutusunu işaretleyip gönderdiğinizde çalışır. Sorunuz ve seçtiğiniz dil sunucuya gider; telefon, TC kimlik, IBAN, kart numarası, e-posta ve plaka maskelenir. Maskeli soru, Türkçe çevirisi, konu tahmini ve operatörün cevabı sunucuda ayrı bir tabloda 30 gün saklanır, sonra silinir. Adres veya ad gibi bilgiler otomatik maskelenmeyebilir; bunları yazmayın. Karar defterine sorunuzun metni yazılmaz; cevabın maskeli kısa özeti yazılır. Acil durumlar operatöre iletilmez; 112 gösterilir.</p>
+    <p>Operatöre aktarılan talepler, bilgi eksiğini bulmak için yalnız maskeli hâliyle ve 30 günlük saklama süresi içinde çevrimdışı aranır; bu işlem yeni kişisel veri toplamaz.</p>
     <p>Asansör bildiriminde yalnız istasyon adı, bildirim türü (asansör kapalıydı ya da kayıt yanlış görünüyor) ve zaman aralığı (şimdi ya da bugün) sunucuya gider; metin, konum ve kimlik gönderilmez. Bağlantı adresiniz yalnız dakikalık bildirim sınırı için sunucu belleğinde tutulur, diske ve günlüğe yazılmaz. Bildirim kamu kartını değiştirmez; bir İBB çalışanı (simüle operatör) karar verir.</p>
+    <p>Bildirim zaman çizgisi bildirim kodu başına sunucuda 30 gün tutulur; her güncelleme süreyi yeniden başlatır. "Çözüldü" yalnız sizin teyidinizle yazılır. Not eklerseniz not yalnız açık rızanızla ve maskelenerek saklanır; IP adresi, cihaz ve ad tutulmaz. Bildirim kodunuzu paylaşmayın; kodu bilen zaman çizgisini görebilir.</p>
+    <p>Erişilebilir destek ve refakat talebinde destek ihtiyacınız sağlıkla ilgili özel nitelikli kişisel veridir; dosya ancak açık rızanızla sunucuya gider, notunuz maskelenir, en geç 30 gün sonra (ya da seçtiğiniz günün gece yarısı) silinir. IP adresiniz kayda yazılmaz; saatlik sınır yalnız bellekte tutulur. Bu dosya karar defterine yazılmaz.</p>
+    <p>İstanbul'a Sor anketinde sunucuda anketin sorusu ve seçenekleri, tercihinizle ilişkilendirilmeyen toplu sayımlar ve aynı cihazdan ikinci oyu önlemek için anket başına tuzlanmış cihaz özeti tutulur. Seçiminiz cihaz özetinizle eşleştirilmez. Bağlantı adresiniz saatlik sınır için yalnız bellekte geçici olarak işlenir. Anket, cihaz özeti ve sayımlar bitişten 30 gün sonra silinir. Serbest metin yanıtı veya konum bilgisi alınmaz.</p>
+    <p>Sonuç panosu yalnız toplam sayı tutar (90 gün).</p>
+    <p>Faturamı anla bölümüne girdiğiniz dönem, tüketim ve tutarlar sunucuya gönderilmez; sayfa yalnız kaynak kataloğunu dil parametresiyle ister. Abone numarası, ad, adres ve TC kimlik istenmez.</p>
+    <p>Evimin suyu ve gazı bölümünde ev seçiminiz yalnız cihazınızda kalır. "Suyum hâlâ gelmedi" teyidi yalnız onay kutusunu işaretleyip gönderdiğinizde çalışır: ilçe, mahalle ve isteğe bağlı not (telefon, TC kimlik, e-posta, kart numarası maskelenir; sokak ve kapı numarası kabul edilmez) Nabız'ın simüle operatör kuyruğuna gider, İSKİ'ye iletilmez ve 7 gün sonra silinir. Karar defterinde yalnız talep kodu, ilçe, mahalle ve teyit sayısı kalır; not kalmaz.</p>
+    <p>Kayıtlı yolculuk kontrolünde başlangıç, varış ve kısıt yalnız o kontrol için sunucuya gider ve saklanmaz. Yolculuklarınızı hesabınıza kaydetmek ayrı bir açık rızayla olur; kayıt 90 gün kullanılmazsa silinir, istediğiniz an silebilirsiniz ve hesabınızı silince bu yolculuklar da silinir. Kaydettiğiniz yolculuklar, adınız ve cihazınız olmadan yalnız toplam sayı olarak İBB operatörünün etki senaryolarında kullanılabilir. 3'ten az kayıt gösterilmez.</p>
+    <p>İBB yerleri: konumunuz tarayıcıda kalır; sunucuya yalnız ~1 km'ye yuvarlanmış arama kutusu ya da seçtiğiniz ilçe gider, saklanmaz, günlüğe yazılmaz.</p>
+    <p>Haftalık ulaşım maliyetim bölümünde gün sayısı, gidiş-dönüş, tarife türü ve araç türleri yalnız hesaplama için sunucuya gider; saklanmaz ve günlüğe yazılmaz. Yer, saat, kart numarası ve TC kimlik istenmez.</p>
+    <p>Güncellemeler bölümü takip konularınızı ve bu cihazdaki kodları yalnız o istekte okur; sunucuda saklanmaz. Takvim dosyası kişisel veri içermez.</p>
+    <p>Bir gün planında tarih ve filtreler etkinlikleri getirmek için istekle gider. Rota için yazdığınız çıkış semti ya da durağı, mevcut Metro mu otobüs mü karşılaştırmasıyla aynı yoldan gider; sunucu günlüğüne yalnız yol yazılır, sorgu yazılmaz. Takvim dosyası yalnız etkinlik kimliği ve tarihle üretilir, kişisel bilgi içermez.</p>
+    <p>Kütüphane randevusu (örnek) isteğe bağlıdır ve onay kutusuyla çalışır. Saklanan: kütüphane, gün, saat aralığı, koltuk, randevu kodu, onay sürümü ve cihaz kodunuzun ya da örnek hesabınızın tuzlu özeti. Ad, telefon, e-posta, TC kimlik istenmez. İptal edince hemen, değilse 30 gün sonra silinir. İBB'ye ya da kütüphaneye gönderilmez.</p>
+    <p>Kurs ve iş keşfinde seçtiğiniz dal, alanlar (en çok 3), ilçe ve anahtar kelime yalnız eşleştirme için tek istekte sunucuya gider; cevaplanır ve unutulur: veritabanına, dosyaya ya da günlüğe yazılmaz. Anahtar kelimede TC kimlik ya da e-posta varsa istek reddedilir.</p>
     <p>İsteğe bağlı geri bildirimde yalnız rastgele cevap kimliği, oy ve seçilen neden kodu gönderilir. Soru, cevap, ad, hesap, IP adresi ve tarayıcı bilgisi uygulama günlüğüne yazılmaz.</p>
 
     <h2 id="kvkk-hesap">Hesap ve takip (açık rıza)</h2>
@@ -104,25 +120,51 @@
           <tr><td>Neden</td><td>Daha yüksek günlük soru hakkı ve takip ettiğiniz konularda önemli bir değişiklik (yeni arıza, arıza giderildi, hat duyurusu, bilgi arşivinde yeni kaynak) olduğunda günde en çok bir özet e-posta hazırlamak.</td></tr>
           <tr><td>Hukuki dayanak</td><td>Hesap bağlarken işaretlediğiniz açık rıza. Rıza kutusu işaretlenmezse sunucuya hiçbir şey yazılmaz.</td></tr>
           <tr><td>Ne kadar süre</td><td>Hesabınızı silene ya da 12 ay kullanmayana kadar. E-posta önizlemeleri en çok 30 gün tutulur.</td></tr>
-          <tr><td>Kim görür</td><td>Yalnız bu cihazdaki giriş anahtarıyla siz ve sunucuyu işleten proje sahibi. Kimseyle paylaşılmaz. E-postalar bugün gönderilmez; sunucudaki outbox klasörüne önizleme olarak yazılır ve Profilim altında görünür. Gerçek gönderim için Azure Communication Services kullanılacaktır; bu adım proje sahibinin onayını bekler.</td></tr>
+          <tr><td>Kim görür</td><td>Yalnız bu cihazdaki giriş anahtarıyla siz ve sunucuyu işleten proje sahibi. Aile özelliğini açmadıkça kimseyle paylaşılmaz. E-postalar bugün gönderilmez; sunucudaki outbox klasörüne önizleme olarak yazılır ve Profilim altında görünür. Gerçek gönderim için Azure Communication Services kullanılacaktır; bu adım proje sahibinin onayını bekler.</td></tr>
           <tr><td>Nasıl silinir</td><td>Hesap bağla bölümündeki Hesabımı ve verilerimi sil düğmesi tek dokunuşla sunucudaki hesap kaydını, takip konularını ve e-posta önizlemelerini, bu tarayıcıdaki tüm Nabız verilerini siler. E-postadaki Takibi bırak bağlantısı tek bir konuyu bırakır.</td></tr>
         </tbody>
       </table>
     </div>
 
+    <h3 id="kvkk-aile">Aile kodu (iki taraflı açık rıza)</h3>
+    <ul>
+      <li>Hangi veri: ailede görünen ad, aile üyeliği ve rolü, rıza zamanı ve sürümü, seçtiğiniz takip konuları ve durak adları, eşleşme sayısı, günlük yanlış kod sayısı.</li>
+      <li>Neden ve dayanak: yalnız onayladığınız aile üyeleriyle yalnız seçtiğinizi paylaşmak; iki taraflı açık rıza.</li>
+      <li>Süre: ayrılana ya da hesabınızı silene kadar; bekleyen istek 7 günde, aile kodu 24 saatte geçersiz olur.</li>
+      <li>Kim görür: yalnız onayladığınız aile üyeleri ve yalnız seçtikleriniz; e-posta, hesap kimliği, konum ve sorular asla paylaşılmaz.</li>
+      <li>Nasıl silinir: Aileden ayrıl; Hesabımı ve verilerimi sil aile kayıtlarını da siler.</li>
+    </ul>
+
+    <h2 id="kvkk-foto">Fotoğraflı bildirim (açık rıza)</h2>
+    <p>Fotoğraflı bildirim isteğe bağlıdır ve yalnız rıza kutusunu işaretleyip gönderdiğinizde çalışır. Fotoğrafın konum ve cihaz bilgisi (EXIF) önce cihazınızda, sonra sunucuda silinir. Fotoğrafta kişi yüzü ya da araç plakası olmamasına dikkat edin.</p>
+    <div class="kvkk-table" role="region" aria-label="Fotoğraflı bildirimde saklanan bilgiler tablosu" tabindex="0">
+      <table>
+        <thead><tr><th>Soru</th><th>Cevap</th></tr></thead>
+        <tbody>
+          <tr><td>Hangi veri</td><td>EXIF bilgisi silinmiş fotoğraf, kategori, maskeli açıklama, istasyon ya da ilçe adı ve rıza metninin sürümü.</td></tr>
+          <tr><td>Neden</td><td>Sorunu simüle operatörün görmesi.</td></tr>
+          <tr><td>Hukuki dayanak</td><td>Gönderirken işaretlediğiniz açık rıza.</td></tr>
+          <tr><td>Ne kadar süre</td><td>30 gün. Bildirim kapatılınca fotoğraf hemen silinir.</td></tr>
+          <tr><td>Kim görür</td><td>Yalnız simüle operatör ve sunucuyu işleten proje sahibi. İBB'ye gönderilmez.</td></tr>
+          <tr><td>Nasıl silinir</td><td>Kod kartındaki Bildirimi sil düğmesi.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <h2 id="kvkk-model">Yapay zekâ hizmeti</h2>
-    <p>Yapay zekâ hizmeti ayarlıysa yazdığınız soru, konuşmadaki önceki sorular ve gerekli araç sonuçları model sağlayıcısına gider. Operatöre ilettiğiniz sorunun maskeli metni ve operatörün cevabı da çeviri için aynı sağlayıcıya gider. Sağlayıcı yurt dışında olabilir. Profiliniz, adınız ve e-posta adresiniz bu istekle gönderilmez.</p>
+    <p>Yapay zekâ hizmeti ayarlıysa yazdığınız soru, konuşmadaki önceki sorular ve gerekli araç sonuçları model sağlayıcısına gider. Operatöre ilettiğiniz sorunun maskeli metni ve operatörün cevabı da çeviri için aynı sağlayıcıya gider. Sağlayıcı yurt dışında olabilir. Profiliniz, adınız ve e-posta adresiniz bu istekle gönderilmez. Hizmet sorularında sorunuz ve ilgili İBB sayfası alıntıları cevabı yazması için modele gönderilir; saklanmaz.</p>
     <p>Sorunuzun metninde kendiniz kişisel bilgi paylaşabilirsiniz. Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.</p>
 
     <h2 id="kvkk-ses">Sesle yazma</h2>
     <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir. Sesle bildirimde söylediğiniz cümle cihazınızda kalır; Nabız sunucusuna yalnız istasyon adı, durum ve zaman gider.</p>
 
     <h2 id="kvkk-toplanmayan">Toplanmayan bilgiler</h2>
-    <p>Uygulama kamera görüntüsü, konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
+    <p>Uygulama, fotoğraflı bildirimde sizin seçip gönderdiğiniz fotoğraf dışında kamera görüntüsü toplamaz; konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
 
     <h2 id="kvkk-silme">Bilgileri silme</h2>
     <p>Profilinizi Profilim bölümündeki Profili sil düğmesiyle, hafıza öğelerini Hafızam bölümündeki Tümünü sil düğmesiyle kaldırabilirsiniz. Erişilebilirlik panelindeki Sıfırla tercihleri başlangıç değerlerine döndürür. Geri bildirim sayaçlarını silmek için tarayıcı ayarlarından bu siteye ait verileri temizleyin.</p>
-    <p>Örnek hesap bağladıysanız Hesap bağla bölümündeki Hesabımı ve verilerimi sil düğmesi hem sunucudaki kaydı hem bu cihazdaki verileri siler.</p>
+    <p>Örnek hesap bağladıysanız Hesap bağla bölümündeki Hesabımı ve verilerimi sil düğmesi hem sunucudaki kaydı (aile kayıtları dahil) hem bu cihazdaki verileri siler.</p>
+    <p>Hesabımı ve verilerimi sil bu cihazın kodunu da sıfırlar. Örnek hesabınızla aldığınız kütüphane randevuları silinir; yalnız bu cihazın koduyla aldığınız bir randevu bu cihazdan artık görünmez, ama koltuk en geç 30 gün sonra silinene kadar tutulur.</p>
     <p>Tarayıcı verisini temizlemek bu cihazdaki yerel kayıtları siler. Daha önce yazılmış sorular veya başka yerde alınmış kopyalar bu işlemle geri alınamaz.</p>
 
     <h2 id="kvkk-iletisim">İletişim</h2>

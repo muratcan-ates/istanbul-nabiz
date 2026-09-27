@@ -9,7 +9,12 @@ from test_static_a11y import STATIC, node_json
 
 MODULES = (
     "account.js", "account_view.js", "follow.js", "quota_strip.js", "request_status.js", "requests_console.js", "open_data.js",
-    "culture.js",
+    "culture.js", "console_knowledge_editor.js",
+    "poll_view.js", "poll.js", "console_poll.js", "console_chronic.js",
+    "step_voice.js", "fare.js",
+    "notices_center.js", "audience.js", "audience_view.js", "booking.js", "visitor.js", "visitor_view.js",
+    "family.js", "family_view.js", "troubleshoot.js", "troubleshoot_view.js", "recovery.js", "recovery_view.js", "bill.js",
+    "disaster_kit.js",
 )
 JS_DIR = STATIC / "js"
 I18N = STATIC / "i18n"
@@ -17,6 +22,9 @@ UI_CALL = re.compile(r"t\(\s*(['\"])(ui\.[^'\"]+)\1\s*,\s*(['\"])((?:\\.|[^\\])*
 UI_KEY = re.compile(r"t\(\s*(['\"])(ui\.[^'\"]+)\1")
 TURKISH_CHARS = re.compile(r"[çğıöşüÇĞİÖŞÜ]")
 ARABIC_CHARS = re.compile(r"[\u0600-\u06ff]")
+# A regex literal after an operator or an opening bracket (``replace(/[&<>"']/g, ...)``): its quotes are
+# not string delimiters and its body is never shown, so the scan blanks it (length kept, offsets hold).
+REGEX_LITERAL = re.compile(r"([(,=:!&|?\[]\s*)/(?![/*])((?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n\[])+)/([dgimsuvy]*)")
 HANDOFF_KEYS = {
     "dyn.handoff_title", "dyn.handoff_description", "dyn.handoff_summary_label", "dyn.handoff_copy",
     "dyn.handoff_call", "dyn.handoff_tid", "dyn.handoff_operator", "dyn.handoff_emergency", "dyn.handoff_close",
@@ -33,6 +41,10 @@ def js_fallback(value: str) -> str:
 
 def ui_calls(source: str) -> dict[str, str]:
     return {match.group(2): js_fallback(match.group(4)) for match in UI_CALL.finditer(source)}
+
+
+def blank_regex_literals(source: str) -> str:
+    return REGEX_LITERAL.sub(lambda m: m.group(1) + "/" + " " * len(m.group(2)) + "/" + m.group(3), source)
 
 
 def surface_sources() -> dict[str, str]:
@@ -167,7 +179,7 @@ def test_new_surfaces_have_no_bare_turkish() -> None:
     }
     allowlist = categories | {"Türkçe"}
     for name, source in surface_sources().items():
-        clean = re.sub(r"/\*.*?\*/|^\s*//.*$", "", source, flags=re.S | re.M)
+        clean = blank_regex_literals(re.sub(r"/\*.*?\*/|^\s*//.*$", "", source, flags=re.S | re.M))
         fallback_spans = [match.span(4) for match in UI_CALL.finditer(clean)]
         literal_source = list(clean)
         for start_template, end_template, chunks in template_literals(clean):

@@ -1,0 +1,501 @@
+{
+  "version": 1,
+  "checked_at": "2026-09-26",
+  "checked_against": "data/knowledge/knowledge.db index_built_at 2026-09-26T12:47:01.780726+00:00; data/reference/erisim/capture.json",
+  "sources": {
+    "s_sss": {
+      "url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/",
+      "from": "index",
+      "label": {
+        "tr": "İstanbul Senin Sıkça Sorulan Sorular",
+        "en": "İstanbul Senin FAQ"
+      }
+    },
+    "s_home": {
+      "url": "https://istanbulsenin.istanbul/",
+      "from": "index",
+      "label": {
+        "tr": "İstanbul Senin ana sayfası",
+        "en": "İstanbul Senin home page"
+      }
+    },
+    "d2780": {
+      "url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2780",
+      "from": "index",
+      "label": {
+        "tr": "İstanbulkart duyurusu",
+        "en": "İstanbulkart announcement"
+      }
+    },
+    "d2815": {
+      "url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2815",
+      "from": "index",
+      "label": {
+        "tr": "İstanbulkart duyurusu",
+        "en": "İstanbulkart announcement"
+      }
+    },
+    "g_guvenlik": {
+      "url": "https://www.istanbulkart.istanbul/guvenlik",
+      "from": "capture",
+      "label": {
+        "tr": "İstanbulkart Güvenlik sayfası",
+        "en": "İstanbulkart security page"
+      }
+    }
+  },
+  "quotes": {
+    "senin_profil": {
+      "source": "s_sss",
+      "parts": [
+        "İstanbul Senin ana sayfasında yer alan en alt sağ köşedeki Profil sayfasına girerek üyelik bilgi değişiklikleri yapılabilmektedir."
+      ]
+    },
+    "senin_destek": {
+      "source": "s_sss",
+      "parts": [
+        "İstanbul Senin ile ilgili önerilerinizi, görüşlerinizi ve sorularınızı Çözüm Merkezi mini uygulamasından, Canlı Destek mini uygulamasından,",
+        "veya ALO 153 menüsünden 6’yı tuşlayarak iletilebilirsiniz."
+      ]
+    },
+    "senin_indir": {
+      "source": "s_sss",
+      "parts": [
+        "İstanbul Senin’i App Store veya Google Play Store üzerinden ücretsiz bir şekilde indirebilirsiniz."
+      ]
+    },
+    "senin_cihaz": {
+      "source": "s_sss",
+      "parts": [
+        "İstanbul Senin uygulaması IOS ve Android işletim sistemine sahip tüm mobil cihazlarda kullanılabilir."
+      ]
+    },
+    "senin_web_yok": {
+      "source": "s_sss",
+      "parts": [
+        "İstanbul Senin yalnızca IOS ve Android işletim sistemine sahip mobil cihazlarda kullanılabilir; internet sitesi üzerinden, bilgisayarınızdan ya da tabletinizden kullanılamaz."
+      ]
+    },
+    "senin_giris": {
+      "source": "s_home",
+      "parts": [
+        "“İstanbul Senin’le Giriş” İBB’nin birçok online hizmetine kullanıcı kaydı oluşturmadan ve şifrenizi hatırlamaya gerek kalmadan İstanbul Senin üzerinden hızlı, kolay ve güvenli bir şekilde giriş yapmanızı sağlıyor."
+      ]
+    },
+    "senin_giris_buton": {
+      "source": "s_home",
+      "parts": [
+        "Web sitelerinin giriş sayfasındaki İstanbul Senin butonuna tıklayın."
+      ]
+    },
+    "ikart_plus_merkez": {
+      "source": "d2780",
+      "parts": [
+        "Kişiye özel kartlar için İstanbulkart Mobil uygulaması veya İstanbulkart web sitesi üzerinden başvuru yapılabilir; isimsiz kart sahibi olmak isteyenler ise Karaköy ve Kadıköy İstanbulkart Başvuru Merkezlerinden başvuru yapabilir."
+      ]
+    },
+    "ikart_resmi_kanal": {
+      "source": "d2815",
+      "parts": [
+        "İstanbulkart işlemlerinizi yalnızca İstanbulkart’ın resmi internet sitesi; istanbulkart.istanbul , İstanbulkart Mobil ve yetkili kanallar üzerinden gerçekleştirin."
+      ]
+    },
+    "ikart_adres": {
+      "source": "d2815",
+      "parts": [
+        "İstanbulkart görünümünü taklit eden sahte internet siteleri gerçek sayfalara oldukça benzer görünebilir. Kişisel veya kart bilgilerinizi girmeden önce bulunduğunuz sayfanın internet adresini dikkatlice inceleyin."
+      ]
+    },
+    "g_giris_sms": {
+      "source": "g_guvenlik",
+      "parts": [
+        "İstanbulkart hesabınıza erişim için giriş ekranında daha önceden belirlediğiniz şifreniz istenir ve ayrıca kayıtlı cep telefonunuza ulaşan SMS Güvenlik Şifresinin girilmesi gerekmektedir.",
+        "Her giriş denemesinde farklı bir şifre gönderimi yapılacaktır."
+      ]
+    },
+    "g_sms_gelmiyor": {
+      "source": "g_guvenlik",
+      "parts": [
+        "Eğer şifreniz telefonunuza ulaşmazsa telefonunuzun mesaj hafızasının dolu olmadığını ve kapsama alanı içinde bulunduğunu kontrol ettikten sonra yeniden şifre talep edebilirsiniz."
+      ]
+    },
+    "g_online_islemler": {
+      "source": "g_guvenlik",
+      "parts": [
+        "İstanbulkart hesabınıza erişim sağlamak için yalnızca https://www.belbim.istanbul ve/veya https://www.istanbulkart.istanbul adreslerinin sağ üst köşesindeki “Online İşlemler” bağlantısını izleyin."
+      ]
+    },
+    "g_vpn": {
+      "source": "g_guvenlik",
+      "parts": [
+        "Bilgisayarınızda ya da mobil cihazınızda VPN kullanıyorsanız internet şube ve İstanbulkart Mobil’e girmeden önce VPN’in aktif olup olmadığını kontrol edin, aktif ise kapatın."
+      ]
+    },
+    "g_resmi_market": {
+      "source": "g_guvenlik",
+      "parts": [
+        "İstanbulkart Mobil’i yalnızca işletim sistemlerinin resmi uygulama marketlerinden (App Store, Google Play, Huawei AppGallery) indirin."
+      ]
+    },
+    "g_numara_guncel": {
+      "source": "g_guvenlik",
+      "parts": [
+        "Acil olarak ulaşılması gereken durumlarda sistemde kayıtlı olan cep telefonu ve e-posta bilgilerinin güncel olması hayati önem taşımaktadır.",
+        "Bu sebeple bu bilgiler her zaman güncel tutulmalıdır."
+      ]
+    },
+    "g_kod_paylasma": {
+      "source": "g_guvenlik",
+      "parts": [
+        "Cep telefonunuza gönderilen tek kullanımlık şifrenizi ve kullanıcı parolanızı BELBİM ve 153 Bireysel Müşteri Hattı çalışanları dâhil hiç kimseyle paylaşmayın."
+      ]
+    },
+    "g_talep_etmez": {
+      "source": "g_guvenlik",
+      "parts": [
+        "BELBİM, sizden kart numaranızın tamamını, şifrenizi ve Dijital İstanbulkart CVV kodunuzu hiçbir sebeple talep etmez ."
+      ]
+    }
+  },
+  "summary": {
+    "title": "Dijital erişim destek özeti",
+    "topic": "Konu",
+    "answers": "Yanıtlar",
+    "checks": "Denenen adımlar",
+    "checks_none": "yok",
+    "failed": "denendi, sorun sürüyor",
+    "not_tried": "henüz denenmedi",
+    "sources": "Adımların kaynağı",
+    "no_secrets": "Şifre, doğrulama kodu, kart numarası ve T.C. kimlik numarası bu özette yoktur.",
+    "not_verified": "Bu özet kullanıcının yanıtlarından oluşur; kurum doğrulaması değildir. Nabız hesabınızı göremez.",
+    "made_by": "Hazırlayan: İstanbul Nabız (resmî İBB hizmeti değildir)"
+  },
+  "start": "konu",
+  "nodes": {
+    "konu": {
+      "kind": "choice",
+      "text": {
+        "tr": "Neye erişemiyorsunuz?",
+        "en": "What can you not get into?"
+      },
+      "options": [
+        {
+          "id": "senin",
+          "text": {
+            "tr": "İstanbul Senin uygulaması",
+            "en": "The İstanbul Senin app"
+          },
+          "next": "senin_ne"
+        },
+        {
+          "id": "ikart",
+          "text": {
+            "tr": "İstanbulkart Mobil ya da bireysel hesabım",
+            "en": "İstanbulkart Mobil or my personal account"
+          },
+          "next": "ikart_ne"
+        },
+        {
+          "id": "kart",
+          "text": {
+            "tr": "Kartı telefona ekleme ya da telefona okutma (NFC)",
+            "en": "Adding the card to my phone or reading it with the phone (NFC)"
+          },
+          "next": "kart_son"
+        },
+        {
+          "id": "site",
+          "text": {
+            "tr": "Bir İBB sitesine İstanbul Senin ile giriş",
+            "en": "Signing in to an İBB website with İstanbul Senin"
+          },
+          "next": "giris_soru"
+        }
+      ]
+    },
+    "senin_ne": {
+      "kind": "choice",
+      "text": {
+        "tr": "Ne oluyor?",
+        "en": "What happens?"
+      },
+      "options": [
+        {
+          "id": "kod_eski",
+          "text": {
+            "tr": "Doğrulama kodu eski telefon numarama gidiyor",
+            "en": "The verification code goes to my old phone number"
+          },
+          "next": "senin_numara_son"
+        },
+        {
+          "id": "acilmiyor",
+          "text": {
+            "tr": "Uygulama açılmıyor ya da kapanıyor",
+            "en": "The app does not open or it closes"
+          },
+          "next": "senin_indir_c"
+        },
+        {
+          "id": "bilgisayar",
+          "text": {
+            "tr": "Bilgisayardan ya da tabletten girmeye çalışıyorum",
+            "en": "I am trying from a computer or a tablet"
+          },
+          "next": "senin_web_son"
+        },
+        {
+          "id": "diger",
+          "text": {
+            "tr": "Başka bir sorun",
+            "en": "Another problem"
+          },
+          "next": "senin_son"
+        }
+      ]
+    },
+    "senin_indir_c": {
+      "kind": "check",
+      "text": {
+        "tr": "Uygulamayı resmî mağazadan indirdiniz mi ve telefonunuz iOS ya da Android mi?",
+        "en": "Did you get the app from an official store, and is your phone iOS or Android?"
+      },
+      "quotes": [
+        "senin_indir",
+        "senin_cihaz"
+      ],
+      "next": "senin_son"
+    },
+    "senin_numara_son": {
+      "kind": "end",
+      "agency": "cozum_153",
+      "text": {
+        "tr": "İstanbul Senin: kod eski numaraya gidiyor",
+        "en": "İstanbul Senin: the code goes to the old number"
+      },
+      "quotes": [
+        "senin_profil",
+        "senin_destek"
+      ],
+      "gap": {
+        "tr": "Giriş yapamadığınızda eski numaraya giden kodu nasıl aşacağınızı anlatan resmî bir cümle dizinde henüz yok. Yukarıdaki ilk cümle, giriş yapabildiğinizde bilgilerinizi nereden değiştireceğinizi söyler.",
+        "en": "There is no official sentence yet in the index on how to get past a code that goes to your old number when you cannot sign in. The first sentence above says where to change your details once you can sign in."
+      }
+    },
+    "senin_web_son": {
+      "kind": "end",
+      "agency": "cozum_153",
+      "text": {
+        "tr": "İstanbul Senin: bilgisayar ya da tablet",
+        "en": "İstanbul Senin: computer or tablet"
+      },
+      "quotes": [
+        "senin_web_yok"
+      ]
+    },
+    "senin_son": {
+      "kind": "end",
+      "agency": "cozum_153",
+      "text": {
+        "tr": "İstanbul Senin",
+        "en": "İstanbul Senin"
+      },
+      "quotes": [
+        "senin_destek"
+      ],
+      "gap": {
+        "tr": "Uygulamanın açılmaması ya da girişin olmaması için resmî bir adım dizinde henüz yok.",
+        "en": "There is no official step yet in the index for the app not opening or for not being able to sign in."
+      }
+    },
+    "ikart_ne": {
+      "kind": "choice",
+      "text": {
+        "tr": "Nerede takıldınız?",
+        "en": "Where are you stuck?"
+      },
+      "options": [
+        {
+          "id": "sms_yok",
+          "text": {
+            "tr": "SMS şifresi telefonuma gelmiyor",
+            "en": "The SMS code does not reach my phone"
+          },
+          "next": "ikart_sms_c"
+        },
+        {
+          "id": "numara",
+          "text": {
+            "tr": "Kayıtlı telefon numaram değişti ya da telefonum yanımda değil",
+            "en": "My registered phone number changed, or I do not have my phone"
+          },
+          "next": "ikart_numara_son"
+        },
+        {
+          "id": "giris",
+          "text": {
+            "tr": "Giriş sayfasını bulamıyorum ya da sayfadan emin değilim",
+            "en": "I cannot find the sign in page, or I am not sure about the page"
+          },
+          "next": "ikart_adres_c"
+        },
+        {
+          "id": "uygulama",
+          "text": {
+            "tr": "İstanbulkart Mobil açılmıyor ya da bağlanmıyor",
+            "en": "İstanbulkart Mobil does not open or connect"
+          },
+          "next": "ikart_vpn_c"
+        }
+      ]
+    },
+    "ikart_sms_c": {
+      "kind": "check",
+      "text": {
+        "tr": "Bunu denediniz mi?",
+        "en": "Have you tried this?"
+      },
+      "quotes": [
+        "g_giris_sms",
+        "g_sms_gelmiyor"
+      ],
+      "next": "ikart_son"
+    },
+    "ikart_adres_c": {
+      "kind": "check",
+      "text": {
+        "tr": "Sayfanın adresini kontrol ettiniz mi?",
+        "en": "Have you checked the page's address?"
+      },
+      "quotes": [
+        "g_online_islemler",
+        "ikart_adres"
+      ],
+      "next": "ikart_son"
+    },
+    "ikart_vpn_c": {
+      "kind": "check",
+      "text": {
+        "tr": "VPN açıksa kapatmayı denediniz mi?",
+        "en": "If a VPN is on, have you tried turning it off?"
+      },
+      "quotes": [
+        "g_vpn"
+      ],
+      "next": "ikart_market_c"
+    },
+    "ikart_market_c": {
+      "kind": "check",
+      "text": {
+        "tr": "Uygulamayı resmî mağazadan indirdiniz mi?",
+        "en": "Did you get the app from an official store?"
+      },
+      "quotes": [
+        "g_resmi_market"
+      ],
+      "next": "ikart_son"
+    },
+    "ikart_numara_son": {
+      "kind": "end",
+      "agency": "istanbulkart",
+      "text": {
+        "tr": "İstanbulkart: kayıtlı numaraya erişim yok",
+        "en": "İstanbulkart: no access to the registered number"
+      },
+      "quotes": [
+        "g_numara_guncel",
+        "g_kod_paylasma"
+      ],
+      "gap": {
+        "tr": "Kayıtlı numaranıza erişiminiz yokken hesaba nasıl girileceğini anlatan resmî bir cümle dizinde henüz yok.",
+        "en": "There is no official sentence yet in the index on how to get into the account without access to your registered number."
+      },
+      "alt": [
+        "ikart_plus_merkez"
+      ]
+    },
+    "ikart_son": {
+      "kind": "end",
+      "agency": "istanbulkart",
+      "text": {
+        "tr": "İstanbulkart hesabı",
+        "en": "İstanbulkart account"
+      },
+      "quotes": [
+        "g_kod_paylasma",
+        "g_talep_etmez"
+      ],
+      "gap": {
+        "tr": "Bu adımlardan sonra ne yapılacağını anlatan resmî bir cümle dizinde henüz yok.",
+        "en": "There is no official sentence yet in the index on what to do after these steps."
+      },
+      "alt": [
+        "ikart_plus_merkez"
+      ]
+    },
+    "kart_son": {
+      "kind": "end",
+      "agency": "istanbulkart",
+      "handoff": "kart-sorun",
+      "text": {
+        "tr": "Kartı telefona ekleme ya da NFC",
+        "en": "Adding the card to the phone, or NFC"
+      },
+      "quotes": [
+        "ikart_resmi_kanal"
+      ],
+      "gap": {
+        "tr": "Kartı telefona ekleme ya da telefona okutma (NFC) için resmî adım dizinde henüz yok.",
+        "en": "There is no official step yet in the index for adding the card to a phone or reading it with the phone (NFC)."
+      }
+    },
+    "giris_soru": {
+      "kind": "choice",
+      "text": {
+        "tr": "İstanbul Senin uygulamasına kendiniz girebiliyor musunuz?",
+        "en": "Can you get into the İstanbul Senin app yourself?"
+      },
+      "quotes": [
+        "senin_giris",
+        "senin_giris_buton"
+      ],
+      "options": [
+        {
+          "id": "evet",
+          "text": {
+            "tr": "Evet, uygulamaya girebiliyorum",
+            "en": "Yes, I can get into the app"
+          },
+          "next": "giris_son"
+        },
+        {
+          "id": "hayir",
+          "text": {
+            "tr": "Hayır, uygulamaya da giremiyorum",
+            "en": "No, I cannot get into the app either"
+          },
+          "next": "senin_ne"
+        }
+      ]
+    },
+    "giris_son": {
+      "kind": "end",
+      "agency": "cozum_153",
+      "text": {
+        "tr": "İstanbul Senin ile giriş",
+        "en": "Signing in with İstanbul Senin"
+      },
+      "quotes": [
+        "senin_destek"
+      ],
+      "gap": {
+        "tr": "Bir sitenin kendi giriş sorunu için resmî adım dizinde henüz yok.",
+        "en": "There is no official step yet in the index for a website's own sign in problem."
+      }
+    }
+  },
+  "alt_note": {
+    "tr": "Başvuru merkezlerinin adresleri kaynağımızda yok (resmî sayfa adresleri tarayıcıda sonradan yüklüyor). Adresi 153'e sorabilirsiniz.",
+    "en": "The addresses of the application centres are not in our source (the official page loads them later in the browser). You can ask 153 for the address."
+  }
+}

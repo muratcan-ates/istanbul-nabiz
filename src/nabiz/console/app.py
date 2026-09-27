@@ -50,41 +50,66 @@ from nabiz.console.accounts_api import account_routes
 from nabiz.console.agency_api import agency_routes
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
+from nabiz.console.audience_api import audience_routes
+from nabiz.console.bill_api import bill_routes
+from nabiz.console.booking_api import booking_routes
 from nabiz.console.brief import Freshness, build_brief, split_csv
 from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
 from nabiz.console.chat import ChatRequest, ChatService
+from nabiz.console.chronic_api import chronic_routes
 from nabiz.console.compare_api import compare_routes
 from nabiz.console.culture_api import culture_routes
+from nabiz.console.culture_events_api import culture_events_routes
 from nabiz.console.day_api import day_routes
+from nabiz.console.disaster_kit_api import disaster_kit_routes
 from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
+from nabiz.console.escort_api import escort_routes
+from nabiz.console.family_api import family_routes
+from nabiz.console.fare_api import fare_routes
 from nabiz.console.feedback_api import feedback_routes
 from nabiz.console.history_api import history_routes
 from nabiz.console.how_api import how_routes
+from nabiz.console.ibb_yerleri_api import ibb_yerleri_routes
+from nabiz.console.incident_api import incident_routes
 from nabiz.console.journey_api import accessible_journey_route
+from nabiz.console.journey_watch_api import journey_watch_routes
 from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
+from nabiz.console.knowledge_editor_api import knowledge_editor_routes
 from nabiz.console.map_layers_api import map_layers_routes
 from nabiz.console.model_api import model_routes
 from nabiz.console.nearby_api import nearby_router
 from nabiz.console.notice_age import notice_routes
+from nabiz.console.notices_center_api import notices_center_routes
 from nabiz.console.open_data_api import open_data_routes
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
+from nabiz.console.outage_watch_api import outage_routes
+from nabiz.console.outcomes_api import outcome_board_routes
+from nabiz.console.photo_reports_api import photo_report_routes
 from nabiz.console.policy import functional_needs
+from nabiz.console.poll_api import poll_routes
 from nabiz.console.ports import Ports, UnwiredStepFree
 from nabiz.console.quick_api import quick_routes
 from nabiz.console.quota import MeteredGuard, QuotaBook
 from nabiz.console.quota_api import plan_turn, quota_routes
 from nabiz.console.receipt_api import receipt_routes
+from nabiz.console.recovery_api import recovery_routes
 from nabiz.console.report_api import report_routes
 from nabiz.console.report_map_api import report_map_routes
 from nabiz.console.report_outcome_api import outcome_routes
+from nabiz.console.report_timeline_api import timeline_routes
 from nabiz.console.report_triage import triage_routes
 from nabiz.console.requests_api import request_routes
+from nabiz.console.route_steps_api import route_steps_routes
 from nabiz.console.rules_api import rules_routes
+from nabiz.console.scenario_api import scenario_routes
+from nabiz.console.skills_api import skills_routes
 from nabiz.console.stop_card import stop_card_router
+from nabiz.console.troubleshoot_api import troubleshoot_routes
+from nabiz.console.visitor_api import visitor_routes
 
 log = logging.getLogger("nabiz.console")
 
@@ -236,6 +261,8 @@ def _gate(request: Request) -> Response | None:
     refusal = state.access.refusal(request) if is_operator_path(path) else None
     if refusal is not None and refusal.status_code == 401 and path.startswith("/console"):
         return HTMLResponse(login_page(failed=False), status_code=401)
+    if refusal is not None:
+        refusal.headers["Cache-Control"] = "no-store"  # an API refusal is never cached (E51 note, P00 G2)
     return refusal
 
 
@@ -316,6 +343,99 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             state.nabiz = None
 
 
+#: Every API router, in match order; the static mount goes after all of them. One tuple, not a call
+#: per router, so ``build_console_app`` stays under ruff's statement limit as epics join (P00 G2).
+PRODUCT_ROUTERS = (
+    citizen_routes,
+    compare_routes,
+    feedback_routes,
+    # E24: a citizen's lift report (station, kind, time bucket only) waits for a person in the Arena.
+    report_routes,
+    # E29 triage context, E28 report map (both behind the console door), E33 a report's outcome by derived code.
+    triage_routes,
+    report_map_routes,
+    # E67: incident files group reports, photos and lift records; priority is a sourced suggestion.
+    incident_routes,
+    # E57: recurring disruptions from the local archive, operator only; a suggestion, never an assignment.
+    chronic_routes,
+    outcome_routes,
+    # E55: updates and add-to-calendar; in page only, no Web Push, nothing stored on the server.
+    notices_center_routes,
+    # E66: report timeline; resolved only when the citizen confirms.
+    timeline_routes,
+    history_routes,
+    knowledge_routes,
+    # E74: knowledge editor; approval queues a source for ingest and never edits the index.
+    knowledge_editor_routes,
+    # E77: intervention scenario; a closure is hypothetical and in memory, saved journeys only as totals.
+    scenario_routes,
+    # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).
+    quick_routes,
+    # E56: suggestions by age group and need; the choice stays on the device, knowledge chips only with evidence.
+    audience_routes,
+    open_data_routes,
+    how_routes,
+    # E50: recorded step-by-step route cards; voice only on request, never street navigation.
+    route_steps_routes,
+    map_layers_routes,
+    # E79: four recorded İBB open data place lists; at most 60 points, no live occupancy.
+    ibb_yerleri_routes,
+    # E30: İBB libraries and museums open now by their recorded hours, for a district the visitor picks.
+    culture_routes,
+    # E60: İstanbulkart troubleshooting, /api/istanbulkart/flows; official sentences only while their page still has them.
+    troubleshoot_routes,
+    # E76: digital access recovery, /api/erisim/flows; official sentences only while their page still has them;
+    # answers stay on the device.
+    recovery_routes,
+    # E61: bill explainer, GET /api/bill/catalog only; bill entries never reach the server.
+    bill_routes,
+    # E70: disaster preparedness file, GET /api/disaster-kit?lang= only; the plan stays on the device.
+    disaster_kit_routes,
+    # E73: day planner over the captured kultur.istanbul events; the server keeps nothing.
+    culture_events_routes,
+    # E53: library seat booking, an example not connected to İBB; hashed holder, 30 days, deleted on cancel.
+    booking_routes,
+    # E58: tourist mode: /api/visitor, five visitor questions, each only while its source is on this server.
+    visitor_routes,
+    # E72: course discovery over the captured İSMEK catalogue; choices are answered once and forgotten.
+    skills_routes,
+    # E68: weekly fare estimate, a sample from quoted tariff rows; the pattern is neither stored nor logged.
+    fare_routes,
+    agency_routes,
+    operator_routes,
+    # E23: which model rung answers today (no keys, no probe) and the console's service receipts and spend.
+    model_routes,
+    receipt_routes,
+    rules_routes,
+    day_routes,
+    approval_health_routes,
+    # E75: outcome board; every rate carries its denominator, below 10 samples it says not measured yet.
+    outcome_board_routes,
+    notice_routes,
+    organs_routes,
+    drill_routes,
+    kill_switch_routes,
+    stop_card_router,
+    quota_routes,
+    account_routes,
+    # E52: family code; two-sided consent, share only what is chosen, no location.
+    family_routes,
+    # E65: saved journeys; the check is stateless, account storage needs its own consent.
+    journey_watch_routes,
+    # Operatöre aktar + çeviri: /api/requests for visitors, /api/console/requests behind the console's door.
+    request_routes,
+    # E69: household outage watch; citizen confirmations with consent, 7-day queue;
+    # /api/console/outage-watch behind the console door.
+    outage_routes,
+    # E51: consented photo reports; EXIF stripped twice, 30 days, photo gone on close; the queue sits behind the console door.
+    photo_report_routes,
+    # E71: accessible support request; a simulated queue, the official channel stays 153.
+    escort_routes,
+    # E54: İstanbul'a Sor: /api/polls for visitors, /api/console/polls behind the console's door.
+    poll_routes,
+)
+
+
 def build_console_app(
     settings: Settings | None = None,
     nabiz: Nabiz | None = None,
@@ -350,41 +470,8 @@ def build_console_app(
     )
     app.middleware("http")(_request_log)
     app.add_exception_handler(RequestValidationError, _invalid_request)
-    app.include_router(citizen_routes)
-    app.include_router(compare_routes)
-    app.include_router(feedback_routes)
-    # E24: a citizen's lift report (station, kind, time bucket only) waits for a person in the Arena.
-    app.include_router(report_routes)
-    # E29 triage context, E28 report map (both behind the console door), E33 a report's outcome by derived code.
-    app.include_router(triage_routes)
-    app.include_router(report_map_routes)
-    app.include_router(outcome_routes)
-    app.include_router(history_routes)
-    app.include_router(knowledge_routes)
-    # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).
-    app.include_router(quick_routes)
-    app.include_router(open_data_routes)
-    app.include_router(how_routes)
-    app.include_router(map_layers_routes)
-    # E30: İBB libraries and museums open now by their recorded hours, for a district the visitor picks.
-    app.include_router(culture_routes)
-    app.include_router(agency_routes)
-    app.include_router(operator_routes)
-    # E23: which model rung answers today (no keys, no probe) and the console's service receipts and spend.
-    app.include_router(model_routes)
-    app.include_router(receipt_routes)
-    app.include_router(rules_routes)
-    app.include_router(day_routes)
-    app.include_router(approval_health_routes)
-    app.include_router(notice_routes)
-    app.include_router(organs_routes)
-    app.include_router(drill_routes)
-    app.include_router(kill_switch_routes)
-    app.include_router(stop_card_router)
-    app.include_router(quota_routes)
-    app.include_router(account_routes)
-    # Operatöre aktar + çeviri: /api/requests for visitors, /api/console/requests behind the console's door.
-    app.include_router(request_routes)
+    for router in PRODUCT_ROUTERS:
+        app.include_router(router)
     # Last, so every /api route wins the match ahead of the page's files.
     if CONSOLE_STATIC_DIR.is_dir():
         app.mount("/", StaticFiles(directory=CONSOLE_STATIC_DIR, html=True), name="static")

@@ -1,0 +1,42 @@
+/* Day plan module. It uses the page tokens and adds no colour literals. */
+#gun-plani, #gun-plani * { min-width: 0; }
+#gun-plani > summary { display: flex; align-items: center; min-height: var(--tap); color: var(--link); }
+#gun-plani > summary h2 { margin: 0; font-size: var(--text-lg); }
+.dayplan-body { display: grid; gap: var(--space-3); padding-block: var(--space-3); overflow-wrap: anywhere; }
+.dayplan-intro, .dayplan-hint, .dayplan-meta, .dayplan-source p, .dayplan-estimate, .dayplan-saved, .dayplan-status, .dayplan-route-status, .dayplan-plan-status { color: var(--text-muted); font-size: var(--text-sm); line-height: var(--leading-body); }
+.dayplan-status:empty, .dayplan-route-status:empty { display: none; }
+.dayplan-filters, .dayplan-route-form { display: grid; gap: var(--space-3); min-width: 0; }
+.dayplan-date, .dayplan-district, .dayplan-field { display: grid; gap: var(--space-1); min-width: 0; }
+.dayplan-date label, .dayplan-district label, .dayplan-field label, .dayplan-audience legend { color: var(--text-muted); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.dayplan-date input, .dayplan-district select, .dayplan-field input { width: 100%; min-height: var(--tap); padding-inline: var(--space-3); border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-control); background: var(--surface-raised); color: var(--text); }
+.dayplan-date input:focus-visible, .dayplan-district select:focus-visible, .dayplan-field input:focus-visible, .dayplan-audience label:focus-within, .dayplan-checks label:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.dayplan-filter-row { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 1.5fr) minmax(12rem, 1.2fr); align-items: end; gap: var(--space-3); }
+.dayplan-audience { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; border: 0; }
+.dayplan-audience legend { width: 100%; margin-bottom: var(--space-1); }
+.dayplan-audience label, .dayplan-checks label { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding-inline: var(--space-2); border: 1px solid var(--nd-line); border-radius: var(--nd-radius-control); background: var(--surface-raised); cursor: pointer; }
+.dayplan-audience input, .dayplan-checks input { width: 1.125rem; height: 1.125rem; margin: 0; accent-color: var(--nd-accent); }
+.dayplan-checks { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.dayplan-hint { margin: 0; }
+.dayplan-list, .dayplan-steps { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.dayplan-event, .dayplan-panel { min-width: 0; padding: var(--space-3); border: 1px solid var(--nd-line); border-radius: var(--nd-radius-surface); background: var(--surface-raised); }
+.dayplan-event article, .dayplan-panel { display: grid; gap: var(--space-2); }
+.dayplan-event h3, .dayplan-panel h3 { overflow-wrap: anywhere; }
+.dayplan-tags, .dayplan-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.dayplan-tag { display: inline-flex; align-items: center; min-height: 2rem; padding-inline: var(--space-2); border: 1px solid var(--nd-line); border-radius: var(--nd-radius-control); background: var(--surface-sunken); color: var(--text-muted); font-size: var(--text-sm); }
+.dayplan-actions .btn, .dayplan-filters > .btn, .dayplan-route-form > .btn { min-height: var(--tap); max-width: 100%; white-space: normal; }
+.dayplan-actions svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
+.dayplan-source { display: grid; gap: var(--space-1); padding-top: var(--space-3); border-top: 1px solid var(--nd-line); }
+.dayplan-hidden > summary { min-height: var(--tap); color: var(--link); cursor: pointer; }
+.dayplan-hidden > div { display: grid; gap: var(--space-2); padding-block: var(--space-2); color: var(--text-muted); font-size: var(--text-sm); }
+.dayplan-steps { counter-reset: dayplan-step; }
+.dayplan-steps li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--nd-line); }
+.dayplan-number { color: var(--nd-accent); font-variant-numeric: tabular-nums; font-weight: var(--weight-semibold); }
+.dayplan-steps h4 { margin-bottom: var(--space-1); }
+.dayplan-steps p { color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.dayplan-estimate { margin: 0; }
+.dayplan-route-form { padding-top: var(--space-3); border-top: 1px solid var(--nd-line); }
+@media (max-width: 48rem) {
+  .dayplan-filter-row { grid-template-columns: minmax(0, 1fr); }
+  .dayplan-checks { align-items: flex-start; }
+  .dayplan-filters > .btn, .dayplan-route-form > .btn { width: 100%; }
+}

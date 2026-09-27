@@ -1,0 +1,733 @@
+{
+  "version": 1,
+  "checked_at": "2026-09-26",
+  "checked_against": "data/knowledge/knowledge.db, index_built_at 2026-09-26T12:47:01.780726+00:00",
+  "agency": "istanbulkart",
+  "sources": {
+    "d2762": {
+      "url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2762",
+      "page_date_raw": "6/29/2026 12:00:00 AM"
+    },
+    "d2768": {
+      "url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2768",
+      "page_date_raw": "9/1/2026 12:00:00 AM"
+    },
+    "d2780": {
+      "url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2780",
+      "page_date_raw": "4/4/2026 12:00:00 AM"
+    },
+    "d2815": {
+      "url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2815",
+      "page_date_raw": "9/4/2026 12:00:00 AM"
+    }
+  },
+  "quotes": {
+    "kanallar": {
+      "source": "d2780",
+      "parts": [
+        "İstanbulkart’a TL yükleme işlemleri İstanbulkart Mobil üzerinden, İstanbulkart Plus görseli olan biletmatiklerden ya da ATM’lerden para yatırarak yapılabilir."
+      ]
+    },
+    "ogrenci_vize": {
+      "source": "d2768",
+      "parts": [
+        "İstanbulkart Mobil ile ayrıca:",
+        "Öğrenci İstanbulkart’ını vizelyebilir,"
+      ]
+    },
+    "engelli_kim": {
+      "source": "d2762",
+      "parts": [
+        "Yalnızca Sağlık Bakanlığı sistemlerinde rapor bilgisi doğrulanamayan ve bu nedenle SMS ile bilgilendirilen engelli İstanbulkart kullanıcılarının güncel rapor numarasını iletmesi gerekiyor."
+      ]
+    },
+    "engelli_sms_yok": {
+      "source": "d2762",
+      "parts": [
+        "Hayır, rapor bilgisi doğrulanan ve ücretsiz ulaşım hakkı tanımlanan kullanıcıların herhangi bir işlem yapmasına gerek yoktur."
+      ]
+    },
+    "engelli_nasil": {
+      "source": "d2762",
+      "parts": [
+        "Güncelleme yapmak için; ISTRPR yazdıktan sonra boşluk bırakıp T.C. Kimlik Numarası yazıp boşluk bırakıp Rapor Numarası yazılarak 6235’e SMS gönderilmesi gerekiyor."
+      ]
+    },
+    "engelli_gec": {
+      "source": "d2762",
+      "parts": [
+        "Evet, 30 Haziran’dan sonra da güncel rapor numarası iletilebilir; ancak rapor bilgisi doğrulanana kadar ücretsiz geçiş hakkı tanımlanamayacağı için bu sürede geçişler ücretli olur."
+      ]
+    },
+    "engelli_153": {
+      "source": "d2762",
+      "parts": [
+        "Konuya ilişkin bilgi almak isteyen vatandaşlar ALO 153 Çağrı Merkezi üzerinden destek alabilir; İstanbulkart’ın resmi web sitesi ve sosyal medya hesaplarından yapılan duyuruları takip edebilir."
+      ]
+    },
+    "basvuru_1": {
+      "source": "d2768",
+      "parts": [
+        "istanbulkart.istanbul adresinden “Online İşlemler” sekmesindeki ‘Bireysel İşlemler’ seçeneğine gidilir."
+      ]
+    },
+    "basvuru_2": {
+      "source": "d2768",
+      "parts": [
+        "bireysel.istanbulkart.istanbul adresine telefon numarasıyla kayıt olunur ya da giriş yapılır."
+      ]
+    },
+    "basvuru_3": {
+      "source": "d2768",
+      "parts": [
+        "Bireysel İstanbulkart profili oluşturulduktan sonra ana sayfada yer alan ‘Kart Başvurusu’ seçeneğine gidilir."
+      ]
+    },
+    "basvuru_4": {
+      "source": "d2768",
+      "parts": [
+        "Başvuru seçenekleri arasında ‘Öğrenci’ seçilir.",
+        "Yönlendirmeler takip edilerek gerekli bilgiler doldurulur ve teslimat tercihi yapılır."
+      ]
+    },
+    "basvuru_istanbul_disi": {
+      "source": "d2768",
+      "parts": [
+        "İstanbul dışına teslimat yapılamamaktadır."
+      ]
+    },
+    "basvuru_mevcut": {
+      "source": "d2768",
+      "parts": [
+        "Mevcut Öğrenci İstanbulkart sahipleri yeni kart başvurusunda bulunamaz. Mevcut kartlarını kullanmaya devam edebilir."
+      ]
+    },
+    "plus_basvuru": {
+      "source": "d2780",
+      "parts": [
+        "Kişiye özel kartlar için İstanbulkart Mobil uygulaması veya İstanbulkart web sitesi üzerinden başvuru yapılabilir; isimsiz kart sahibi olmak isteyenler ise Karaköy ve Kadıköy İstanbulkart Başvuru Merkezlerinden başvuru yapabilir."
+      ]
+    },
+    "resmi_kanal": {
+      "source": "d2815",
+      "parts": [
+        "İstanbulkart işlemlerinizi yalnızca İstanbulkart’ın resmi internet sitesi; istanbulkart.istanbul , İstanbulkart Mobil ve yetkili kanallar üzerinden gerçekleştirin."
+      ]
+    },
+    "adres_kontrol": {
+      "source": "d2815",
+      "parts": [
+        "İstanbulkart görünümünü taklit eden sahte internet siteleri gerçek sayfalara oldukça benzer görünebilir. Kişisel veya kart bilgilerinizi girmeden önce bulunduğunuz sayfanın internet adresini dikkatlice inceleyin."
+      ]
+    },
+    "sms_kod": {
+      "source": "d2815",
+      "parts": [
+        "SMS doğrulama kodunu girmeden önce mesajda yer alan işlem, işyeri ve tutar bilgilerini mutlaka kontrol edin. Beklediğiniz işlemle eşleşmeyen bir bilgi görürseniz doğrulama kodunu kullanmayın."
+      ]
+    },
+    "supheli": {
+      "source": "d2815",
+      "parts": [
+        "Beklemediğiniz bir yönlendirme, farklı bir tutar veya şüpheli bir işlemle karşılaşırsanız bilgilerinizi paylaşmayın, doğrulama kodunu girmeyin ve işlemi sonlandırın."
+      ]
+    }
+  },
+  "summary": {
+    "title": "İstanbulkart destek özeti",
+    "topic": "Konu",
+    "answers": "Yanıtlar",
+    "when": "İşlem zamanı (kullanıcı girdi)",
+    "when_none": "girilmedi",
+    "checks": "Denenen adımlar",
+    "checks_none": "yok",
+    "failed": "denendi, sorun sürüyor",
+    "not_tried": "henüz denenmedi",
+    "sources": "Adımların kaynağı",
+    "no_secrets": "Kart numarası, şifre ve doğrulama kodu bu özette yoktur.",
+    "not_verified": "Bu özet kullanıcının yanıtlarından oluşur; kurum doğrulaması değildir. Nabız kartın bakiyesini ve hareketlerini göremez.",
+    "made_by": "Hazırlayan: İstanbul Nabız (resmî İBB hizmeti değildir)"
+  },
+  "start": "konu",
+  "nodes": {
+    "konu": {
+      "kind": "choice",
+      "text": {
+        "tr": "Sorun ne?",
+        "en": "What is the problem?"
+      },
+      "options": [
+        {
+          "id": "yukleme",
+          "text": {
+            "tr": "Yüklediğim para karta geçmedi",
+            "en": "My top-up has not reached the card"
+          },
+          "next": "yukleme_kanal"
+        },
+        {
+          "id": "vize",
+          "text": {
+            "tr": "Vize (indirimli ya da ücretsiz kart)",
+            "en": "Validation (vize) of a discounted or free card"
+          },
+          "next": "vize_kart"
+        },
+        {
+          "id": "kayip",
+          "text": {
+            "tr": "Kartım kayboldu ya da çalındı",
+            "en": "My card was lost or stolen"
+          },
+          "next": "kayip_tur"
+        },
+        {
+          "id": "eslesme",
+          "text": {
+            "tr": "Kartı uygulamaya ya da hesaba ekleyemiyorum",
+            "en": "I cannot add the card to the app or my account"
+          },
+          "next": "eslesme_yer"
+        },
+        {
+          "id": "basvuru",
+          "text": {
+            "tr": "Kart başvurusunda sorun",
+            "en": "A problem with a card application"
+          },
+          "next": "basvuru_kart"
+        }
+      ]
+    },
+    "yukleme_kanal": {
+      "kind": "choice",
+      "text": {
+        "tr": "Yüklemeyi nereden yaptınız?",
+        "en": "Where did you top up?"
+      },
+      "quotes": [
+        "kanallar"
+      ],
+      "options": [
+        {
+          "id": "mobil",
+          "text": {
+            "tr": "İstanbulkart Mobil",
+            "en": "İstanbulkart Mobil"
+          },
+          "next": "yukleme_zaman"
+        },
+        {
+          "id": "biletmatik",
+          "text": {
+            "tr": "Biletmatik",
+            "en": "Biletmatik machine"
+          },
+          "next": "yukleme_zaman"
+        },
+        {
+          "id": "atm",
+          "text": {
+            "tr": "ATM",
+            "en": "ATM"
+          },
+          "next": "yukleme_zaman"
+        },
+        {
+          "id": "diger",
+          "text": {
+            "tr": "Başka bir site ya da yer",
+            "en": "Another website or place"
+          },
+          "next": "yukleme_resmi"
+        }
+      ]
+    },
+    "yukleme_resmi": {
+      "kind": "check",
+      "text": {
+        "tr": "Resmî kanalı kullandınız mı?",
+        "en": "Did you use an official channel?"
+      },
+      "quotes": [
+        "resmi_kanal",
+        "adres_kontrol"
+      ],
+      "next": "yukleme_zaman"
+    },
+    "yukleme_zaman": {
+      "kind": "when",
+      "text": {
+        "tr": "Yükleme ne zaman yapıldı?",
+        "en": "When did you top up?"
+      },
+      "next": "yukleme_son"
+    },
+    "yukleme_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Bekleyen yükleme",
+        "en": "Pending top-up"
+      },
+      "gap": {
+        "tr": "Yüklemenin karta ne zaman geçeceğini anlatan resmî bir cümle dizinde henüz yok. Nabız kartınızın hareketlerini göremez; yüklemenin geçip geçmediğini söyleyemez.",
+        "en": "There is no official sentence yet in the index on when a top-up reaches the card. Nabız cannot see your card's transactions, so it cannot tell whether the top-up went through."
+      }
+    },
+    "vize_kart": {
+      "kind": "choice",
+      "text": {
+        "tr": "Hangi kart için?",
+        "en": "Which card?"
+      },
+      "options": [
+        {
+          "id": "ogrenci",
+          "text": {
+            "tr": "Öğrenci kartı",
+            "en": "Student card"
+          },
+          "next": "vize_ogrenci"
+        },
+        {
+          "id": "engelli",
+          "text": {
+            "tr": "Engelli kartı",
+            "en": "Disability card"
+          },
+          "next": "vize_engelli_sms"
+        },
+        {
+          "id": "diger",
+          "text": {
+            "tr": "Başka bir kart ya da emin değilim",
+            "en": "Another card, or I am not sure"
+          },
+          "next": "vize_son"
+        }
+      ]
+    },
+    "vize_ogrenci": {
+      "kind": "check",
+      "text": {
+        "tr": "İstanbulkart Mobil ile vizelemeyi denediniz mi?",
+        "en": "Have you tried validating the card in İstanbulkart Mobil?"
+      },
+      "quotes": [
+        "ogrenci_vize"
+      ],
+      "next": "vize_son"
+    },
+    "vize_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Vize",
+        "en": "Validation (vize)"
+      },
+      "gap": {
+        "tr": "Vizeleme olmazsa ne yapılacağını anlatan resmî bir cümle dizinde henüz yok. Hakkınızın durumunu Nabız söyleyemez; kurum söyler.",
+        "en": "There is no official sentence yet in the index on what to do if the validation fails. Nabız cannot tell the state of your entitlement; the institution can."
+      }
+    },
+    "vize_engelli_sms": {
+      "kind": "choice",
+      "text": {
+        "tr": "BELBİM'den rapor numaranızı isteyen bir SMS aldınız mı?",
+        "en": "Did you get an SMS from BELBİM asking for your report number?"
+      },
+      "quotes": [
+        "engelli_kim"
+      ],
+      "options": [
+        {
+          "id": "aldim",
+          "text": {
+            "tr": "Evet, aldım",
+            "en": "Yes, I did"
+          },
+          "next": "vize_engelli_nasil"
+        },
+        {
+          "id": "almadim",
+          "text": {
+            "tr": "Hayır, almadım",
+            "en": "No, I did not"
+          },
+          "next": "vize_engelli_yok"
+        },
+        {
+          "id": "bilmiyorum",
+          "text": {
+            "tr": "Hatırlamıyorum",
+            "en": "I do not remember"
+          },
+          "next": "vize_engelli_son"
+        }
+      ]
+    },
+    "vize_engelli_nasil": {
+      "kind": "check",
+      "text": {
+        "tr": "Rapor numaranızı bu yolla ilettiniz mi?",
+        "en": "Have you sent your report number this way?"
+      },
+      "quotes": [
+        "engelli_nasil",
+        "engelli_gec"
+      ],
+      "next": "vize_engelli_son"
+    },
+    "vize_engelli_yok": {
+      "kind": "end",
+      "text": {
+        "tr": "Engelli kartı vizesi",
+        "en": "Disability card validation"
+      },
+      "quotes": [
+        "engelli_sms_yok",
+        "engelli_153"
+      ]
+    },
+    "vize_engelli_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Engelli kartı vizesi",
+        "en": "Disability card validation"
+      },
+      "quotes": [
+        "engelli_153"
+      ],
+      "gap": {
+        "tr": "Hakkınızın tanımlanıp tanımlanmadığını Nabız göremez ve söyleyemez.",
+        "en": "Nabız cannot see or tell whether your entitlement has been set up."
+      }
+    },
+    "kayip_tur": {
+      "kind": "choice",
+      "text": {
+        "tr": "Kart adınıza kayıtlı mı?",
+        "en": "Is the card registered in your name?"
+      },
+      "options": [
+        {
+          "id": "kisisel",
+          "text": {
+            "tr": "Evet, adıma kayıtlı",
+            "en": "Yes, it is in my name"
+          },
+          "next": "kayip_zaman"
+        },
+        {
+          "id": "isimsiz",
+          "text": {
+            "tr": "Hayır, isimsiz kart",
+            "en": "No, it is an anonymous card"
+          },
+          "next": "kayip_zaman"
+        },
+        {
+          "id": "bilmiyorum",
+          "text": {
+            "tr": "Emin değilim",
+            "en": "I am not sure"
+          },
+          "next": "kayip_zaman"
+        }
+      ]
+    },
+    "kayip_zaman": {
+      "kind": "when",
+      "text": {
+        "tr": "Kaybı ne zaman fark ettiniz?",
+        "en": "When did you notice the loss?"
+      },
+      "next": "kayip_son"
+    },
+    "kayip_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Kayıp ya da çalınan kart",
+        "en": "Lost or stolen card"
+      },
+      "gap": {
+        "tr": "Kayıp ya da çalınan kart için resmî adım dizinde henüz yok. Kartın bakiyesi hakkında Nabız bir şey söyleyemez.",
+        "en": "There is no official step yet in the index for a lost or stolen card. Nabız cannot say anything about the card's balance."
+      }
+    },
+    "eslesme_yer": {
+      "kind": "choice",
+      "text": {
+        "tr": "Kartı nereye eklemeye çalışıyorsunuz?",
+        "en": "Where are you trying to add the card?"
+      },
+      "options": [
+        {
+          "id": "mobil",
+          "text": {
+            "tr": "İstanbulkart Mobil",
+            "en": "İstanbulkart Mobil"
+          },
+          "next": "eslesme_kod"
+        },
+        {
+          "id": "bireysel",
+          "text": {
+            "tr": "bireysel.istanbulkart.istanbul",
+            "en": "bireysel.istanbulkart.istanbul"
+          },
+          "next": "eslesme_kod"
+        },
+        {
+          "id": "diger",
+          "text": {
+            "tr": "Bir bağlantıdan açılan başka bir site",
+            "en": "Another website opened from a link"
+          },
+          "next": "eslesme_adres"
+        }
+      ]
+    },
+    "eslesme_adres": {
+      "kind": "check",
+      "text": {
+        "tr": "Sayfanın adresini kontrol ettiniz mi?",
+        "en": "Have you checked the page's address?"
+      },
+      "quotes": [
+        "adres_kontrol",
+        "resmi_kanal"
+      ],
+      "next": "eslesme_kod"
+    },
+    "eslesme_kod": {
+      "kind": "choice",
+      "text": {
+        "tr": "SMS doğrulama kodu aşamasında mı takıldınız?",
+        "en": "Are you stuck at the SMS verification code?"
+      },
+      "options": [
+        {
+          "id": "evet",
+          "text": {
+            "tr": "Evet",
+            "en": "Yes"
+          },
+          "next": "eslesme_sms"
+        },
+        {
+          "id": "hayir",
+          "text": {
+            "tr": "Hayır, başka bir yerde",
+            "en": "No, somewhere else"
+          },
+          "next": "eslesme_son"
+        }
+      ]
+    },
+    "eslesme_sms": {
+      "kind": "check",
+      "text": {
+        "tr": "SMS'teki bilgileri kontrol ettiniz mi?",
+        "en": "Have you checked the details in the SMS?"
+      },
+      "quotes": [
+        "sms_kod",
+        "supheli"
+      ],
+      "next": "eslesme_son"
+    },
+    "eslesme_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Kartı uygulamaya ya da hesaba ekleme",
+        "en": "Adding the card to the app or account"
+      },
+      "quotes": [
+        "resmi_kanal"
+      ],
+      "gap": {
+        "tr": "Kartı hesaba ya da cihaza ekleme sorunu için resmî adım dizinde henüz yok.",
+        "en": "There is no official step yet in the index for a problem adding the card to an account or device."
+      }
+    },
+    "basvuru_kart": {
+      "kind": "choice",
+      "text": {
+        "tr": "Hangi kart için başvuruyorsunuz?",
+        "en": "Which card are you applying for?"
+      },
+      "options": [
+        {
+          "id": "ogrenci",
+          "text": {
+            "tr": "Öğrenci kartı",
+            "en": "Student card"
+          },
+          "next": "basvuru_adim"
+        },
+        {
+          "id": "plus",
+          "text": {
+            "tr": "İstanbulkart Plus",
+            "en": "İstanbulkart Plus"
+          },
+          "next": "basvuru_plus"
+        },
+        {
+          "id": "diger",
+          "text": {
+            "tr": "Başka bir kart",
+            "en": "Another card"
+          },
+          "next": "basvuru_son"
+        }
+      ]
+    },
+    "basvuru_adim": {
+      "kind": "choice",
+      "text": {
+        "tr": "Hangi adımda takıldınız?",
+        "en": "Which step are you stuck at?"
+      },
+      "options": [
+        {
+          "id": "bireysel",
+          "text": {
+            "tr": "Bireysel İşlemler'e ulaşamadım",
+            "en": "I could not reach Bireysel İşlemler"
+          },
+          "next": "basvuru_c1"
+        },
+        {
+          "id": "giris",
+          "text": {
+            "tr": "Kayıt olurken ya da giriş yaparken",
+            "en": "While signing up or signing in"
+          },
+          "next": "basvuru_c2"
+        },
+        {
+          "id": "secenek",
+          "text": {
+            "tr": "Kart Başvurusu seçeneğini bulamadım",
+            "en": "I could not find the Kart Başvurusu option"
+          },
+          "next": "basvuru_c3"
+        },
+        {
+          "id": "form",
+          "text": {
+            "tr": "Bilgileri doldururken ya da teslimatta",
+            "en": "While filling in the details or choosing delivery"
+          },
+          "next": "basvuru_c4"
+        },
+        {
+          "id": "mevcut",
+          "text": {
+            "tr": "Zaten bir öğrenci kartım var",
+            "en": "I already have a student card"
+          },
+          "next": "basvuru_mevcut_son"
+        },
+        {
+          "id": "disari",
+          "text": {
+            "tr": "Teslimat adresim İstanbul dışında",
+            "en": "My delivery address is outside İstanbul"
+          },
+          "next": "basvuru_disari_son"
+        }
+      ]
+    },
+    "basvuru_c1": {
+      "kind": "check",
+      "text": {
+        "tr": "Bu adımı denediniz mi?",
+        "en": "Have you tried this step?"
+      },
+      "quotes": [
+        "basvuru_1"
+      ],
+      "next": "basvuru_son"
+    },
+    "basvuru_c2": {
+      "kind": "check",
+      "text": {
+        "tr": "Bu adımı denediniz mi?",
+        "en": "Have you tried this step?"
+      },
+      "quotes": [
+        "basvuru_2"
+      ],
+      "next": "basvuru_son"
+    },
+    "basvuru_c3": {
+      "kind": "check",
+      "text": {
+        "tr": "Bu adımı denediniz mi?",
+        "en": "Have you tried this step?"
+      },
+      "quotes": [
+        "basvuru_3"
+      ],
+      "next": "basvuru_son"
+    },
+    "basvuru_c4": {
+      "kind": "check",
+      "text": {
+        "tr": "Bu adımı denediniz mi?",
+        "en": "Have you tried this step?"
+      },
+      "quotes": [
+        "basvuru_4"
+      ],
+      "next": "basvuru_son"
+    },
+    "basvuru_plus": {
+      "kind": "check",
+      "text": {
+        "tr": "Bu kanallardan birini denediniz mi?",
+        "en": "Have you tried one of these channels?"
+      },
+      "quotes": [
+        "plus_basvuru"
+      ],
+      "next": "basvuru_son"
+    },
+    "basvuru_mevcut_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Öğrenci kartı başvurusu",
+        "en": "Student card application"
+      },
+      "quotes": [
+        "basvuru_mevcut"
+      ]
+    },
+    "basvuru_disari_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Öğrenci kartı başvurusu",
+        "en": "Student card application"
+      },
+      "quotes": [
+        "basvuru_istanbul_disi"
+      ]
+    },
+    "basvuru_son": {
+      "kind": "end",
+      "text": {
+        "tr": "Kart başvurusu",
+        "en": "Card application"
+      },
+      "quotes": [
+        "resmi_kanal"
+      ],
+      "gap": {
+        "tr": "Başvuru ekranındaki hata iletilerinin anlamı dizinde henüz yok.",
+        "en": "The meaning of the error messages on the application screen is not in the index yet."
+      }
+    }
+  }
+}

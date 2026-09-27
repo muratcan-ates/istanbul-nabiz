@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "captured_from": "data/knowledge/knowledge.db",
+  "sources": {
+    "metro": {
+      "url": "https://www.metro.istanbul/SeferDurumlari/BiletUcretleri",
+      "title": "Ücret Tarifeleri",
+      "institution": "Metro İstanbul",
+      "fetched_at": "2026-09-26T07:22:36.077395+00:00",
+      "source_updated_at": null
+    },
+    "ferry": {
+      "url": "https://sehirhatlari.istanbul/tr/ucret-tarifeleri",
+      "title": "Vapur Hatları Ücret Tarifesi - Şehir Hatları A.Ş.",
+      "institution": "Şehir Hatları",
+      "fetched_at": "2026-09-26T07:24:04.693968+00:00",
+      "source_updated_at": null
+    },
+    "iett": {
+      "url": "https://iett.istanbul/icerik/IETT-Toplu-Ulasim-ucret-Tarifesi",
+      "title": "İETT Toplu Ulaşım Ücret Tarifesi",
+      "institution": "İETT",
+      "fetched_at": "2026-09-26T07:23:22.517359+00:00",
+      "source_updated_at": null
+    },
+    "cards_note": {
+      "url": "https://www.metro.istanbul/icerik/seyahatkartlari",
+      "title": "Seyahat Kartları",
+      "institution": "Metro İstanbul",
+      "fetched_at": "2026-09-26T07:22:38.147186+00:00",
+      "source_updated_at": null,
+      "quote": "Ücretsiz ve indirimli seyahat kartları düzenlemeleri, T.C. Aile ve Sosyal Hizmetler Bakanlığı ve İstanbul Büyükşehir Belediyesi’nce belirlenen mevzuata göre, İETT tarafından yapılmaktadır."
+    }
+  },
+  "tariffs": ["tam", "ogrenci", "ogrenci30"],
+  "metro": {
+    "single": {
+      "heading": "Anonim Kart İstanbulkart",
+      "rows": {
+        "tam": {"label": "Tam", "raw": "46,20 ₺", "kurus": 4620, "quote": "Tam: 46,20 ₺"},
+        "ogrenci": {"label": "Öğrenci Kartı", "raw": "22,55 ₺", "kurus": 2255, "quote": "Öğrenci Kartı: 22,55 ₺"},
+        "ogrenci30": {"label": "30 Yaşından Gün Almış Öğrenci", "raw": "41,58 ₺", "kurus": 4158, "quote": "30 Yaşından Gün Almış Öğrenci: 41,58 ₺"}
+      },
+      "other": [{"label": "Sosyal", "raw": "33,08 ₺", "kurus": 3308, "quote": "Sosyal: 33,08 ₺"}]
+    },
+    "subscription": {
+      "heading": "Mavi Kart İstanbulkart",
+      "rows": {
+        "tam": {"label": "Tam/180 Geçiş", "raw": "3.628 ₺", "kurus": 362800, "passes": 180, "quote": "Tam/180 Geçiş: 3.628 ₺"},
+        "ogrenci": {"label": "Öğrenci/200 Geçiş", "raw": "653 ₺", "kurus": 65300, "passes": 200, "quote": "Öğrenci/200 Geçiş: 653 ₺"},
+        "ogrenci30": {"label": "30 Yaşından Gün Almış Öğrenci", "raw": "3.265 ₺", "kurus": 326500, "passes": null, "quote": "30 Yaşından Gün Almış Öğrenci: 3.265 ₺"}
+      },
+      "other": [{"label": "Sosyal/200 Geçiş", "raw": "2.256 ₺", "kurus": 225600, "passes": 200, "quote": "Sosyal/200 Geçiş: 2.256 ₺"}]
+    },
+    "eticket": {
+      "heading": "Elektronik Bilet İstanbulkart",
+      "packs": [
+        {"label": "Bir Geçişlik Kart", "passes": 1, "raw": "65 ₺", "kurus": 6500, "quote": "Bir Geçişlik Kart: 65 ₺"},
+        {"label": "İki Geçişlik Kart", "passes": 2, "raw": "120 ₺", "kurus": 12000, "quote": "İki Geçişlik Kart: 120 ₺"},
+        {"label": "Üç Geçişlik Kart", "passes": 3, "raw": "185 ₺", "kurus": 18500, "quote": "Üç Geçişlik Kart: 185 ₺"},
+        {"label": "Dört Geçişlik Kart", "passes": 4, "raw": "230 ₺", "kurus": 23000, "quote": "Dört Geçişlik Kart: 230 ₺"},
+        {"label": "Beş Geçişlik Kart", "passes": 5, "raw": "275 ₺", "kurus": 27500, "quote": "Beş Geçişlik Kart: 275 ₺"},
+        {"label": "On Geçişlik Kart", "passes": 10, "raw": "530 ₺", "kurus": 53000, "quote": "On Geçişlik Kart: 530 ₺"}
+      ]
+    }
+  },
+  "ferry": {
+    "columns": {"tam": "Tam (TL)", "ogrenci30": "Öğrenci 30 Yaş (TL)", "ogrenci": "Öğrenci (TL)", "other": ["İndirimli (TL)"]},
+    "routes": [
+      {"id": "karakoy-kadikoy", "label": "KARAKÖY - KADIKÖY", "distance_based": false, "fares": {"tam": {"raw": "65.21", "kurus": 6521}, "ogrenci30": {"raw": "58.68", "kurus": 5868}, "ogrenci": {"raw": "31.76", "kurus": 3176}}, "other": {"İndirimli (TL)": {"raw": "46.79", "kurus": 4679}}, "quote": "| KARAKÖY - KADIKÖY | 65.21 | 58.68 | 31.76 | 46.79"},
+      {"id": "besiktas-kadikoy", "label": "BEŞİKTAŞ - KADIKÖY", "distance_based": false, "fares": {"tam": {"raw": "65.21", "kurus": 6521}, "ogrenci30": {"raw": "58.69", "kurus": 5869}, "ogrenci": {"raw": "31.76", "kurus": 3176}}, "other": {"İndirimli (TL)": {"raw": "46.79", "kurus": 4679}}, "quote": "| BEŞİKTAŞ - KADIKÖY | 65.21 | 58.69 | 31.76 | 46.79"},
+      {"id": "kadikoy-kabatas", "label": "KADIKÖY - KABATAŞ *", "distance_based": true, "fares": {"tam": {"raw": "62.70", "kurus": 6270}, "ogrenci30": {"raw": "56.43", "kurus": 5643}, "ogrenci": {"raw": "30.94", "kurus": 3094}}, "other": {"İndirimli (TL)": {"raw": "45.14", "kurus": 4514}}, "quote": "| KADIKÖY - KABATAŞ * | 62.70 | 56.43 | 30.94 | 45.14"},
+      {"id": "uskudar-eminonu", "label": "ÜSKÜDAR - EMİNÖNÜ", "distance_based": false, "fares": {"tam": {"raw": "58.52", "kurus": 5852}, "ogrenci30": {"raw": "52.66", "kurus": 5266}, "ogrenci": {"raw": "28.44", "kurus": 2844}}, "other": {"İndirimli (TL)": {"raw": "41.79", "kurus": 4179}}, "quote": "| ÜSKÜDAR - EMİNÖNÜ | 58.52 | 52.66 | 28.44 | 41.79"},
+      {"id": "bogaz-hatti", "label": "BOĞAZ HATTI *", "distance_based": true, "fares": {"tam": {"raw": "76.90", "kurus": 7690}, "ogrenci30": {"raw": "69.20", "kurus": 6920}, "ogrenci": {"raw": "37.61", "kurus": 3761}}, "other": {"İndirimli (TL)": {"raw": "55.17", "kurus": 5517}}, "quote": "| BOĞAZ HATTI * | 76.90 | 69.20 | 37.61 | 55.17"},
+      {"id": "ugramali-hatlar", "label": "UĞRAMALI HATLAR *", "distance_based": true, "fares": {"tam": {"raw": "76.90", "kurus": 7690}, "ogrenci30": {"raw": "69.20", "kurus": 6920}, "ogrenci": {"raw": "37.61", "kurus": 3761}}, "other": {"İndirimli (TL)": {"raw": "55.17", "kurus": 5517}}, "quote": "| UĞRAMALI HATLAR * | 76.90 | 69.20 | 37.61 | 55.17"},
+      {"id": "ortakoy-uskudar", "label": "ORTAKÖY-ÜSKÜDAR *", "distance_based": true, "fares": {"tam": {"raw": "51.81", "kurus": 5181}, "ogrenci30": {"raw": "46.62", "kurus": 4662}, "ogrenci": {"raw": "25.08", "kurus": 2508}}, "other": {"İndirimli (TL)": {"raw": "36.77", "kurus": 3677}}, "quote": "| ORTAKÖY-ÜSKÜDAR * | 51.81 | 46.62 | 25.08 | 36.77"},
+      {"id": "ortakoy-kadikoy", "label": "ORTAKÖY-KADIKÖY *", "distance_based": true, "fares": {"tam": {"raw": "71.07", "kurus": 7107}, "ogrenci30": {"raw": "63.95", "kurus": 6395}, "ogrenci": {"raw": "34.27", "kurus": 3427}}, "other": {"İndirimli (TL)": {"raw": "50.97", "kurus": 5097}}, "quote": "| ORTAKÖY-KADIKÖY * | 71.07 | 63.95 | 34.27 | 50.97"},
+      {"id": "uskudar-kadikoy", "label": "ÜSKÜDAR-KADIKÖY *", "distance_based": true, "fares": {"tam": {"raw": "62.70", "kurus": 6270}, "ogrenci30": {"raw": "56.43", "kurus": 5643}, "ogrenci": {"raw": "30.94", "kurus": 3094}}, "other": {"İndirimli (TL)": {"raw": "45.14", "kurus": 4514}}, "quote": "| ÜSKÜDAR-KADIKÖY * | 62.70 | 56.43 | 30.94 | 45.14"},
+      {"id": "beykoz-sariyer", "label": "BEYKOZ-SARIYER *", "distance_based": true, "fares": {"tam": {"raw": "61.04", "kurus": 6104}, "ogrenci30": {"raw": "54.93", "kurus": 5493}, "ogrenci": {"raw": "30.10", "kurus": 3010}}, "other": {"İndirimli (TL)": {"raw": "43.44", "kurus": 4344}}, "quote": "| BEYKOZ-SARIYER * | 61.04 | 54.93 | 30.10 | 43.44"},
+      {"id": "cengelkoy-kuzguncuk-besiktas-kabatas", "label": "ÇENGELKÖY - KUZGUNCUK - BEŞİKTAŞ- KABATAŞ HATTI *", "distance_based": true, "fares": {"tam": {"raw": "61.85", "kurus": 6185}, "ogrenci30": {"raw": "55.66", "kurus": 5566}, "ogrenci": {"raw": "30.10", "kurus": 3010}}, "other": {"İndirimli (TL)": {"raw": "44.3", "kurus": 4430}}, "quote": "| ÇENGELKÖY - KUZGUNCUK - BEŞİKTAŞ- KABATAŞ HATTI * | 61.85 | 55.66 | 30.10 | 44.3"},
+      {"id": "besiktas-halic", "label": "BEŞİKTAŞ - HALİÇ HATTI *", "distance_based": true, "fares": {"tam": {"raw": "76.90", "kurus": 7690}, "ogrenci30": {"raw": "69.20", "kurus": 6920}, "ogrenci": {"raw": "37.61", "kurus": 3761}}, "other": {"İndirimli (TL)": {"raw": "55.17", "kurus": 5517}}, "quote": "| BEŞİKTAŞ - HALİÇ HATTI * | 76.90 | 69.20 | 37.61 | 55.17"},
+      {"id": "kadikoy-halic", "label": "KADIKÖY - HALİÇ HATTI *", "distance_based": true, "fares": {"tam": {"raw": "76.90", "kurus": 7690}, "ogrenci30": {"raw": "69.20", "kurus": 6920}, "ogrenci": {"raw": "37.61", "kurus": 3761}}, "other": {"İndirimli (TL)": {"raw": "55.17", "kurus": 5517}}, "quote": "| KADIKÖY - HALİÇ HATTI * | 76.90 | 69.20 | 37.61 | 55.17"},
+      {"id": "uskudar-halic", "label": "ÜSKÜDAR-HALİÇ HATTI *", "distance_based": true, "fares": {"tam": {"raw": "76.90", "kurus": 7690}, "ogrenci30": {"raw": "69.20", "kurus": 6920}, "ogrenci": {"raw": "37.61", "kurus": 3761}}, "other": {"İndirimli (TL)": {"raw": "55.17", "kurus": 5517}}, "quote": "| ÜSKÜDAR-HALİÇ HATTI * | 76.90 | 69.20 | 37.61 | 55.17"},
+      {"id": "bostanci-moda-karakoy-kabatas", "label": "BOSTANCI - MODA - KARAKÖY - KABATAŞ HATTI *", "distance_based": true, "fares": {"tam": {"raw": "76.90", "kurus": 7690}, "ogrenci30": {"raw": "69.20", "kurus": 6920}, "ogrenci": {"raw": "37.61", "kurus": 3761}}, "other": {"İndirimli (TL)": {"raw": "55.17", "kurus": 5517}}, "quote": "| BOSTANCI - MODA - KARAKÖY - KABATAŞ HATTI * | 76.90 | 69.20 | 37.61 | 55.17"},
+      {"id": "uskudar-asiyan", "label": "ÜSKÜDAR - AŞİYAN", "distance_based": false, "fares": {"tam": {"raw": "68.53", "kurus": 6853}, "ogrenci30": {"raw": "61.67", "kurus": 6167}, "ogrenci": {"raw": "33.45", "kurus": 3345}}, "other": {"İndirimli (TL)": {"raw": "49.31", "kurus": 4931}}, "quote": "| ÜSKÜDAR - AŞİYAN | 68.53 | 61.67 | 33.45 | 49.31"},
+      {"id": "asiyan-anadolu-hisari-kucuksu", "label": "AŞİYAN - ANADOLU HİSARI - KÜÇÜKSU *", "distance_based": true, "fares": {"tam": {"raw": "50.15", "kurus": 5015}, "ogrenci30": {"raw": "45.13", "kurus": 4513}, "ogrenci": {"raw": "24.43", "kurus": 2443}}, "other": {"İndirimli (TL)": {"raw": "35.92", "kurus": 3592}}, "quote": "| AŞİYAN - ANADOLU HİSARI - KÜÇÜKSU * | 50.15 | 45.13 | 24.43 | 35.92"},
+      {"id": "istinye-cubuklu", "label": "İSTİNYE-ÇUBUKLU HATTI", "distance_based": false, "fares": {"tam": {"raw": "50.15", "kurus": 5015}, "ogrenci30": {"raw": "45.13", "kurus": 4513}, "ogrenci": {"raw": "24.43", "kurus": 2443}}, "other": {"İndirimli (TL)": {"raw": "35.92", "kurus": 3592}}, "quote": "| İSTİNYE-ÇUBUKLU HATTI | 50.15 | 45.13 | 24.43 | 35.92"}
+    ],
+    "transfers": [
+      {"n": 1, "label": "1. AKTARMA", "fares": {"tam": {"raw": "41.43", "kurus": 4143}, "ogrenci30": {"raw": "37.28", "kurus": 3728}, "ogrenci": {"raw": "12.03", "kurus": 1203}, "İndirimli (TL)": {"raw": "22.85", "kurus": 2285}}, "quote": "| 1. AKTARMA | 41.43 | 37.28 | 12.03 | 22.85"},
+      {"n": 2, "label": "2. AKTARMA", "fares": {"tam": {"raw": "34.28", "kurus": 3428}, "ogrenci30": {"raw": "30.85", "kurus": 3085}, "ogrenci": {"raw": "11.42", "kurus": 1142}, "İndirimli (TL)": {"raw": "17.77", "kurus": 1777}}, "quote": "| 2. AKTARMA | 34.28 | 30.85 | 11.42 | 17.77"},
+      {"n": 3, "label": "3. AKTARMA", "fares": {"tam": {"raw": "29.92", "kurus": 2992}, "ogrenci30": {"raw": "26.93", "kurus": 2693}, "ogrenci": {"raw": "9.94", "kurus": 994}, "İndirimli (TL)": {"raw": "12.03", "kurus": 1203}}, "quote": "| 3. AKTARMA | 29.92 | 26.93 | 9.94 | 12.03"},
+      {"n": 4, "label": "4. AKTARMA", "fares": {"tam": {"raw": "29.92", "kurus": 2992}, "ogrenci30": {"raw": "26.93", "kurus": 2693}, "ogrenci": {"raw": "9.94", "kurus": 994}, "İndirimli (TL)": {"raw": "12.03", "kurus": 1203}}, "quote": "| 4. AKTARMA | 29.92 | 26.93 | 9.94 | 12.03"},
+      {"n": 5, "label": "5. AKTARMA", "fares": {"tam": {"raw": "29.92", "kurus": 2992}, "ogrenci30": {"raw": "26.93", "kurus": 2693}, "ogrenci": {"raw": "9.94", "kurus": 994}, "İndirimli (TL)": {"raw": "12.03", "kurus": 1203}}, "quote": "| 5. AKTARMA | 29.92 | 26.93 | 9.94 | 12.03"}
+    ],
+    "rules": {
+      "transfer_scope": {"quote": "Diğer toplu ulaşım araçlarını kullandıktan sonra Şehir Hatları’na yapılan aktarmaları kapsar."},
+      "personalized_only": {"quote": "%50 indirim, sadece kişiselleştirilmiş İstanbulkart sahibi olan kişiler için geçerlidir."},
+      "window_minutes": 120,
+      "window_quote": "Aktarma süresi ise 120 dakikadır.",
+      "night_double": {"quote": "Bahsi geçen ücret tarifelerine ek gece tarifesi (00:30-05:30) oluşturulan hatlarda mevcut ücretin iki (2) katı tarife uygulanır."},
+      "subscription_valid": {"quote": "Seferlerimizde abonman kartlar geçerlidir."},
+      "distance_based": {"quote": "Bu hatlarda mesafe bazlı ücretlendirme sistemi yapılmakta olup yolcularımızın iade farklarını alabilmeleri için İstalbulkartlarını iskelelerin çıkışlarında bulunan iade cihazlarına okutmaları gerekmektedir. İade süresi 120 dakikadır."}
+    }
+  },
+  "missing": {
+    "bus": {"status": "alinamadi", "checked_at": "2026-09-27T00:39:16.882422+00:00"},
+    "metrobus": null,
+    "marmaray": null,
+    "metro_transfer": null,
+    "senior_65": null,
+    "park_and_ride": null
+  }
+}

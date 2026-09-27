@@ -1,6 +1,7 @@
-/* v15: E48's official-path source label in provenance.js (v14: redesigned citizen shell and locally served
+/* v17: P00 wave, catalogues and kvkk for the E5x-E7x back ends (v16: the home screen's category pills;
+   v15: E48's official-path source label in provenance.js; v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v16';
+const VERSION = 'v17';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';

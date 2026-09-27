@@ -2282,7 +2282,7 @@ come without a model.
 
 ### Consequences
 
-- `chat.py` is 389 lines. The knowledge index's model path is still not wired. The input guard's sentence
+- `chat.py` is 389 lines. The knowledge index's model path was wired on 27 Sep (#70). The input guard's sentence
   (`text_guard.py`) and "Doğrulamak için 153 Çözüm Merkezi'ni ara." stay Turkish on the English page.
 
 ## 51. The new sections in English (E40, 26 Sep)
@@ -2644,3 +2644,447 @@ answers citing the gold page first.
 - FastAPI 0.14x nests included routers, so the fallback opens them through `effective_route_contexts`; a FastAPI
   upgrade that renames it turns refused requests' lines into `<unmatched>`, never the raw path
   (`tests/test_request_log_paths.py`).
+
+## 67. Follow-up questions keep place, topic and time; a correction outranks the follow-up (E62, 27 Sep)
+
+### Decision
+
+- Follow-up questions keep place, topic and time from closed vocabularies; a correction replaces the old value and
+  outranks the E38 follow-up; nothing is stored (E62). `context_slots.py` is pure: it replays only this chat's
+  history as the page sends it, and a slot takes a value only from a closed list, so free text never enters one.
+- `chat_pipeline.layer_turn` asks `context_turn` when the E38 layer says `pass` or `followup`: "Kadıköy değil Kartal"
+  becomes the Kartal question, "Kadıköy değil" asks which place, "baştan başlayalım" drops the context. After a
+  correction or a reset the model does not see the earlier questions on that turn (`LayerOutcome.keep_context`).
+- Why: with the real place list, the E38 layer answered "Kadıköy değil" with the Kadıköy car park (E62 note). Wired
+  in P00 G1 under Murat's P00 brief (27 Sep).
+
+### Consequences
+
+- On the rule path a time slot other than now appears in the rewritten question, but the answer is still the
+  current record and the template does not yet say there is no forecast (templates owner).
+- Memory (P02) must not fill these slots: they read only the chat's own history.
+
+## 68. A place is a whole Turkish token; a service intent is not a place lookup (E64, 27 Sep)
+
+### Decision
+
+- Place names match whole Turkish tokens with case endings; a service intent is not a place lookup and falls
+  through to the knowledge path (E64). `agent.route` uses `place_guard.find_place` and takes only a
+  `places_resolve` fallback from `place_guard.fallback_tool`; `_find_place` is gone and `agent.py` is back at its
+  445-line ceiling.
+- Why: a substring match answered "Elektrik faturamı kontrol et" with a place. Returning `ibb_services_search` from
+  the rule path was tried and rejected: it broke three knowledge-path tests and fell to a generic tool template
+  (E64 note).
+
+### Consequences
+
+- "Fatiha suresi nedir?" still matches Fatih, a known limit. On the model path the model picks the tools and
+  `place_guard` does not run.
+
+## 69. Sentence-level citations, computed after the answer (E63, 27 Sep)
+
+### Decision
+
+- Sentence-level citations, source dates and a value conflict flag, computed after the answer; the newer source is
+  named, neither is judged (E63). The chat's knowledge turn adds `how.citation_map`, and each conflict adds
+  "kaynak çelişkisi: cümle n" to `how.uncertainty`; the `final` key set does not change.
+- `POST /api/knowledge/citations` (`citation_api.py`) is not wired: the chat already carries the map, and a
+  separate endpoint would widen the surface with no caller (Murat, 27 Sep, P00 default decision 4).
+
+### Consequences
+
+- Most İBB pages give no date, so most sources say the page gives none. An unsupported sentence with "153" in it
+  counts as a referral, "153 TL" included (E63 note, risk 1).
+
+## 70. The knowledge model path: claims cite evidence ids, the rule gate still decides (E78, 27 Sep)
+
+### Decision
+
+- The knowledge model path: claims cite evidence ids and fall back to the quote; the rule gate still decides (E78).
+  `knowledge_turn.py`, one helper for E63 and E78, builds a generator only online and for a non-sensitive question;
+  offline the rule path answers exactly as before. The author comes from the wrapper ("kural", "model",
+  "yerel model"); `how.generation` carries status, reason, label and drop counts, never the question or a quote.
+- The window stays today's: `_from_knowledge` runs only when the rule path says out of scope (Murat, 27 Sep, P00
+  default decision 3, not asked again). This replaces #50's "model path is still not wired".
+
+### Consequences
+
+- The model rarely writes here: the knowledge path is mostly reached when no model has room. A real model's
+  acceptance rate is not measured (Murat's step, `--generate model`).
+- The chat turn and the generator share one `SpendGuard`; the generator is outside the chat's model-turn limit.
+
+## 71. Knowledge editor: unanswered questions and source candidates (E74, 27 Sep)
+
+### Decision
+
+- Knowledge editor: unanswered questions from operator requests and eval sets, tagged missing / wrong route /
+  stale; the operator proposes source candidates, tries them offline against the current index, approves or undoes
+  with a ledger line; approval queues for ingest, never edits the index (E74).
+- Nine endpoints under `/api/console/knowledge-editor`, behind the console's door. The console shows it in a new
+  closed disclosure, "Bilgi ve planlama", with no new left-menu link (P00 console layout).
+- `data/knowledge/source_candidates.jsonl` is written by the running server and gitignored (P00 default; the E74
+  note had proposed committing it).
+
+### Consequences
+
+- Not measured: "Değerlendirme sorularını ölç" needs the robots copy under `data/knowledge/`, so no number is
+  claimed yet.
+- A request reference is an unsalted hash of the code; the request log writes the route template (#66), so the
+  reference never reaches the log.
+- The candidate card has its own primary button, inside a closed disclosure (E74 note, risk 3).
+
+## 72. data.ibb.gov.tr's `/api/` is developer access, at least 10 s apart (27 Sep)
+
+### Decision
+
+- data.ibb.gov.tr `/api/` was used as developer access; requests at least 10 s apart; the crawler rules
+  ("tarayıcı kuralları") were applied in knowledge collection (Murat, 27 Sep; the handoff note said this was not
+  yet written into the repository).
+
+## 73. Photo reports: consented, metadata stripped twice, photo gone on close (E51, 27 Sep)
+
+### Decision
+
+- Photo reports (E51): consented, metadata stripped twice (canvas and server), 30 days, photo gone on close, read
+  only behind the console door; no automatic face or plate blurring in this version, one warning sentence instead
+  (Murat, 27 Sep).
+- The console queue sits in "Bildirimler" (P00 default decision 5; the E51 note had said "Vatandaş talepleri": a
+  photo is a report, and E67 gathers it into the same incident). The citizen form waits for P01's chat card (D2).
+- The door's JSON refusal (401, 403, 503) carries `Cache-Control: no-store`. It returns before any route runs, so
+  no router could add the header itself (E51 note).
+
+### Consequences
+
+- The status write and its ledger line are not one SQLite transaction: a failed ledger write answers 503 while the
+  status may have changed (E51 note). A phone photo with GPS EXIF and an iOS HEIC file were not tried.
+
+## 74. Report timeline: resolved only when the citizen confirms (E66, 27 Sep)
+
+### Decision
+
+- Report timeline: operator moves along allowed steps only; 'resolved' only when the citizen confirms, 'still
+  broken' reopens it; referral names an agency from the catalogue and never claims the agency confirmed (E66).
+- The table sits in "Bildirimler"; the console's first screen shows only "Sizi bekleyen bildirim: n". E66's own
+  log filter is removed, since the request log writes the route template (#66). Its `TransitionError` is now
+  `TimelineTransitionError`: E71 defines a different one, and a public name has one meaning.
+
+### Consequences
+
+- Whoever knows a report code sees its timeline; the privacy page says not to share the code (THREAT_MODEL §4).
+- One report still has three ids (the E33/E66 code, the E51 photo code, E67's member refs); one report identity is
+  P07-arka's work.
+
+## 75. Incident file: reports, photos and lift records per station (E67, 27 Sep)
+
+### Decision
+
+- Incident file: reports, photos and lift records grouped per station; priority shown as a sourced suggestion apart
+  from the operator's decision; split, merge and undo each need a reason and a ledger line (E67).
+- With E51 joined, the photo adapter reports `photos_available: true`; the API test that assumed E51 absent says so.
+
+### Consequences
+
+- Its `ui.inc.*` keys stay in the module's own table for now: two Turkish defaults outside the table (the access
+  factor's equipment and status) fail the page's bare-Turkish check, and fixing them changes the module and its
+  catalogue. Until then the English console shows this panel in Turkish.
+- The access factor prints the record's equipment code ("elevator") inside the Turkish sentence.
+
+## 76. Outcome board: every rate with its denominator (E75, 27 Sep)
+
+### Decision
+
+- Outcome board: every rate shows its denominator; below 10 samples it says not measured yet; 'resolved' counts only
+  citizen confirmations (E75).
+- It takes E66's stage names from `report_timeline.STAGES`, not a copy. "Ölçümü kaydet" is a secondary `.btn`, so
+  the console keeps one primary button. It sits under "Sistem durumu", after approval health.
+
+### Consequences
+
+- On demo data most rates say not measured yet, on purpose. The board keeps totals only (90 days, 500 rows).
+
+## 77. Recurring disruptions: three read days before "recurring" (E57, 27 Sep)
+
+### Decision
+
+- Recurring disruptions: separate days on Metro's unusable list and line notices, from Nabız's own discontinuous
+  reads; three read days before anything is called recurring; an institution suggestion, never an assignment (E57).
+
+### Consequences
+
+- Not measured on the real archive: how long the first 30-day read takes is unknown.
+
+## 78. Escort support request: a prepared file for a simulated queue (E71, 27 Sep)
+
+### Decision
+
+- Escort support request: a prepared file sent to a simulated queue only with explicit consent (special-category
+  data), tracked or cancelled by code, never presented as an arranged escort; 153 remains the official channel (E71).
+- The console table sits in "Vatandaş talepleri"; the first screen shows only "Yeni destek talebi: n". The
+  code-free request log (#66) was in place before this router joined, as the E71 note required.
+
+### Consequences
+
+- The citizen form waits for P01's card (D2).
+
+## 79. Ask Istanbul: a one-question poll a person publishes (E54, 27 Sep)
+
+### Decision
+
+- Ask Istanbul: an operator's one-question poll, published only after a person confirms; one vote per device, the
+  choice counted apart from the device; results always carry 'not representative, only Nabız voters' (E54).
+- The console module is `console_poll.js`, not `poll_console.js`, so the service worker's `console` prefix keeps it
+  out of the citizen cache. The first screen shows "Yayın bekleyen anket taslağı: n".
+
+### Consequences
+
+- A citizen sees no results after voting (not built); if added, the same sentence goes on the citizen card.
+- Whether the decision engine's human-approval count includes poll publications and closures is still open.
+
+## 80. Step-by-step voice route: read aloud only on request (E50, 27 Sep)
+
+### Decision
+
+- Step-by-step voice route (E50): station and recorded route steps read aloud only on request; not street
+  navigation. `GET /api/route/steps` keeps no query. The one deliberate exception to
+  the "only the composer is translucent" rule is the route suggestion under a chat answer (`.glass`, the panel stays
+  opaque); the panel always shows its own scope line, so it does not contradict `journey_accessible.DISCLAIMER_TR`.
+- `index.html` and the service worker shell do not change in this round; the module joins the chat's route card
+  with P01 (D2), together with the voice paragraph in the privacy page.
+
+### Consequences
+
+- The suggestion reads the chat's DOM through a `MutationObserver`; a class rename in the chat silently drops it.
+- The E50 note says the answer is `no-store`; the handler sets no cache header (checked 27 Sep). The service
+  worker never caches `/api/`, so only a proxy could; the header is a one-line change for the module's owner.
+
+## 81. İBB places: four recorded open data lists (E79, 27 Sep)
+
+### Decision
+
+- İBB places: four recorded open data lists (Halk Ekmek, Kent Lokantası, social facilities, ibbWiFi) served from
+  captured files; the ibbWiFi list is from 15 Mar 2023 and is marked old; no live occupancy (E79).
+- The capture script fetched robots.txt and the four catalogue download files from data.ibb.gov.tr, 10 s apart
+  (Crawl-Delay), and refuses any `/api/` path; guardrail `no-raw-ibb-calls` allows only its `fetch` function. A
+  district comes from the row, then the address, then the name; never from coordinates.
+
+### Consequences
+
+- The E79 note's "CKAN API used" sentence does not match the script, which never calls `/api/`; this entry follows
+  the script. Two view texts give one key two fallbacks, so its catalogue stays in the module for now.
+
+## 82. Weekly fare: a sample calculation from quoted tariff rows (E68, 27 Sep)
+
+### Decision
+
+- Fare sample: deterministic, source-quoted, unknown fares stay empty; every fare card says 'Örnek hesaplama' with
+  its official source and date; no payment (E68, owner decision 27 Sep).
+- The chat's R-06 refusal of prices is unchanged in this round; a chat sample card needs a policy change and an eval
+  scenario of its own.
+
+### Consequences
+
+- İETT bus and metrobus fares could not be captured, so a pattern with a bus is never ranked cheapest.
+
+## 83. Saved journeys: on the device first, the account only with its own consent (E65, 27 Sep)
+
+### Decision
+
+- Saved journeys: on the device by default; account storage only with separate explicit consent (90 days idle);
+  aggregate-only use in operator scenarios is part of that consent text (E65).
+- Deleting the account deletes its saved journeys (`accounts_api.account_delete`); with no journey store yet there is
+  nothing to delete and no file is created.
+
+### Consequences
+
+- `POST /api/journey-watch/check` is open and has no rate limit yet; each request plans at most three journeys.
+- Its `ui.jw.*` keys stay in the module for now: they go through a local helper and a status table the page's
+  i18n check does not read, so moving them waits for the module to call `t('ui.jw.…', '…')` directly.
+
+## 84. Intervention scenario: hypothetical, in memory, totals only, gate closed (E77, 27 Sep)
+
+### Decision
+
+- Intervention scenario: a hypothetical station closure, re-planned offline in memory; saved journeys only as
+  consented totals with cells under 3 hidden; never a real closure or an announcement (E77).
+- `SCENARIO_CONSENT_VERSIONS` stays empty, so the scenario does not read saved journeys yet, although E65's consent
+  text (version 2026-09-27) and the privacy page already describe the use. It opens only after the differencing
+  attack is closed: two scenarios one station apart can reveal a single journey, and hiding cells under 3 does not
+  stop that (rounding to 5 or limiting repeat queries are the proposals).
+
+### Consequences
+
+- Until then the panel says the consent does not yet cover this use and works from the operator's route list.
+- Its `ui.scn.*` keys stay in the module for now, for the same reason as E65's (#83).
+
+## 85. Motion moments: the decision path strip and the shift count (E47, 27 Sep)
+
+### Decision
+
+- Motion moments: the decision path strip and the shift count enter once, on a real decision (E47). The strip says
+  what the code does: a `publish_card` approval reaches the citizen page (`published.py`); other approvals,
+  rejections and deferrals stay in the ledger.
+
+### Consequences
+
+- Publishing is detected by the visible action label; if that label changes, the strip stops saying "published"
+  without an error. A `data-kind` attribute on the decision card is the lasting fix (later, optional).
+
+## 86. Updates and add to calendar: in page only, nothing stored (E55, 27 Sep)
+
+### Decision
+
+- Updates and add to calendar (E55): in page only, no Web Push and no permission prompt; the server reads followed
+  topics and device codes per request and keeps nothing; report items carry no server time (#54); a calendar file
+  is a reminder (tomorrow 09:00, or a day before a reply is deleted) with no personal data; `ics.py` is the one
+  RFC 5545 writer.
+
+### Consequences
+
+- The page module waits for the Takvim tab (P01, D2). E51's photo report codes are not in the updates yet.
+
+## 87. Day planner: captured events, no district claim without an exact venue match (E73, 27 Sep)
+
+### Decision
+
+- Day planner: captured kultur.istanbul events, no district or nearby claim without an exact venue match, a
+  personal-data-free .ics (E73). Calendar model to be merged with E55's `ics.py` (P06-arka phase 2).
+
+### Consequences
+
+- None of the five captured venues matches a known district, so the district filter and the nearby step are empty
+  in practice; they say so instead of guessing.
+- Its `ui.dayplan.*` keys stay in the module for now: most go through a status helper the page's i18n check does not
+  read.
+
+## 88. Suggestions for you: the choice stays on the device (E56, 27 Sep)
+
+### Decision
+
+- Suggestions for you (E56): age group and needs stay on the device, every suggestion verified, no eligibility
+  claims. Knowledge chips pass the same evidence gate as quick questions (#43); the only request is the fixed,
+  query-free `GET /api/audience`.
+
+### Consequences
+
+- Questions the gate refused, or that need the official path (E48, #64), stay out of the catalogue; adding them is
+  separate work. The page placement moves to Hesabım and the chat with P01 (D2).
+
+## 89. Library seat booking: an example not connected to İBB (E53, 27 Sep)
+
+### Decision
+
+- Library seat booking (E53): an example not connected to İBB; the recorded opening hours decide the slots, the
+  seat plan is a sample, a taken seat is only a real example booking; hashed holder, 30 days, deleted on cancel.
+- Deleting the account deletes its bookings (`accounts_api.account_delete`, read through the store module because
+  `booking_api` imports `accounts_api`). The short privacy notice names example bookings among what is kept 30 days.
+
+### Consequences
+
+- A booking made with the device code alone cannot be reached after "Hesabımı ve verilerimi sil" resets that code;
+  it keeps its seat until the 30 days end. The privacy page says so.
+
+## 90. Course discovery: reasoned matches from the captured İSMEK catalogue (E72, 27 Sep)
+
+### Decision
+
+- Course discovery: reasoned matches from İSMEK's captured public catalogue, no verdict on eligibility, BİO only
+  linked (its job listings render with JavaScript and were not captured) (E72). The 345 KB catalogue is tracked
+  (owner decision 27 Sep).
+
+### Consequences
+
+- The catalogue has no centre-day match, fee, age or quota, and none is shown.
+- Its `ui.skills.*` keys stay in the module for now: four checklist keys come from a table the page's i18n check does
+  not read.
+
+## 91. Tourist mode: five visitor questions on the English page (E58, 27 Sep)
+
+### Decision
+
+- Tourist mode (E58): on the English page, five visitor questions, each shown only while its source is on this
+  server; official Turkish sentences pinned verbatim, translated by us and labelled, no guide text.
+- Murat's decisions: (a) information questions use the reviewed sentence path, not the #43 gate
+  (`NABIZ_VISITOR_QUOTES=0` turns them off); (b) the five English translations wait in `REVIEWED_LANGS` for his one
+  reading; (c) the İETT page's own date, 23.06.2022, is shown (the airport question leaves the JSON if unwanted).
+
+### Consequences
+
+- After each knowledge ingest, `tests/test_visitor.py -k local_index` must run against the real index, or a question
+  can drop silently.
+
+## 92. Family code: two-sided consent, share only what is chosen, no location (E52, 27 Sep)
+
+### Decision
+
+- Family code (E52): two-sided consent, share only what is chosen, no location; an example on example accounts, no
+  real İBB or e-Devlet family link.
+- Family rows live in the accounts database with cascading deletes, so deleting the account deletes them. The privacy
+  page's account table now says the account is shared with no one unless the family feature is turned on.
+
+### Consequences
+
+- The daily wrong-code limit is per account and accounts are free to open (THREAT_MODEL §4).
+
+## 93. İstanbulkart troubleshooting: reviewed official quotes, device-only answers (E60, 27 Sep)
+
+### Decision
+
+- İstanbulkart troubleshooting: a reviewed flow of official quotes, shown only while their page still contains them;
+  answers device-only (E60). `GET /api/istanbulkart/flows` takes no parameter.
+
+### Consequences
+
+- The pending top-up, lost card and card pairing branches end with "no source yet": the official FAQ renders with
+  JavaScript and was not captured.
+
+## 94. Digital access recovery: official sentences only; capture.json stays out (E76, 27 Sep)
+
+### Decision
+
+- Digital access recovery: official sentences only, no invented step, device-only answers, hand-off to İstanbulkart
+  troubleshooting (E76).
+- capture.json: (b), dosya dışarıda (27 Eyl varsayılanı). The security page's text carries the operator's corporate
+  e-mail address, which guardrail `no-personal-data` refuses; no guardrail exception is added. The eight security
+  quotes drop honestly and their check nodes are `skip`.
+
+### Consequences
+
+- Recovery must ship together with E60: its İstanbulkart branch hands off to `#kart-sorun`.
+
+## 95. Bill explainer: user-entered, device-only, sourced, no verdict (E61, 27 Sep)
+
+### Decision
+
+- Bill explainer: user-entered, device-only, sourced, no verdict (E61). The 1.5 day average ratio is Nabız's own
+  design threshold, not an İSKİ criterion. Only `GET /api/bill/catalog` reaches the server; entries never do.
+
+### Consequences
+
+- `bill.js` is 782 lines and `bill.css` 450; when the page loads them in D2 they grow the page budget.
+
+## 96. Household outage watch: the home on the device, a consented 7-day queue (E69, 27 Sep)
+
+### Decision
+
+- Household outage watch: official İSKİ pointers and 2023-2024 history; the home stays on the device; a consented
+  confirmation goes to a separate 7-day simulated queue, never to İSKİ; the ledger keeps area and count only (E69).
+- Privacy text, P00 default decision 2 (a): the text says what the code does. The ledger line keeps the request code,
+  district, neighbourhood, confirmation count and the masked note's length, never the note.
+- Raw captures stay out of git; only the district and neighbourhood summary is read at run time.
+
+### Consequences
+
+- Its `ui.outage.*` keys stay in the module for now: one Turkish literal compares a source quote's text, and the
+  page's bare-Turkish check cannot tell it from display text. Either the module matches the quote by an id, or the
+  owner allows that one literal in the check.
+
+## 97. Disaster preparedness file: AKOM's kit list and a device-only plan (E70, 27 Sep)
+
+### Decision
+
+- Disaster preparedness file: AKOM's quoted kit list, a device-only family plan, no building assessment, no assembly
+  area (none in the İBB catalogue) (E70). `GET /api/disaster-kit` takes only `lang`.
+
+### Consequences
+
+- The AKOM page is dated 2022-09-30; if it changes, `data/reference/disaster_kit/akom_sss.json` is captured again.

@@ -72,3 +72,29 @@ def test_a_served_page_file_keeps_its_name(console: TestClient, caplog: pytest.L
     with caplog.at_level(logging.INFO, logger="nabiz.console"):
         assert console.get("/index.html").status_code == 200
     assert any(line.startswith("GET /index.html -> 200") for line in log_lines(caplog))
+
+
+def test_the_doors_json_refusal_is_never_cached(console: TestClient) -> None:
+    """P00 G2 (E51 note): the 401 the door returns before any route runs carries no-store too."""
+    response = console.get("/api/console/photo-reports")
+    assert response.status_code == 401 and response.headers["cache-control"] == "no-store"
+
+
+def test_the_wave_codes_are_logged_as_templates(console: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    """P00 G2 (E71 note): escort, photo, timeline and editor codes never reach the log; E66's own filter is gone."""
+    ref = "abcdef123456"
+    with caplog.at_level(logging.INFO, logger="nabiz.console"):
+        console.get(f"/api/escort/requests/{CODE}")
+        assert console.post(f"/api/console/escort/{CODE}/move", json={"to": "reviewing"}).status_code == 401
+        assert console.get(f"/api/console/photo-reports/{CODE}/photo").status_code == 401
+        console.get(f"/api/report/timeline/{CODE}")
+        assert console.get(f"/api/console/knowledge-editor/gaps/{ref}").status_code == 401
+    lines = log_lines(caplog)
+    for template in (
+        "GET /api/escort/requests/{code} -> ", "POST /api/console/escort/{code}/move -> 401",
+        "GET /api/console/photo-reports/{code}/photo -> 401", "GET /api/report/timeline/{code} -> ",
+        "GET /api/console/knowledge-editor/gaps/{ref} -> 401",
+    ):
+        assert any(line.startswith(template) for line in lines), (template, lines)
+    assert not any(CODE in line or ref in line for line in lines)
+    assert not any(type(item).__name__ == "_TimelineLogFilter" for item in logging.getLogger("nabiz.console").filters)

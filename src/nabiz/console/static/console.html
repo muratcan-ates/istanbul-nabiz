@@ -42,6 +42,7 @@
 <link rel="modulepreload" href="/js/console_report_triage.js">
 <link rel="modulepreload" href="/js/console_report_map.js">
 <script type="module" src="/js/console.js"></script>
+<script type="module" src="/js/console_flow.js"></script>
 <script type="module" src="/js/console_receipt.js"></script>
 <!-- Wave-1 panels (E17-E20): each fills its own section; the placeholders below fix their order. -->
 <script type="module" src="/js/console_health.js"></script>
@@ -54,6 +55,22 @@
 <script type="module" src="/js/console_notices.js"></script>
 <!-- Operatöre aktar + çeviri: the citizen requests queue fills #citizen-requests. -->
 <script type="module" src="/js/requests_console.js"></script>
+<!-- E51: the photo report queue fills #photo-reports-mount in "Bildirimler" (P00 G2). -->
+<script type="module" src="/js/console_photo_reports.js"></script>
+<!-- E69 (P00 G5): outage confirmations fill #outage-watch-mount in "Vatandaş talepleri". -->
+<script type="module" src="/js/console_outage_watch.js"></script>
+<!-- E74: the knowledge editor fills #knowledge-editor-mount in "Bilgi ve planlama" (P00 G1). -->
+<script type="module" src="/js/console_knowledge_editor.js"></script>
+<!-- P00 G2, story 3: each panel fills its own mount in a closed disclosure; İşler shows only the counters. -->
+<script type="module" src="/js/console_report_timeline.js"></script>
+<script type="module" src="/js/console_incidents.js"></script>
+<script type="module" src="/js/console_outcomes.js"></script>
+<script type="module" src="/js/console_chronic.js"></script>
+<script type="module" src="/js/console_escort.js"></script>
+<script type="module" src="/js/console_poll.js"></script>
+<!-- E77 (P00 G3): the intervention scenario fills #scenario-mount in "Bilgi ve planlama". -->
+<script type="module" src="/js/console_scenario.js"></script>
+<script type="module" src="/js/console_work_counters.js"></script>
 </head>
 <body class="console-page">
 <a class="skip-link" href="#main">İçeriğe atla</a>
@@ -111,6 +128,7 @@
     <section class="desk" aria-labelledby="desk-title">
       <div class="desk-heading">
         <h2 id="desk-title">Karar masası</h2>
+        <ul class="work-counters" id="work-counters" aria-label="İşler" hidden></ul>
         <p>Sinyali seçin, kanıtı inceleyin, karar verin.</p>
       </div>
       <div class="console-grid">
@@ -152,17 +170,25 @@
         </ul>
       </section>
       <section id="approval-health" class="health" aria-labelledby="health-title"><h2 id="health-title">Onay sağlığı</h2></section>
+      <div id="outcomes-mount"></div>
     </details>
 
     <div class="console-tools" aria-label="Çalışma alanları">
     <details class="console-section">
-      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Bildirim haritası</span><span class="section-note">Bildirimleri konumuyla inceleyin</span></summary>
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Bildirimler</span><span class="section-note">Harita, olay dosyaları, zaman çizgisi, fotoğraflı bildirimler, kronik aksaklık</span></summary>
       <section id="report-map" aria-labelledby="report-map-title"><h2 id="report-map-title">Bildirim haritası</h2></section>
+      <div id="incidents-mount"></div>
+      <div id="report-timeline-mount"></div>
+      <div id="photo-reports-mount"></div>
+      <div id="chronic-mount"></div>
     </details>
 
     <details class="console-section">
       <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Vatandaş talepleri</span><span class="section-note">Operatöre aktarılan talepler</span></summary>
       <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
+      <div id="escort-mount"></div>
+      <div id="polls-mount"></div>
+      <div id="outage-watch-mount"></div>
     </details>
 
     <details class="console-section">
@@ -185,6 +211,14 @@
       <ul class="drafts" id="drafts"><li class="section-note">yükleniyor</li></ul>
       <p class="status-line" id="drafts-status" role="status"></p>
     </section>
+    </details>
+
+    <details class="console-section">
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Bilgi ve planlama</span><span class="section-note">Cevapsız talepler, kaynak adayları, müdahale senaryosu</span></summary>
+      <section id="knowledge-planning" aria-labelledby="knowledge-planning-title"><h2 id="knowledge-planning-title">Bilgi ve planlama</h2>
+        <div id="knowledge-editor-mount"></div>
+        <div id="scenario-mount"></div>
+      </section>
     </details>
 
     <details class="console-section">
