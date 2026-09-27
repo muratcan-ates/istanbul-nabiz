@@ -4,9 +4,8 @@
 One source of truth for colour (docs/design/DESIGN.md §2 and §3). Nothing in
 ``src/nabiz/web/static/css/tokens.css`` is typed by hand: this script turns the OKLCH values below
 into the palette's colour blocks, ``build_final_tokens.py`` adds the role aliases and the non-colour
-tokens, and ``verify_tokens.py`` re-measures the file that ships. The numbers are the design stage's,
-unchanged; its review pages (preview, palette tables, the audit of the old stylesheet) stay outside
-the repository, so only the part that produces and checks tokens is here.
+tokens, and ``verify_tokens.py`` re-measures the file that ships. Brand ramps follow the current
+civic-blue and firuze brief; data-defined line colours and status meanings remain independent.
 
 Usage::
 
@@ -27,13 +26,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from colorlib import contrast, de, hex_to_oklch, hex_to_rgb, hsl_saturation, oklch_to_hex, simulate  # noqa: E402
 
 # ============================================================================ 1. anchors
-# Measured 2026-09-23. The primary hue is not a taste call: every İBB web blue sampled
-# (ibb.istanbul blue-600..900, iett.istanbul #1d428a / #102657) sits between OKLCH 259.3 and 263.4
-# degrees. The Nabız primary is fixed at 260.
-H_PRIMARY = 260.0
-# Analogous accent: ibb.istanbul's own cyan (blue-400 / blue-500) sits at 221.2-223.0 degrees,
-# 38 degrees from the navy. Same step, same direction, so the pairing is İBB's, the values are ours.
-H_ACCENT = 222.0
+# The current visual brief asks for civic blue and firuze on nearly neutral surfaces.
+# These are Nabız's own colours, not sampled or certified İBB brand values. Moving the blue
+# towards cyan and lowering its chroma avoids the previous cobalt cast on controls and washes.
+H_PRIMARY = 246.0
+# The 36-degree analogous step gives firuze a related supporting role without a violet accent.
+H_ACCENT = 210.0
 H_MOMENT = 352.8
 H_MOMENT_DARK = 348.9
 MOMENT_LIGHT = (0.497, 0.169, H_MOMENT)
@@ -51,24 +49,22 @@ STEPS = (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950)
 L_RAMP = {50: 0.965, 100: 0.920, 200: 0.845, 300: 0.770, 400: 0.695, 500: 0.620,
           600: 0.545, 700: 0.470, 800: 0.395, 900: 0.320, 950: 0.245}
 
-# Chroma peaks mid-ramp and tapers at both ends, the shape the sRGB gamut allows for blue anyway.
-# The peak (0.150) matches ibb.istanbul blue-600 (#2157ad, C 0.149): as vivid as İBB, not more.
-C_PRIMARY = {50: 0.014, 100: 0.030, 200: 0.055, 300: 0.085, 400: 0.115, 500: 0.140,
-             600: 0.150, 700: 0.145, 800: 0.130, 900: 0.110, 950: 0.085}
+# Chroma peaks mid-ramp and tapers at both ends. The quieter ramp keeps the primary action
+# recognisable without tinting every surface as strongly as the former cobalt family.
+C_PRIMARY = {50: 0.0098, 100: 0.0210, 200: 0.0385, 300: 0.0595, 400: 0.0805, 500: 0.0980,
+             600: 0.1050, 700: 0.1015, 800: 0.0910, 900: 0.0770, 950: 0.0595}
 
-# The accent is quieter than İBB's cyan (#00afd9 is C 0.130 at HSL-S 100%): capped so the fill
-# step stays under 80% HSL saturation while still reading as cyan.
-C_ACCENT = {50: 0.018, 100: 0.035, 200: 0.060, 300: 0.085, 400: 0.100, 500: 0.100,
-            600: 0.090, 700: 0.076, 800: 0.066, 900: 0.056, 950: 0.046}
+# Firuze supports focus and selected states; its wash is pale and its ink remains measurable.
+C_ACCENT = {50: 0.0140, 100: 0.0273, 200: 0.0468, 300: 0.0663, 400: 0.0780, 500: 0.0780,
+            600: 0.0702, 700: 0.0593, 800: 0.0515, 900: 0.0437, 950: 0.0359}
 
-# Cool neutral: same hue as the primary, low chroma, so greys are "blue ink on paper", never warm.
-# Light end anchored on ibb.istanbul slate-50 / slate-100 (#fbfcfe L .991, #f4f7fc L .975 C .007).
-# The dark end carries more chroma (0.040) so the dark theme is deep navy, not charcoal.
+# Nearly neutral surfaces keep the city image and actions distinct. Retain the proven lightness
+# ladder for contrast; reduce chroma throughout so dark mode is slate rather than navy.
 NEUTRAL = {  # step: (L, C)
-    0: (0.992, 0.003), 50: (0.975, 0.007), 100: (0.950, 0.010), 200: (0.910, 0.014),
-    300: (0.850, 0.018), 400: (0.730, 0.024), 500: (0.620, 0.028), 600: (0.525, 0.031),
-    700: (0.445, 0.034), 800: (0.360, 0.036), 900: (0.280, 0.038), 950: (0.235, 0.040),
-    975: (0.200, 0.040), 1000: (0.170, 0.038),
+    0: (0.992, 0.0015), 50: (0.975, 0.002), 100: (0.950, 0.003), 200: (0.910, 0.004),
+    300: (0.850, 0.005), 400: (0.730, 0.006), 500: (0.620, 0.008), 600: (0.525, 0.009),
+    700: (0.445, 0.010), 800: (0.360, 0.010), 900: (0.280, 0.009), 950: (0.235, 0.008),
+    975: (0.200, 0.007), 1000: (0.170, 0.006),
 }
 
 # ============================================================================ 3. semantic hues
@@ -302,17 +298,15 @@ CSS_HEADER = """/* Nabız colour tokens.
  * properties plus the verification script that generated them (build_palette.py).
  *
  * Colour theory, in four lines:
- *  - Base hue 260 (OKLCH): every İBB web blue measured sits at 259-263 degrees. Palette is
- *    inspired by İBB, identity is Nabız: no logo, no emblem, no İBB red.
+ *  - Base hue 246 (OKLCH): a restrained civic blue. Palette is inspired by the İBB portal;
+ *    these values are Nabız's own, with no logo, emblem or official partnership claim.
  *  - Ramps step evenly in OKLab lightness (0.075 per step), so 400 -> 500 looks as far as 700 -> 800.
- *  - Neutrals share hue 260 at low chroma: cool blue-ink greys, never warm.
- *  - ONE accent, analogous at 222 degrees (38 degrees from the base, the same step İBB pairs its
- *    navy with its cyan). It carries "live / focus / attention" through lightness, not hue
- *    opposition, so it reads alive without the alarm that warm complements carry; warm hues stay
- *    reserved for warn, bad and the AQI scale.
+ *  - Neutrals share hue 246 at very low chroma: near-white light surfaces and slate dark surfaces.
+ *  - Firuze at 210 degrees is an analogous supporting accent, 36 degrees from the blue.
+ *    Warm hues remain semantic warning, emergency or data-category colours.
  *
  * Every value is sRGB hex (what was contrast-checked); the OKLCH it came from is in the comment.
- * Light is the default look. Dark = deep navy, never black. No #000000, no #ffffff anywhere.
+ * Light is the default look. Dark = near-neutral slate. No #000000, no #ffffff anywhere.
  */"""
 
 
@@ -324,8 +318,9 @@ def fmt_lch(hx: str) -> str:
 def emit_css(r: dict, th: dict, lines: dict) -> str:
     out: list[str] = [CSS_HEADER, "", ":root {", "  color-scheme: light;", "", "  /* ---- ramps (theme-independent) ---- */"]
     w = out.append
-    for ramp, label in (("primary", "primary: İBB-blue family, h 260"), ("accent", "accent: analogous cyan, h 222"),
-                        ("neutral", "neutral: cool slate, h 260, low chroma")):
+    for ramp, label in (("primary", f"primary: civic blue, h {H_PRIMARY:g}"),
+                        ("accent", f"accent: analogous firuze, h {H_ACCENT:g}"),
+                        ("neutral", f"neutral: near-neutral slate, h {H_PRIMARY:g}, low chroma")):
         w(f"  /* {label} */")
         for s, v in r[ramp].items():
             note = " (gamut-clipped)" if v["clipped"] else ""

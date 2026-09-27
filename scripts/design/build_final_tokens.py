@@ -46,11 +46,11 @@ HEADER = """/* Nabız tokens: the project's own native-CSS token system (docs/de
  * scripts/design/verify_tokens.py for the contrast table).
  *
  * Colour theory, in five lines:
- *  - Base hue 260 (OKLCH): every İBB web blue measured sits at 259-263 degrees. The palette is
- *    inspired by İBB; the identity is Nabız's own: no logo, no emblem, no İBB red.
+ *  - Base hue 246 (OKLCH): restrained civic blue inspired by the İBB portal. These values are
+ *    Nabız's own: no logo, no emblem and no official partnership claim.
  *  - Ramps step evenly in OKLab lightness (0.075 per step), so 400 -> 500 looks as far as 700 -> 800.
- *  - Neutrals share hue 260 at low chroma: cool blue-ink greys, never warm.
- *  - ONE accent, analogous cyan at 222 degrees. It means "now / live / focus" and nothing else.
+ *  - Neutrals share hue 246 at very low chroma: near-white light surfaces and slate dark surfaces.
+ *  - Firuze at 210 degrees is an analogous supporting accent, 36 degrees from the blue.
  *    The separate tulip moment colour (h 352.8 light, 348.9 dark) is restricted to NABIZ-DILI.md §3.5.
  *  - Lightness encodes quantity (the pulse line's pen pressure); hue encodes only categories a
  *    source defines (Metro line colours, AQI bands). Warm hues are reserved for warn, bad and AQI.
@@ -60,15 +60,15 @@ HEADER = """/* Nabız tokens: the project's own native-CSS token system (docs/de
  *  - Every value is sRGB hex, the value that was contrast-checked; its OKLCH source is in the
  *    annotated copy. This file is generated: edit the scripts, never this file by hand. It is
  *    exempt from the 350-line CSS cap and capped by bytes instead (check_web_budget.py).
- *  - Light is the default. Dark = deep navy, never black. No #000000 and no #ffffff anywhere.
+ *  - Light is the default. Dark = near-neutral slate. No #000000 and no #ffffff anywhere.
  *  - Role aliases below point at ramp steps; they add no new colour.
  */"""
 
 # ---------------------------------------------------------------- non-colour tokens (theme-free)
 NON_COLOUR = """
   /* ==== Final spec additions: non-colour tokens (theme-independent) ==== */
-  /* type: Source Sans 3, self-hosted subset (OFL-1.1); 8 sizes, 3 weights */
-  --font-sans: "Nabız Sans", "Nabız Sans Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* type: platform-native system face; 8 sizes, 3 weights; no font request for the interface */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --text-xs: .75rem;     /* 12: chart axis labels and legends only, never sentences */
   --text-sm: .875rem;    /* 14: stamps, meta, helper, table cells; the smallest size a data age may use */
   --text-md: 1rem;       /* 16: body, input text (16 avoids iOS zoom) */

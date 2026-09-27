@@ -1,24 +1,23 @@
-/* v13 (E45: answer_actions.js; v12 added E30 culture.js and culture.css, libraries and museums open now;
-   gun2/entegrasyon already shipped v11 with E27's voice report modules, v10 with E40's i18n_text.js and v9 with
-   E35's lazy map module): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v13';
+/* v14: redesigned citizen shell and locally served Istanbul panorama. */
+const VERSION = 'v14';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
 const PAGES = ['/', '/index.html', '/offline.html', '/kvkk.html', '/kolay.html', '/nasil.html'];
-const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/', '/i18n/'];
+const STATIC_PREFIXES = ['/css/', '/js/', '/fonts/', '/icons/', '/images/', '/i18n/'];
 const STATIC_FILES = ['/icons.svg', '/manifest.webmanifest'];
 const OPERATOR_PREFIX = 'console';
 const NETWORK_TIMEOUT_MS = 4000;
 const SHELL = [
   '/', '/index.html', '/offline.html', '/kvkk.html', '/manifest.webmanifest',
-  '/css/tokens.css', '/css/base.css', '/css/components.css', '/css/citizen.css',
+  '/images/istanbul-panorama.jpg',
+  '/css/tokens.css', '/css/base.css', '/css/components.css', '/css/citizen.css', '/css/workspace.css',
   '/css/a11y.css', '/css/map.css', '/css/nearby.css', '/css/voice.css', '/css/share.css',
-  '/js/citizen.js', '/js/home.js', '/js/api.js', '/js/config.js', '/js/cards.js', '/js/chat.js',
+  '/js/citizen.js', '/js/home.js', '/js/workspace_nav.js', '/js/api.js', '/js/config.js', '/js/cards.js', '/js/chat.js',
   '/js/profile.js', '/js/provenance.js', '/js/history.js', '/js/a11y.js', '/js/disclosure.js',
   '/js/feedback.js', '/js/format.js', '/js/icons.js', '/js/theme.js', '/js/journey.js',
   '/js/nearby.js', '/js/voice.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
-  '/icons.svg', '/fonts/nabiz-sans-tr-v1.woff2', '/icons/nabiz.svg',
+  '/icons.svg', '/icons/nabiz.svg',
   '/icons/nabiz-192.png', '/icons/nabiz-512.png', '/icons/nabiz-maskable-512.png',
   // wave 1 (E01-E25): the citizen page's new modules and sheets, and the kolay page
   '/kolay.html', '/css/kolay.css', '/js/kolay.js',

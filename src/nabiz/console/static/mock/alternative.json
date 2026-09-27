@@ -5,8 +5,8 @@
     "station": "Pendik",
     "line": "M4",
     "extra_minutes": 6,
-    "reason": "Aynı hatta, İBB kaydında asansör arızası görünmeyen en yakın istasyon. Aynı anlık kayıtta yeniden denetlendi."
+    "reason": "Aynı hatta, İBB kaydında asansör arızası görünmeyen en yakın istasyon. Bu kayıt aynı veri görüntüsünden alınmıştır."
   },
   "operator_approved": true,
-  "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "live" }
+  "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T10:30:00+03:00", "age_s": 720, "mode": "recorded" }
 }

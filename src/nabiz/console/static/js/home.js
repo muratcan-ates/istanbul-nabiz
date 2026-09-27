@@ -2,6 +2,7 @@
    it keeps the choice in the URL and on the device and follows the answer-language button (#chat-lang). */
 
 import { esc } from './format.js';
+import { mountWorkspace, revealTarget } from './workspace_nav.js';
 
 // The first paint and the fallback: js/quick_chips.js replaces these with /api/quick's chips when it answers
 // (DECISIONS #43). The İSKİ question lives on there as an agency chip (data/knowledge/quick_questions.json).
@@ -13,6 +14,14 @@ const QUICK_QUESTIONS = [
   ['Etkinlikler', 'İstanbul etkinliklerini nereden öğrenebilirim?'],
   ['Sorun Bildir / 153', 'İBB’ye bir sorunu nasıl bildirebilirim?'],
 ];
+const QUICK_QUESTIONS_EN = [
+  ['Transport', 'Where can I find official information about transport in Istanbul?'],
+  ['İstanbulkart', 'Where can I find official information about İstanbulkart services?'],
+  ['İSKİ / Bills', 'Where can I get help with İSKİ services and bills?'],
+  ['Social Support', 'Where can I find official information about social support applications?'],
+  ['Events', 'Where can I find out about events in Istanbul?'],
+  ['Report a Problem / 153', 'How can I report a problem to İBB?'],
+];
 
 function quickCard(label, seedQuestion) {
   return `<button type="button" class="chip" role="button" tabindex="0" data-seed="${esc(seedQuestion)}">${esc(label)}</button>`;
@@ -20,17 +29,16 @@ function quickCard(label, seedQuestion) {
 
 export function openTargetDetails() {
   const hash = globalThis.location?.hash || globalThis.window?.location?.hash;
-  if (!hash || hash === '#') return;
+  if (!hash || hash === '#') return true;
   let id;
-  try { id = decodeURIComponent(hash.slice(1)); } catch (error) { return; }
-  const target = document.getElementById(id);
-  if (!target) return;
-  const details = target.closest('details');
-  if (!details) return;
-  details.open = true;
+  try { id = decodeURIComponent(hash.slice(1)); } catch (error) { return true; }
+  const target = revealTarget(id);
+  if (!target) return false;
+  if (!target.closest('details')) return true;
   const heading = document.getElementById(target.getAttribute('aria-labelledby')) || target.querySelector('h1, h2, h3') || target;
   if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
   heading.focus({ preventScroll: false });
+  return true;
 }
 
 function mountAskPill(form, input) {
@@ -64,7 +72,7 @@ function mountAskPill(form, input) {
   scan();
   mobile.addEventListener('change', update);
   pill.addEventListener('click', () => {
-    input.focus({ preventScroll: true });
+    revealTarget('chat-input', { focus: true });
     form.scrollIntoView({ block: 'center', behavior: reduced.matches || document.documentElement.dataset.motion === 'reduce' ? 'instant' : 'smooth' });
   });
 }
@@ -84,15 +92,41 @@ function mountPrivacyBand() {
   observer.observe(chat, { childList: true });
 }
 
+function mountWorkspaces(afterMove) {
+  const main = document.getElementById('main');
+  if (!main || !document.getElementById('map-space')) return;
+  const move = () => {
+    for (const [id, slotId] of [['harita', 'map-space'], ['harita-katmanlari', 'map-space'], ['kultur', 'explore-workspace'], ['yolculugum', 'city-tools']]) {
+      const node = document.getElementById(id), slot = document.getElementById(slotId);
+      if (node && slot && node.parentElement !== slot) slot.appendChild(node);
+    }
+    afterMove();
+  };
+  move();
+  new MutationObserver(move).observe(main, { childList: true, subtree: true });
+}
+
 function mountHome({ form, input }) {
   const cards = document.querySelector('#quick-cards');
   const more = document.querySelector('#quick-more');
   const moreCards = document.querySelector('#quick-more-cards');
-  cards.innerHTML = QUICK_QUESTIONS.slice(0, 3).map(([label, seed]) => quickCard(label, seed)).join('');
-  if (more && moreCards) {
-    moreCards.innerHTML = QUICK_QUESTIONS.slice(3).map(([label, seed]) => quickCard(label, seed)).join('');
-    more.hidden = !moreCards.innerHTML;
-  }
+  const renderFallback = (language) => {
+    if (cards.querySelector('[data-quick]') || moreCards?.querySelector('[data-quick]')) return;
+    const english = language === 'en';
+    const questions = english ? QUICK_QUESTIONS_EN : QUICK_QUESTIONS;
+    cards.lang = english ? 'en' : 'tr';
+    cards.innerHTML = questions.slice(0, 3).map(([label, seed]) => quickCard(label, seed)).join('');
+    cards.hidden = false;
+    if (more && moreCards) {
+      moreCards.lang = cards.lang;
+      moreCards.innerHTML = questions.slice(3).map(([label, seed]) => quickCard(label, seed)).join('');
+      more.hidden = !moreCards.innerHTML;
+    }
+  };
+  renderFallback(document.documentElement.lang);
+  window.addEventListener('nabiz:lang', (event) => {
+    if (cards.querySelector('button[data-seed]') || moreCards?.querySelector('button[data-seed]')) renderFallback(event.detail?.lang);
+  });
   const submitSeed = (event) => {
     const button = event.target.closest('button[data-seed]');
     if (!button) return;
@@ -101,11 +135,28 @@ function mountHome({ form, input }) {
   };
   cards.addEventListener('click', submitSeed);
   moreCards?.addEventListener('click', submitSeed);
-  openTargetDetails();
-  window.addEventListener('hashchange', openTargetDetails);
+  let pendingTarget = true;
+  const revealPendingTarget = () => {
+    if (pendingTarget && openTargetDetails()) pendingTarget = false;
+  };
+  const followHash = () => { pendingTarget = true; revealPendingTarget(); };
+  window.addEventListener('hashchange', followHash);
   document.querySelector('.topbar-nav')?.addEventListener('click', (event) => {
-    if (event.target.closest('a[href^="#"]')) setTimeout(openTargetDetails, 0);
+    const link = event.target.closest('a[href^="#"]');
+    if (!link) return;
+    document.querySelectorAll('.topbar-nav a').forEach((node) => node.removeAttribute('aria-current'));
+    link.setAttribute('aria-current', 'location');
+    if (link.getAttribute('href') === '#asistan') {
+      event.preventDefault();
+      pendingTarget = false;
+      if (window.location.hash !== '#asistan') window.history.pushState(null, '', '#asistan');
+      revealTarget('chat-input', { focus: true, block: 'center' });
+    } else setTimeout(followHash, 0);
   });
+  document.querySelector('.topbar-nav a[href="#asistan"]')?.setAttribute('aria-current', 'location');
+  mountWorkspace({ form, input });
+  mountWorkspaces(revealPendingTarget);
+  revealPendingTarget();
   mountPrivacyBand();
   mountAskPill(form, input);
 }

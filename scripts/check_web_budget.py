@@ -13,8 +13,8 @@ an edit and what a phone downloads. The rules are the frontend half of the desig
     third-party      Only the pinned MapLibre build from cdnjs, and only with an integrity hash: in the
                      page, and in a script that loads it later (js/map.js), which must then hold a
                      hash per file and set crossOrigin, or the browser skips the integrity check.
-    fonts            Self-hosted woff2 only, font-display swap or optional, preloaded, at most 4 files
-                     and 60 KB, or text is invisible while a font downloads.
+    fonts            Self-hosted woff2 only, font-display swap or optional, used faces preloaded,
+                     at most 4 files and 60 KB. Archived, unused font files need no request.
     motion           Transitions and keyframes never animate layout (width, height, top, margin...),
                      which drops frames and moves content. Reduced motion is checked by structure,
                      not by the words "prefers-reduced-motion" appearing somewhere: either one
@@ -612,8 +612,41 @@ def loader_findings(page: Page) -> tuple[int, list[Finding]]:
     return loaded, findings
 
 
+def used_font_urls(page: Page) -> set[str]:
+    """Find local faces named by font declarations, including the native token stack.
+
+    Keep unused vendored fonts in the storage budget without requesting them on every page.
+    Treat every declared usage conservatively; this does not infer selector visibility.
+    """
+    css = re.sub(r"/\*.*?\*/", "", "\n".join(page.styles.values()), flags=re.S)
+    body = re.sub(r"@font-face\s*{[^}]*}", "", css)
+    variables: dict[str, str] = {}
+    for name, value in re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)", body):
+        variables[name] = f"{variables.get(name, '')}, {value}".lstrip(", ")
+    usages = "\n".join(re.findall(r"(?<![\w-])font(?:-family)?\s*:\s*([^;}]+)", body))
+    for _ in range(12):
+        expanded = re.sub(r"var\((--[\w-]+)\)", lambda m: variables.get(m.group(1), ""), usages)
+        if expanded == usages:
+            break
+        usages = expanded
+    urls = set()
+    for path, source in page.styles.items():
+        for face in re.findall(r"@font-face\s*{([^}]*)}", source):
+            family = re.search(r"font-family\s*:\s*([^;]+)", face)
+            if not family:
+                continue
+            name = re.escape(family.group(1).strip().strip("\"'"))
+            if not re.search(rf"(?<![\w-])[\"']?{name}[\"']?(?=\s*(?:,|$))", usages, flags=re.M | re.I):
+                continue
+            for url in re.findall(r"url\(\s*['\"]?([^'\")\s]+)", face):
+                resolved = urllib.parse.urlparse(urllib.parse.urljoin(f"/{path}", url))
+                if not resolved.netloc:
+                    urls.add(resolved.path)
+    return urls
+
+
 def check_fonts(page: Page) -> CheckResult:
-    """Self-hosted woff2, font-display swap/optional, preloaded, inside the byte budget."""
+    """Self-hosted woff2, display fallback, used faces preloaded, all files inside the byte budget."""
     findings = []
     faces = [m.group(1) for css in page.styles.values() for m in re.finditer(r"@font-face\s*{([^}]*)}", css)]
     for n, face in enumerate(faces, 1):
@@ -623,11 +656,12 @@ def check_fonts(page: Page) -> CheckResult:
             findings.append(Finding(f"fonts:remote:{n}", f"@font-face #{n} loads from another origin; self-host it"))
     fonts = sorted(p for p in page.static.rglob("*") if p.suffix in {".woff2", ".woff", ".ttf", ".otf"})
     preloaded = {a.get("href", "") for a in page.doc.tags("link") if a.get("rel") == "preload" and a.get("as") == "font"}
+    used = used_font_urls(page)
     for path in fonts:
         name = rel(page.static, path)
         if path.suffix != ".woff2":
             findings.append(Finding(f"fonts:{name}", f"{name}: serve woff2 only"))
-        elif f"/{name}" not in preloaded:
+        elif f"/{name}" in used and f"/{name}" not in preloaded:
             findings.append(Finding(f"fonts:preload:{name}", f"{name} is not preloaded (<link rel=preload as=font crossorigin>)"))
     size = sum(p.stat().st_size for p in fonts)
     if size > FONT_BUDGET_BYTES or len(fonts) > MAX_FONT_FILES:

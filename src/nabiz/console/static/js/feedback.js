@@ -1,10 +1,39 @@
 /* Adapted from DOU-Synapse apps/web/components/chat-feedback.tsx (MIT, Copyright (c) 2026 Muratcan Ates). */
 
 import { esc } from './format.js';
+import { onLang, t } from './i18n_text.js';
 
 const FEEDBACK_KEY = 'nabiz.feedback.v1';
 const REASON_TR = Object.freeze({ wrong: 'Yanlış', stale: 'Eski bilgi', misunderstood: 'Sorumu anlamadı', other: 'Başka' });
 const PROBLEM_REASONS = Object.freeze(['wrong', 'stale', 'misunderstood', 'other']);
+const FEEDBACK_TEXT = Object.freeze({
+  label: 'Cevap geri bildirimi', question: 'Bu cevap işinize yaradı mı?',
+  up: 'Evet, işime yaradı', down: 'Hayır, işime yaramadı', why: 'Neden?',
+  share: 'Anonim olarak gönder: yalnız oy ve neden kodu gider; sorunuz, cevap ve kimliğiniz gitmez',
+  save: 'Kaydet', cancel: 'Vazgeç', thanks: 'Teşekkürler.', saved: 'Kaydedildi.',
+  saved_reason: 'Kaydedildi: {reason}.', no_reason: 'neden seçilmedi',
+});
+const feedbackText = (key, vars) => t(`dyn.feedback_${key}`, FEEDBACK_TEXT[key], vars);
+const reasonLabel = (reason) => REASON_TR[reason]
+  ? t(`dyn.feedback_reason_${reason}`, REASON_TR[reason]) : feedbackText('no_reason');
+
+function feedbackNote(control, key, reason = '') {
+  const note = control.querySelector('.feedback-note');
+  note.dataset.feedbackText = key;
+  note.dataset.feedbackReason = reason || '';
+  note.textContent = feedbackText(key, { reason: reasonLabel(reason) });
+}
+
+function translateFeedback(log) {
+  log.querySelectorAll('.feedback').forEach((control) => {
+    control.setAttribute('aria-label', feedbackText('label'));
+    control.querySelectorAll('.feedback-vote').forEach((button) => button.setAttribute('aria-label', feedbackText(button.dataset.vote)));
+    control.querySelectorAll('[data-feedback-text]').forEach((node) => {
+      node.textContent = feedbackText(node.dataset.feedbackText, { reason: reasonLabel(node.dataset.feedbackReason) });
+    });
+    control.querySelectorAll('span[data-feedback-reason]').forEach((node) => { node.textContent = reasonLabel(node.dataset.feedbackReason); });
+  });
+}
 const EMPTY_COUNTS = Object.freeze({
   version: 1,
   up: 0,
@@ -15,20 +44,20 @@ const EMPTY_COUNTS = Object.freeze({
 
 function feedbackMarkup(answerId) {
   const reasons = PROBLEM_REASONS.map((reason) => `<label class="check"><input type="radio" name="reason" value="${reason}">`
-    + `<span>${REASON_TR[reason]}</span></label>`).join('');
-  return `<div class="feedback" data-answer-id="${esc(answerId)}" role="group" aria-label="Cevap geri bildirimi">`
-    + '<p class="feedback-q">Bu cevap işine yaradı mı?</p>'
+    + `<span data-feedback-reason="${reason}">${esc(reasonLabel(reason))}</span></label>`).join('');
+  return `<div class="feedback" data-answer-id="${esc(answerId)}" role="group" aria-label="${esc(feedbackText('label'))}">`
+    + `<p class="feedback-q" data-feedback-text="question">${esc(feedbackText('question'))}</p>`
     + '<div class="btn-row">'
-    + '<button type="button" class="btn feedback-vote" data-vote="up" aria-pressed="false" aria-label="Evet, işime yaradı">'
+    + `<button type="button" class="btn feedback-vote" data-vote="up" aria-pressed="false" aria-label="${esc(feedbackText('up'))}">`
     + '<span aria-hidden="true">👍</span></button>'
-    + '<button type="button" class="btn feedback-vote" data-vote="down" aria-pressed="false" aria-label="Hayır, işime yaramadı">'
+    + `<button type="button" class="btn feedback-vote" data-vote="down" aria-pressed="false" aria-label="${esc(feedbackText('down'))}">`
     + '<span aria-hidden="true">👎</span></button></div>'
     + '<p class="feedback-note" role="status" aria-live="polite"></p>'
-    + `<form class="feedback-why" hidden><fieldset><legend>Neden?</legend>${reasons}</fieldset>`
+    + `<form class="feedback-why" hidden><fieldset><legend data-feedback-text="why">${esc(feedbackText('why'))}</legend>${reasons}</fieldset>`
     + '<label class="check"><input type="checkbox" name="share">'
-    + '<span>Anonim olarak gönder: yalnız oy ve neden kodu gider; sorunuz, cevap ve kimliğiniz gitmez</span></label>'
-    + '<div class="btn-row"><button type="submit" class="btn">Kaydet</button>'
-    + '<button type="button" class="btn" data-act="cancel">Vazgeç</button></div></form></div>';
+    + `<span data-feedback-text="share">${esc(feedbackText('share'))}</span></label>`
+    + `<div class="btn-row"><button type="submit" class="btn" data-feedback-text="save">${esc(feedbackText('save'))}</button>`
+    + `<button type="button" class="btn" data-act="cancel" data-feedback-text="cancel">${esc(feedbackText('cancel'))}</button></div></form></div>`;
 }
 
 function blankCounts() {
@@ -98,6 +127,7 @@ function mountFeedback(log) {
     setItem: (key, value) => { try { window.localStorage.setItem(key, value); } catch (error) { /* Private mode. */ } },
   };
   let counts = readCounts(storage);
+  onLang(() => translateFeedback(log));
 
   const send = async (answerId, vote, reason) => {
     try {
@@ -123,7 +153,7 @@ function mountFeedback(log) {
         writeCounts(counts, storage);
         if (share) void send(answerId, vote, reason);
       }
-      control.querySelector('.feedback-note').textContent = vote === 'up' ? 'Teşekkürler.' : `Kaydedildi: ${REASON_TR[reason] || 'neden seçilmedi'}.`;
+      feedbackNote(control, vote === 'up' ? 'thanks' : 'saved_reason', reason);
       return false;
     }
     counts = countFeedback(counts, vote, reason);
@@ -155,16 +185,15 @@ function mountFeedback(log) {
     const control = button.closest('.feedback');
     if (!control) return;
     const form = control.querySelector('.feedback-why');
-    const note = control.querySelector('.feedback-note');
     if (button.matches('[data-act="cancel"]')) {
       form.hidden = true;
       saveVote(control, 'down', null, counts.share);
-      note.textContent = 'Kaydedildi.';
+      feedbackNote(control, 'saved');
       return;
     }
     if (button.dataset.vote === 'up') {
       form.hidden = true;
-      if (saveVote(control, 'up', null, counts.share) !== false) note.textContent = 'Teşekkürler.';
+      if (saveVote(control, 'up', null, counts.share) !== false) feedbackNote(control, 'thanks');
       return;
     }
     const previous = priorByAnswer.get(control.dataset.answerId);
@@ -184,7 +213,7 @@ function mountFeedback(log) {
     const share = form.querySelector('input[name="share"]').checked;
     if (saveVote(control, 'down', reason, share) !== false) {
       form.hidden = true;
-      control.querySelector('.feedback-note').textContent = `Kaydedildi: ${REASON_TR[reason]}.`;
+      feedbackNote(control, 'saved_reason', reason);
     }
   });
 

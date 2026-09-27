@@ -68,6 +68,32 @@ def keys(repo: pathlib.Path, check: str) -> set[str]:
     return {f.key for f in results(repo)[check].findings}
 
 
+def test_archived_font_files_do_not_require_a_preload(repo: pathlib.Path) -> None:
+    write(repo, "fonts/archive.woff2", "0")
+    write(repo, "css/zz.css", '@font-face { font-family: "Archived Face"; src: url(/fonts/archive.woff2); font-display: swap; }')
+    assert not keys(repo, "fonts")
+
+
+@pytest.mark.parametrize("rule", [
+    '.row-x { font-family: "Example Face", system-ui; }',
+    ':root { --example-font: "Example Face", system-ui; } .row-x { font: 400 1rem var(--example-font); }',
+    ':root { --example-font: "Example Face"; } :root[data-theme="dark"] { --example-font: system-ui; } '
+    '.row-x { font-family: var(--example-font); }',
+])
+def test_used_font_requires_a_preload_even_through_a_token(repo: pathlib.Path, rule: str) -> None:
+    write(repo, "fonts/example.woff2", "0")
+    face = '@font-face { font-family: "Example Face"; src: url(../fonts/example.woff2); font-display: swap; }'
+    write(repo, "css/zz.css", face + rule)
+    assert "fonts:preload:fonts/example.woff2" in keys(repo, "fonts")
+    edit(repo, "index.html", "</head>", '<link rel="preload" href="/fonts/example.woff2" as="font" crossorigin>\n</head>')
+    assert not keys(repo, "fonts")
+
+
+def test_unused_fonts_still_count_towards_the_storage_budget(repo: pathlib.Path) -> None:
+    write(repo, "fonts/archive.woff2", "0" * budget.FONT_BUDGET_BYTES)
+    assert "fonts:budget" in keys(repo, "fonts")
+
+
 # --------------------------------------------------------------------------------------
 # the page as it is, and the target ratchet
 # --------------------------------------------------------------------------------------
@@ -186,6 +212,12 @@ def unpin_map_loader(r: pathlib.Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def unpreloaded_font(r: pathlib.Path) -> None:
+    write(r, "fonts/zz.woff2", "0")
+    write(r, "css/zz.css", '@font-face { font-family: "Example Face"; src: url(/fonts/zz.woff2); font-display: swap; }\n'
+          ':root { --example-font: "Example Face", system-ui; }\n.row-x { font: 400 1rem var(--example-font); }\n')
+
+
 ENTRY = '<script type="module" src="/js/main.js">'
 UNKNOWN_ICON = "import { icon } from '../icons.js';\nexport const x = icon('no-such');\n"
 UNUSED_SYMBOL = '<!-- icons:start --><svg><symbol id="i-zz-unused"></symbol></svg><!-- icons:end -->'
@@ -208,7 +240,7 @@ BREAKAGES: dict[str, list[tuple[str, Breakage]]] = {
     ],
     "fonts": [
         ("a ttf", new_file("fonts/x.ttf", "0")),
-        ("a woff2 that is not preloaded", new_file("fonts/zz.woff2", "0")),
+        ("a used woff2 that is not preloaded", unpreloaded_font),
         ("@font-face without font-display", new_file("css/zz.css", "@font-face { font-family: x; src: url(/fonts/x.woff2); }\n")),
     ],
     "motion": [
