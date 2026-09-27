@@ -221,3 +221,6 @@ def _private_account_stores(tmp_path_factory: pytest.TempPathFactory, monkeypatc
     monkeypatch.setenv("NABIZ_QUOTA_DB", str(folder / "quota.sqlite"))
     monkeypatch.setenv("NABIZ_SESSIONS_DB", str(folder / "sessions.sqlite"))
     monkeypatch.setenv("NABIZ_PLAN_DB_PATH", str(folder / "plans.sqlite3"))  # P06: the server calendar
+    monkeypatch.setenv("NABIZ_APPEALS_DB", str(folder / "appeals.sqlite"))  # P08: restrictions and appeals
+    monkeypatch.delenv("NABIZ_DATA_ROOT", raising=False)
+    monkeypatch.setenv("NABIZ_OUTBOX_DIR", str(folder / "outbox"))  # a sign-in's example e-mail, never under data/

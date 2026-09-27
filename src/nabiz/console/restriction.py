@@ -1,14 +1,17 @@
 """Session scoped request limits and temporary, reasoned restrictions.
 
 The caller supplies a trusted, opaque session or account key. A network address is never a
-restriction key: people on a shared connection must remain independent. This in-memory
-provider is for offline tests; production wiring must supply durable identity and storage.
+restriction key: people on a shared connection must remain independent. Request windows stay in
+memory; with a ``path`` (P00 D2a, I) the restrictions themselves are written through to SQLite, so a
+restart neither lifts a person's restriction nor forgets that it was lifted.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import os
+import pathlib
+import sqlite3
 import threading
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -65,12 +68,32 @@ class GateResult:
 class RestrictionBook:
     """A deterministic fake provider with per-subject buckets and atomic decisions."""
 
-    def __init__(self, *, clock: Callable[[], dt.datetime] = _now) -> None:
+    def __init__(self, *, clock: Callable[[], dt.datetime] = _now, path: str | pathlib.Path | None = None) -> None:
         self.clock = clock
         self._lock = threading.RLock()
         self._requests: dict[str, deque[dt.datetime]] = defaultdict(deque)
         self._denials: dict[str, deque[dt.datetime]] = defaultdict(deque)
         self._restrictions: dict[str, Restriction] = {}
+        self._path = pathlib.Path(path) if path else None
+        if self._path is not None:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            with sqlite3.connect(self._path, timeout=10) as db:
+                db.execute("CREATE TABLE IF NOT EXISTS restrictions (subject TEXT PRIMARY KEY, reason TEXT NOT NULL, "
+                           "until TEXT NOT NULL, source TEXT NOT NULL)")
+                for subject, reason, until, source in db.execute("SELECT subject, reason, until, source FROM restrictions"):
+                    self._restrictions[subject] = Restriction(subject, reason, dt.datetime.fromisoformat(until), source)
+
+    def _store(self, subject: str) -> None:
+        """Write one subject's restriction (or its absence) through to the file, when there is one."""
+        if self._path is None:
+            return
+        active = self._restrictions.get(subject)
+        with sqlite3.connect(self._path, timeout=10) as db:
+            if active is None:
+                db.execute("DELETE FROM restrictions WHERE subject = ?", (subject,))
+            else:
+                db.execute("INSERT OR REPLACE INTO restrictions VALUES (?, ?, ?, ?)",
+                           (subject, active.reason, active.until.isoformat(), active.source))
 
     @staticmethod
     def _trim(bucket: deque[dt.datetime], now: dt.datetime) -> None:
@@ -85,6 +108,7 @@ class RestrictionBook:
             active = self._restrictions.get(key)
             if active is not None and active.until <= now:
                 self._restrictions.pop(key, None)
+                self._store(key)
                 return None
             return active
 
@@ -115,6 +139,7 @@ class RestrictionBook:
                 return GateResult(False, "rate_limited")
             active = Restriction(key, AUTO_REASON, now + dt.timedelta(hours=AUTO_HOURS), "automatic")
             self._restrictions[key] = active
+            self._store(key)
             requests.clear()
             denials.clear()
             return GateResult(False, "restricted", active)
@@ -132,6 +157,7 @@ class RestrictionBook:
         active = Restriction(key, REASON_CODES[reason], now + dt.timedelta(hours=hours), "human" if human else "automatic")
         with self._lock:
             self._restrictions[key] = active
+            self._store(key)
         return active
 
     def reopen(self, subject: str) -> bool:
@@ -139,4 +165,6 @@ class RestrictionBook:
         with self._lock:
             self._requests.pop(key, None)
             self._denials.pop(key, None)
-            return self._restrictions.pop(key, None) is not None
+            lifted = self._restrictions.pop(key, None) is not None
+            self._store(key)
+            return lifted

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import pathlib
+import sqlite3
 import threading
 import uuid
 from collections.abc import Callable
@@ -47,14 +49,50 @@ class Appeal:
             "decision_reason": DECISION_REASONS.get(self.decision_reason),
         }
 
-class AppealBook:
-    """Fake in-memory queue; a production adapter must preserve decisions across restarts."""
+_APPEAL_COLUMNS = ("id", "subject", "category", "submitted_at", "restriction_until", "status", "decision_reason", "decided_at")
 
-    def __init__(self, restrictions: RestrictionBook, *, clock: Callable[[], dt.datetime] = _now) -> None:
+
+def _stamp(value: dt.datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _moment(value: str | None) -> dt.datetime | None:
+    return dt.datetime.fromisoformat(value) if value else None
+
+
+class AppealBook:
+    """The appeal queue; with a ``path`` (P00 D2a, I) every appeal and decision is written through to SQLite."""
+
+    def __init__(
+        self, restrictions: RestrictionBook, *, clock: Callable[[], dt.datetime] = _now, path: str | pathlib.Path | None = None,
+    ) -> None:
         self.restrictions = restrictions
         self.clock = clock
         self._lock = threading.RLock()
         self._appeals: dict[str, Appeal] = {}
+        self._path = pathlib.Path(path) if path else None
+        if self._path is not None:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            with sqlite3.connect(self._path, timeout=10) as db:
+                db.execute(f"CREATE TABLE IF NOT EXISTS appeals ({', '.join(_APPEAL_COLUMNS)}, PRIMARY KEY (id))")
+                for row in db.execute(f"SELECT {', '.join(_APPEAL_COLUMNS)} FROM appeals"):  # noqa: S608 - fixed names
+                    item = dict(zip(_APPEAL_COLUMNS, row, strict=True))
+                    self._appeals[item["id"]] = Appeal(
+                        item["id"], item["subject"], item["category"], _moment(item["submitted_at"]),
+                        _moment(item["restriction_until"]), item["status"], item["decision_reason"], _moment(item["decided_at"]),
+                    )
+
+    def _store(self, appeal: Appeal | None, *, forget: str | None = None) -> None:
+        if self._path is None:
+            return
+        with sqlite3.connect(self._path, timeout=10) as db:
+            if forget is not None:
+                db.execute("DELETE FROM appeals WHERE subject = ?", (forget,))
+            if appeal is not None:
+                db.execute(f"INSERT OR REPLACE INTO appeals VALUES ({', '.join('?' * len(_APPEAL_COLUMNS))})", (
+                    appeal.id, appeal.subject, appeal.category, _stamp(appeal.submitted_at), _stamp(appeal.restriction_until),
+                    appeal.status, appeal.decision_reason, _stamp(appeal.decided_at),
+                ))
 
     def submit(self, subject: str, category: str) -> Appeal:
         if category not in APPEAL_REASONS:
@@ -68,6 +106,7 @@ class AppealBook:
                     return appeal
             appeal = Appeal(uuid.uuid4().hex, active.subject, category, self.clock(), active.until)
             self._appeals[appeal.id] = appeal
+            self._store(appeal)
             return appeal
 
     def for_subject(self, appeal_id: str, subject: str) -> Appeal:
@@ -87,6 +126,7 @@ class AppealBook:
             ids = [item.id for item in self._appeals.values() if item.subject == subject]
             for appeal_id in ids:
                 del self._appeals[appeal_id]
+            self._store(None, forget=subject)
             self.restrictions.reopen(subject)
             return len(ids)
 
@@ -116,4 +156,5 @@ class AppealBook:
                 decision_reason=reason, decided_at=self.clock(),
             )
             self._appeals[appeal_id] = decided
+            self._store(decided)
             return decided

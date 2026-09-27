@@ -129,3 +129,20 @@ def test_main_calls_the_web_module_only_when_switched_on_and_passes_no_model_val
     assert params["webStateStorageKey"] == {"value": "${NABIZ_WEB_STATE_KEY=}"}
     deploy = (ROOT / "docs/deploy.md").read_text(encoding="utf-8")
     assert deploy.index("## Web app (closed preparation)") < deploy.index("## 9. Troubleshooting")
+
+
+def test_every_file_the_app_writes_is_on_the_share() -> None:
+    """P00 D2a (I): each store variable the console reads is set under /var/lib/nabiz, or is read-only data."""
+    import re
+
+    names = set()
+    variable = re.compile(r"\"((?:NABIZ|NEXUS)_[A-Z_]*(?:_DB|_DB_PATH|_DIR|_PATH|_FILE))\"")
+    for path in (ROOT / "src/nabiz/console").glob("*.py"):
+        names |= set(variable.findall(path.read_text(encoding="utf-8")))
+    shipped = {  # read-only data baked into the image, never written at run time
+        "NABIZ_AGENCIES_PATH", "NABIZ_EVENTS_PATH", "NABIZ_IBB_PLACES_DIR", "NABIZ_SKILLS_DATA_DIR", "NABIZ_ENV_FILE",
+        "NEXUS_MISSIONS_DIR",
+    }
+    for name in sorted(names - shipped):
+        assert re.search(rf"name: '{name}', value: '/var/lib/nabiz/", BICEP), name
+    assert "name: 'NABIZ_DATA_ROOT', value: '/var/lib/nabiz' }" in BICEP

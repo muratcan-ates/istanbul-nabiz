@@ -211,6 +211,24 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = if (hasStateKey) {
               { name: 'NABIZ_OUTBOX_DIR', value: '/var/lib/nabiz/outbox' }
               { name: 'NABIZ_LAKE_DIR', value: '/var/lib/nabiz/lake' }
               { name: 'NABIZ_KNOWLEDGE_DB', value: '/var/lib/nabiz/knowledge/knowledge.db' }
+              // P00 D2a (I): every file the app writes lives on the share; the root covers any store without its own name.
+              { name: 'NABIZ_DATA_ROOT', value: '/var/lib/nabiz' }
+              { name: 'NABIZ_QUOTA_DB', value: '/var/lib/nabiz/accounts/quota.sqlite' }
+              { name: 'NABIZ_SESSIONS_DB', value: '/var/lib/nabiz/accounts/sessions.sqlite' }
+              { name: 'NABIZ_APPEALS_DB', value: '/var/lib/nabiz/accounts/appeals.sqlite' }
+              { name: 'NABIZ_PLAN_DB_PATH', value: '/var/lib/nabiz/nexus/plans.sqlite3' }
+              { name: 'NABIZ_JOURNEY_WATCH_DB_PATH', value: '/var/lib/nabiz/accounts/journey_watch.sqlite' }
+              { name: 'NABIZ_BOOKING_DB_PATH', value: '/var/lib/nabiz/accounts/bookings.sqlite' }
+              { name: 'NABIZ_ESCORT_DB_PATH', value: '/var/lib/nabiz/nexus/escort.sqlite' }
+              { name: 'NABIZ_INCIDENTS_DB_PATH', value: '/var/lib/nabiz/nexus/incidents.sqlite' }
+              { name: 'NABIZ_PHOTO_REPORTS_DB_PATH', value: '/var/lib/nabiz/nexus/photo_reports.sqlite' }
+              { name: 'NABIZ_REPORT_TIMELINE_DB_PATH', value: '/var/lib/nabiz/nexus/report_timeline.sqlite' }
+              { name: 'NABIZ_POLLS_DB_PATH', value: '/var/lib/nabiz/nexus/polls.sqlite' }
+              { name: 'NABIZ_OUTAGE_DB_PATH', value: '/var/lib/nabiz/nexus/outage_watch.sqlite' }
+              { name: 'NABIZ_OUTCOMES_DB_PATH', value: '/var/lib/nabiz/nexus/outcomes.sqlite' }
+              { name: 'NABIZ_SCENARIOS_DB_PATH', value: '/var/lib/nabiz/nexus/scenarios.sqlite' }
+              { name: 'NABIZ_KNOWLEDGE_EDITOR_DB_PATH', value: '/var/lib/nabiz/knowledge/editor.sqlite' }
+              { name: 'NABIZ_SOURCE_CANDIDATES_PATH', value: '/var/lib/nabiz/knowledge/source_candidates.jsonl' }
             ],
             !empty(operatorToken) ? [{ name: 'NABIZ_CONSOLE_TOKEN', secretRef: 'operator-token' }] : [],
             hasModel ? [

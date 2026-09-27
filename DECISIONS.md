@@ -3220,3 +3220,22 @@ answers citing the gold page first.
 ### Consequences
 
 - A store added later joins `REQUIRED_HOOKS` and `account_links.py` in the same change, or the chain refuses to run.
+
+## 105. One data root, and P08's books kept across restarts (I, P00 D2a, 27 Sep)
+
+### Decision
+
+- `src/nabiz/console/data_root.py`: `store_path(variable, name)` gives a store its own variable when set (relative to
+  the repository, as before), else `name` under `NABIZ_DATA_ROOT` (default `<repo>/data`). The accounts, quota,
+  sessions, plans and appeals stores use it.
+- P08's `RestrictionBook` and `AppealBook` take a `path`: restrictions and appeals are written through to SQLite
+  (`NABIZ_APPEALS_DB`, default `accounts/appeals.sqlite` under the root), so a restart neither lifts a restriction nor
+  loses an appeal or its decision. Request windows stay in memory.
+- `infra/modules/webapp.bicep` sets `NABIZ_DATA_ROOT=/var/lib/nabiz` and every writable store's own variable to a file
+  on the share; a test fails when a store variable the console reads is neither on the share nor listed as shipped
+  read-only data.
+- kvkk: restrictions and appeals are on disk; an appeal has no separate retention yet and goes with the account.
+
+### Consequences
+
+- Appeal retention (a purge after a decision) is D2b's; until then kvkk says there is none.

@@ -63,6 +63,7 @@ from nabiz.console.chronic_api import chronic_routes
 from nabiz.console.compare_api import compare_routes
 from nabiz.console.culture_api import culture_routes
 from nabiz.console.culture_events_api import culture_events_routes
+from nabiz.console.data_root import store_path
 from nabiz.console.day_api import day_routes
 from nabiz.console.disaster_kit_api import disaster_kit_routes
 from nabiz.console.drill_api import drill_routes
@@ -506,7 +507,9 @@ def build_console_app(
     state.quota = PersistentQuotaBook.from_env()
     state.sessions = SessionStore.from_env()
     state.plan_principal, state.plan_tokens = _plan_owner, None
-    state.appeal_book, state.restriction_subject = AppealBook(RestrictionBook()), _person_key
+    appeals = store_path("NABIZ_APPEALS_DB", "accounts/appeals.sqlite")  # I: restrictions and appeals survive a restart
+    state.appeal_book = AppealBook(RestrictionBook(path=appeals), path=appeals)
+    state.restriction_subject = _person_key
     state.fresh = Freshness(
         offline=state.settings.offline,
         card_stale_after_s=env_seconds("NABIZ_CARD_STALE_S", CARD_STALE_DEFAULT_S),

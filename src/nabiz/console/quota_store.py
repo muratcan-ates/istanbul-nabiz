@@ -11,11 +11,9 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
-from ibb_mcp.config import REPO_ROOT
 from ibb_mcp.models import ISTANBUL_TZ, utcnow
+from nabiz.console.data_root import store_path
 from nabiz.console.quota import ADDRESS_SHARE, DEVICE_ID, Holder, QuotaBook, Tier, address_key, tiers_from_env
-
-DEFAULT_DB = "data/accounts/quota.sqlite"
 
 
 class PersistentQuotaBook(QuotaBook):
@@ -48,8 +46,8 @@ class PersistentQuotaBook(QuotaBook):
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> PersistentQuotaBook:
         env = os.environ if env is None else env
-        path = pathlib.Path(env.get("NABIZ_QUOTA_DB") or DEFAULT_DB).expanduser()
-        return cls(path if path.is_absolute() else REPO_ROOT / path, tiers_from_env(env))
+        # P00 D2a (I): NABIZ_QUOTA_DB, else accounts/quota.sqlite under the data root (NABIZ_DATA_ROOT).
+        return cls(store_path("NABIZ_QUOTA_DB", "accounts/quota.sqlite", env), tiers_from_env(env))
 
     @contextmanager
     def _db(self) -> Iterator[sqlite3.Connection]:

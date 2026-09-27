@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import sqlite3
 import uuid
 from collections.abc import Iterator
@@ -14,16 +13,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from nabiz.console.data_root import store_path
 from nabiz.console.operation_ledger import Operation, OperationConflict, OperationLedger
 
-DEFAULT_PATH = Path("data/nexus/plans.sqlite3")
 TIME_ZONE = "Europe/Istanbul"
 _FIELDS = ("title", "starts_at", "ends_at", "all_day", "time_zone", "place", "source_url", "source_date", "conversation_id")
 
 
 def plans_path() -> Path:
-    """``NABIZ_PLAN_DB_PATH``, else the default file."""
-    return Path(os.environ.get("NABIZ_PLAN_DB_PATH") or DEFAULT_PATH)
+    """``NABIZ_PLAN_DB_PATH``, else ``nexus/plans.sqlite3`` under the data root (P00 D2a)."""
+    return store_path("NABIZ_PLAN_DB_PATH", "nexus/plans.sqlite3")
 
 
 class PlanNotFound(LookupError):
