@@ -77,6 +77,10 @@ def _r_parking(d: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _shown(arrival: dict[str, Any]) -> str:
+    return str(arrival.get("shown") or shown_minutes(arrival.get("eta_minutes"), arrival.get("method"), stale=False)[1])
+
+
 def _r_arrivals(d: dict[str, Any]) -> list[str]:
     """One whole minute per estimate ("7 dk", "1 dk"), or "tarifeye göre" with no number."""
     stop = (d.get("stop") or {}).get("name") or (d.get("stop") or {}).get("stop_code", "")
@@ -85,8 +89,12 @@ def _r_arrivals(d: dict[str, Any]) -> list[str]:
     if not arrivals:
         return [f"{line_code} hattında {stop} durağına yaklaşan araç görünmüyor."]
     lines = [f"{line_code} hattının {stop} durağına tahmini varışı (TAHMİNDİR, resmî İETT bilgisi değildir):"]
+    if not any(_shown(arrival).endswith(" dk") for arrival in arrivals):
+        # No minute for any vehicle: one honest line instead of the same bullet repeated.
+        lines.append("• Hatta araç görünüyor; bu durak için dakika tahmini yapılamadı, tarifeye göre.")
+        return lines
     for arrival in arrivals:
-        shown = arrival.get("shown") or shown_minutes(arrival.get("eta_minutes"), arrival.get("method"), stale=False)[1]
+        shown = _shown(arrival)
         bits = [shown]
         if arrival.get("stops_away") is not None and shown.endswith(" dk"):
             bits.append(f"{arrival['stops_away']} durak uzakta")

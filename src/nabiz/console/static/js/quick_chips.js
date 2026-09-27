@@ -32,25 +32,42 @@ function chipButton({ category, chip }, english) {
     + '" aria-label="' + esc(text + ' ' + suffix) + '">' + glyph + esc(text) + '</button>';
 }
 
+// Short category pills first (Hick: three to six words, not three long questions); a pill opens
+// "Daha fazla soru" filtered to its own questions, and one tap on a question asks it.
+function categoryPill(category, english) {
+  const label = english ? category.label_en : category.label_tr;
+  return '<button type="button" class="chip quick-cat" data-cat="' + esc(category.id)
+    + '" aria-expanded="false" aria-controls="quick-more">' + esc(label) + '</button>';
+}
+
 function render(payload) {
   if (!host || !payload) return;
   const english = answerLanguage(readProfile()) === 'en';
-  const { visible, remaining } = splitChips(payload.categories, 3, english);
+  const categories = payload.categories
+    .map((category) => ({ category, chips: category.chips.filter((chip) => !english || chip.text_en) }))
+    .filter((entry) => entry.chips.length);
   host.lang = english ? 'en' : 'tr';
-  host.innerHTML = visible.map((entry) => chipButton(entry, english)).join('');
-  host.hidden = visible.length === 0;
+  host.innerHTML = categories.map(({ category }) => categoryPill(category, english)).join('');
+  host.hidden = categories.length === 0;
   if (!more || !moreHost) return;
   moreHost.lang = host.lang;
-  const cards = remaining.map(({ category, chips }) => {
+  moreHost.innerHTML = categories.map(({ category, chips }) => {
     const label = english ? category.label_en : category.label_tr;
-    return '<div class="quick-card" role="group" aria-labelledby="quick-t-' + esc(category.id)
-      + '"><p class="quick-card-title" id="quick-t-' + esc(category.id) + '">' + esc(label)
+    return '<div class="quick-card" data-cat="' + esc(category.id) + '" role="group" aria-labelledby="quick-t-'
+      + esc(category.id) + '"><p class="quick-card-title" id="quick-t-' + esc(category.id) + '">' + esc(label)
       + '</p><div class="quick-card-chips">'
       + chips.map((chip) => chipButton({ category, chip }, english)).join('') + '</div></div>';
-  });
-  moreHost.innerHTML = cards.join('');
-  more.hidden = cards.length === 0;
+  }).join('');
+  more.hidden = categories.length === 0;
   if (more.hidden) more.open = false;
+}
+
+function showCategory(id) {
+  if (!more || !moreHost) return;
+  const same = more.open && host.querySelector('.quick-cat[aria-expanded="true"]')?.dataset.cat === id;
+  for (const pill of host.querySelectorAll('.quick-cat')) pill.setAttribute('aria-expanded', String(!same && pill.dataset.cat === id));
+  for (const card of moreHost.querySelectorAll('.quick-card')) card.hidden = !same && card.dataset.cat !== id;
+  more.open = !same;
 }
 
 if (host) {
@@ -75,7 +92,16 @@ if (host) {
     input.focus();
     form.requestSubmit();
   }
-  host.addEventListener('click', askFromChip);
+  host.addEventListener('click', (event) => {
+    const pill = event.target.closest('button.quick-cat');
+    if (pill) showCategory(pill.dataset.cat);
+    else askFromChip(event);
+  });
+  more?.querySelector('summary')?.addEventListener('click', () => {
+    // The summary itself always means "every question": clear a pill's filter.
+    for (const card of moreHost?.querySelectorAll('.quick-card') || []) card.hidden = false;
+    for (const pill of host.querySelectorAll('.quick-cat')) pill.setAttribute('aria-expanded', 'false');
+  });
   if (more) more.addEventListener('click', askFromChip);
 
   document.addEventListener('click', (event) => {

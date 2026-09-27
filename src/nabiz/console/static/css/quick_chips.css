@@ -73,3 +73,5 @@
     transform: scale(.97);
   }
 }
+
+.quick-card[hidden] { display: none; }
