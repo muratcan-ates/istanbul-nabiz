@@ -2,59 +2,58 @@
  * storage fallbacks for browsers that block persistent storage. */
 
 import { HISTORY_TURNS } from './config.js';
-
-const STORAGE_KEY = 'nabiz.conversations.v1';
-const DATABASE_NAME = 'nabiz-conversations';
+const STORAGE_KEY = 'nabiz.conversations.v1', DATABASE_NAME = 'nabiz-conversations', STORE_NAME = 'conversations';
 const DATABASE_VERSION = 1;
-const STORE_NAME = 'conversations';
 const RETENTION_DAYS = 30;
 const MAX_CONTENT_LENGTH = 4000;
 const MAX_TURNS = 80;
 const REDACTED_TEXT = '[acil yönlendirme]';
+const SENSITIVE_REDACTED_TEXT = '[hassas bilgi saklanmadı]';
+const CARD_TYPES = new Set(['route', 'map', 'event', 'calendar_draft', 'photo_report', 'status', 'info', 'memory']);
+const CARD_STATUSES = new Set(['preparing', 'needs_input', 'ready', 'awaiting_confirmation', 'done', 'unavailable', 'error']);
+// Card contract v0.1 (SOZLESME-sohbet-karti-v0.md): id -> kind; consent is a floor; string actions read back as objects.
+const CARD_ACTION_KIND = Object.freeze({ use_location: 'device', type_place: 'view', expand_map: 'view', listen: 'view',
+  remember_here: 'device', remember_always: 'device', change: 'view', forget: 'device', save_calendar: 'nabiz',
+  export_ics: 'device', review_report: 'view', send: 'nabiz', open_official: 'external', add_outlook: 'external',
+  confirm_resolved: 'nabiz', reopen: 'nabiz', cancel: 'nabiz', appeal: 'nabiz', share: 'external' });
+const CARD_CONSENT = new Set(['use_location', 'remember_here', 'remember_always', 'save_calendar', 'send', 'add_outlook',
+  'confirm_resolved', 'reopen', 'cancel', 'appeal', 'share']);
+const CARD_ACTION_ALIASES = Object.freeze({ add_calendar: 'save_calendar', download_ics: 'export_ics',
+  open_map: 'expand_map', remember: 'remember_here' });
 
 const EMERGENCY_TEXT = /112|acil|ambulans|can güvenliği|imdat/i;
 const SENSITIVE_TEXT = /sağlık|hastalık|ilaç|doktor|teşhis|tani|kan tahlil|gebelik|hamile|psikolog|terapi|hukuk|avukat|dava|ceza|borç|maaş|banka|kredi|şifre|kimlik|adres|telefon|e-?posta|\b\d{11}\b|\b\d{10,}\b/i;
 
-let databasePromise;
-let indexedDbUnavailable = false;
-let storageMode = 'unknown';
-let memoryRecords = [];
+let databasePromise, indexedDbUnavailable = false, storageMode = 'unknown', memoryRecords = [];
 
 function timestamp(value) {
   const parsed = Date.parse(value || '');
   return Number.isFinite(parsed) ? parsed : 0;
 }
-
 function normaliseRecords(records) {
   return Array.isArray(records)
     ? records.filter((record) => record && typeof record.id === 'string' && Array.isArray(record.turns))
+      .map((record) => ({ ...record, schema: 2, title: typeof record.title === 'string' ? record.title : 'Yeni sohbet',
+        turns: record.turns.filter((turn) => turn && (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string'),
+        scoped: Array.isArray(record.scoped) ? record.scoped : [], links: Array.isArray(record.links) ? record.links : [],
+        trimmed: Number.isInteger(record.trimmed) && record.trimmed >= 0 ? record.trimmed : 0 }))
     : [];
 }
-
 function openDatabase() {
-  if (indexedDbUnavailable || typeof indexedDB === 'undefined') {
-    return Promise.reject(new Error('IndexedDB is unavailable'));
-  }
-  if (!databasePromise) {
-    databasePromise = new Promise((resolve, reject) => {
-      try {
-        const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-        request.onupgradeneeded = () => {
-          if (!request.result.objectStoreNames.contains(STORE_NAME)) {
-            request.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error || new Error('IndexedDB could not open'));
-        request.onblocked = () => reject(new Error('IndexedDB is blocked'));
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
+  if (indexedDbUnavailable || typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB is unavailable'));
+  if (!databasePromise) databasePromise = new Promise((resolve, reject) => {
+    try {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('IndexedDB could not open'));
+      request.onblocked = () => reject(new Error('IndexedDB is blocked'));
+    } catch (error) { reject(error); }
+  });
   return databasePromise;
 }
-
 function mutateIndexedDb(mutator) {
   return openDatabase().then((database) => new Promise((resolve, reject) => {
     let value;
@@ -70,10 +69,7 @@ function mutateIndexedDb(mutator) {
           store.clear();
           result.records.forEach((record) => store.put(record));
         }
-      } catch (error) {
-        failure = error;
-        transaction.abort();
-      }
+      } catch (error) { failure = error; transaction.abort(); }
     };
     request.onerror = () => { failure = request.error || new Error('IndexedDB read failed'); };
     transaction.oncomplete = () => resolve(value);
@@ -81,130 +77,205 @@ function mutateIndexedDb(mutator) {
     transaction.onabort = () => reject(failure || transaction.error || new Error('IndexedDB transaction aborted'));
   }));
 }
-
 function localStorageObject() {
-  try {
-    return globalThis.localStorage || null;
-  } catch (error) {
-    return null;
-  }
+  try { return globalThis.localStorage || null; } catch { return null; }
 }
-
 function mutateLocalStorage(mutator) {
   const storage = localStorageObject();
   if (!storage) throw new Error('localStorage is unavailable');
   const raw = storage.getItem(STORAGE_KEY);
   let records = [];
-  if (raw) {
-    try { records = normaliseRecords(JSON.parse(raw)); } catch (error) { records = []; }
-  }
+  if (raw) { try { records = normaliseRecords(JSON.parse(raw)); } catch { records = []; } }
   const result = mutator(records);
   if (result.write) storage.setItem(STORAGE_KEY, JSON.stringify(result.records));
   return result.value;
 }
-
 async function withStorage(mutator) {
   if (!indexedDbUnavailable) {
     try {
       const value = await mutateIndexedDb(mutator);
       storageMode = 'indexedDB';
       return value;
-    } catch (error) {
-      indexedDbUnavailable = true;
-      databasePromise = null;
-    }
+    } catch { indexedDbUnavailable = true; databasePromise = null; }
   }
   try {
     const value = mutateLocalStorage(mutator);
     storageMode = 'localStorage';
     return value;
-  } catch (error) {
+  } catch {
     const result = mutator(memoryRecords);
     memoryRecords = result.records;
     storageMode = 'memory';
     return result.value;
   }
 }
-
 function makeId() {
-  try {
-    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  } catch (error) {
-    // Use a local identifier when browser crypto is unavailable.
-  }
+  try { if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID(); } catch { /* Use a local ID. */ }
   return `convo-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
-
-function cleanTurn(turn, now) {
+function bounded(value, depth = 0) {
+  if (typeof value === 'string') return value.slice(0, MAX_CONTENT_LENGTH);
+  if (value == null || typeof value === 'boolean' || typeof value === 'number') return value;
+  if (depth >= 3) return null;
+  if (Array.isArray(value)) return value.slice(0, 20).map((item) => bounded(item, depth + 1));
+  if (typeof value !== 'object') return null;
+  return Object.fromEntries(Object.entries(value).slice(0, 20)
+    .map(([key, item]) => [key.slice(0, 64), bounded(item, depth + 1)]));
+}
+function cleanAction(raw) {
+  const given = typeof raw === 'string' ? raw : raw && typeof raw === 'object' ? String(raw.id || '') : '';
+  const id = CARD_ACTION_ALIASES[given] || given;
+  if (!Object.hasOwn(CARD_ACTION_KIND, id)) return null;
+  const operationId = typeof raw?.operation_id === 'string' && raw.operation_id ? raw.operation_id.slice(0, 128) : null;
+  return { id, label: String(raw?.label || '').slice(0, 40), kind: CARD_ACTION_KIND[id],
+    requires_consent: CARD_CONSENT.has(id) || raw?.requires_consent === true, operation_id: operationId };
+}
+function cleanLinked(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = (key) => (typeof raw[key] === 'string' && raw[key] ? raw[key].slice(0, 128) : null);
+  return { event_id: value('event_id'), report_code: value('report_code'), operation_id: value('operation_id') };
+}
+function cleanCard(raw, conversationId, messageId) {
+  if (!raw || typeof raw !== 'object' || !CARD_TYPES.has(raw.type) || !CARD_STATUSES.has(raw.status)) return null;
+  const sensitive = raw.sensitive === true;
+  const card = {
+    v: 1, id: String(raw.id || '').slice(0, 128), conversation_id: conversationId,
+    message_id: String(raw.message_id || messageId || '').slice(0, 128), type: raw.type, status: raw.status,
+    title: sensitive ? SENSITIVE_REDACTED_TEXT : String(raw.title || '').slice(0, MAX_CONTENT_LENGTH),
+    body: sensitive ? null : bounded(raw.body),
+    sources: (sensitive ? [] : Array.isArray(raw.sources) ? raw.sources : []).slice(0, 12).map((source) => ({
+      label: String(source?.label || '').slice(0, 256), url: String(source?.url || '').slice(0, 2048),
+      source_time: String(source?.source_time || '').slice(0, 128), freshness: String(source?.freshness || '').slice(0, 128),
+    })),
+    source_time: sensitive ? '' : String(raw.source_time || '').slice(0, 128),
+    linked_id: sensitive || raw.linked_id == null ? null : String(raw.linked_id).slice(0, 128),
+    actions: sensitive ? [] : (Array.isArray(raw.actions) ? raw.actions : []).map(cleanAction).filter(Boolean).slice(0, 16),
+    sensitive,
+  };
+  const linked = sensitive ? null : cleanLinked(raw.linked);
+  if (linked) card.linked = linked;
+  return card;
+}
+function cleanTurn(turn, now, conversationId) {
   const role = turn?.role === 'user' ? 'user' : turn?.role === 'assistant' ? 'assistant' : null;
   if (!role) return null;
   const content = String(turn.content ?? '');
   const detectionText = content.toLocaleLowerCase('tr-TR');
-  const privateContent = turn.sensitive === true || turn.emergency === true || turn.mode === 'redirect'
-    || EMERGENCY_TEXT.test(detectionText) || SENSITIVE_TEXT.test(detectionText);
-  return {
+  const emergency = turn.emergency === true || turn.mode === 'redirect' || EMERGENCY_TEXT.test(detectionText);
+  const sensitive = !emergency && (turn.sensitive === true || SENSITIVE_TEXT.test(detectionText));
+  const saved = {
     role,
-    content: (privateContent ? REDACTED_TEXT : content).slice(0, MAX_CONTENT_LENGTH),
+    content: (emergency ? REDACTED_TEXT : sensitive ? SENSITIVE_REDACTED_TEXT : content).slice(0, MAX_CONTENT_LENGTH),
     at: typeof turn.at === 'string' && Number.isFinite(Date.parse(turn.at)) ? turn.at : now,
   };
+  if (typeof turn.mode === 'string') saved.mode = turn.mode.slice(0, 64);
+  if (typeof turn.message_id === 'string') saved.message_id = turn.message_id.slice(0, 128);
+  if (emergency || sensitive) saved.redacted = emergency ? 'emergency' : 'sensitive';
+  if (Array.isArray(turn.cards)) saved.cards = turn.cards.slice(0, 6)
+    .map((card) => cleanCard(card, conversationId, saved.message_id)).filter(Boolean);
+  return saved;
 }
-
 function compactionNote(turnCount, keptTurns) {
   const count = Number(turnCount);
   const kept = Math.max(0, Math.floor(Number(keptTurns) || 0));
   if (!Number.isFinite(count) || count <= HISTORY_TURNS * 2) return '';
   return `Önceki mesajlar kısaltılarak gönderiliyor; yalnız son ${kept} soru hatırlanıyor.`;
 }
-
+function cardLink(card) {
+  if (!card.linked_id) return null;
+  const mapped = { calendar_draft: 'calendar', event: 'calendar', photo_report: 'report' }[card.type];
+  const prefixed = /^(calendar|report|request|follow):(.+)$/.exec(card.linked_id);
+  const kind = prefixed?.[1] || mapped;
+  const id = prefixed?.[2] || card.linked_id;
+  return kind ? { kind, id } : null;
+}
+function withCardLinks(links, cards) {
+  const next = [...links];
+  for (const card of cards) {
+    const link = cardLink(card);
+    if (link && !next.some((item) => item.kind === link.kind && item.id === link.id)) next.push(link);
+  }
+  return next;
+}
+function expiresAt(record) {
+  return timestamp(record?.createdAt) ? new Date(timestamp(record.createdAt) + RETENTION_DAYS * 86400000).toISOString() : null;
+}
+function linkedCounts(record) {
+  const counts = { calendar: 0, report: 0, request: 0, follow: 0, total: 0 };
+  for (const link of Array.isArray(record?.links) ? record.links : []) {
+    if (Object.hasOwn(counts, link.kind) && link.kind !== 'total') { counts[link.kind] += 1; counts.total += 1; }
+  }
+  return counts;
+}
 async function saveTurn(id, turn) {
   const conversationId = String(id || '');
   const now = new Date().toISOString();
-  const savedTurn = cleanTurn(turn, now);
+  const savedTurn = cleanTurn(turn, now, conversationId);
   if (!conversationId || !savedTurn) return null;
   return withStorage((records) => {
     const index = records.findIndex((record) => record.id === conversationId);
     if (index < 0) return { records, value: null, write: false };
     const previous = records[index];
     const turns = [...previous.turns, savedTurn].slice(-MAX_TURNS);
-    const title = previous.title === 'Yeni sohbet' && savedTurn.role === 'user'
+    const title = previous.title === 'Yeni sohbet' && savedTurn.role === 'user' && !savedTurn.redacted
       ? savedTurn.content.slice(0, 48).trimEnd() || 'Yeni sohbet'
       : previous.title;
-    const updated = { ...previous, title, updatedAt: now, turns };
-    const next = [...records];
-    next[index] = updated;
+    const links = withCardLinks(previous.links, savedTurn.cards || []);
+    const updated = { ...previous, schema: 2, title, updatedAt: now, turns, links,
+      trimmed: previous.trimmed + Math.max(0, previous.turns.length + 1 - MAX_TURNS) };
+    const next = records.map((item, position) => (position === index ? updated : item));
     return { records: next, value: updated, write: true };
   });
 }
-
-async function list() {
-  return withStorage((records) => ({
-    records,
-    value: [...records].sort((left, right) => timestamp(right.updatedAt) - timestamp(left.updatedAt)),
-    write: false,
-  }));
-}
-
-async function load(id) {
-  const conversationId = String(id || '');
-  return withStorage((records) => ({
-    records,
-    value: records.find((record) => record.id === conversationId) || null,
-    write: false,
-  }));
-}
-
-async function remove(id) {
-  const conversationId = String(id || '');
+async function appendCardToTurn(id, messageId, card) {
   return withStorage((records) => {
-    const next = records.filter((record) => record.id !== conversationId);
-    return { records: next, value: next.length !== records.length, write: next.length !== records.length };
+    const index = records.findIndex((record) => record.id === String(id || ''));
+    if (index < 0) return { records, value: null, write: false };
+    const record = records[index];
+    const turnIndex = record.turns.findIndex((turn) => turn.role === 'assistant' && turn.message_id === messageId);
+    if (turnIndex < 0) return { records, value: null, write: false };
+    const safe = cleanCard(card, record.id, messageId);
+    if (!safe) return { records, value: null, write: false };
+    const turns = [...record.turns];
+    const existing = turns[turnIndex].cards || [];
+    const cards = [...existing.filter((item) => item.id !== safe.id), safe].slice(-6);
+    turns[turnIndex] = { ...turns[turnIndex], cards };
+    const updated = { ...record, turns, links: withCardLinks(record.links, [safe]) };
+    const next = records.map((item, position) => (position === index ? updated : item));
+    return { records: next, value: updated, write: true };
   });
 }
-
-async function clearAll() {
-  return withStorage(() => ({ records: [], value: true, write: true }));
+async function list() {
+  return withStorage((records) => ({ records,
+    value: [...records].sort((left, right) => timestamp(right.updatedAt) - timestamp(left.updatedAt)), write: false }));
 }
-
+async function load(id) {
+  const conversationId = String(id || '');
+  return withStorage((records) => ({ records,
+    value: records.find((record) => record.id === conversationId) || null, write: false }));
+}
+async function remove(id) { return Boolean(await removeWithScoped(id)); }
+async function removeWithScoped(id) {
+  const conversationId = String(id || '');
+  return withStorage((records) => {
+    const removed = records.find((record) => record.id === conversationId) || null;
+    const next = records.filter((record) => record.id !== conversationId);
+    return { records: next, value: removed, write: Boolean(removed) };
+  });
+}
+async function updateScoped(id, updater) {
+  if (typeof updater !== 'function') throw new TypeError('Scoped updater must be a function');
+  return withStorage((records) => {
+    const index = records.findIndex((record) => record.id === String(id || ''));
+    if (index < 0) return { records, value: null, write: false };
+    const scoped = updater([...records[index].scoped]);
+    if (!Array.isArray(scoped)) throw new TypeError('Scoped updater must return an array');
+    const updated = { ...records[index], schema: 2, scoped };
+    const next = records.map((item, position) => (position === index ? updated : item));
+    return { records: next, value: updated, write: true };
+  });
+}
+async function clearAll() { return withStorage(() => ({ records: [], value: true, write: true })); }
 async function purgeOlderThan(days = RETENTION_DAYS, now = Date.now()) {
   const retention = Number.isFinite(Number(days)) && Number(days) >= 0 ? Number(days) : RETENTION_DAYS;
   const cutoff = Number(now) - retention * 86400000;
@@ -213,20 +284,17 @@ async function purgeOlderThan(days = RETENTION_DAYS, now = Date.now()) {
     return { records: next, value: records.length - next.length, write: next.length !== records.length };
   });
 }
-
 async function newConversation() {
   const now = new Date().toISOString();
-  const conversation = { id: makeId(), title: 'Yeni sohbet', createdAt: now, updatedAt: now, turns: [] };
+  const conversation = { schema: 2, id: makeId(), title: 'Yeni sohbet', createdAt: now, updatedAt: now,
+    turns: [], scoped: [], links: [], trimmed: 0 };
   await withStorage((records) => ({ records: [...records, conversation], value: conversation, write: true }));
   return conversation;
 }
-
 async function storageStatus() {
   await withStorage((records) => ({ records, value: null, write: false }));
   return { mode: storageMode, persistent: storageMode !== 'memory' };
 }
-
-export {
-  MAX_CONTENT_LENGTH, MAX_TURNS, RETENTION_DAYS, REDACTED_TEXT,
-  saveTurn, list, load, remove, clearAll, purgeOlderThan, newConversation, storageStatus, compactionNote,
-};
+export { MAX_CONTENT_LENGTH, MAX_TURNS, RETENTION_DAYS, REDACTED_TEXT, SENSITIVE_REDACTED_TEXT,
+  saveTurn, appendCardToTurn, list, load, remove, removeWithScoped, updateScoped, clearAll, purgeOlderThan, newConversation,
+  storageStatus, compactionNote, expiresAt, linkedCounts };
