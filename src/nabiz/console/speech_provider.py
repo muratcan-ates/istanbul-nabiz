@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import datetime as dt
 import os
-import threading
 from dataclasses import dataclass
 from html import escape
 from typing import Literal, Protocol
@@ -61,27 +59,6 @@ class SpeechSettings:
         return self.provider == "openai"
 
 
-class _DailyLimit:
-    """A process-local safety ceiling; deployment still needs a shared spend guard."""
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._day: dt.date | None = None
-        self._used = 0
-
-    def reserve(self, maximum: int) -> None:
-        with self._lock:
-            today = dt.datetime.now(dt.UTC).date()
-            if self._day != today:
-                self._day, self._used = today, 0
-            if self._used >= maximum:
-                raise SpeechUnavailable
-            self._used += 1
-
-
-_LIMIT = _DailyLimit()
-
-
 class OffSpeech:
     @property
     def available(self) -> bool:
@@ -106,7 +83,6 @@ class RemoteSpeech:
     async def _post(self, url: str, **kwargs: object) -> httpx.Response:
         if not self.available:
             raise SpeechUnavailable
-        _LIMIT.reserve(self.settings.daily_calls)
         try:
             if self.client is not None:
                 response = await self.client.post(url, timeout=20, **kwargs)

@@ -3124,3 +3124,20 @@ answers citing the gold page first.
 
 - The sign-in routes that use `SessionStore` come with the identity work (J or D2b); today only the store and its
   purge are wired. Account erasure of the quota and session rows is the erasure chain's (H).
+
+## 100. Server-side speech: mounted, off until its keys are set, every call bonded to two quotas (P04, P00 D2a, 27 Sep)
+
+### Decision
+
+- `speech_router` (`POST /api/speech/transcribe`, `POST /api/speech/synthesize`) is in `PRODUCT_ROUTERS` after
+  `quota_routes`. Off, offline, without a key or with `NABIZ_SPEECH_DAILY_CALLS=0` both answer 503 "kapalı" and the
+  page keeps typing. A transcript is an editable draft, never sent on its own; synthetic audio is marked as such.
+- Each call claims one model call on the person's quota and one on the shared `global:speech` holder (limit
+  `NABIZ_SPEECH_DAILY_CALLS`), both in the app's quota book, so the ceiling holds across restarts and replicas; a call
+  the provider does not complete refunds both. The process-local `_DailyLimit` is removed: nothing used it any more.
+- No audio or text is stored or logged. kvkk `#kvkk-ses` says so. Switching it on is MURAT ONAYI (per-use billing).
+
+### Consequences
+
+- `voice_provider.js` is in the shell next to `voice.js` (sw v18); the page offers server speech only when the route
+  is open (D2b).

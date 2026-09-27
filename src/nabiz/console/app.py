@@ -109,6 +109,7 @@ from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
 from nabiz.console.sessions import SessionStore
 from nabiz.console.skills_api import skills_routes
+from nabiz.console.speech_api import speech_router
 from nabiz.console.stop_card import stop_card_router
 from nabiz.console.street_route_api import street_route_router
 from nabiz.console.troubleshoot_api import troubleshoot_routes
@@ -429,6 +430,9 @@ PRODUCT_ROUTERS = (
     kill_switch_routes,
     stop_card_router,
     quota_routes,
+    # P04: speech to an editable draft and answer text to audio; off until NABIZ_SPEECH_* are set, each call held on
+    # the person's quota and the shared daily speech ceiling, no audio stored or logged.
+    speech_router,
     account_routes,
     # E52: family code; two-sided consent, share only what is chosen, no location.
     family_routes,
