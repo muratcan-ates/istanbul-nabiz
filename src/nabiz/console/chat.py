@@ -41,7 +41,7 @@ from nabiz.agent.schemas import TOOL_DESCRIPTIONS
 from nabiz.agent.templates import OUT_OF_SCOPE
 from nabiz.agent.templates_i18n import fixed_text, quote_frame
 from nabiz.console import chat_pipeline as pipeline
-from nabiz.console import policy, text_guard
+from nabiz.console import official_path, policy, text_guard
 from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import display_text
 from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
@@ -284,12 +284,17 @@ class ChatService:
         verdict = pipeline.early_verdict(checked.text, earlier, trace, input_ok=checked.ok)
         if verdict == "emergency":
             return pipeline.emergency_events(turn.suggestion, turn.started, trace, **emergency_card(checked.text))
-        if verdict in {None, "sensitive"} and checked.ok and (card := await model_emergency(masked, self.config, self.guard)):
+        # An official-path verdict still gets the model's emergency check: a help or account question can carry one.
+        if verdict in {None, "sensitive", "account", "help", "ferry"} and checked.ok and (
+            card := await model_emergency(masked, self.config, self.guard)
+        ):
             return pipeline.model_emergency_events(card, turn.suggestion, turn.started, trace)
         if verdict == "guard":
             return pipeline.guard_events("input", checked.reason, checked.message or "", turn.started, trace)
         if verdict == "handoff":
             return pipeline.handoff_events(turn.suggestion, turn.started, trace, turn.lang)
+        if verdict in {"account", "help", "ferry"}:
+            return await official_path.early_events(self, checked.text, masked, verdict, turn)
         if verdict == "sensitive":
             quoted = await self._from_knowledge(masked, sensitive=True, turn=turn)
             return quoted or pipeline.traced_refusal(turn.suggestion, turn.started, trace, turn.lang)
@@ -298,7 +303,8 @@ class ChatService:
     def knowledge_index(self) -> tuple[Any, Any]:
         """The service-page index once it is built, else ``(None, None)``; offline, lexical search only."""
         if self._knowledge is None:
-            store, embedder = open_from_env()
+            # Offline the index is opened read-only (mode=ro): a turn never writes the service-page index.
+            store, embedder = official_path.readonly_index() if self.offline else open_from_env()
             if store is None:
                 return None, None
             self._knowledge = (store, None if self.offline else embedder)
@@ -327,6 +333,8 @@ class ChatService:
             return None  # no verified quote: the refusal, which also names 112
         # E08: the page names the search it waited on, like any tool.
         searched = [sse("tool", {"name": "ibb_services_search", "status": status}) for status in ("start", "end")]
+        if fallback := official_path.unknown_fallback(question, found, turn, searched):
+            return fallback
         text = fixed_text("UNKNOWN", turn.lang) if found.mode == "unknown" else found.text
         if (stopped := pipeline.output_guard(
             display_text(text), cited, found.author, turn.started, trace, turn.lang

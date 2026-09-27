@@ -14,6 +14,8 @@ from ibb_mcp.tools import Nabiz
 from nabiz.agent import LlmConfig, NabizAgent
 from nabiz.console import quick_api
 from nabiz.console.agency_router import route as agency_route
+from nabiz.console.official_intent import intent
+from nabiz.console.official_path import select_path
 from nabiz.console.policy import emergency_intent, refuses_in_context
 from nabiz.console.quick_api import quick_routes
 
@@ -136,14 +138,25 @@ def test_no_chip_is_refused_or_an_emergency() -> None:
                 assert emergency_intent(question) is False
 
 
+def test_official_chips_reach_the_reviewed_routes() -> None:
+    for chip in (item for item in _catalog()["sorular"] if item["kind"] == "official"):
+        for question in (chip["soru_tr"], chip["soru_en"]):
+            kind = intent(question)
+            assert kind in {"account", "help"}, question
+            assert select_path(question, kind) is not None, question
+            assert refuses_in_context(question, []) is False, question
+            assert emergency_intent(question) is False, question
+
+
 def test_missing_index_returns_only_live_chips(tmp_path, monkeypatch) -> None:
     _offline(monkeypatch, tmp_path / "missing.db")
     monkeypatch.setenv("NABIZ_QUICK_KNOWLEDGE", "1")
     response = _client().get("/api/quick")
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["categories"]] == ["ulasim", "iski-fatura"]
+    assert [item["id"] for item in response.json()["categories"]] == ["ulasim", "iski-fatura", "sosyal-destek"]
     chips = _chips(response)
-    assert sorted(chip["kind"] for chip in chips.values()) == ["agency", "live", "live", "live", "live"]
+    assert sorted(chip["kind"] for chip in chips.values()) == ["agency", "live", "live", "live", "live", "official", "official"]
+    assert response.json()["counts"]["official"] == 2
     assert response.json()["index"]["state"] == "missing"
 
 
@@ -154,9 +167,10 @@ def test_empty_index_returns_only_live_chips(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("NABIZ_QUICK_KNOWLEDGE", "1")
     response = _client().get("/api/quick")
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["categories"]] == ["ulasim", "iski-fatura"]
+    assert [item["id"] for item in response.json()["categories"]] == ["ulasim", "iski-fatura", "sosyal-destek"]
     chips = _chips(response)
-    assert sorted(chip["kind"] for chip in chips.values()) == ["agency", "live", "live", "live", "live"]
+    assert sorted(chip["kind"] for chip in chips.values()) == ["agency", "live", "live", "live", "live", "official", "official"]
+    assert response.json()["counts"]["official"] == 2
     assert response.json()["index"]["state"] == "empty"
 
 

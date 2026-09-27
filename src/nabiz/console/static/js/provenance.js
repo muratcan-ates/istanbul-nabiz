@@ -37,6 +37,7 @@ const SOURCE_TR = {
   nexus_ledger: 'Nabız karar defteri',
   nexus_rules: 'Nabız kural kataloğu',
   'local:knowledge': 'Hizmet sayfaları (yerel dizin)',
+  'local:agencies': 'Kurumun resmî sayfası',
   ibb_catalog: 'İBB Açık Veri kataloğu',
 };
 

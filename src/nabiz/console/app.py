@@ -210,12 +210,12 @@ async def operator_login(request: Request) -> Response:
 
 @citizen_routes.post("/api/chat")
 async def citizen_chat(request: Request, body: ChatRequest) -> Response:
-    if (paused := chat_gate(request)) is not None:
+    # DECISIONS #38: an emergency is never limited or counted; a pause must not hide 112 either.
+    turn = plan_turn(request, body.message)
+    if not turn.emergency and (paused := chat_gate(request)) is not None:
         return paused
     service: ChatService = request.app.state.chat
     limiter: TurnLimiter = request.app.state.chat_limiter
-    # DECISIONS #38: an emergency is never limited or counted; the daily quota closes only the model.
-    turn = plan_turn(request, body.message)
     if not turn.emergency and not limiter.allow(request.client.host if request.client else "unknown"):
         return port_problem(429, "too_many_turns", "Çok sık soru geldi. Bir dakika sonra yeniden dene.")
     return StreamingResponse(

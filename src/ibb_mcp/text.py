@@ -132,6 +132,14 @@ _INSTRUCTION_PHRASES = re.compile(
     r"|\bignore (?:all |any )?(?:previous|prior|above) (?:instructions|prompts)\b"
     r"|\bsystem prompt\b"
     r"|\byou are now\b"
+    r"|\b(?:sistem|gizli|ic) (?:istem|talimat|prompt)\w*.{0,36}\b(?:ver|cevir|aktar)\w*"
+    r"|\b(?:ilk|onceki) mesaj\w*.{0,48}\btekrar et\b"
+    r"|\byazdigin (?:ilk|onceki) mesaj\w*.{0,48}\btekrar\w*"
+    r"|\bwhat are your (?:instructions?|rules?|system prompt)\b"
+    r"|\btranslate your (?:system prompt|instructions?)\b"
+    r"|\bfrom now on you are\b"
+    r"|\b(?:sen )?artik (?:bir )?(?:ibb )?(?:gorevli|memur|yetkili|operator|admin|yonetici)\w*\b"
+    r"|\byou are now (?:an? )?(?:ibb )?(?:officer|official|operator|admin)\b"
     r"|\bdisregard (?:the )?(?:above|previous)\b"
 )
 #: Chat-template role markers, matched on the case-folded raw text: :func:`normalize_tr` would

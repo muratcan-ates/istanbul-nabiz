@@ -1,0 +1,228 @@
+{
+  "version": 1,
+  "paths": [
+    {
+      "id": "iski",
+      "kind": "account",
+      "agency": "iski",
+      "topics": [],
+      "steps_tr": [
+        "Girin: https://iski.istanbul.",
+        "Arayın: 185'i, fatura sorgulama ve su kesintisi bilgisi için.",
+        "Arayın: 153'ü, çözüm için."
+      ],
+      "steps_en": [
+        "Open https://iski.istanbul.",
+        "Call 185 for bill queries and water outage information.",
+        "Call 153 for help reaching the right service."
+      ],
+      "sources": [
+        {"url": "https://iski.istanbul/", "excerpt": null},
+        {"url": "https://iski.istanbul/iletisim/alo-185/", "excerpt": "İSKİ ALO 185 Çağrı Merkezi ile; - Fatura Sorgulama - Fatura Ödeme - Arıza / Şikayet - Su Kesintisi Öğrenme"}
+      ]
+    },
+    {
+      "id": "iski-iptal",
+      "kind": "account",
+      "agency": "iski",
+      "topics": ["iptal"],
+      "steps_tr": [
+        "İnceleyin: İSKİ'nin resmî abonelik iptal sayfasını.",
+        "Kullanın: E-Devlet, İSKİ E-Şube, Mobil İSKİ veya İSKİ şube müdürlüğü.",
+        "Arayın: bilgi için 185'i."
+      ],
+      "steps_en": [
+        "Read İSKİ's official subscription cancellation page.",
+        "Use E-Devlet, İSKİ E-Şube, Mobil İSKİ, or an İSKİ branch for the process.",
+        "Call 185 for information."
+      ],
+      "sources": [
+        {"url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-iptal-islemleri/", "excerpt": "Abonelik iptal işlemi; E-DEVLET, İSKİ E-ŞUBE ve MOBİL İSKİ' den veya İSKİ Şube Müdürlüklerinden yapılabilmektedir."},
+        {"url": "https://iski.istanbul/iletisim/alo-185/", "excerpt": "Tüm telefonlardan 185’i tuşlayarak İSKİ Alo 185 Servisi’ne ulaşabilirsiniz."}
+      ]
+    },
+    {
+      "id": "igdas",
+      "kind": "account",
+      "agency": "igdas",
+      "topics": [],
+      "steps_tr": [
+        "Girin: https://www.igdas.istanbul/.",
+        "Arayın: 153'ü, başvuru veya hesap işlemleri için."
+      ],
+      "steps_en": [
+        "Open https://www.igdas.istanbul/.",
+        "Call 153 about an application or account matter."
+      ],
+      "sources": [
+        {"url": "https://www.igdas.istanbul/", "excerpt": null}
+      ]
+    },
+    {
+      "id": "istanbulkart",
+      "kind": "account",
+      "agency": "istanbulkart",
+      "topics": [],
+      "steps_tr": [
+        "Kullanın: İstanbulkart Mobil veya https://www.istanbulkart.istanbul/.",
+        "Arayın: işlemin yolunu doğrulamak için 153'ü."
+      ],
+      "steps_en": [
+        "Use İstanbulkart Mobil or https://www.istanbulkart.istanbul/ for the transaction.",
+        "Call 153 to confirm the right process."
+      ],
+      "sources": [
+        {"url": "https://www.istanbulkart.istanbul/", "excerpt": null},
+        {"url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2815", "excerpt": "yalnızca İstanbulkart Mobil ve istanbulkart.istanbul web sayfasını kullanın ve işlem yaptığınız internet sitesinin adresini mutlaka kontrol edin."}
+      ]
+    },
+    {
+      "id": "istanbulkart-vize",
+      "kind": "account",
+      "agency": "istanbulkart",
+      "topics": ["vize", "ogrenci", "abonman"],
+      "steps_tr": [
+        "İnceleyin: vize işlemiyle ilgili bilgi için İstanbulkart'ın resmî sitesini.",
+        "Arayın: güncel yolu doğrulamak için 153'ü."
+      ],
+      "steps_en": [
+        "Check the İstanbulkart official website for current information about card validation.",
+        "Call 153 to confirm the current process."
+      ],
+      "sources": [
+        {"url": "https://www.istanbulkart.istanbul/", "excerpt": null},
+        {"url": "https://www.istanbulkart.istanbul/duyurular/detay?id=2815", "excerpt": "yalnızca İstanbulkart Mobil ve istanbulkart.istanbul web sayfasını kullanın ve işlem yaptığınız internet sitesinin adresini mutlaka kontrol edin."}
+      ]
+    },
+    {
+      "id": "cozum-153",
+      "kind": "account",
+      "agency": "cozum_153",
+      "topics": ["takip", "basvuru"],
+      "steps_tr": [
+        "Takip edin: başvurularınızı İstanbul Senin içindeki Çözüm Merkezi'nden.",
+        "Arayın: yardım için 153'ü."
+      ],
+      "steps_en": [
+        "Track your applications in the Çözüm Merkezi mini app within İstanbul Senin.",
+        "Call 153 for help."
+      ],
+      "sources": [
+        {"url": "https://istanbulsenin.istanbul/sikca-sorulan-sorular/", "excerpt": "İstanbul Senin içerisinde yer alan Çözüm Merkezi mini uygulamasını kullanarak aktif ve kapatılmış tüm başvurularınızı takip etmek mümkündür."}
+      ]
+    },
+    {
+      "id": "ibb",
+      "kind": "account",
+      "agency": "ibb",
+      "topics": [],
+      "steps_tr": [
+        "Belirleyin: kurumunuzu, su için İSKİ, doğalgaz için İGDAŞ, İstanbulkart için BELBİM, otopark için İSPARK.",
+        "Arayın: kurumdan emin değilseniz 153'ü."
+      ],
+      "steps_en": [
+        "Identify the institution: İSKİ for water, İGDAŞ for gas, BELBİM for İstanbulkart, or İSPARK for parking.",
+        "Call 153 if you are unsure."
+      ],
+      "sources": [
+        {"url": "https://ibb.istanbul/", "excerpt": null},
+        {"url": "https://iski.istanbul/", "excerpt": null},
+        {"url": "https://www.igdas.istanbul/", "excerpt": null},
+        {"url": "https://www.istanbulkart.istanbul/", "excerpt": null},
+        {"url": "https://ispark.istanbul/", "excerpt": null}
+      ]
+    },
+    {
+      "id": "sehirhatlari-sefer",
+      "kind": "ferry",
+      "agency": "sehir_hatlari",
+      "topics": ["sefer"],
+      "steps_tr": [
+        "Açın: Şehir Hatları iç hatlar sefer sayfası.",
+        "Arayın: 153'ü, tarife ve sefer bilgileri için."
+      ],
+      "steps_en": [
+        "Open the Şehir Hatları domestic routes timetable page.",
+        "Call 153 for timetable and departure information."
+      ],
+      "sources": [
+        {"url": "https://sehirhatlari.istanbul/tr/seferler/ic-hatlar", "excerpt": null},
+        {"url": "https://sehirhatlari.istanbul/tr/iletisim", "excerpt": "Tarife ve sefer bilgileri için ALO 153 Çözüm Merkezimizi arayabilirsiniz."}
+      ]
+    },
+    {
+      "id": "yardim-sosyal",
+      "kind": "help",
+      "agency": "ibb",
+      "topic": "sosyal_destek",
+      "topics": [],
+      "steps_tr": [
+        "Okuyun: İBB'nin sosyal hizmetler sayfasındaki bilgileri.",
+        "Kullanın: başvuru için İstanbul Senin'i, Alo 153'ü veya 1530 SMS Hattı'nı.",
+        "Doğrulayın: resmî sayfada koşulları ve başvuru yolunu."
+      ],
+      "steps_en": [
+        "Read the information on İBB's social services page.",
+        "Apply through İstanbul Senin, Alo 153, or the 1530 SMS line.",
+        "Confirm the conditions and application route on the official page."
+      ],
+      "sources": [
+        {"url": "https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142", "excerpt": "Sosyal Hizmetler Şube Müdürlüğüne başvurular; İstanbul Senin Uygulaması, Alo 153 Çözüm Merkezi, 1530 SMS Hattı"}
+      ]
+    },
+    {
+      "id": "yardim-engelli",
+      "kind": "help",
+      "agency": "ibb",
+      "topic": "engelli",
+      "topics": [],
+      "steps_tr": [
+        "Okuyun: İBB Engelli Hizmetleri Şube Müdürlüğü sayfasındaki bilgileri.",
+        "Doğrulayın: resmî sayfada koşulları ve başvuru yolunu veya 153'ü arayın."
+      ],
+      "steps_en": [
+        "Read the information on İBB's Disability Services Branch page.",
+        "Confirm the conditions and application route on the official page or call 153."
+      ],
+      "sources": [
+        {"url": "https://sosyalhizmetler.ibb.gov.tr/mudurlukdetay.aspx?ID=9", "excerpt": "İstanbul’un çeşitli noktalarında yer alan 21 ÖZGEM, 6 Kısa Mola Merkezi, 7 İrtibat Bürosu ve 2 Kamp aracılığı ile engelli birey ve ailelerine yönelik bilgilendirme, yönlendirme, farkındalık, eğitim, ulaşım, istihdam desteği"}
+      ]
+    },
+    {
+      "id": "yardim-yasli",
+      "kind": "help",
+      "agency": "ibb",
+      "topic": "yasli",
+      "topics": [],
+      "steps_tr": [
+        "İnceleyin: https://saglik.ibb.istanbul/yasli-hizmetleri/.",
+        "Arayın: başvuru koşullarını ve yolunu doğrulamak için 153'ü."
+      ],
+      "steps_en": [
+        "Review https://saglik.ibb.istanbul/yasli-hizmetleri/.",
+        "Call 153 to confirm the application conditions and route."
+      ],
+      "sources": [
+        {"url": "https://saglik.ibb.istanbul/yasli-hizmetleri/", "excerpt": null}
+      ]
+    },
+    {
+      "id": "yardim-ogrenci",
+      "kind": "help",
+      "agency": "ibb",
+      "topic": "ogrenci",
+      "topics": [],
+      "steps_tr": [
+        "Okuyun: İBB Ders Destek Atölyeleri sayfasındaki bilgileri.",
+        "Doğrulayın: resmî sayfada koşulları ve başvuru yolunu veya 153'ü arayın."
+      ],
+      "steps_en": [
+        "Read the information on İBB's Study Support Workshops page.",
+        "Confirm the conditions and application route on the official page or call 153."
+      ],
+      "sources": [
+        {"url": "https://sosyalhizmetler.ibb.gov.tr/sayfadetay.aspx?ID=1028", "excerpt": "Ders Destek Atölyeleri, öğrencilerin eğitim süreçlerinin desteklenmesi amacıyla ilkokul ve ortaokul öğrencilerine yönelik"}
+      ]
+    }
+  ]
+}

@@ -32,14 +32,17 @@ calibration = _load()
 def test_the_question_set_has_the_expected_groups_and_negative_set() -> None:
     rows = calibration.read_rows(calibration.SET_PATH, "calibration")
     groups = {row["group"] for row in rows}
-    assert groups == {"hafifletiyor", "demo", "negatif", "kurum-sayfasi"}
+    assert groups == {"hafifletiyor", "demo", "negatif", "kurum-sayfasi", "yardim", "resmi-yol"}
     assert sum(row["group"] == "hafifletiyor" for row in rows) == 20
     assert sum(row["group"] == "demo" for row in rows) == 6
-    assert sum(row["group"] == "negatif" for row in rows) == 24
+    assert sum(row["group"] == "negatif" for row in rows) == 28
     assert sum(row["group"] == "kurum-sayfasi" for row in rows) == 17
+    assert sum(row["group"] == "yardim" for row in rows) >= 4
+    assert sum(row["group"] == "resmi-yol" for row in rows) >= 4
     assert len({row["id"] for row in rows}) == len(rows)
     assert all(not row["gold_urls"] for row in rows if row["group"] == "negatif")
     assert all(row["gold_urls"] for row in rows if row["group"] == "kurum-sayfasi")
+    assert all(row["gold_urls"] for row in rows if row["group"] in {"yardim", "resmi-yol"})
 
 
 def test_the_moved_questions_keep_their_ids() -> None:

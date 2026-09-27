@@ -16,7 +16,7 @@ function escapeText(value) {
 }
 
 function bandMarkup(body) {
-  const message = escapeText(body?.message || "Sohbet geçici olarak durduruldu. 153'ü arayabilirsiniz.");
+  const message = escapeText(body?.message || "Sohbet geçici olarak durduruldu. 153'ü arayabilirsiniz. Acil bir durumdaysanız 112'yi arayın.");
   return `<p class="service-status-text" id="service-status-text">${message}</p>
     <a class="service-status-call" href="tel:153">153'ü ara</a>`;
 }
