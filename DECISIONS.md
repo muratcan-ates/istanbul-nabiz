@@ -2628,3 +2628,19 @@ answers citing the gold page first.
   fire routing ambiguity (`rt-37`), and the per-proxy quota is not verified by the fake seat.
 - The cases measure the controls around a model, not a real model's behaviour.
 - `rt-39` was reworded after E48, whose help card now answers eligibility questions before any model call.
+
+## 66. The request log writes the route template, never a code from the path (E71 note, 27 Sep)
+
+### Decision
+
+- `_request_log` writes the matched route's template (`/api/requests/{code}`) instead of `request.url.path`, so a
+  request code, photo code, timeline code or journey id in the URL never reaches the log. A request the operator's
+  door refuses before any route runs gets its template by matching the app's routes (`Match.FULL`) without running
+  them. A page file the static mount served keeps its name; anything else unmatched is logged as `<unmatched>`.
+
+### Consequences
+
+- Per-module log filters (E66's `_TimelineLogFilter`) are no longer needed once those routers join.
+- FastAPI 0.14x nests included routers, so the fallback opens them through `effective_route_contexts`; a FastAPI
+  upgrade that renames it turns refused requests' lines into `<unmatched>`, never the raw path
+  (`tests/test_request_log_paths.py`).

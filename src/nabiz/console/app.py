@@ -5,7 +5,8 @@ HTTP client and one cache for every visitor, DECISIONS #3), one model configurat
 guard and the ports. :func:`main` is the only place that reads the repository's ``.env``, so
 tests and imports never pick up a real key.
 
-The request log writes method, path, status and duration: never a query string (it can hold
+The request log writes method, route template, status and duration: never the raw path (a request
+code, photo code or journey id in it opens a citizen's file), never a query string (it can hold
 saved stations and needs) and never a body (it holds the question).
 
 The operator's side sits behind :class:`~nabiz.console.access.OperatorAccess` (a token, or this
@@ -22,7 +23,7 @@ import pathlib
 import posixpath
 import time
 import urllib.parse
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -30,6 +31,7 @@ from fastapi import APIRouter, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Match, Route
 
 from ibb_mcp.config import ATTRIBUTION_EN, Settings
 from ibb_mcp.sources.base import SourceContext
@@ -237,11 +239,41 @@ def _gate(request: Request) -> Response | None:
     return refusal
 
 
+UNMATCHED_PATH = "<unmatched>"
+
+
+def _routes(routes: list[Any]) -> Iterator[Any]:
+    """Every route with its full path; FastAPI 0.14x keeps an included router whole, so open it."""
+    for route in routes:
+        nested = getattr(route, "effective_route_contexts", None)
+        if nested is not None:
+            yield from nested()
+        elif isinstance(route, Route):
+            yield route
+
+
+def _log_path(request: Request, status: int) -> str:
+    """The route template (``/api/requests/{code}``), so a code or id in the URL never reaches the log.
+
+    A request refused at the door never ran a route, so its template is found by matching without
+    running it. A page file the static mount served keeps its name (a file name carries no code);
+    anything else unmatched is a fixed marker, never the raw path.
+    """
+    route = request.scope.get("route")
+    if isinstance(route, Route):
+        return route.path
+    for candidate in _routes(request.app.router.routes):
+        if candidate.path and candidate.matches(request.scope)[0] is Match.FULL:
+            return str(candidate.path)
+    path = request.url.path
+    return path if status < 400 and not path.startswith("/api/") else UNMATCHED_PATH
+
+
 async def _request_log(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     started = time.perf_counter()
     response = _gate(request) or await call_next(request)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
-    log.info("%s %s -> %s in %.1f ms", request.method, request.url.path, response.status_code, elapsed_ms)
+    log.info("%s %s -> %s in %.1f ms", request.method, _log_path(request, response.status_code), response.status_code, elapsed_ms)
     for name, value in CONSOLE_HEADERS.items():
         response.headers.setdefault(name, value)
     if not request.url.path.startswith("/api/"):
