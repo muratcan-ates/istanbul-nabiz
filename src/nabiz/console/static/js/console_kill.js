@@ -18,7 +18,7 @@ function dialogMarkup(paused) {
   const title = paused ? 'Vatandaş sohbetini yeniden aç' : 'Vatandaş sohbetini durdur';
   const description = paused
     ? 'Vatandaş sayfasındaki bant kalkar, soru kutusu yeniden açılır.'
-    : "Vatandaş sayfası 'Sohbet geçici olarak durduruldu. 153'ü arayabilirsiniz.' bandını gösterir. Kartlar ve varış çalışmaya devam eder.";
+    : "Vatandaş sayfası 'Sohbet geçici olarak durduruldu. 153'ü arayabilirsiniz. Acil bir durumdaysanız 112'yi arayın.' bandını gösterir. Kartlar ve varış çalışmaya devam eder.";
   const action = paused ? 'Sohbeti aç' : 'Sohbeti durdur';
   const actionClass = paused ? 'btn btn-primary' : 'btn btn-danger';
   return `<dialog class="chat-pause-dialog" id="chat-pause-dialog" aria-labelledby="chat-pause-dialog-title">
