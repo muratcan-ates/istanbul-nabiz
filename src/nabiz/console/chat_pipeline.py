@@ -6,8 +6,9 @@ service-page index); everything here takes values and returns values, with no I/
 - **before the model**: :func:`early_verdict` says whether the turn stops at the emergency
   redirect, at the input guard (E16: an instruction change or hidden text; the emergency still
   comes first) or at the refusal rule. The refusal rule sees the person's earlier questions too, so a
-  fee question split over two messages is still caught. Looking up a verified quote for a refused
-  question reads the index, so it stays in :class:`~nabiz.console.chat.ChatService`.
+  fee question split over two messages is still caught. Pure official intent matching follows the
+  handoff check. Looking up a verified quote for a refused question reads the index, so it stays in
+  :class:`~nabiz.console.chat.ChatService`.
 - **what the model sees of the conversation**: :func:`earlier_questions` keeps only the person's
   own earlier questions (never an "assistant" turn, which the page could forge, never a refused
   one, never one the input guard stops) and :func:`context_messages` hands them over as one ``user`` message, not inside the
@@ -46,6 +47,7 @@ from nabiz.agent.layers import LayerReply, TurnLayer, classify_turn, layer_reply
 from nabiz.console import policy, text_guard
 from nabiz.console.cards import Mode, mode_for
 from nabiz.console.emergency_model import MODEL_RULE_ID
+from nabiz.console.official_intent import intent as official_intent
 from nabiz.console.open_data_api import dataset_citations
 
 if TYPE_CHECKING:
@@ -59,7 +61,7 @@ _WORDS_PER_TOKEN_EVENT = 3
 SCHEDULE_SOURCES = frozenset({"iett_schedule", "gtfs"})
 REFERENCE_SOURCES = frozenset({"gazetteer", "metro_stations", "places", "ibb_catalog"})
 
-EarlyVerdict = Literal["emergency", "guard", "sensitive", "handoff"]
+EarlyVerdict = Literal["emergency", "guard", "sensitive", "handoff", "account", "help", "ferry"]
 #: The turn's stages in order. Only a stage that runs is recorded in the answer's trace.
 STAGES = ("girdi", "acil", "hassas", "maske", "katman", "dil", "arac_bilgi", "cikti")
 #: The checks a ``final`` reports: ``True`` passed, ``False`` caught something, ``None`` not applied.
@@ -243,7 +245,11 @@ def early_verdict(
         with trace.step("katman"):
             trace.mark("cevapladi")
         return "handoff"
-    return None
+    verdict = official_intent(message)
+    if verdict:
+        with trace.step("katman"):
+            trace.mark("cevapladi")
+    return verdict
 
 
 def earlier_questions(history: Sequence[Turn]) -> list[str]:
