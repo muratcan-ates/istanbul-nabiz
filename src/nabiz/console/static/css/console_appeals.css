@@ -1,0 +1,38 @@
+.appeal-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.appeal-item {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-raised);
+}
+
+.appeal-item label,
+.appeal-item select {
+  display: block;
+  margin-block: 0.5rem;
+}
+
+.appeal-item button,
+.appeal-item select {
+  min-height: 44px;
+}
+
+.appeal-item button + button {
+  margin-inline-start: 0.5rem;
+}
+
+.appeal-item :focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.appeal-message {
+  color: var(--text-muted);
+}
