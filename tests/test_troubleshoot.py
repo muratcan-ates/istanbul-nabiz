@@ -11,8 +11,8 @@ from test_knowledge_store import seed_page
 
 from ibb_mcp.knowledge.store import KnowledgeStore
 from nabiz.console.troubleshoot import (
+    fold_quote_whitespace,
     load_contact,
-    normalize,
     page_date_iso,
     prune,
     validate_flows,
@@ -62,7 +62,7 @@ def test_catalog_validates_with_expected_sources_and_contact() -> None:
     assert [item["id"] for item in data["nodes"]["konu"]["options"]] == ["yukleme", "vize", "kayip", "eslesme", "basvuru"]
     assert page_date_iso("6/29/2026 12:00:00 AM") == "2026-06-29"
     assert page_date_iso("not a page date") is None
-    assert normalize(" a\n b\t c ") == "a b c"
+    assert fold_quote_whitespace(" a\n b\t c ") == "a b c"
     assert load_contact() == {
         "call": "153",
         "agency": {"name": "BELBİM (İstanbulkart)", "url": "https://www.istanbulkart.istanbul/"},
@@ -179,6 +179,6 @@ def test_every_quote_is_on_its_page_in_the_local_index() -> None:
                 "SELECT body FROM documents WHERE canonical_url=? AND active=1 ORDER BY fetched_at DESC LIMIT 1", (url,)
             ).fetchone()
             assert row is not None, quote_id
-            body = normalize(row[0])
+            body = fold_quote_whitespace(row[0])
             assert flows["sources"][quote["source"]]["page_date_raw"] in body, quote_id
             assert all(part in body for part in quote["parts"]), quote_id

@@ -43,7 +43,7 @@ CLAIM_WORDS = (
 _DATE_FORMAT = "%m/%d/%Y %I:%M:%S %p"
 
 
-def normalize(text: str) -> str:
+def fold_quote_whitespace(text: str) -> str:
     """Fold whitespace without changing the words that carry the source quote."""
     return " ".join(text.split())
 
@@ -128,7 +128,7 @@ def _validate_quotes(quotes: dict, sources: dict) -> set[str]:
             raise ValueError(f"invalid quote: {quote_id}")
         used_sources.add(source_id)
         for part in parts:
-            if not isinstance(part, str) or not part or normalize(part) != part or len(part) > PART_MAX:
+            if not isinstance(part, str) or not part or fold_quote_whitespace(part) != part or len(part) > PART_MAX:
                 raise ValueError(f"invalid quote text: {quote_id}")
             if looks_like_instruction(part) or "—" in part or "–" in part:
                 raise ValueError(f"unsafe quote text: {quote_id}")
@@ -236,7 +236,7 @@ def verified_quotes(store: KnowledgeStore, flows: dict, *, now: dt.datetime, max
         fetched = _as_utc(page.get("fetched_at")) if page else None
         if not page or not fetched or (now.astimezone(dt.UTC) - fetched).total_seconds() > max_age_s:
             continue
-        body = normalize(page.get("body", ""))
+        body = fold_quote_whitespace(page.get("body", ""))
         if not all(part in body for part in quote["parts"]):
             continue
         if not all(clean_for_display(part) == part and mask_personal(part) == part for part in quote["parts"]):
