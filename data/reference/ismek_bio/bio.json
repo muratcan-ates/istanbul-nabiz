@@ -1,0 +1,14 @@
+{
+ "source": "İBB Bölgesel İstihdam Ofisleri",
+ "url": "https://bio.ibb.istanbul/",
+ "license": "Lisans belirtilmemiş (İBB kamu sayfası). Yalnız ad, kod, sayı ve resmî bağlantı saklanır.",
+ "robots": {
+  "status": 200,
+  "checked_at": "2026-09-27T00:39:31+00:00"
+ },
+ "http_status": 200,
+ "title": "İş Ara İş Bul | İstanbul Büyükşehir Belediyesi - Bölgesel İstihdam Ofisleri",
+ "status": "veri_alinamadi",
+ "reason": "Sayfa içeriği JavaScript ile yükleniyor; ilanlar HTML'de yok.",
+ "retrieved_at": "2026-09-27T00:39:31+00:00"
+}
