@@ -87,8 +87,8 @@ async def service_status(request: Request) -> JSONResponse:
 
 
 def chat_gate(request: Request) -> JSONResponse | None:
-    """Return a 503 before streaming; bind as the first line of citizen_chat, before TurnLimiter:
-    ``if (paused := chat_gate(request)) is not None: return paused``.
+    """Return a 503 before streaming; citizen_chat binds it before TurnLimiter, for every turn but an
+    emergency (E49 A4: a pause never hides the 112 card).
     """
     if not pause_store(request.app).read().paused:
         return None

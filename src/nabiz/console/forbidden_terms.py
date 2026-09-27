@@ -70,6 +70,19 @@ FORBIDDEN_TERMS: tuple[ForbiddenTerm, ...] = (
         ),
     ),
     ForbiddenTerm(
+        key="onay_iddiasi",
+        phrases=("basvurunuz onaylan", "talebiniz onaylan", "sikayetiniz onaylan", "basvurunuzu onayladim",
+                 "onayladim", "kart onaylan", "your application has been approved",
+                 "your request has been approved", "i have approved", "i approved your"),
+        negated_after=("degil",),
+        negated_before=("not",),
+    ),
+    ForbiddenTerm(
+        key="uygunluk_hukmu",
+        phrases=("hak kazandiniz", "hak kazanirsiniz", "hak kazanmissiniz", "uygunsunuz", "yararlanmaya hak",
+                 "you are eligible", "you qualify", "you are entitled"),
+    ),
+    ForbiddenTerm(
         key="kvkk_uyumlu",
         phrases=(
             "kvkk uyumlu", "kvkk ile uyumlu", "kvkk ya uygun", "kvkk compliant",
