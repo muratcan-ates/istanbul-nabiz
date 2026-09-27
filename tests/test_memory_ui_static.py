@@ -338,8 +338,9 @@ checks.forEach(input => input.checked = true); change(checks[0]);
 const radios = offer.querySelectorAll('input[type="radio"]');
 radios[0].checked = false; radios[1].checked = true; change(radios[1]);
 const action = offer.querySelector('button[data-cardAction]').dataset.cardAction;
-s.doc.dispatchEvent(evt('nabiz:card-action', s.doc, {{card_id:appended[0].id,type:'memory',action,
-  conversation_id:current.id}})); await settle();
+s.doc.defaultView.CustomEvent = class {{ constructor(type, init) {{ this.type = type; this.detail = init.detail; }} }};
+const emitted = []; s.doc.addEventListener('nabiz:card-action', (event) => emitted.push(event.detail));
+click(offer.querySelector('button[data-cardAction]')); await settle();
 const saved = await store.list({{scope:'profile'}});
 const restored = card.renderMemoryCard(appended[0], {{document:s.doc, restored:true}});
 await store.forget(saved.find(item => item.key === 'slow_walk').id);
@@ -351,7 +352,8 @@ console.log(JSON.stringify({{types:appended[0].body.items.map(item => item.key),
   saved:saved.map(item => item.key).sort(), restoredButtons:restored.querySelectorAll('button').length,
   afterForgetOffers:appended.length, forgottenServerButtons:forgottenServer.querySelectorAll('button').length,
   cardStatuses, needs:store.requestNeeds({{profile:{{consent:true,needs:[]}},conversation:null}}),
-  actions:appended[0].actions.map(a => [a.id, a.kind, a.requires_consent, a.operation_id])}}));
+  actions:appended[0].actions.map(a => [a.id, a.kind, a.requires_consent, a.operation_id]),
+  emitted:emitted.map(d => [d.action, d.card_id === appended[0].id, Boolean(Date.parse(d.consented_at)), d.operation_id])}}));
 """)
     assert out == {
         "types": ["slow_walk", "culture"], "before": 0, "disabled": "true",
@@ -359,6 +361,7 @@ console.log(JSON.stringify({{types:appended[0].body.items.map(item => item.key),
         "restoredButtons": 0, "afterForgetOffers": 1, "forgottenServerButtons": 0,
         "cardStatuses": ["awaiting_confirmation", "done"], "needs": [],
         "actions": [["remember_here", "device", True, None], ["remember_always", "device", True, None]],
+        "emitted": [["remember_always", True, True, None]],
     }
 
 

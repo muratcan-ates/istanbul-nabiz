@@ -97,6 +97,13 @@ function renderMemoryCard(card, ctx = {}) {
   root.addEventListener('click', (event) => {
     if (event.target === remember && remember.getAttribute('aria-disabled') === 'true') {
       event.preventDefault(); event.stopPropagation?.(); hint.hidden = false;
+    } else if (event.target === remember) {
+      // The card is the consent step: the action event leaves only after "Hatırla", with consented_at.
+      const Event = doc.defaultView?.CustomEvent || globalThis.CustomEvent;
+      doc.dispatchEvent(new Event('nabiz:card-action', { detail: { card_id: root.dataset.cardId, type: 'memory',
+        action: remember.dataset.cardAction, message_id: root.dataset.messageId || null,
+        conversation_id: root.dataset.conversationId || null, operation_id: null,
+        consented_at: new Date().toISOString() } }));
     }
     if (event.target === no) {
       actions.remove(); choices.remove(); scope.remove(); hint.remove();
