@@ -9,7 +9,7 @@ import os
 import pathlib
 import sqlite3
 import threading
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -182,6 +182,9 @@ class PhotoReportStore:
             "consent_version": CONSENT_VERSION,
             "photo_meta": report.photo_meta,
             "history": [{"status": "new", "at": now.isoformat(), "reason": None}],
+            # Set only by report_link.link_photo, on the citizen's own choice (P07); null is a standalone photo.
+            "linked_signal_id": None,
+            "linked_report_code": None,
         }
         with self._lock, self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -238,39 +241,50 @@ class PhotoReportStore:
         return [_photo_report_row(row) for row in rows]
 
     def set_status(self, code: str, target: str, reason: str, *, masked_count: int = 0) -> dict[str, Any] | None:
+        result = self.set_status_sealed(code, target, reason, masked_count=masked_count, seal=None)
+        return result[0] if result else None
+
+    def set_status_sealed(
+        self, code: str, target: str, reason: str, *, masked_count: int = 0,
+        seal: Callable[[str, dict[str, Any]], int] | None,
+    ) -> tuple[dict[str, Any], int | None] | None:
+        """Change the status and seal it in one step: ``seal(before, row)`` runs before COMMIT.
+
+        The ledger is another SQLite file, so the two cannot share a transaction; a seal that
+        raises rolls the status (and a closing photo delete) back, so it is both or neither.
+        """
         self.purge()
         with self._lock, self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            raw = conn.execute(
-                f"SELECT {_REPORT_COLUMNS} FROM photo_reports WHERE code = ? AND expires_at > ?",
-                (code, self.now().isoformat()),
-            ).fetchone()
-            if raw is None:
-                conn.execute("ROLLBACK")
-                return None
-            current = str(raw["status"])
-            if target not in STATUS_TRANSITIONS.get(current, frozenset()):
-                conn.execute("ROLLBACK")
-                raise ValueError("transition_not_allowed")
-            data = json.loads(raw["data"])
-            data["history"].append({
-                "status": target,
-                "at": self.now().isoformat(),
-                "reason": reason,
-                "masked_count": masked_count,
-            })
-            if target == "closed":
+            try:
+                raw = conn.execute(
+                    f"SELECT {_REPORT_COLUMNS} FROM photo_reports WHERE code = ? AND expires_at > ?",
+                    (code, self.now().isoformat()),
+                ).fetchone()
+                if raw is None:
+                    conn.execute("ROLLBACK")
+                    return None
+                current = str(raw["status"])
+                if target not in STATUS_TRANSITIONS.get(current, frozenset()):
+                    raise ValueError("transition_not_allowed")
+                row = _photo_report_row(raw)
+                row["history"].append({
+                    "status": target, "at": self.now().isoformat(), "reason": reason, "masked_count": masked_count,
+                })
+                data = {key: row[key] for key in json.loads(raw["data"])}
+                photo_sql = ", photo = NULL, photo_type = NULL" if target == "closed" else ""
                 conn.execute(
-                    "UPDATE photo_reports SET status = ?, data = ?, photo = NULL, photo_type = NULL WHERE code = ?",
+                    f"UPDATE photo_reports SET status = ?, data = ?{photo_sql} WHERE code = ?",
                     (target, json.dumps(data, ensure_ascii=False), code),
                 )
-            else:
-                conn.execute(
-                    "UPDATE photo_reports SET status = ?, data = ? WHERE code = ?",
-                    (target, json.dumps(data, ensure_ascii=False), code),
-                )
-            conn.execute("COMMIT")
-        return self.get(code)
+                row.update(status=target, has_photo=row["has_photo"] and target != "closed")
+                entry_id = seal(current, row) if seal is not None else None
+                conn.execute("COMMIT")
+            except BaseException:
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+                raise
+        return row, entry_id
 
     def withdraw(self, code: str) -> bool:
         self.purge()

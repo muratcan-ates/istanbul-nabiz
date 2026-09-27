@@ -9,7 +9,7 @@ import os
 import pathlib
 import sqlite3
 import threading
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
 from nabiz.console.agency_router import load_agencies
@@ -132,33 +132,40 @@ class TimelineStore:
 
     def apply(
         self, code: str, actor: str, action: str, *, to: str | None = None, text: str | None = None,
-        agency_id: str | None = None,
+        agency_id: str | None = None, seal: Callable[[str, dict[str, Any]], int] | None = None,
     ) -> dict[str, Any]:
+        """Move one step; ``seal(before, row)`` runs before COMMIT, and if it raises the step is rolled back."""
         self.purge()
         with self._lock, self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            row = conn.execute("SELECT * FROM report_timeline WHERE code = ?", (code,)).fetchone()
-            if row is None:
-                conn.execute("ROLLBACK")
-                raise LookupError(code)
-            current = row["stage"]
-            target = next_stage(current, actor, to or action)
-            if target is None:
-                conn.execute("ROLLBACK")
-                raise TimelineTransitionError(current)
-            now = self.now()
-            record = self._event(actor, action, target, text, agency_id, now)
-            data = json.loads(row["data"])
-            data["history"].append(record)
-            reopened = row["reopen_count"] + int(target == "reopened")
-            conn.execute(
-                "UPDATE report_timeline SET stage = ?, reopen_count = ?, updated_at = ?, expires_at = ?, data = ? WHERE code = ?",
-                (target, reopened, now.isoformat(), (now + dt.timedelta(days=TTL_DAYS)).isoformat(),
-                 json.dumps(data, ensure_ascii=False), code),
-            )
-            updated = conn.execute("SELECT * FROM report_timeline WHERE code = ?", (code,)).fetchone()
-            conn.execute("COMMIT")
-        return _row(updated)
+            try:
+                row = conn.execute("SELECT * FROM report_timeline WHERE code = ?", (code,)).fetchone()
+                if row is None:
+                    raise LookupError(code)
+                current = row["stage"]
+                target = next_stage(current, actor, to or action)
+                if target is None:
+                    raise TimelineTransitionError(current)
+                now = self.now()
+                record = self._event(actor, action, target, text, agency_id, now)
+                data = json.loads(row["data"])
+                data["history"].append(record)
+                reopened = row["reopen_count"] + int(target == "reopened")
+                conn.execute(
+                    "UPDATE report_timeline SET stage = ?, reopen_count = ?, updated_at = ?, expires_at = ?, data = ? "
+                    "WHERE code = ?",
+                    (target, reopened, now.isoformat(), (now + dt.timedelta(days=TTL_DAYS)).isoformat(),
+                     json.dumps(data, ensure_ascii=False), code),
+                )
+                updated = _row(conn.execute("SELECT * FROM report_timeline WHERE code = ?", (code,)).fetchone())
+                if seal is not None:
+                    updated["ledger_entry_id"] = seal(current, updated)
+                conn.execute("COMMIT")
+            except BaseException:
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+                raise
+        return updated
 
     @staticmethod
     def _event(
@@ -188,7 +195,8 @@ class TimelineStore:
 
 def timeline_view(row: Mapping[str, Any], outcome_status: str, now: dt.datetime, agencies: Mapping[str, Any]) -> dict[str, Any]:
     history = row["data"]["history"]
-    latest = {event["stage"]: event for event in history}
+    # A "photo_added" step (P07) has no stage; it shows in the history and never moves the timeline.
+    latest = {event["stage"]: event for event in history if "stage" in event}
     stage = row["stage"]
     current = "reviewing" if stage == "reopened" else stage
     steps = [
@@ -210,5 +218,6 @@ def timeline_view(row: Mapping[str, Any], outcome_status: str, now: dt.datetime,
         "waiting_on": WAITING_ON[stage], "reopen_count": row["reopen_count"], "steps": steps,
         "history": history, "agency": agency, "note": (note_event or {}).get("note_masked"),
         "confirmation": confirmation, "publication": outcome_status,
+        "photo_refs": list(row["data"].get("photo_refs") or []), "has_photo": bool(row["data"].get("photo_refs")),
         "official": {"available": False, "call": agencies.get("call", "153"), "agency": call_agency},
     }
