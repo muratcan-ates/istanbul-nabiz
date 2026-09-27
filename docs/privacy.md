@@ -284,6 +284,8 @@ on the device. The code is `src/nabiz/console/accounts.py`, `accounts_api.py`, `
 | Prepared e-mails (address, subject, text) | `data/outbox/` (`NABIZ_OUTBOX_DIR`, gitignored), shown in Profilim as a preview | Same | Deleted with the account; files older than 30 days removed by the digest run |
 | Daily question and model-call counts | `data/accounts/quota.sqlite` (`NABIZ_QUOTA_DB`, gitignored; P13, P00 D2a): a salted SHA-256 of the device id (`nabiz.device.v1`, random, made by the browser), of the address (IPv6 by /64) or of the account id, with that day's two counts | Nobody: the salt is stored in the same file and never leaves it | Two Istanbul days (purged at every start); an account's counts with the account |
 
+| Saved plans: title, start and end, time zone, and optionally a place and an official source link (P06, P00 D2a) | `data/nexus/plans.sqlite3` (`NABIZ_PLAN_DB_PATH`, gitignored), keyed by the account id; only for an account, only with consent per write, never a plan marked sensitive | The person (through the token on their device) and the operator of the server | With the account; Outlook stays closed (no Microsoft token is stored) |
+
 What holds it:
 
 * **No consent, no write.** `POST /api/account/signin` answers 400 before it opens the account file when

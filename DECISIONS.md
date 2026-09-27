@@ -3141,3 +3141,21 @@ answers citing the gold page first.
 
 - `voice_provider.js` is in the shell next to `voice.js` (sw v18); the page offers server speech only when the route
   is open (D2b).
+
+## 101. Server calendar: mounted for accounts only, Outlook closed (P06, P00 D2a, 27 Sep)
+
+### Decision
+
+- `plans_routes` (`/api/plans`) follows `account_routes`. `state.plan_principal` is `_plan_owner`: the signed-in
+  account's id, otherwise nothing, so a visitor gets 503 "Takvim bağlantısı kapalı" and their plans stay on the device
+  (the owner's decision: the server calendar is for accounts only).
+- Every write needs consent; a plan marked sensitive is refused. The file is `NABIZ_PLAN_DB_PATH`
+  (default `data/nexus/plans.sqlite3`, gitignored).
+- Outlook stays closed: `state.plan_tokens` is `None` and no `plan_graph_client` is set, so "Outlook'a ekle" answers
+  `outlook_failed` "Outlook bağlantısı kapalı" and nothing reaches Microsoft. No `NABIZ_MS_*` name is listed in
+  `.env.example`; opening Outlook is the Microsoft work (J) and MURAT ONAYI.
+- kvkk `#kvkk-takvim` and `docs/privacy.md` §10 name the stored fields and their retention.
+
+### Consequences
+
+- Deleting an account must delete its plans: the erasure chain's `calendar_plans` hook (H).

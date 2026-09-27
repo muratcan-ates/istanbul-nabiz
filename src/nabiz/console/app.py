@@ -46,7 +46,7 @@ from nabiz.console.access import (
     is_operator_path,
     login_page,
 )
-from nabiz.console.accounts_api import account_routes
+from nabiz.console.accounts_api import account_routes, current_account
 from nabiz.console.agency_api import agency_routes
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
@@ -89,6 +89,7 @@ from nabiz.console.organs_api import organs_routes
 from nabiz.console.outage_watch_api import outage_routes
 from nabiz.console.outcomes_api import outcome_board_routes
 from nabiz.console.photo_reports_api import photo_report_routes
+from nabiz.console.plans_api import plans_routes
 from nabiz.console.policy import functional_needs
 from nabiz.console.poll_api import poll_routes
 from nabiz.console.ports import Ports, UnwiredStepFree
@@ -254,6 +255,12 @@ async def citizen_chat(request: Request, body: ChatRequest) -> Response:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+def _plan_owner(request: Request) -> str | None:
+    """The server calendar is for an account only (owner's decision, P06): a visitor's plans stay on the device."""
+    account = current_account(request)
+    return account.id if account is not None else None
 
 
 def _gate(request: Request) -> Response | None:
@@ -434,6 +441,9 @@ PRODUCT_ROUTERS = (
     # the person's quota and the shared daily speech ceiling, no audio stored or logged.
     speech_router,
     account_routes,
+    # P06: the server calendar, /api/plans, for an account only; consent per write, Outlook closed (no token store,
+    # no Graph client) until the Microsoft keys are set.
+    plans_routes,
     # E52: family code; two-sided consent, share only what is chosen, no location.
     family_routes,
     # E65: saved journeys; the check is stateless, account storage needs its own consent.
@@ -481,6 +491,7 @@ def build_console_app(
     # P13: the day's counts and sign-in sessions survive a restart and a second replica (NABIZ_QUOTA_DB, NABIZ_SESSIONS_DB).
     state.quota = PersistentQuotaBook.from_env()
     state.sessions = SessionStore.from_env()
+    state.plan_principal, state.plan_tokens = _plan_owner, None
     state.fresh = Freshness(
         offline=state.settings.offline,
         card_stale_after_s=env_seconds("NABIZ_CARD_STALE_S", CARD_STALE_DEFAULT_S),
