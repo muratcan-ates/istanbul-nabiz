@@ -1,0 +1,47 @@
+.chronic {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  margin-block: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--nd-line);
+  border-radius: var(--nd-radius-surface);
+  background: var(--surface-raised);
+  overflow-wrap: anywhere;
+}
+
+.chronic > h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+.chronic > .section-note { margin: 0 0 var(--space-3); color: var(--text-muted); font-size: var(--text-sm); }
+.chronic-controls { display: grid; gap: var(--space-1); max-width: 28rem; margin-block: var(--space-3); }
+.chronic-controls label { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.chronic-controls select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--text); font: inherit; }
+.chronic :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.chronic .status-line { margin: var(--space-3) 0; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.chronic .btn.btn-quiet { min-height: 44px; }
+.chronic-body { min-width: 0; }
+.chronic-note, .chronic-foot, .chronic-triage, .chronic-freshness, .chronic-reports-only { margin-block: var(--space-3); color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.chronic-list-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.chronic-list-head h3 { margin: 0; font-size: var(--text-md); }
+.chronic-copy-status { min-width: 0; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.chronic-copy-fallback { box-sizing: border-box; width: 100%; max-width: 100%; min-height: 6rem; margin-block: var(--space-3); padding: var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--text); font: inherit; }
+.chronic-list { display: grid; gap: 0; min-width: 0; margin: var(--space-3) 0; padding-inline-start: 1.5rem; }
+.chronic-row { min-width: 0; padding-block: var(--space-3); border-block-end: 1px solid var(--nd-line); overflow-wrap: anywhere; }
+.chronic-row-title { margin: 0 0 var(--space-2); font-size: var(--text-md); }
+.chronic-row > p { min-width: 0; margin: var(--space-1) 0; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.chronic-notice { padding-inline-start: var(--space-3); border-inline-start: 2px solid var(--nd-line-strong); }
+.chronic .tag { margin-inline-start: var(--space-1); vertical-align: middle; }
+.chronic-more, .chronic-how { min-width: 0; margin-block: var(--space-3); border-block-start: 1px solid var(--nd-line); }
+.chronic-more > summary, .chronic-how > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.chronic-more .chronic-list { margin-block-start: 0; }
+.chronic-how > p { margin-block: var(--space-2); color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.chronic a { color: var(--link); text-underline-offset: .15em; overflow-wrap: anywhere; }
+.chronic a:hover { color: var(--link-hover); }
+
+@media (max-width: 480px) {
+  .chronic { padding: var(--space-3); }
+  .chronic-controls { max-width: none; }
+}
+
+@media (forced-colors: active) {
+  .chronic, .chronic-row, .chronic-more, .chronic-how, .chronic-notice { border-color: CanvasText; }
+}
