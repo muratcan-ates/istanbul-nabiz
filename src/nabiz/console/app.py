@@ -51,6 +51,7 @@ from nabiz.console.agency_api import agency_routes
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
 from nabiz.console.audience_api import audience_routes
+from nabiz.console.bill_api import bill_routes
 from nabiz.console.booking_api import booking_routes
 from nabiz.console.brief import Freshness, build_brief, split_csv
 from nabiz.console.budget import BudgetConfig, SpendGuard
@@ -61,9 +62,11 @@ from nabiz.console.compare_api import compare_routes
 from nabiz.console.culture_api import culture_routes
 from nabiz.console.culture_events_api import culture_events_routes
 from nabiz.console.day_api import day_routes
+from nabiz.console.disaster_kit_api import disaster_kit_routes
 from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
 from nabiz.console.escort_api import escort_routes
+from nabiz.console.family_api import family_routes
 from nabiz.console.fare_api import fare_routes
 from nabiz.console.feedback_api import feedback_routes
 from nabiz.console.history_api import history_routes
@@ -83,6 +86,7 @@ from nabiz.console.notices_center_api import notices_center_routes
 from nabiz.console.open_data_api import open_data_routes
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
+from nabiz.console.outage_watch_api import outage_routes
 from nabiz.console.outcomes_api import outcome_board_routes
 from nabiz.console.photo_reports_api import photo_report_routes
 from nabiz.console.policy import functional_needs
@@ -92,6 +96,7 @@ from nabiz.console.quick_api import quick_routes
 from nabiz.console.quota import MeteredGuard, QuotaBook
 from nabiz.console.quota_api import plan_turn, quota_routes
 from nabiz.console.receipt_api import receipt_routes
+from nabiz.console.recovery_api import recovery_routes
 from nabiz.console.report_api import report_routes
 from nabiz.console.report_map_api import report_map_routes
 from nabiz.console.report_outcome_api import outcome_routes
@@ -103,6 +108,7 @@ from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
 from nabiz.console.skills_api import skills_routes
 from nabiz.console.stop_card import stop_card_router
+from nabiz.console.troubleshoot_api import troubleshoot_routes
 from nabiz.console.visitor_api import visitor_routes
 
 log = logging.getLogger("nabiz.console")
@@ -376,6 +382,15 @@ PRODUCT_ROUTERS = (
     ibb_yerleri_routes,
     # E30: İBB libraries and museums open now by their recorded hours, for a district the visitor picks.
     culture_routes,
+    # E60: İstanbulkart troubleshooting, /api/istanbulkart/flows; official sentences only while their page still has them.
+    troubleshoot_routes,
+    # E76: digital access recovery, /api/erisim/flows; official sentences only while their page still has them;
+    # answers stay on the device.
+    recovery_routes,
+    # E61: bill explainer, GET /api/bill/catalog only; bill entries never reach the server.
+    bill_routes,
+    # E70: disaster preparedness file, GET /api/disaster-kit?lang= only; the plan stays on the device.
+    disaster_kit_routes,
     # E73: day planner over the captured kultur.istanbul events; the server keeps nothing.
     culture_events_routes,
     # E53: library seat booking, an example not connected to İBB; hashed holder, 30 days, deleted on cancel.
@@ -403,10 +418,15 @@ PRODUCT_ROUTERS = (
     stop_card_router,
     quota_routes,
     account_routes,
+    # E52: family code; two-sided consent, share only what is chosen, no location.
+    family_routes,
     # E65: saved journeys; the check is stateless, account storage needs its own consent.
     journey_watch_routes,
     # Operatöre aktar + çeviri: /api/requests for visitors, /api/console/requests behind the console's door.
     request_routes,
+    # E69: household outage watch; citizen confirmations with consent, 7-day queue;
+    # /api/console/outage-watch behind the console door.
+    outage_routes,
     # E51: consented photo reports; EXIF stripped twice, 30 days, photo gone on close; the queue sits behind the console door.
     photo_report_routes,
     # E71: accessible support request; a simulated queue, the official channel stays 153.

@@ -1,0 +1,51 @@
+/* İstanbulkart helper. Theme colors and sizing come from the shared design tokens. */
+
+.ikart > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ikart > summary > h2 { margin: 0; }
+.ikart > summary > .icon { flex: none; }
+.ikart > section { display: grid; gap: var(--space-3); min-width: 0; }
+.ikart .section-note { max-width: 65ch; color: var(--text-muted); }
+.ikart-safe { display: flex; align-items: flex-start; gap: var(--space-2); color: var(--text-muted); }
+.ikart-safe .icon { flex: none; }
+.ikart-remember { display: flex; align-items: flex-start; gap: var(--space-2); width: fit-content; }
+.ikart-remember input { width: 1.25rem; height: 1.25rem; flex: none; }
+.ikart-trail { display: grid; gap: var(--space-1); padding-inline-start: var(--space-5); color: var(--text-muted); }
+.ikart-trail:empty { display: none; }
+.ikart-trail li { overflow-wrap: anywhere; }
+.ikart-step { display: grid; gap: var(--space-3); min-width: 0; }
+.ikart-step h3 { max-width: 65ch; }
+.ikart-step :focus-visible, .ikart :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ikart-options { display: grid; gap: var(--space-2); min-width: 0; }
+.ikart-options .btn { width: 100%; min-height: var(--tap); justify-content: flex-start; white-space: normal; text-align: start; overflow-wrap: anywhere; }
+.ikart-step input[type="datetime-local"] { max-width: 100%; min-height: var(--tap); padding: var(--space-2) var(--space-3); border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-control); background: var(--surface-raised); }
+.ikart-quote { display: grid; gap: var(--space-2); min-width: 0; }
+.ikart-quote h4, .ikart-contact-block h4, .ikart-summary h4 { font-size: var(--text-md); }
+.ikart-quote blockquote { min-width: 0; padding: var(--space-3); border-inline-start: 1px solid var(--nd-line); border-radius: var(--nd-radius-control); background: var(--surface-sunken); overflow-wrap: anywhere; }
+.ikart-quote blockquote p { white-space: pre-wrap; }
+.ikart-source { color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.ikart-source a, .ikart-contact a { overflow-wrap: anywhere; }
+.ikart-source .icon, .ikart-contact .icon { margin-inline-start: var(--space-1); }
+.ikart-gap { padding: var(--space-3); border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-control); background: var(--surface-raised); overflow-wrap: anywhere; }
+.ikart-contact-block, .ikart-summary { display: grid; gap: var(--space-2); min-width: 0; }
+.ikart-contact { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ikart-contact .btn { width: fit-content; max-width: 100%; white-space: normal; text-align: start; }
+.ikart-summary textarea { display: block; width: 100%; max-width: 100%; min-height: 8rem; padding: var(--space-3); border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-control); background: var(--surface-raised); font: inherit; line-height: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ikart-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ikart-foot, .ikart .status-line { color: var(--text-muted); font-size: var(--text-sm); }
+.ikart .status-line { min-height: 1.5em; }
+
+@media (max-width: 30rem) {
+  .ikart-contact .btn { width: 100%; }
+  .ikart-summary textarea { min-width: 0; }
+}
+
+@media (forced-colors: active) {
+  .ikart-quote blockquote, .ikart-gap, .ikart-step input[type="datetime-local"], .ikart-summary textarea {
+    border: 1px solid CanvasText;
+  }
+}
