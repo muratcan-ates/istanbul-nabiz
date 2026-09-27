@@ -108,6 +108,7 @@ from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
 from nabiz.console.skills_api import skills_routes
 from nabiz.console.stop_card import stop_card_router
+from nabiz.console.street_route_api import street_route_router
 from nabiz.console.troubleshoot_api import troubleshoot_routes
 from nabiz.console.visitor_api import visitor_routes
 
@@ -380,6 +381,9 @@ PRODUCT_ROUTERS = (
     how_routes,
     # E50: recorded step-by-step route cards; voice only on request, never street navigation.
     route_steps_routes,
+    # P03: street walking route, POST /api/route/street; only with consent, off until NABIZ_AZURE_MAPS_KEY is set,
+    # coordinates never stored or logged (httpx's own URL line is dropped and quieted in main()).
+    street_route_router,
     map_layers_routes,
     # E79: four recorded İBB open data place lists; at most 60 points, no live occupancy.
     ibb_yerleri_routes,
@@ -486,6 +490,8 @@ def main() -> None:  # pragma: no cover - process entry point
     import uvicorn
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    # httpx logs every request URL at INFO; a street route's URL carries the citizen's coordinates (P03).
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     load_env_file()
     uvicorn.run(
         build_console_app(wire_nexus=True),

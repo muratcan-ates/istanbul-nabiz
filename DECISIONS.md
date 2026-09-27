@@ -3088,3 +3088,19 @@ answers citing the gold page first.
 ### Consequences
 
 - The AKOM page is dated 2022-09-30; if it changes, `data/reference/disaster_kit/akom_sss.json` is captured again.
+
+## 98. Street walking route: mounted, off until its Azure Maps key is set (P03, P00 D2a, 27 Sep)
+
+### Decision
+
+- `street_route_router` (`POST /api/route/street`) is in `PRODUCT_ROUTERS` right after E50's `route_steps_routes`.
+  Without `NABIZ_AZURE_MAPS_KEY`, or with `NABIZ_OFFLINE=1`, it answers `provider_status: "kapalı"` with no street
+  path and calls nothing; no sample geometry is ever presented as a real street.
+- It runs only on the citizen's explicit consent. Coordinates are request-scoped: never stored, never logged. The
+  request log writes the route template; httpx's own URL line is filtered in the provider and `main()` sets the httpx
+  logger to WARNING.
+- Setting the key is MURAT ONAYI: Azure Maps bills per request.
+
+### Consequences
+
+- `.env.example` names `NABIZ_AZURE_MAPS_KEY`; the page does not call the route yet (D2b).
