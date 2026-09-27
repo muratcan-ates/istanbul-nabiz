@@ -303,7 +303,10 @@ async def _request_log(request: Request, call_next: Callable[[Request], Awaitabl
     log.info("%s %s -> %s in %.1f ms", request.method, _log_path(request, response.status_code), response.status_code, elapsed_ms)
     for name, value in CONSOLE_HEADERS.items():
         response.headers.setdefault(name, value)
-    if not request.url.path.startswith("/api/"):
+    if f"{posixpath.normpath(request.url.path)}/".startswith("/api/console/"):
+        # Operator answers name citizens' reports and requests: no browser or proxy keeps a copy (P00 D2a, gate g).
+        response.headers["Cache-Control"] = "no-store"
+    elif not request.url.path.startswith("/api/"):
         # The page is ES modules with no build step: a cached old module beside a new one
         # breaks the page (the web app's DECISIONS entry on the same trap).
         response.headers.setdefault("Cache-Control", "no-cache")

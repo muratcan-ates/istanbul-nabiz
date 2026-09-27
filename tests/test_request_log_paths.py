@@ -98,3 +98,14 @@ def test_the_wave_codes_are_logged_as_templates(console: TestClient, caplog: pyt
         assert any(line.startswith(template) for line in lines), (template, lines)
     assert not any(CODE in line or ref in line for line in lines)
     assert not any(type(item).__name__ == "_TimelineLogFilter" for item in logging.getLogger("nabiz.console").filters)
+
+
+def test_every_console_answer_is_never_cached(console: TestClient) -> None:
+    """P00 D2a (local gate g): every /api/console/* answer carries no-store, not only the door's refusal."""
+    headers = {"x-nabiz-operator": TOKEN}
+    for path in ("/api/console/report-timeline", "/api/console/polls", "/api/console/escort", "/api/console/nothing"):
+        response = console.get(path, headers=headers)
+        assert response.status_code != 401, path
+        assert response.headers["cache-control"] == "no-store", path
+    assert console.get("/api/console/polls").headers["cache-control"] == "no-store"
+    assert "no-store" not in console.get("/index.html").headers["cache-control"]

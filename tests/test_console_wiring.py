@@ -162,7 +162,8 @@ def test_the_operator_page_is_served_and_the_pages_are_not_cached(wired: Any) ->
     page = client.get("/console")
     assert page.status_code == 200 and "Simüle operatör" in page.text
     assert page.headers["cache-control"] == "no-cache"
-    assert "cache-control" not in client.get("/api/console/stats").headers
+    # P00 D2a (gate g): a console answer is never cached, where it used to carry no header at all.
+    assert client.get("/api/console/stats").headers["cache-control"] == "no-store"
 
 
 # -- adapters ---------------------------------------------------------------------------
