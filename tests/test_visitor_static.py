@@ -155,14 +155,14 @@ def _example_payload() -> dict:
     }
 
 
-def test_catalog_matches_all_module_fallbacks_and_stays_with_the_integrator() -> None:
+def test_catalog_matches_all_module_fallbacks_and_lives_in_the_catalogues() -> None:
     modules = [VIEW_FILE.read_text(encoding="utf-8"), MODULE_FILE.read_text(encoding="utf-8")]
     keys = {
         match.group(2) for source in modules for match in UI_CALL.finditer(source) if match.group(2).startswith("ui.visitor.")
     }
     assert keys == set(CATALOG["tr"]) == set(CATALOG["en"])
     tr, en = _catalog("tr"), _catalog("en")
-    assert not (keys & set(tr)) and not (keys & set(en))
+    assert all(tr[k] == CATALOG["tr"][k] and en[k] == CATALOG["en"][k] for k in keys)  # P00 G4: moved, unchanged
     calls = {
         match.group(2): match.group(4).replace("\\'", "'").replace('\\"', '"')
         for source in modules

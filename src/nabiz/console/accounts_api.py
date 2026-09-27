@@ -36,6 +36,7 @@ from nabiz.console.accounts import (
     ConsentRequired,
     FollowLimit,
 )
+from nabiz.console.booking import BookingStore, booking_path
 from nabiz.console.digest import check_unsubscribe, verification_email
 from nabiz.console.email_sender import OutboxEmailSender, outbox_dir_from_env
 from nabiz.console.follow import topic_from
@@ -176,8 +177,9 @@ async def account_delete(request: Request) -> Any:
     removed = store_for(request).delete(account.id)
     emails = outbox_for(request).purge(account.id)
     journeys = _delete_saved_journeys(request, account.id)
+    bookings = _delete_bookings(request, account.id)
     return {
-        "deleted": removed, "outbox_deleted": emails, "journeys_deleted": journeys,
+        "deleted": removed, "outbox_deleted": emails, "journeys_deleted": journeys, "bookings_deleted": bookings,
         "message": "Hesabın, takip konuların ve e-posta önizlemelerin silindi.",
     }
 
@@ -188,6 +190,18 @@ def _delete_saved_journeys(request: Request, account_id: str) -> int:
     if store is None and not journeys_path().is_file():
         return 0
     return (store or JourneyStore()).delete_account(account_id)
+
+
+def _delete_bookings(request: Request, account_id: str) -> int:
+    """E53: the account's example library bookings go with it. No store file yet means nothing was booked.
+
+    Read from the store module, not ``booking_api``: that one imports this module (an import cycle).
+    """
+    store = getattr(request.app.state, "booking_store", None)
+    if store is None and not booking_path().is_file():
+        return 0
+    store = store or BookingStore()
+    return store.delete_holder(store.holder_of("account", account_id))
 
 
 @account_routes.get("/api/account/outbox")

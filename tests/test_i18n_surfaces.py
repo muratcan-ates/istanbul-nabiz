@@ -12,6 +12,7 @@ MODULES = (
     "culture.js", "console_knowledge_editor.js",
     "poll_view.js", "poll.js", "console_poll.js", "console_chronic.js",
     "step_voice.js", "fare.js",
+    "notices_center.js", "audience.js", "audience_view.js", "booking.js", "visitor.js", "visitor_view.js",
 )
 JS_DIR = STATIC / "js"
 I18N = STATIC / "i18n"

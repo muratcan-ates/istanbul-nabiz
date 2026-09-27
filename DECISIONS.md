@@ -2928,3 +2928,86 @@ answers citing the gold page first.
 
 - Publishing is detected by the visible action label; if that label changes, the strip stops saying "published"
   without an error. A `data-kind` attribute on the decision card is the lasting fix (later, optional).
+
+## 86. Updates and add to calendar: in page only, nothing stored (E55, 27 Sep)
+
+### Decision
+
+- Updates and add to calendar (E55): in page only, no Web Push and no permission prompt; the server reads followed
+  topics and device codes per request and keeps nothing; report items carry no server time (#54); a calendar file
+  is a reminder (tomorrow 09:00, or a day before a reply is deleted) with no personal data; `ics.py` is the one
+  RFC 5545 writer.
+
+### Consequences
+
+- The page module waits for the Takvim tab (P01, D2). E51's photo report codes are not in the updates yet.
+
+## 87. Day planner: captured events, no district claim without an exact venue match (E73, 27 Sep)
+
+### Decision
+
+- Day planner: captured kultur.istanbul events, no district or nearby claim without an exact venue match, a
+  personal-data-free .ics (E73). Calendar model to be merged with E55's `ics.py` (P06-arka phase 2).
+
+### Consequences
+
+- None of the five captured venues matches a known district, so the district filter and the nearby step are empty
+  in practice; they say so instead of guessing.
+- Its `ui.dayplan.*` keys stay in the module for now: most go through a status helper the page's i18n check does not
+  read.
+
+## 88. Suggestions for you: the choice stays on the device (E56, 27 Sep)
+
+### Decision
+
+- Suggestions for you (E56): age group and needs stay on the device, every suggestion verified, no eligibility
+  claims. Knowledge chips pass the same evidence gate as quick questions (#43); the only request is the fixed,
+  query-free `GET /api/audience`.
+
+### Consequences
+
+- Questions the gate refused, or that need the official path (E48, #64), stay out of the catalogue; adding them is
+  separate work. The page placement moves to Hesabım and the chat with P01 (D2).
+
+## 89. Library seat booking: an example not connected to İBB (E53, 27 Sep)
+
+### Decision
+
+- Library seat booking (E53): an example not connected to İBB; the recorded opening hours decide the slots, the
+  seat plan is a sample, a taken seat is only a real example booking; hashed holder, 30 days, deleted on cancel.
+- Deleting the account deletes its bookings (`accounts_api.account_delete`, read through the store module because
+  `booking_api` imports `accounts_api`). The short privacy notice names example bookings among what is kept 30 days.
+
+### Consequences
+
+- A booking made with the device code alone cannot be reached after "Hesabımı ve verilerimi sil" resets that code;
+  it keeps its seat until the 30 days end. The privacy page says so.
+
+## 90. Course discovery: reasoned matches from the captured İSMEK catalogue (E72, 27 Sep)
+
+### Decision
+
+- Course discovery: reasoned matches from İSMEK's captured public catalogue, no verdict on eligibility, BİO only
+  linked (its job listings render with JavaScript and were not captured) (E72). The 345 KB catalogue is tracked
+  (owner decision 27 Sep).
+
+### Consequences
+
+- The catalogue has no centre-day match, fee, age or quota, and none is shown.
+- Its `ui.skills.*` keys stay in the module for now: four checklist keys come from a table the page's i18n check does
+  not read.
+
+## 91. Tourist mode: five visitor questions on the English page (E58, 27 Sep)
+
+### Decision
+
+- Tourist mode (E58): on the English page, five visitor questions, each shown only while its source is on this
+  server; official Turkish sentences pinned verbatim, translated by us and labelled, no guide text.
+- Murat's decisions: (a) information questions use the reviewed sentence path, not the #43 gate
+  (`NABIZ_VISITOR_QUOTES=0` turns them off); (b) the five English translations wait in `REVIEWED_LANGS` for his one
+  reading; (c) the İETT page's own date, 23.06.2022, is shown (the airport question leaves the JSON if unwanted).
+
+### Consequences
+
+- After each knowledge ingest, `tests/test_visitor.py -k local_index` must run against the real index, or a question
+  can drop silently.

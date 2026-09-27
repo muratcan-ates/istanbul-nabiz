@@ -177,3 +177,25 @@ def test_public_api_copy_has_no_forbidden_terms_or_long_dash(tmp_path) -> None:
         body = response.text
         assert "—" not in body and "–" not in body and "canlı" not in body.lower()
         assert find_forbidden(body) == ()
+
+
+def test_deleting_the_account_deletes_its_example_bookings(tmp_path, monkeypatch) -> None:
+    """P00 G4 (E53 note): "Hesabımı ve verilerimi sil" takes the account's example bookings with it."""
+    from nabiz.console.accounts_api import account_routes
+
+    monkeypatch.setenv("NABIZ_OUTBOX_DIR", str(tmp_path / "outbox"))
+    monkeypatch.setenv("NABIZ_JOURNEY_WATCH_DB_PATH", str(tmp_path / "journeys.sqlite"))
+    client, app, choice = setup_client(tmp_path)
+    app.include_router(account_routes)
+    accounts = AccountStore(tmp_path / "accounts.sqlite")
+    app.state.accounts = accounts
+    account, token = accounts.create(email="kisi@example.com", provider="ibb", consent=True)
+    created = client.post("/api/booking", json=booking_body(choice), headers={**headers(), "X-Nabiz-Account": token})
+    device_only = client.post("/api/booking", json=booking_body(choice, seat="A2"), headers=headers(DEVICE_B))
+    assert created.status_code == 201 and device_only.status_code == 201
+    gone = client.delete("/api/account", headers={"X-Nabiz-Account": token}).json()
+    assert gone["deleted"] is True and gone["bookings_deleted"] == 1
+    store = app.state.booking_store
+    assert store.delete_holder(store.holder_of("account", account.id)) == 0
+    assert store.delete_holder(store.holder_of("device", DEVICE_B)) == 1  # another holder's booking stays
+    accounts.close()

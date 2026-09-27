@@ -185,7 +185,8 @@ def test_catalog_matches_every_booking_fallback_and_has_equal_placeholders() -> 
     for key, value in CATALOG["tr"].items():
         assert set(re.findall(r"\{(\w+)\}", value)) == set(re.findall(r"\{(\w+)\}", CATALOG["en"][key]))
         assert value.strip() and "—" not in value and "–" not in value and "canlı" not in value.lower()
-    assert not (set(CATALOG["tr"]) & set(catalog("tr")))
+    for lang in ("tr", "en"):  # P00 G4: the keys moved into the page catalogues, unchanged
+        assert all(catalog(lang)[k] == v for k, v in CATALOG[lang].items())
     tr = catalog("tr")
     culture_calls = {
         key: js_fallback(fallback)

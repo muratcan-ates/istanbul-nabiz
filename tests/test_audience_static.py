@@ -258,8 +258,9 @@ def test_catalog_keys_fallbacks_placeholders_and_english_are_aligned() -> None:
     assert all(TURKISH_CHARS.search(value) is None for value in CATALOG["en"].values())
     existing_tr = json.loads((STATIC / "i18n/tr.json").read_text(encoding="utf-8"))
     existing_en = json.loads((STATIC / "i18n/en.json").read_text(encoding="utf-8"))
-    assert not set(CATALOG["tr"]) & set(existing_tr)
-    assert not set(CATALOG["en"]) & set(existing_en)
+    # P00 G4: the keys moved into the page catalogues, unchanged
+    assert all(existing_tr[k] == v for k, v in CATALOG["tr"].items())
+    assert all(existing_en[k] == v for k, v in CATALOG["en"].items())
 
 
 def test_new_modules_have_no_untranslated_copy_or_browser_state_in_the_pure_view() -> None:

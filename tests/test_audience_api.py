@@ -168,3 +168,14 @@ def test_evidence_gate_calls_no_model_and_matches_the_quick_gate(tmp_path, monke
     store = KnowledgeStore(database)
     expected = asyncio.run(quick_api._verified_chips({"sorular": [question]}, store, True))
     assert ("b-ogrenci-kart" in _shown(_client().get("/api/audience"))) == ("b-ogrenci-kart" in expected)
+
+
+def test_the_product_app_serves_the_audience_catalogue() -> None:
+    """P00 G4: the router is wired into the real app, ahead of the static files."""
+    from conftest import offline_settings
+
+    from nabiz.console.app import build_console_app
+
+    with TestClient(build_console_app(settings=offline_settings())) as client:
+        response = client.get("/api/audience")
+    assert response.status_code == 200 and len(response.json()["groups"]) == 8

@@ -177,3 +177,10 @@ def test_styles_and_script_follow_the_notice_constraints() -> None:
     assert "overflow-wrap: anywhere" in styles and "forced-colors: active" in styles
     assert ".nc-item.is-unread" in styles and "border-inline-start: 3px solid var(--nd-accent)" in styles
     assert "—" not in source + styles and "–" not in source + styles
+
+
+def test_the_page_catalogues_carry_the_notices_keys_unchanged() -> None:
+    """P00 G4: the ui.notices.* keys moved into the page catalogues, unchanged, in both languages."""
+    for lang in ("tr", "en"):
+        surface = json.loads((STATIC / "i18n" / f"{lang}.json").read_text(encoding="utf-8"))
+        assert all(surface[k] == v for k, v in CATALOG[lang].items())
