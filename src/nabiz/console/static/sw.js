@@ -1,7 +1,8 @@
-/* v17: P00 wave, catalogues and kvkk for the E5x-E7x back ends (v16: the home screen's category pills;
+/* v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
+   E5x-E7x back ends; v16: the home screen's category pills;
    v15: E48's official-path source label in provenance.js; v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v17';
+const VERSION = 'v18';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -18,7 +19,7 @@ const SHELL = [
   '/js/citizen.js', '/js/home.js', '/js/workspace_nav.js', '/js/api.js', '/js/config.js', '/js/cards.js', '/js/chat.js',
   '/js/profile.js', '/js/provenance.js', '/js/history.js', '/js/a11y.js', '/js/disclosure.js',
   '/js/feedback.js', '/js/format.js', '/js/icons.js', '/js/theme.js', '/js/journey.js',
-  '/js/nearby.js', '/js/voice.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
+  '/js/nearby.js', '/js/voice.js', '/js/voice_provider.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
   '/icons.svg', '/icons/nabiz.svg',
   '/icons/nabiz-192.png', '/icons/nabiz-512.png', '/icons/nabiz-maskable-512.png',
   // wave 1 (E01-E25): the citizen page's new modules and sheets, and the kolay page
@@ -54,6 +55,12 @@ const SHELL = [
   '/js/voice_intent.js', '/js/voice_report.js',
   // E30: libraries and museums open now (the answers come from /api/culture and are never cached)
   '/js/culture.js', '/css/culture.css',
+  // P00 D2a (P01): the chat shell's cards; every module index.html, chat.js and citizen.js import is here,
+  // or an offline start cannot load the module graph
+  '/js/chat_cards.js', '/js/chat_card_actions.js', '/js/chat_card_map.js', '/js/chat_scroll.js', '/css/chat_cards.css',
+  // P00 D2a (P02): history and memory (their styles live in conversations.css, already above)
+  '/js/conversation_session.js', '/js/data_reset.js', '/js/memory_card.js', '/js/memory_forget.js',
+  '/js/memory_store.js', '/js/memory_ui.js',
 ];
 
 function ruleFor(url, method, mode) {

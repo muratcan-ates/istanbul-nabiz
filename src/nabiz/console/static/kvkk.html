@@ -61,7 +61,8 @@
         <thead><tr><th>Bilgi</th><th>Anahtar</th><th>Silme</th></tr></thead>
         <tbody>
           <tr><td>Profil tercihleri ve kayıtlı yerler</td><td><code>nabiz.profile.v1</code></td><td>Profilim bölümünde Profili sil.</td></tr>
-          <tr><td>Onayladığınız hafıza öğeleri</td><td><code>nabiz.memory.v1</code></td><td>Hafızam bölümünde Tümünü sil.</td></tr>
+          <tr><td>Onayladığınız hafıza öğeleri (ilgi, sık yer, işlevsel ihtiyaç, kendi sağlık beyanınız)</td><td><code>nabiz.memory.v2</code>, <code>nabiz.memory.v1</code></td><td>Hafızam bölümünde Tümünü unut ya da Hesabım bölümünde Tüm Nabız verimi sil.</td></tr>
+          <tr><td>Unuttuğunuz hafıza önerilerinin yeniden sorulmaması için işaret (30 gün)</td><td><code>nabiz.memory.forgotten.v1</code></td><td>Hesabım bölümünde Tüm Nabız verimi sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Arayüz dili seçimi</td><td><code>nabiz.lang.v1</code></td><td>Dil düğmesinden Türkçe'yi seçin ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Tema tercihi</td><td><code>nabiz-theme</code></td><td>Tema düğmesinden sistem seçeneğini seçin.</td></tr>
           <tr><td>Sade mod tercihi</td><td><code>nabiz-simple</code></td><td>Sade mod düğmesini kapatın.</td></tr>
@@ -72,7 +73,7 @@
           <tr><td>Kolay ekranda hatırlanan hat ve durak</td><td><code>nabiz.kolay.v1</code></td><td>Kolay ekranın Durağım bölümünde Unut.</td></tr>
           <tr><td>Duraklarım: kayıtlı hat ve durak çiftleri</td><td><code>nabiz.my-stops.v1</code></td><td>Duraklarım şeridinde Kaldır.</td></tr>
           <tr><td>Duraklarım önerisi için sorulan durak sayaçları</td><td><code>nabiz.my-stops.asked.v1</code></td><td>Öneride Hayır deyin ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
-          <tr><td>Sohbetlerim: bu cihazdaki sohbetler (30 gün)</td><td><code>nabiz-conversations</code>, <code>nabiz.conversations.v1</code></td><td>Sohbetlerim panelinde Sil ya da Hepsini sil.</td></tr>
+          <tr><td>Sohbetlerim: bu cihazdaki sohbetler (son kullanımdan itibaren 30 gün)</td><td><code>nabiz-conversations</code>, <code>nabiz.conversations.v1</code></td><td>Sohbetlerim panelinde Sohbeti sil ya da Tüm sohbetleri sil.</td></tr>
           <tr><td>Günlük soru kotası için rastgele cihaz kimliği (kişisel veri değil)</td><td><code>nabiz.device.v1</code></td><td>Hesabımı ve verilerimi sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Örnek hesabın giriş anahtarı ve gösterilen bilgileri</td><td><code>nabiz.account.v1</code></td><td>Hesap bağla bölümünde Hesabımı ve verilerimi sil.</td></tr>
           <tr><td>Hesapsız takip edilen konular (en çok 3) ve gösterilmiş değişiklikler</td><td><code>nabiz.follows.v1</code>, <code>nabiz.follows.seen.v1</code></td><td>Takip ettiklerim bölümünde Takibi bırak ya da Hesabımı ve verilerimi sil.</td></tr>
@@ -86,6 +87,7 @@
         </tbody>
       </table>
     </div>
+    <p>Hafıza türleri (ilgi, sık yer, işlevsel ihtiyaç, kendi sağlık beyanınız) yalnız bu tarayıcıda durur; başka cihazda ya da tarayıcıda görünmez ve hesabınıza bağlı değildir. Sunucuya yalnız onayladığınız işlevsel kısıt anahtarları gider. Sağlık beyanı hiçbir isteğe, operatöre ya da takvime eklenmez. Sohbetler bu tarayıcıda son kullanımdan itibaren 30 gün saklanır.</p>
 
     <h2 id="kvkk-sunucu">Sunucuya giden bilgiler</h2>
     <p>Profil paylaşımını onaylarsanız yalnız seçtiğiniz işlevsel ihtiyaç anahtarları istekle gönderilir. Şehir kartı isteklerinde kayıtlı istasyon ve hat adları kullanılabilir.</p>
@@ -162,7 +164,7 @@
     <p>Uygulama, fotoğraflı bildirimde sizin seçip gönderdiğiniz fotoğraf dışında kamera görüntüsü toplamaz; konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
 
     <h2 id="kvkk-silme">Bilgileri silme</h2>
-    <p>Profilinizi Profilim bölümündeki Profili sil düğmesiyle, hafıza öğelerini Hafızam bölümündeki Tümünü sil düğmesiyle kaldırabilirsiniz. Erişilebilirlik panelindeki Sıfırla tercihleri başlangıç değerlerine döndürür. Geri bildirim sayaçlarını silmek için tarayıcı ayarlarından bu siteye ait verileri temizleyin.</p>
+    <p>Profilinizi Profilim bölümündeki Profili sil düğmesiyle, hafıza öğelerini Hafızam bölümündeki Tümünü unut düğmesiyle kaldırabilirsiniz. Erişilebilirlik panelindeki Sıfırla tercihleri başlangıç değerlerine döndürür. Geri bildirim sayaçlarını silmek için tarayıcı ayarlarından bu siteye ait verileri temizleyin.</p>
     <p>Örnek hesap bağladıysanız Hesap bağla bölümündeki Hesabımı ve verilerimi sil düğmesi hem sunucudaki kaydı (aile kayıtları dahil) hem bu cihazdaki verileri siler.</p>
     <p>Hesabımı ve verilerimi sil bu cihazın kodunu da sıfırlar. Örnek hesabınızla aldığınız kütüphane randevuları silinir; yalnız bu cihazın koduyla aldığınız bir randevu bu cihazdan artık görünmez, ama koltuk en geç 30 gün sonra silinene kadar tutulur.</p>
     <p>Tarayıcı verisini temizlemek bu cihazdaki yerel kayıtları siler. Daha önce yazılmış sorular veya başka yerde alınmış kopyalar bu işlemle geri alınamaz.</p>

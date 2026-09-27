@@ -2,8 +2,8 @@
 
     event: tool   data {"name", "status": "start"|"end"}      live, as the agent calls İBB tools
     event: token  data {"text"}                                the answer, in order, after it was checked
-    event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how",
-                        "mode", "steps", "emergency", "guard", "hazard", "lang", "masked_count", "masked_kinds"}
+    event: final  data {"answer", "answer_text", "citations", "author", "memory_suggestion", "refused", "how", "mode",
+                        "steps", "emergency", "guard", "hazard", "lang", "cards", "masked_count", "masked_kinds"}
 
 :class:`~nabiz.agent.NabizAgent` verifies every number against the tool results before the text streams. ``author``
 is the rung that wrote the answer ("model", "yerel model", "kural"); a turn reserves :data:`TURN_CALLS` on the first

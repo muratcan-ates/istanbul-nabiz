@@ -226,9 +226,13 @@ def test_kvkk_page_carries_honesty_lines_and_names_every_storage_key() -> None:
         "nabiz.persona.v1", "nabiz.easyread.v1", "nabiz.kolay.v1", "nabiz.my-stops.v1", "nabiz.my-stops.asked.v1",
         "nabiz.conversations.v1", "nabiz-brief-v2", "nabiz.lang.v1", "nabiz.requests.v1",
         "nabiz.outcome-board.v1",  # P00 G2: the console's outcome board period
+        "nabiz.memory.v2", "nabiz.memory.forgotten.v1",  # P00 D2a: P02's memory store and its forget marks
     ):
         assert key in page
     assert 'id="kvkk-kisa"' in page
+    device = page[page.index('id="kvkk-cihaz"'):page.index('id="kvkk-sunucu"')]
+    assert "Sağlık beyanı hiçbir isteğe, operatöre ya da takvime eklenmez." in device
+    assert "Sohbetler bu tarayıcıda son kullanımdan itibaren 30 gün saklanır." in device
     for phrase in ("TC kimlik", "kart numarası", "sağlık belgesi", "yurt dışı", "cevap kimliği"):
         assert phrase.lower() in page.lower()
     for ref in re.findall(r'(?:href|src)="(/(?:css|js|fonts)/[^"#?]+)"', page):

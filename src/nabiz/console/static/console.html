@@ -70,6 +70,8 @@
 <script type="module" src="/js/console_poll.js"></script>
 <!-- E77 (P00 G3): the intervention scenario fills #scenario-mount in "Bilgi ve planlama". -->
 <script type="module" src="/js/console_scenario.js"></script>
+<!-- P00 D2a: open data in "Bilgi ve planlama" (#open-data-mount); the citizen page keeps its own copy. -->
+<script type="module" src="/js/open_data.js"></script>
 <script type="module" src="/js/console_work_counters.js"></script>
 </head>
 <body class="console-page">
@@ -214,10 +216,24 @@
     </details>
 
     <details class="console-section">
-      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Bilgi ve planlama</span><span class="section-note">Cevapsız talepler, kaynak adayları, müdahale senaryosu</span></summary>
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Bilgi ve planlama</span><span class="section-note">Cevapsız talepler, kaynak adayları, müdahale senaryosu, açık veri</span></summary>
       <section id="knowledge-planning" aria-labelledby="knowledge-planning-title"><h2 id="knowledge-planning-title">Bilgi ve planlama</h2>
         <div id="knowledge-editor-mount"></div>
         <div id="scenario-mount"></div>
+        <!-- P00 D2a: İBB Açık Veri moved here from the citizen menu; js/open_data.js fills it by the same ids. -->
+        <details id="open-data-console">
+          <summary>Açık veri</summary>
+          <div id="open-data-mount">
+            <h3 id="open-data-title">İBB Açık Veri</h3>
+            <p class="section-note">hangi veri var, kim yayımlıyor, ne zaman güncellendi</p>
+            <form id="acik-veri-form" class="arrival-form" role="search" autocomplete="off" aria-labelledby="open-data-title">
+              <div class="field"><label for="acik-veri-q">Veri seti ara</label><input id="acik-veri-q" name="q" type="search" maxlength="200" placeholder="otopark, baraj, wifi"></div>
+              <button type="submit" class="btn">Ara</button>
+            </form>
+            <div class="chips od-chips" id="acik-veri-chips" role="group" aria-label="İBB Açık Veri kategorileri"></div>
+            <div id="acik-veri-result" aria-live="polite" aria-busy="false"></div>
+          </div>
+        </details>
       </section>
     </details>
 

@@ -44,7 +44,7 @@ from ibb_mcp.models import utcnow
 from nabiz.agent import context_slots, templates_i18n
 from nabiz.agent.agent import detect_language
 from nabiz.agent.layers import LayerReply, TurnLayer, classify_turn, layer_reply, load_phrases
-from nabiz.console import policy, text_guard
+from nabiz.console import chat_cards, policy, text_guard
 from nabiz.console.cards import Mode, mode_for
 from nabiz.console.emergency_model import MODEL_RULE_ID
 from nabiz.console.official_intent import intent as official_intent
@@ -86,6 +86,7 @@ class FinalFields:
     guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
     hazard: str | None = None  # "gas" on a gas emergency: the 112 card also shows İGDAŞ's 187 line
     lang: str | None = None  # an emergency's card language (DECISIONS #40); None on every other turn
+    cards: Sequence[dict[str, Any]] = ()  # P01 ChatCards (v0 or v1), validated in final_body; none on an emergency
 
 
 @dataclass(frozen=True)
@@ -394,6 +395,9 @@ def final_body(
         "guard": fields.guard,
         "hazard": fields.hazard,
         "lang": fields.lang,
+        # P00 D2a: every card passes validate_card (a v0 card through from_v0) and the bound of six; an
+        # emergency final carries no card, whatever a path put in its fields.
+        "cards": [] if fields.emergency else chat_cards.cards_field(fields.cards),
     }
 
 

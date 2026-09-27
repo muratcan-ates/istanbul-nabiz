@@ -345,7 +345,7 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source += "'nabiz-shell-v9','nabiz-brief-v9','nabiz-shell-v10','nabiz-brief-v10','nabiz-shell-v11','nabiz-brief-v11',"
     source += "'nabiz-shell-v12','nabiz-brief-v12','nabiz-shell-v13','nabiz-brief-v13','nabiz-shell-v14','nabiz-brief-v14',"
     source += "'nabiz-shell-v15','nabiz-brief-v15','nabiz-shell-v16','nabiz-brief-v16','nabiz-shell-v17','nabiz-brief-v17',"
-    source += "'baska-site'];"
+    source += "'nabiz-shell-v18','nabiz-brief-v18','baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
     stale = [
@@ -355,7 +355,7 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
         "nabiz-shell-v10", "nabiz-brief-v10", "nabiz-shell-v11", "nabiz-brief-v11",
         "nabiz-shell-v12", "nabiz-brief-v12", "nabiz-shell-v13", "nabiz-brief-v13",
         "nabiz-shell-v14", "nabiz-brief-v14", "nabiz-shell-v15", "nabiz-brief-v15",
-        "nabiz-shell-v16", "nabiz-brief-v16",
+        "nabiz-shell-v16", "nabiz-brief-v16", "nabiz-shell-v17", "nabiz-brief-v17",
     ]
     # v7: the 26 Sep integration (DECISIONS #38-#41); v8: its second round; v9: E35's lazy map module (gun2);
     # v10: E40's i18n_text.js in the shell; v11: E27's voice report modules, E33's report list;
@@ -363,7 +363,8 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     # v14: the redesigned citizen shell and its local Istanbul panorama; v15: E48's official-path source label.
     # v16: the home screen's category pills (quick_chips.js).
     # v17: the P00 wave (DECISIONS #67 on): the E5x-E7x catalogues in i18n/*.json and their kvkk paragraphs.
-    assert result == {"version": "v17", "stale": stale}
+    # v18: P00 D2a, the chat shell (P01) and history and memory (P02) in the shell.
+    assert result == {"version": "v18", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """
