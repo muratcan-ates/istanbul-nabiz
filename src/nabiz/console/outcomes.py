@@ -175,7 +175,7 @@ def timeline_metrics(
     if rows is None:
         metrics = [_unmeasured(key, "Bildirim zaman çizgisi bu sürümde yok.")
                    for key in ("o3_confirmed", "o4_reopened")]
-        return metrics, {"no_reply_7_days": None, "timeline_skipped": None}
+        return metrics, {"no_reply_7_days": None, "timeline_skipped": None, "reports": None, "with_photo": None}
     current = as_utc(now)
     recent = [r for r in rows if _in_window(r.get("created_at"), current, days)]
     reached = [r for r in recent if any(h.get("stage") == "resolution_reported" for h in _history(r))
@@ -193,7 +193,9 @@ def timeline_metrics(
         _metric("o3_confirmed", confirmed, len(reached)),
         _metric("o4_reopened", reopened, len(reached)),
     ]
-    return metrics, {"no_reply_7_days": int(no_reply), "timeline_skipped": int(getattr(rows, "skipped", 0))}
+    # One timeline row is one report: a linked photo (P07) is a flag on it, never a second report.
+    return metrics, {"no_reply_7_days": int(no_reply), "timeline_skipped": int(getattr(rows, "skipped", 0)),
+                     "reports": len(recent), "with_photo": sum(bool(r.get("has_photo")) for r in recent)}
 
 
 def _tables(text: str) -> list[tuple[list[str], list[dict[str, str]]]]:
@@ -265,20 +267,23 @@ def board(
     }
 
 
-def read_timeline(path: str | pathlib.Path | None = None, env: Mapping[str, str] | None = None) -> TimelineRows | None:
+def read_timeline(
+    path: str | pathlib.Path | None = None, env: Mapping[str, str] | None = None, now: dt.datetime | None = None,
+) -> TimelineRows | None:
     """Read only E66's aggregate timeline fields; a missing file or table is not created."""
     raw = ((os.environ if env is None else env).get("NABIZ_REPORT_TIMELINE_DB_PATH") or "").strip()
     target = pathlib.Path(path or raw or ledger_path(env).with_name("report_timeline.db"))
     if not target.is_file():
         return None
     uri = target.resolve().as_uri() + "?mode=ro"
+    stamp = as_utc(now or system_clock()).isoformat()
     rows: list[dict[str, Any]] = []
     skipped = 0
     try:
         with sqlite3.connect(uri, uri=True) as conn:
             conn.row_factory = sqlite3.Row
             selected = conn.execute("SELECT stage, reopen_count, created_at, updated_at, expires_at, data "
-                                    "FROM report_timeline WHERE expires_at > ?", (as_utc(system_clock()).isoformat(),)).fetchall()
+                                    "FROM report_timeline WHERE expires_at > ?", (stamp,)).fetchall()
     except sqlite3.Error:
         return None
     for row in selected:
@@ -286,6 +291,7 @@ def read_timeline(path: str | pathlib.Path | None = None, env: Mapping[str, str]
             data = json.loads(row["data"])
             rows.append({"stage": row["stage"], "reopen_count": row["reopen_count"],
                          "created_at": row["created_at"], "updated_at": row["updated_at"],
+                         "has_photo": bool(data.get("photo_refs")) if isinstance(data, dict) else False,
                          "history": [{"stage": item["stage"], "at": item.get("at")}
                                      for item in (data.get("history", []) if isinstance(data, dict) else [])
                                      if isinstance(item, dict) and isinstance(item.get("stage"), str)]})

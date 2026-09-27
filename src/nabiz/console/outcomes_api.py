@@ -51,7 +51,7 @@ def _sources(app: Any, days: int, now: Any) -> dict[str, Any]:
     entries = request_ledger.entries(kinds=[REQUEST_KIND, REPLY_KIND]) if request_ledger is not None else None
     states = list(engine.states().values()) if engine is not None else None
     return outcomes.board(
-        entries=entries, states=states, timeline_rows=outcomes.read_timeline(),
+        entries=entries, states=states, timeline_rows=outcomes.read_timeline(now=now),
         fidelity_md=outcomes.read_fidelity(), now=now, days=days,
     )
 
