@@ -1,0 +1,17 @@
+#outage-watch { display: grid; gap: var(--space-3); min-width: 0; margin-block: var(--space-5); }
+#outage-watch h2, #outage-watch h3, #outage-watch p { margin-block: 0; }
+.ow-console-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.ow-console-head h2 { font-size: var(--text-lg); }
+.ow-console-head p, .ow-console-note, .ow-console-status { color: var(--text-muted); font-size: var(--text-sm); }
+.ow-console-note { max-width: 72ch; }
+.ow-console-areas, .ow-console-list { display: grid; gap: 0; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.ow-console-area, .ow-console-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; padding: var(--space-2) 0; border-block-end: 1px solid var(--border); }
+.ow-console-area span, .ow-console-item span, .ow-console-item li { color: var(--text-muted); font-size: var(--text-sm); }
+.ow-console-item > div { display: grid; gap: var(--space-1); min-width: 0; overflow-wrap: anywhere; }
+.ow-console-item ul { display: grid; gap: var(--space-1); margin: 0; padding-inline-start: 1.25rem; }
+.ow-console-item blockquote { margin: 0; padding-inline-start: var(--space-2); border-inline-start: 2px solid var(--border-strong); overflow-wrap: anywhere; }
+.ow-console-item .btn { flex: none; }
+@media (max-width: 36rem) {
+  .ow-console-item { align-items: flex-start; }
+  .ow-console-item > div, .ow-console-item .btn { width: 100%; }
+}
