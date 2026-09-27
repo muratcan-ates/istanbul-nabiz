@@ -19,10 +19,10 @@ export function drillControls() {
   const buttons = DRILL_KINDS.map(({ kind, label, glyph }) =>
     `<button type="button" class="btn" data-nx-drill="${kind}" aria-disabled="false">${icon(glyph)}<span>${label}</span></button>`
   ).join('');
-  return `<p class="nx-drill-lead">Tatbikat: defterin kopyasında bir kaydı boz, doğrulama yakalasın.</p>`
-    + `<div class="btn-row nx-drill-controls">${buttons}</div>`
+  return '<details class="more nx-drill"><summary>Tatbikat: defterin kopyasında bir kaydı boz</summary>'
+    + `<p class="nx-drill-lead">Doğrulama yakalasın.</p><div class="btn-row nx-drill-controls">${buttons}</div>`
     + '<p class="sr-only" id="nx-drill-status" role="status" aria-live="polite"></p>'
-    + '<div id="nx-drill-result"></div>';
+    + '<div id="nx-drill-result"></div></details>';
 }
 
 export function drillCard(result) {

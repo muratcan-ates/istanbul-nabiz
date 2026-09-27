@@ -104,10 +104,14 @@ function queueItem(item, current) {
   const sev = SEVERITY_TR[item.severity] ? item.severity : 'info';
   const path = PATH_TR[item.path] ? item.path : 'arena';
   const repeats = Number(item.folded_repeats) > 0 ? `<span class="tag">${int(item.folded_repeats)} tekrar katlandı</span>` : '';
-  const expires = item.expires_at ? `<span>Son karar: ${dateTime(item.expires_at)}</span>` : '';
+  const createdAt = Date.parse(item.created_at || '');
+  const ageS = Number.isFinite(createdAt) ? (Date.now() - createdAt) / 1000 : Infinity;
+  const fresh = ageS >= 0 && ageS <= 60
+    ? '<span class="queue-new-dot" aria-hidden="true"></span><span class="sr-only">yeni </span>' : '';
+  const expires = item.expires_at ? `<span>Karar son tarihi: ${dateTime(item.expires_at)}</span>` : '';
   return `<li><button type="button" class="queue-item is-${sev}" data-id="${esc(item.signal_id)}" aria-current="${current ? 'true' : 'false'}">`
     + `<span class="queue-sev">${icon(SEVERITY_ICON[sev])}</span>`
-    + `<span class="queue-head"><span class="queue-title">${esc(item.title)}</span>`
+    + `<span class="queue-head">${fresh}<span class="queue-title">${esc(item.title)}</span>`
     + `<span class="tag ${path === 'reflex' ? '' : 'is-info'}">${icon(PATH_ICON[path])}${PATH_TR[path]}</span>${repeats}</span>`
     + `<span class="queue-meta"><span>${SEVERITY_TR[sev]}</span><span>${esc(word(KIND_TR, item.kind))}</span>`
     + `<span>${esc(word(STATUS_TR, item.status))}</span><span>${clock(item.created_at)}</span>${expires}</span>`
@@ -169,9 +173,9 @@ function decisionCard(d, options) {
     : '';
   const repeatTag = Number(d.folded_repeats) > 0 ? `<span class="tag">${int(d.folded_repeats)} tekrar katlandı</span>` : '';
   const uncertainty = Array.isArray(conf.uncertainty) && conf.uncertainty.length
-    ? `<div class="decision-part"><h4>Neden emin değilim</h4><ul class="uncertainty">${conf.uncertainty.map((item) =>
+    ? `<details class="more"><summary><h4>Neden emin değilim</h4></summary><ul class="uncertainty">${conf.uncertainty.map((item) =>
       `<li title="${esc(item.code || '')}"><b>${esc(item.label || '')}</b>${item.detail ? `: ${esc(item.detail)}` : ''}</li>`
-    ).join('')}</ul></div>` : '';
+    ).join('')}</ul></details>` : '';
   const receipt = d.receipt && typeof d.receipt === 'object' ? [
     d.receipt.path ? `Yol: ${PATH_TR[d.receipt.path] || d.receipt.path}` : '',
     d.receipt.wall_ms !== null && d.receipt.wall_ms !== undefined ? `Süre: ${num(d.receipt.wall_ms, 1)} ms` : '',
@@ -181,13 +185,16 @@ function decisionCard(d, options) {
     (d.receipt.usd === null || d.receipt.usd === undefined) && Number(d.receipt.llm_calls) > 0 ? 'fiyat tanımsız' : '',
   ].filter(Boolean) : [];
   const receiptLine = receipt.length ? `<p class="receipt">${receipt.map(esc).join(' · ')}</p>` : '';
-  const expires = !done && d.expires_at ? `<p class="field-hint">Son karar: ${dateTime(d.expires_at)}</p>` : '';
+  const expires = !done && d.expires_at ? `<p class="field-hint">Karar son tarihi: ${dateTime(d.expires_at)}</p>` : '';
   const votes = d.panel && d.panel.votes;
   const tally = votes ? ` (destek ${int(votes.support)}, karşı ${int(votes.oppose)}, şartlı ${int(votes.conditional)})` : '';
   const panel = d.panel && d.panel.verdict
     ? `<p class="field-hint">Panel önerisi: ${esc(word(PANEL_TR, d.panel.verdict))}${esc(tally)}</p>` : '';
   const requiredLevel = d.stakes && d.stakes.required_level
     ? `<p class="field-hint">Gereken güven: ${esc(word(LEVEL_TR, d.stakes.required_level))}</p>` : '';
+  const alternatives = d.alternatives && d.alternatives.length
+    ? `<ol class="alts">${d.alternatives.map((a) => `<li><b>${esc(a.label)}</b>${esc(a.detail || '')}</li>`).join('')}</ol>`
+    : '<p class="section-note">Seçenek listesi yok.</p>';
   const reasonGroups = Object.entries(REASON_CODES).flatMap(([group, items]) => items.map((item) =>
     `<label class="reason-code" data-for="${group}"><input type="radio" name="reason-code" value="${item.code}"> <span>${item.label}</span></label>`
   )).join('');
@@ -209,42 +216,46 @@ ${d.dissent_summary ? `<div class="decision-part"><div class="callout callout-wa
   <p class="actions-gate" id="evidence-gate"${done ? ' hidden' : ''}>Onaylamadan önce kanıtı açın.</p>
 </div>
 <div class="decision-part">
-  <h4>Seçenekler</h4>
-  ${d.alternatives && d.alternatives.length
-    ? `<ol class="alts">${d.alternatives.map((a) => `<li><b>${esc(a.label)}</b>${esc(a.detail || '')}</li>`).join('')}</ol>`
-    : '<p class="section-note">Seçenek listesi yok.</p>'}
-</div>
-<div class="decision-part">
-  <div class="decision-head"><h4>Üç koltuğun görüşü</h4>`
-    + `${ruleBased ? `<span class="tag">${icon('list-details')}Koltuklar kural tabanlı (model yok)</span>` : `<span class="tag">görüşleri yazan: ${esc(d.author || UNKNOWN)}</span>`}</div>
-  ${opinionList(d.opinions)}
-</div>
-<div class="decision-part">
   <h4>Önerilen eylem</h4>
   <div class="proposed"><p><b>${esc(word(ACTION_TR, action.kind))}</b></p><p class="field-hint">Vatandaşa yayımlanacak metin:</p><p>${esc(action.text || '')}</p>`
     + `<p class="field-hint">Son geçerlilik: ${action.expires_at ? dateTime(action.expires_at) : 'belirtilmedi'}. Uygulanan tek şey Nabız yüzündeki metindir; dışarıya hiçbir şey gönderilmez.</p></div>
   <div class="confidence is-${level}"><span class="confidence-level">${icon(level === 'high' ? 'circle-check' : level === 'medium' ? 'clock-question' : 'alert-triangle')}güven: ${LEVEL_TR[level]}</span>`
     + `${conf.reasons && conf.reasons.length ? `<ul>${conf.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}</div>
 </div>
-${uncertainty}${receiptLine}${panel}${requiredLevel}
+<div class="decision-part">
+  <details class="more">
+    <summary><h4>Seçenekler</h4></summary>${alternatives}${receiptLine}${panel}${requiredLevel}
+  </details>
+</div>
+<div class="decision-part">
+  <details class="more">
+    <summary><h4>Üç koltuğun görüşü</h4></summary>
+    <div class="decision-head">${ruleBased ? `<span class="tag">${icon('list-details')}Koltuklar kural tabanlı (model yok)</span>` : `<span class="tag">görüşleri yazan: ${esc(d.author || UNKNOWN)}</span>`}</div>
+    ${opinionList(d.opinions)}
+  </details>
+</div>
+${uncertainty}
 <div class="decision-part actions" id="decision-actions"${done ? ' hidden' : ''}>
-  <div class="field"><fieldset class="reason-codes" data-action="approve"><legend>Gerekçe kodu</legend>${reasonGroups}</fieldset>
-    <label for="decision-reason">Gerekçe ayrıntısı</label>
-    <textarea id="decision-reason" rows="3" maxlength="240" aria-describedby="reason-hint reason-error"></textarea>
-    <span class="field-hint" id="reason-hint">Kod isteğe bağlıdır. Ayrıntı en fazla 240 karakterdir. Kişi adı yazmayın.</span>
-    <span class="field-error" id="reason-error" hidden>Ret ve erteleme için gerekçe kodu seçin.</span></div>
-  <div class="field" id="edit-field" hidden><label for="decision-edit">Düzenlenmiş metin</label>
-    <textarea id="decision-edit" rows="4" maxlength="600" aria-describedby="edit-hint">${esc(action.text || '')}</textarea>
-    <span class="field-hint" id="edit-hint">En fazla 600 karakter.</span></div>
-  <div class="btn-row">
+  <details class="more reason-more">
+    <summary>Gerekçe ekle</summary>
+    <div class="field"><fieldset class="reason-codes" data-action="approve"><legend>Gerekçe kodu</legend>${reasonGroups}</fieldset>
+      <label for="decision-reason">Gerekçe ayrıntısı</label>
+      <textarea id="decision-reason" rows="3" maxlength="240" aria-describedby="reason-hint reason-error"></textarea>
+      <span class="field-hint" id="reason-hint">Kod isteğe bağlıdır. Ayrıntı en fazla 240 karakterdir. Kişi adı yazmayın.</span>
+      <span class="field-error" id="reason-error" hidden>Ret ve erteleme için gerekçe kodu seçin.</span></div>
+    <div class="field" id="edit-field" hidden><label for="decision-edit">Düzenlenmiş metin</label>
+      <textarea id="decision-edit" rows="4" maxlength="600" aria-describedby="edit-hint">${esc(action.text || '')}</textarea>
+      <span class="field-hint" id="edit-hint">En fazla 600 karakter.</span></div>
+  </details>
+  <div class="btn-row actions-bar">
     <button type="button" class="btn btn-primary" data-act="approve" aria-disabled="true" aria-describedby="evidence-gate">${icon('circle-check')}Onayla</button>
-    <button type="button" class="btn" data-act="edit">Düzenle</button>
-    <button type="button" class="btn btn-danger" data-act="reject">Gerekçeli reddet</button>
-    <button type="button" class="btn" data-act="defer">${icon('clock-pause')}Ertele</button>
+    <button type="button" class="btn" data-act="reject">Reddet</button>
+    <button type="button" class="btn btn-quiet" data-act="edit">Düzenle</button>
+    <button type="button" class="btn btn-quiet" data-act="defer">${icon('clock-pause')}Ertele</button>
   </div>
 </div>
 <div class="decision-part">
-  <div class="btn-row"><button type="button" class="btn" data-act="trace">${icon('history')}Bu karar nasıl verildi?</button></div>
+  <div class="btn-row"><button type="button" class="btn btn-quiet" data-act="trace">${icon('history')}Bu karar nasıl verildi?</button></div>
   <div id="trace"></div>
 </div>`;
 }

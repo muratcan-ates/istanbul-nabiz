@@ -14,6 +14,8 @@ import { dateTime, esc, has, int, num } from './format.js';
 import { icon } from './icons.js';
 import { AUTHOR_TR, TOOL_TR, ageText, howPanel, sourceLabel, sourceLink } from './provenance.js';
 import { progressLine } from './tool_labels.js';
+import { mountAnswerActions } from './answer_actions.js';
+import { t } from './i18n_text.js';
 
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
 const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';
@@ -87,24 +89,28 @@ function answerCard(data, turnId) {
   const age = first ? ageText(first) : 'veri yaşı bilinmiyor';
   const calls = how && Number.isFinite(Number(how.tool_calls)) ? int(how.tool_calls) : '0';
   const elapsed = how && has(how.elapsed_s) ? num(how.elapsed_s, 1) : 'bilinmiyor';
-  let html = '<section class="answer-short"><h3>KISA CEVAP</h3>'
+  let html = '<section class="answer-short ac-short"><h3 class="eyebrow">Kısa cevap</h3>'
     + `<p>${esc(answer)}</p></section>`;
   if (!unknown && mode === 'quote_only' && first && typeof first.quote === 'string') {
     html += `<blockquote class="quote-exact">${esc(first.quote)}</blockquote>`;
   }
   if (!unknown && steps.length) {
-    html += `<section><h3>NASIL YAPILIR</h3><ol>${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>`;
+    html += '<section class="ac-steps"><h3 class="eyebrow">Nasıl yapılır</h3>'
+      + `<ol class="ac-steps-list">${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>`;
   }
   if (!unknown) {
-    html += `<section><h3>KAYNAK</h3>${cited.length
+    html += `<section class="ac-sources"><h3 class="eyebrow">Kaynak</h3>${cited.length
       ? `<ul class="cites">${cited.map(sourceItem).join('')}</ul>` : '<p>Kaynak yok.</p>'}</section>`;
   }
   const officialLinks = !unknown ? cited.map((item) => item.url || item.source_url).filter((url) => /^https?:\/\//.test(url || '')) : [];
-  html += '<div class="btn-row">';
+  html += '<div class="btn-row ac-actions">';
   officialLinks.forEach((url) => {
-    html += `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Resmî kaynağı aç</a>`;
+    html += `<a class="btn btn-quiet ac-official" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Resmî kaynağı aç${icon('external-link')}</a>`;
   });
-  html += '<a class="btn btn-primary" href="tel:153">153\'e sor</a></div>';
+  html += unknown
+    ? '<a class="btn btn-primary ac-call153" href="tel:153">153\'e sor</a></div>'
+    : '<button type="button" class="btn btn-quiet ac-copy" data-ac-copy>Kopyala</button>'
+      + '<a class="btn btn-quiet ac-call153" href="tel:153">153\'e sor</a></div>';
   if (!unknown) {
     html += `<p class="chat-foot"><span>${esc(source)} · ${esc(age)} · cevabı yazan: <b>${esc(AUTHOR_TR[data.author] || author)}</b>`
       + ` · ${esc(calls)} araç çağrısı · ${esc(elapsed)} sn</span></p>`;
@@ -125,9 +131,36 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
   let controller = null;
   let sessionStarted = false;
   let turnCount = 0;
+  const stoppedRequests = new WeakSet();
 
   const say = (text) => { status.textContent = text; };
   const scrollDown = () => { log.scrollTop = log.scrollHeight; };
+  const answerActions = mountAnswerActions(log, { input, form, status });
+  const composerTools = document.querySelector('#composer-tools');
+  let stopButton = composerTools && composerTools.querySelector('#chat-stop');
+  if (composerTools && !stopButton) {
+    stopButton = document.createElement('button');
+    stopButton.type = 'button';
+    stopButton.className = 'btn btn-quiet';
+    stopButton.id = 'chat-stop';
+    stopButton.hidden = true;
+    stopButton.textContent = t('dyn.stop', 'Durdur');
+    composerTools.append(stopButton);
+  }
+  if (stopButton) {
+    stopButton.type = 'button';
+    stopButton.classList.add('btn', 'btn-quiet');
+    stopButton.hidden = true;
+  }
+  const setStopVisible = (visible) => { if (stopButton) stopButton.hidden = !visible; };
+  const stopAnswer = () => {
+    if (!controller) return;
+    stoppedRequests.add(controller);
+    say(t('dyn.stopped', 'Yanıt durduruldu.'));
+    input.focus();
+    controller.abort();
+  };
+  stopButton?.addEventListener('click', stopAnswer);
   const turn = (item) => { try { onTurn(item); } catch { /* Saving on the device must never break the chat. */ } };
 
   function showCompaction() {
@@ -146,6 +179,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     const finalEl = shell.querySelector('.chat-final');
     const answer = data.answer_text ?? data.answer ?? streamed;
     const mode = data.mode || (data.refused ? 'refused' : 'answer');
+    const finalData = { ...data, answer_text: answer };
     textEl.hidden = true;
     textEl.textContent = '';
     // The rule that answered, for modules that watch the log (handoff.js reads layer:handoff here).
@@ -161,8 +195,13 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     }
     // The sourced answer card (js/answer_card.js) draws answers, quotes and the fixed cards; the
     // emergency card and any mode it does not know stay on answerCard below.
-    finalEl.innerHTML = renderAnswerCard({ ...data, answer_text: answer }, { turnId })
-      || answerCard({ ...data, answer_text: answer }, turnId);
+    finalEl.innerHTML = renderAnswerCard(finalData, { turnId }) || answerCard(finalData, turnId);
+    answerActions.remember(shell, finalData);
+    if (!data.refused && !data.emergency && (mode === 'answer' || mode === 'quote_only')) {
+      void answerActions.showNextChips(finalEl, finalData, question, data.lang || document.documentElement.lang || 'tr');
+    }
+    shell.classList.add('is-new');
+    setTimeout(() => shell.classList.remove('is-new'), 1200);
     // The refusal text is not context. The refused question stays so the server can refuse a
     // follow-up to it ("peki öğrenciler için?"); the server never hands it to the model.
     if (!data.emergency) history.push({ role: 'user', content: question });
@@ -188,13 +227,18 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     shell.setAttribute('aria-busy', 'false');
     say(data.emergency ? 'Acil iletişim bilgileri gösterildi.'
       : data.refused || mode === 'unknown' ? 'Asistan doğrulanmış kaynak bulamadı; 153 ve resmî sayfaya yönlendirdi.' : 'Yanıt hazır.');
+    if (typeof shell.scrollIntoView === 'function') shell.scrollIntoView({ block: 'nearest' });
     scrollDown();
   }
 
   async function ask(question) {
     if (controller) controller.abort();
     controller = new AbortController();
-    log.appendChild(message('is-user', `<p class="chat-who">Siz</p><p class="chat-text">${esc(question)}</p>`));
+    const requestController = controller;
+    input.focus();
+    const userItem = message('is-user', `<p class="chat-who">Siz</p><p class="chat-text">${esc(question)}</p>`);
+    log.appendChild(userItem);
+    if (typeof userItem.scrollIntoView === 'function') userItem.scrollIntoView({ block: 'start' });
     const shell = message('is-assistant', '<p class="chat-who">Asistan</p><p class="chat-tool" hidden></p>'
       + '<p class="chat-text"></p><div class="chat-final"></div>');
     const turnId = `turn-${++turnCount}`;
@@ -202,6 +246,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     log.appendChild(shell);
     log.setAttribute('aria-busy', 'true');
     submit.setAttribute('aria-disabled', 'true');
+    setStopVisible(true);
     say('Asistan yanıt yazıyor.');
     scrollDown();
     const textEl = shell.querySelector('.chat-text');
@@ -237,18 +282,29 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       // Keep the selection in the URL and send it in the body for the server-side turn.
       const lang = new URLSearchParams(window.location.search).get('lang') || document.documentElement.lang || 'tr';
       await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2), lang },
-        onEvent, controller.signal);
+        onEvent, requestController.signal);
       if (finalData) renderFinal(shell, finalData, question, streamed, turnId);
       else { shell.setAttribute('aria-busy', 'false'); say('Yanıt tamamlanmadı.'); }
     } catch (err) {
-      if (controller.signal.aborted) return;
+      if (requestController.signal.aborted) {
+        shell.setAttribute('aria-busy', 'false');
+        if (stoppedRequests.has(requestController)) {
+          shell.querySelector('.chat-text').textContent = t('dyn.stopped', 'Yanıt durduruldu.');
+          say(t('dyn.stopped', 'Yanıt durduruldu.'));
+        }
+        return;
+      }
       shell.classList.add('is-error');
       textEl.textContent = err.message || 'Yanıt alınamadı.';
       shell.setAttribute('aria-busy', 'false');
       say('Yanıt alınamadı.');
     } finally {
       log.setAttribute('aria-busy', 'false');
-      submit.removeAttribute('aria-disabled');
+      if (controller === requestController) {
+        controller = null;
+        setStopVisible(false);
+        submit.removeAttribute('aria-disabled');
+      }
     }
   }
 
@@ -265,7 +321,12 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     if (error) error.hidden = true;
     input.value = '';
     ask(question);
-    input.focus();
+  });
+
+  form.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !controller || event.isComposing) return;
+    event.preventDefault();
+    stopAnswer();
   });
 
   /** Show a saved conversation (Sohbetlerim) and make it the context of the next question. */

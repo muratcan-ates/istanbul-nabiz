@@ -67,7 +67,15 @@
   border-top: 1px solid var(--border);
 }
 .feedback-q, .feedback-note { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
-.feedback-vote[aria-pressed="true"] { border: 2px solid var(--border-strong); }
+.feedback-vote {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--link);
+}
+.feedback-vote:hover { background: var(--surface-sunken); color: var(--link); }
+.feedback-vote[aria-pressed="true"] { border: 2px solid var(--nd-line-strong); background: var(--primary-subtle); }
 .feedback-why { display: grid; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); }
 
 .quote-box { display: grid; gap: var(--space-3); margin-block: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-sunken); }

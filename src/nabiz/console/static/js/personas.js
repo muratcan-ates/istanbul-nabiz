@@ -163,7 +163,7 @@ function renderCall(plan) {
   } else document.documentElement.removeAttribute('data-persona-call');
 }
 function openButton() {
-  const host = document.querySelector('.topbar-inner');
+  const host = document.querySelector('#a11y-panel .a11y-quick') || document.querySelector('.topbar-inner');
   if (!host || state.active) return;
   let button = host.querySelector('#persona-open');
   if (pickerOpen) { button?.remove(); return; }
@@ -179,7 +179,7 @@ function showPicker(open, focusFirst = false) {
   if (focusFirst) picker.querySelector('.persona-btn[tabindex="0"]')?.focus();
 }
 function renderBadge() {
-  const host = document.querySelector('.topbar-inner');
+  const host = document.querySelector('#a11y-panel .a11y-quick') || document.querySelector('.topbar-inner');
   if (!host) return;
   host.querySelector('#persona-strip')?.remove();
   if (!state.active) { openButton(); return; }
@@ -262,7 +262,7 @@ function mountPersonas() {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = pickerMarkup();
   const section = wrapper.firstElementChild;
-  const home = document.querySelector('#home-screen');
+  const home = document.querySelector('#asistan') || document.querySelector('#home-screen');
   if (home) home.insertAdjacentElement('afterend', section);
   else document.querySelector('#main')?.prepend(section);
   picker = section; status = picker.querySelector('#persona-status'); document.body.appendChild(status);

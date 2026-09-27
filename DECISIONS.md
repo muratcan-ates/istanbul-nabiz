@@ -2456,3 +2456,62 @@ come from the cache, the robots snapshots and the code.
   is agent work for a later epic (open).
 - A map layer or a true "nearest" needs a coordinate source or a geocoding decision, with its licence
   (open: owner).
+
+## 58. Nabız Dili foundation: Fluent 2 derived tokens, İznik palette, button hierarchy (E43, 26 Sep)
+
+### Decision
+
+- Size, radius, spacing and motion values are taken from Fluent 2 (`@fluentui/tokens`, MIT, Copyright (c) Microsoft
+  Corporation) and vendored as CSS variables in `base.css`; they are derived from Fluent, not Fluent components. No
+  colour literal is added: colours come from the generated `tokens.css`.
+- Palette P1 "Boğaz", named after İznik tiles: İznik blue (cobalt) is the one accent, firuze (turquoise) the analogous
+  second tone, çini white the ground; the tulip "moment" colour is allowed in four named places only. Red means an
+  emergency and nothing else.
+- One corner system: buttons, inputs and chips 8 px, cards 12 px, the composer and dialogs 16 px. Buttons have six
+  states (rest, hover, active, focus, disabled, busy) and three weights: primary, secondary, quiet.
+- Motion answers to `prefers-reduced-motion`; translucent shells fall back to solid under reduced transparency,
+  more contrast and forced colours.
+
+### Consequences
+
+- The web page's JS/total payload target rises by 153 B, in the open, because the generated tokens file is shared
+  byte-for-byte with the console.
+- The screens themselves change in E44 (citizen), E45 (answer card) and E46 (console); E43 changes button states only.
+
+## 60. The citizen page: the composer is the hero (E44, 26 Sep)
+
+### Decision
+
+- The first screen has one primary action, "Sor": a composer card (question, microphone, send) under a short
+  headline, with three suggestion chips and "Daha fazla soru". The chat renders directly under the composer, not
+  thousands of pixels further down.
+- Tips, answer language and account sections sit in disclosures; the top bar keeps one "Erişilebilirlik" menu, the
+  language switch and the "Resmî İBB hizmeti değildir" notice, which stays visible at 375 px with no sideways scroll.
+- On phones, when the composer scrolls out of view, a single "Sor" pill appears at the bottom centre
+  (IntersectionObserver, no scroll listener) and brings the composer back; it hides while the composer is visible.
+
+### Consequences
+
+- Lower sections still carry several filled buttons (map, stops, example sign-ins); making them secondary is left
+  for a later pass. Scrolling the answer into view is E45's job.
+
+## 61. The answer card: one anatomy, the answer in view (E45, 26 Sep)
+
+### Decision
+
+- Every answer card follows one anatomy: author and source line, a freshness badge ("kayıtlı · saat"), the body,
+  then quiet actions. An ordinary answer card has no filled button; a refusal or unknown card has one primary action,
+  "153'e sor", beside "Bu nasıl bulundu?". The emergency card is unchanged.
+- The answer is brought into view when it arrives (instantly under reduced motion). "Durdur" appears only while an
+  answer is streaming; "Kopyala" copies the visible text with its source and freshness; at most two follow-up chips.
+- Service worker v13 carries `answer_actions.js`.
+
+## 62. The console: a decision desk first (E46, 26 Sep)
+
+### Decision
+
+- The signal inbox and the decision card are the first section. The card has one primary action, "Onayla", in a
+  sticky action bar (Onayla, Reddet, Düzenle, Ertele); "Reddet" is secondary and not red; reason codes open inline
+  only when a reason is needed. "Son karar" is renamed "Karar son tarihi".
+- A shift summary card (one number, three columns, effects, suggested action, source line) reads only the ledger.
+  System panels and the ledger drill sit in disclosures; the menu entry "NEXUS" reads "Karar motoru".

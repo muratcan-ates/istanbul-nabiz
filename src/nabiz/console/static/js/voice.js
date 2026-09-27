@@ -63,7 +63,7 @@ function mountVoice() {
   status.setAttribute('role', 'status');
 
   region.append(disclosure, optIn, status);
-  form.after(region);
+  const toolsSlot = document.getElementById('composer-tools'); if (toolsSlot) toolsSlot.append(region); else form.after(region);
 
   let talkButton = null;
   let preview = null;

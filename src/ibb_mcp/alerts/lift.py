@@ -213,6 +213,14 @@ def _matching_station_records(
     }
 
 
+
+def _collapse_repeats(lines: list[str], counted: str) -> list[str]:
+    """Say an identical record line once, with how many records it stands for, instead of repeating it."""
+    counts: dict[str, int] = {}
+    for line in lines:
+        counts[line] = counts.get(line, 0) + 1
+    return [line if n == 1 else f"{line} ({counted.format(n=n)}.)" for line, n in counts.items()]
+
 def _station_alert(
     name: str,
     records: tuple[EquipmentRecord, ...],
@@ -233,8 +241,8 @@ def _station_alert(
     else:
         severity = "warning"
 
-    message_tr = [record.describe() for record in records]
-    message_en = [_describe_en(record, name) for record in records]
+    message_tr = _collapse_repeats([record.describe() for record in records], "İBB kaydında {n} ayrı kayıt")
+    message_en = _collapse_repeats([_describe_en(record, name) for record in records], "{n} separate records in İBB's list")
     citations = [
         Citation(label=f"{name} {record.group or 'Ekipman'}", value=record.status_label, provenance=observation.provenance)
         for record in records
