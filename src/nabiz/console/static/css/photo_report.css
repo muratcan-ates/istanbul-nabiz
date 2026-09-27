@@ -1,0 +1,29 @@
+.photo-report-panel { margin-block: var(--space-4); }
+.photo-report-panel > summary h2 { margin: 0; font-size: var(--text-md); }
+.photo-report-content { display: grid; gap: var(--space-4); width: min(100%, 65ch); padding-block: var(--space-3); }
+.photo-report-form { display: grid; gap: var(--space-4); min-width: 0; }
+.photo-report-form .callout { max-width: 65ch; }
+.photo-report-fieldset { display: grid; gap: var(--space-2); min-width: 0; margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); }
+.photo-report-fieldset legend { padding-inline: var(--space-1); font-weight: var(--weight-semibold); }
+.photo-report-fieldset > div { display: flex; align-items: flex-start; gap: var(--space-2); }
+.photo-report-fieldset > .field { display: grid; }
+.photo-report-form .field { min-width: 0; }
+.photo-report-form .field > label { display: block; margin-block-end: var(--space-1); }
+.photo-report-form input[type="file"], .photo-report-form input[list], .photo-report-form select,
+.photo-report-form textarea { width: 100%; max-width: 100%; min-height: var(--tap); padding: var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); }
+.photo-report-form textarea { min-height: 6rem; resize: vertical; }
+.photo-report-form input[type="radio"], .photo-report-form input[type="checkbox"] { flex: none; width: 1.25rem; height: 1.25rem; margin: .15rem 0 0; accent-color: var(--nd-accent); }
+.photo-report-consent { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); align-items: start; }
+.photo-report-consent > label { overflow-wrap: anywhere; }
+.photo-report-preview { display: grid; gap: var(--space-2); min-width: 0; margin-block-start: var(--space-3); }
+.photo-report-preview img { display: block; width: auto; max-width: 100%; max-height: 60vh; object-fit: contain; }
+.photo-report-preview figcaption { color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.photo-report-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.photo-report-card { display: grid; gap: var(--space-2); min-width: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-raised); }
+.photo-report-card h3 { overflow-wrap: anywhere; }
+.photo-report-card details { margin-block-start: var(--space-2); }
+.photo-report-operator-note { padding-inline-start: var(--space-3); border-inline-start: 2px solid var(--border-strong); overflow-wrap: anywhere; }
+
+@media (max-width: 480px) {
+  .photo-report-actions > .btn { max-width: 100%; white-space: normal; }
+}

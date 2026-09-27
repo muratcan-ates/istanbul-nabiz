@@ -1,0 +1,28 @@
+#photo-reports { min-width: 0; margin-block: var(--space-6); }
+#photo-reports .photo-report-description { max-width: 65ch; }
+#photo-reports .photo-reports-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.4fr); gap: var(--space-4); align-items: start; min-width: 0; }
+#photo-reports .photo-report-list, #photo-reports-detail { min-width: 0; }
+#photo-reports .photo-report-item { width: 100%; min-width: 0; text-align: start; white-space: normal; overflow-wrap: anywhere; }
+#photo-reports .photo-report-item > * { display: block; }
+#photo-reports .photo-report-item .op-meta { margin-block-start: var(--space-1); }
+#photo-reports-detail:focus { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#photo-reports .photo-report-detail { min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-raised); }
+#photo-reports .photo-report-detail-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: var(--space-4); min-width: 0; }
+#photo-reports .photo-report-detail-grid > div { display: grid; gap: var(--space-3); min-width: 0; align-content: start; }
+#photo-reports .photo-report-figure { display: grid; gap: var(--space-2); min-width: 0; margin: 0; }
+#photo-reports .photo-report-figure img { display: block; width: auto; max-width: 100%; max-height: 60vh; object-fit: contain; }
+#photo-reports .photo-report-figure figcaption { color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+#photo-reports blockquote { min-width: 0; padding-inline-start: var(--space-3); border-inline-start: 2px solid var(--border-strong); overflow-wrap: anywhere; }
+#photo-reports .photo-report-history { display: grid; gap: var(--space-3); min-width: 0; padding-inline-start: 1.25rem; }
+#photo-reports .photo-report-history li { min-width: 0; overflow-wrap: anywhere; }
+#photo-reports .photo-report-decision { display: grid; gap: var(--space-2); min-width: 0; }
+#photo-reports .photo-report-decision > label { font-weight: var(--weight-semibold); }
+#photo-reports .photo-report-decision textarea { width: 100%; max-width: 100%; min-height: 6rem; padding: var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); }
+#photo-reports .photo-report-transition { display: grid; justify-items: start; gap: var(--space-1); }
+#photo-reports .photo-report-transition .btn { max-width: 100%; white-space: normal; text-align: start; }
+#photo-reports .photo-report-decision > details { margin-block-start: var(--space-2); }
+#photo-reports .photo-report-decision > details .photo-report-transition { margin-block: var(--space-2); }
+
+@media (max-width: 720px) {
+  #photo-reports .photo-reports-grid, #photo-reports .photo-report-detail-grid { grid-template-columns: minmax(0, 1fr); }
+}
