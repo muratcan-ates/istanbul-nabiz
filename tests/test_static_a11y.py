@@ -116,7 +116,7 @@ def test_feedback_markup_has_thumbs_with_labels_four_reasons_and_no_free_text(tm
         "reasons:feedback.PROBLEM_REASONS, labels:feedback.REASON_TR}));",
     )
     markup = values["markup"]
-    assert "Bu cevap işine yaradı mı?" in markup
+    assert "Bu cevap işinize yaradı mı?" in markup
     assert 'data-vote="up" aria-pressed="false" aria-label="Evet, işime yaradı"' in markup
     assert 'data-vote="down" aria-pressed="false" aria-label="Hayır, işime yaramadı"' in markup
     assert '<span aria-hidden="true">👍</span>' in markup and '<span aria-hidden="true">👎</span>' in markup

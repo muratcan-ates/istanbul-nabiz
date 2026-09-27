@@ -10,6 +10,7 @@ import { del, get, post } from './api.js';
 import { esc } from './format.js';
 import { readAccount } from './identity.js';
 import { onLang, t } from './i18n_text.js';
+import { revealTarget } from './workspace_nav.js';
 
 const FOLLOWS_KEY = 'nabiz.follows.v1';
 const SEEN_KEY = 'nabiz.follows.seen.v1';
@@ -253,7 +254,7 @@ function handleUnsubscribeLink() {
     await loadAccountFollows();
     await render();
   });
-  document.getElementById('takip').scrollIntoView();
+  revealTarget('takip', { block: 'start' });
 }
 
 async function mountFollow() {

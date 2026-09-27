@@ -1,0 +1,67 @@
+{
+  "repository": "https://github.com/microsoft/fluentui-system-icons",
+  "commit": "a563cf9166f4f91aa617557ed272612b7f0a2f72",
+  "style": "24 regular",
+  "icons": [
+    {
+      "id": "i-home",
+      "file": "ic_fluent_home_24_regular.svg",
+      "source": "assets/Home/SVG/ic_fluent_home_24_regular.svg",
+      "sha256": "f78ef623c07e6f40474ebd55b88ad29739d77bf9629e20ef462f4db86452acf0"
+    },
+    {
+      "id": "i-chat",
+      "file": "ic_fluent_chat_24_regular.svg",
+      "source": "assets/Chat/SVG/ic_fluent_chat_24_regular.svg",
+      "sha256": "d6d2f402b87a7f79600f397b49aa1a4c40920b8eae30091e8286a583a1a7c003"
+    },
+    {
+      "id": "i-city",
+      "file": "ic_fluent_city_24_regular.svg",
+      "source": "assets/City/SVG/ic_fluent_city_24_regular.svg",
+      "sha256": "1b8b832f86ab17b109c453035e7efb94b07fbd06fa016ad4a120d7663c4ef146"
+    },
+    {
+      "id": "i-chart",
+      "file": "ic_fluent_data_bar_vertical_24_regular.svg",
+      "source": "assets/Data Bar Vertical/SVG/ic_fluent_data_bar_vertical_24_regular.svg",
+      "sha256": "d4c616652864a0a2e65a9e580703beda732361e9cf2ea9b4a124ece096e0c1ff"
+    },
+    {
+      "id": "i-map",
+      "file": "ic_fluent_map_24_regular.svg",
+      "source": "assets/Map/SVG/ic_fluent_map_24_regular.svg",
+      "sha256": "ac43f3df51eed35c55bfeb65d505975ac39317b29581f967aa83dfba68c4f4a7"
+    },
+    {
+      "id": "i-transport",
+      "file": "ic_fluent_vehicle_bus_24_regular.svg",
+      "source": "assets/Vehicle Bus/SVG/ic_fluent_vehicle_bus_24_regular.svg",
+      "sha256": "d06bdeb6328308dc3aac7c648996bf0ce760e63a87c15eeec287790f9febab4c"
+    },
+    {
+      "id": "i-profile",
+      "file": "ic_fluent_person_24_regular.svg",
+      "source": "assets/Person/SVG/ic_fluent_person_24_regular.svg",
+      "sha256": "4f9862044a1afff206c2154d37d32ca652c4b9ba8beb615510316f473e4d862f"
+    },
+    {
+      "id": "i-bookmark",
+      "file": "ic_fluent_bookmark_24_regular.svg",
+      "source": "assets/Bookmark/SVG/ic_fluent_bookmark_24_regular.svg",
+      "sha256": "c8bd7afca76ca12a5a6e74e0d97a26bbceb9461f3ebbfdefe7ca2cdc0b4c4846"
+    },
+    {
+      "id": "i-memory",
+      "file": "ic_fluent_brain_24_regular.svg",
+      "source": "assets/Brain/SVG/ic_fluent_brain_24_regular.svg",
+      "sha256": "98a4e134b8c3886c3b5893b06ca3eb6f30336476c196f65310336a048d570600"
+    },
+    {
+      "id": "i-accessibility",
+      "file": "ic_fluent_accessibility_24_regular.svg",
+      "source": "assets/Accessibility/SVG/ic_fluent_accessibility_24_regular.svg",
+      "sha256": "18769859582187e3ab5efb7f48682f9339d2054fb7cb4e9b2d80d8e595f0a72d"
+    }
+  ]
+}

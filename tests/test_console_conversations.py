@@ -106,16 +106,22 @@ def test_panel_supports_keyboard_deletion_live_updates_and_focus() -> None:
     text = source(UI)
     assert "aria-live=\"polite\"" in text
     assert "event.key !== 'Delete'" in text
-    assert "statusElement.textContent = 'Sohbet silindi'" in text
+    assert "announce('deleted')" in text and "statusElement.textContent = convoText(key)" in text
     assert "buttons[Math.min(index, buttons.length - 1)]" in text
     assert "aria-expanded" in text and "panel.hidden = !panel.hidden" in text
 
 
 def test_conversation_rows_render_local_dates() -> None:
     text = source(UI)
-    assert "new Intl.DateTimeFormat('tr-TR'" in text
+    assert "new Intl.DateTimeFormat(currentLang() === 'en' ? 'en-GB' : 'tr-TR'" in text
     assert "day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'" in text
     assert "date.dateTime = conversation.updatedAt" in text
+
+
+def test_user_conversation_titles_are_excluded_from_generic_translation() -> None:
+    text = source(STATIC / "js" / "i18n.js")
+    excluded = re.search(r"const EXCLUDED = '([^']+)';", text)
+    assert excluded and ".convo-title" in excluded.group(1).split(", ")
 
 
 def test_component_styles_use_only_prefixed_classes_and_tokens() -> None:
@@ -188,5 +194,134 @@ assert.equal((await storageStatus()).persistent, false);
         capture_output=True,
         text=True,
         check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable; source contracts cover this module")
+def test_panel_language_changes_preserve_user_titles_focus_and_storage() -> None:
+    # Double only the DOM primitives; use the real panel, store, catalogues and language event handler.
+    script = r"""
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {mountConversations} from './src/nabiz/console/static/js/conversations-ui.js';
+import {clearAll, list, newConversation, saveTurn} from './src/nabiz/console/static/js/conversations.js';
+import {setCatalogs} from './src/nabiz/console/static/js/i18n_text.js';
+const catalogs = Object.fromEntries(['tr', 'en'].map(lang => [lang,
+  JSON.parse(readFileSync(`src/nabiz/console/static/i18n/${lang}.json`, 'utf8'))]));
+const confirmations = [], events = {}, opened = [], created = [];
+const doc = {activeElement: null, defaultView: {confirm: text => { confirmations.push(text); return true; }}};
+class Element {
+  constructor(tag) {
+    this.tagName = tag; this.ownerDocument = doc; this.children = []; this.parentElement = null;
+    this.dataset = {}; this.attributes = {}; this.listeners = {}; this.hidden = false; this._text = '';
+    this.className = ''; this.classList = {add: name => { this.className += ` ${name}`; }};
+  }
+  set textContent(value) { this._text = value; this.children = []; }
+  get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
+  setAttribute(key, value) {
+    this.attributes[key] = String(value);
+    if (key === 'class') this.className = value;
+    if (key === 'hidden') this.hidden = true;
+    if (key.startsWith('data-')) this.dataset[key.slice(5).replace(/-([a-z])/g, (_, char) => char.toUpperCase())] = value;
+  }
+  getAttribute(key) { return this.attributes[key] ?? null; }
+  matches(selector) {
+    if (selector.includes(',')) return selector.split(',').some(part => this.matches(part.trim()));
+    if (selector === '[data-convo-text]') return 'convoText' in this.dataset;
+    if (selector.startsWith('.')) return this.className.split(' ').includes(selector.slice(1));
+    return this.tagName === selector;
+  }
+  closest(selector) { return this.matches(selector) ? this : this.parentElement?.closest(selector) || null; }
+  contains(node) { return node === this || this.children.some(child => child.contains(node)); }
+  querySelectorAll(selector) {
+    return this.children.flatMap(child => [...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector)]);
+  }
+  querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+  append(...nodes) { nodes.forEach(node => { node.parentElement = this; this.children.push(node); }); }
+  appendChild(node) { this.append(node); return node; }
+  replaceChildren(...nodes) {
+    this.children.forEach(node => { node.parentElement = null; }); this.children = []; this.append(...nodes);
+  }
+  focus() { doc.activeElement = this; }
+  addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); }
+  async emit(type, target) { for (const listener of this.listeners[type] || []) await listener({type, target}); }
+  set innerHTML(html) {
+    this.replaceChildren(); const stack = [this]; let cursor = 0;
+    for (const match of html.matchAll(/<(\/?)(\w+)([^>]*)>/g)) {
+      stack.at(-1)._text += html.slice(cursor, match.index); cursor = match.index + match[0].length;
+      if (match[1]) { stack.pop(); continue; }
+      const element = new Element(match[2]);
+      for (const attribute of match[3].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) {
+        element.setAttribute(attribute[1], attribute[2] || '');
+      }
+      stack.at(-1).append(element); stack.push(element);
+    }
+  }
+}
+doc.createElement = tag => new Element(tag);
+globalThis.window = {addEventListener: (type, listener) => { (events[type] ||= []).push(listener); }};
+const DateFormatter = Intl.DateTimeFormat, locales = [];
+Intl.DateTimeFormat = function(locale, options) { locales.push(locale); return new DateFormatter(locale, options); };
+function language(lang) {
+  setCatalogs(lang, catalogs[lang], catalogs.tr);
+  for (const listener of events['nabiz:lang'] || []) listener({detail: {lang}});
+}
+await clearAll();
+const blank = await newConversation();
+const userTitle = await newConversation();
+await saveTurn(userTitle.id, {role: 'user', content: 'Sohbetlerim'});
+const userDefaultWords = await newConversation();
+await saveTurn(userDefaultWords.id, {role: 'user', content: 'Yeni sohbet'});
+language('tr');
+const root = new Element('aside');
+const ui = mountConversations({root, onOpen: convo => opened.push(convo.id), onNew: convo => created.push(convo.id)});
+await ui.ready;
+const row = id => root.querySelectorAll('.convo-item').find(item => item.dataset.id === id);
+const panel = root.querySelector('.convo-panel'), toggle = root.querySelector('.convo-toggle');
+await root.emit('click', toggle);
+const originalRows = [...root.querySelector('.convo-list').children];
+const userOpen = row(userTitle.id).querySelector('.convo-open'); userOpen.focus();
+const stored = JSON.stringify(await list());
+language('en');
+assert.equal(toggle.textContent, 'My conversations');
+assert.equal(root.getAttribute('aria-label'), 'My conversations');
+assert.equal(root.querySelector('.convo-new').textContent, 'New conversation');
+assert.equal(row(blank.id).querySelector('.convo-title').textContent, 'New conversation');
+assert.equal(row(userTitle.id).querySelector('.convo-title').textContent, 'Sohbetlerim');
+assert.equal(row(userDefaultWords.id).querySelector('.convo-title').textContent, 'Yeni sohbet');
+assert.equal(row(userTitle.id).querySelector('.convo-delete').getAttribute('aria-label'), 'Delete conversation: Sohbetlerim');
+assert.equal(panel.hidden, false); assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+assert.equal(doc.activeElement, userOpen);
+assert.ok(originalRows.every((item, index) => root.querySelector('.convo-list').children[index] === item));
+assert.equal(JSON.stringify(await list()), stored);
+const date = row(blank.id).querySelector('.convo-date');
+const dateOptions = {day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'};
+assert.equal(date.textContent, new DateFormatter('en-GB', dateOptions).format(new Date(date.dateTime)));
+await root.emit('click', userOpen); assert.deepEqual(opened, [userTitle.id]);
+language('tr');
+assert.equal(toggle.textContent, 'Sohbetlerim');
+assert.equal(row(blank.id).querySelector('.convo-title').textContent, 'Yeni sohbet');
+assert.equal(row(userTitle.id).querySelector('.convo-title').textContent, 'Sohbetlerim');
+assert.equal(date.textContent, new DateFormatter('tr-TR', dateOptions).format(new Date(date.dateTime)));
+assert.ok(locales.includes('en-GB') && locales.includes('tr-TR'));
+language('en');
+await root.emit('click', row(userDefaultWords.id).querySelector('.convo-delete'));
+assert.equal(confirmations.at(-1), 'Delete this conversation from this device?');
+assert.equal(root.querySelector('.convo-status').textContent, 'Conversation deleted');
+assert.equal((await list()).some(convo => convo.id === userDefaultWords.id), false);
+language('tr'); assert.equal(root.querySelector('.convo-status').textContent, 'Sohbet silindi');
+await root.emit('click', root.querySelector('.convo-new'));
+assert.equal(created.length, 1); assert.equal(root.querySelector('.convo-status').textContent, '');
+language('en');
+await root.emit('click', root.querySelector('.convo-clear'));
+assert.equal(confirmations.at(-1), 'Delete all conversations from this device?');
+assert.equal(root.querySelector('.convo-status').textContent, 'All conversations deleted');
+assert.deepEqual(await list(), []);
+assert.equal(doc.activeElement, root.querySelector('.convo-new'));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "--input-type=module", "-e", script],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False, timeout=60,
     )
     assert result.returncode == 0, result.stdout + result.stderr

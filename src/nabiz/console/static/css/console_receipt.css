@@ -1,11 +1,15 @@
 .receipt-strip {
   display: grid;
   gap: var(--space-2);
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-surface);
-  background: var(--surface-raised);
+  min-width: 0;
+  padding-block: var(--space-4);
+  border-block-start: 1px solid var(--border);
+  background: transparent;
 }
+
+.receipt-strip h2 { font-size: var(--text-lg); }
+.receipt-strip .section-note, .receipt-price { font-size: var(--text-sm); }
+.receipt-price:empty, .receipt-line:empty, #receipt-badge:empty, #receipt-message:empty { display: none; }
 
 .receipt-strip h2,
 .receipt-strip p {
@@ -36,6 +40,7 @@
 .receipt-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--text-sm);
 }
 
 .receipt-table th,

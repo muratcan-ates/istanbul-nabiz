@@ -88,6 +88,9 @@
           {
             "url": "https://example.ibb.gov.tr/metro/equipment",
             "title": "Metro ekipman kaydı örneği",
+            "source": "Metro ekipman kaydı örneği",
+            "mode": "recorded",
+            "observed_at": "2026-09-25T10:30:00+03:00",
             "quote": "Bu, yalnız arayüz örneği için yazılmış sahte kaynak metnidir.",
             "fetched_at": "2026-09-25T10:30:00+03:00",
             "source_updated_at": null,

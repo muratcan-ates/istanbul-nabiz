@@ -60,8 +60,9 @@ if (host) {
       render(last);
     })
     .catch(() => {
-      host.hidden = true;
-      if (more) more.hidden = true;
+      // Keep the working, local question suggestions when the catalogue is unavailable.
+      host.hidden = host.childElementCount === 0;
+      if (more) more.hidden = !moreHost?.childElementCount;
     });
 
   function askFromChip(event) {

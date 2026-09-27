@@ -7,11 +7,11 @@
  * scripts/design/verify_tokens.py for the contrast table).
  *
  * Colour theory, in five lines:
- *  - Base hue 260 (OKLCH): every İBB web blue measured sits at 259-263 degrees. The palette is
- *    inspired by İBB; the identity is Nabız's own: no logo, no emblem, no İBB red.
+ *  - Base hue 246 (OKLCH): restrained civic blue inspired by the İBB portal. These values are
+ *    Nabız's own: no logo, no emblem and no official partnership claim.
  *  - Ramps step evenly in OKLab lightness (0.075 per step), so 400 -> 500 looks as far as 700 -> 800.
- *  - Neutrals share hue 260 at low chroma: cool blue-ink greys, never warm.
- *  - ONE accent, analogous cyan at 222 degrees. It means "now / live / focus" and nothing else.
+ *  - Neutrals share hue 246 at very low chroma: near-white light surfaces and slate dark surfaces.
+ *  - Firuze at 210 degrees is an analogous supporting accent, 36 degrees from the blue.
  *    The separate tulip moment colour (h 352.8 light, 348.9 dark) is restricted to NABIZ-DILI.md §3.5.
  *  - Lightness encodes quantity (the pulse line's pen pressure); hue encodes only categories a
  *    source defines (Metro line colours, AQI bands). Warm hues are reserved for warn, bad and AQI.
@@ -21,7 +21,7 @@
  *  - Every value is sRGB hex, the value that was contrast-checked; its OKLCH source is in the
  *    annotated copy. This file is generated: edit the scripts, never this file by hand. It is
  *    exempt from the 350-line CSS cap and capped by bytes instead (check_web_budget.py).
- *  - Light is the default. Dark = deep navy, never black. No #000000 and no #ffffff anywhere.
+ *  - Light is the default. Dark = near-neutral slate. No #000000 and no #ffffff anywhere.
  *  - Role aliases below point at ramp steps; they add no new colour.
  */
 
@@ -29,91 +29,91 @@
   color-scheme: light;
 
   /* ---- ramps (theme-independent) ---- */
-  /* primary: İBB-blue family, h 260 */
-  --primary-50: #eef4fd; /* oklch(0.965 0.014 260) */
-  --primary-100: #d9e5f9; /* oklch(0.920 0.030 260) */
-  --primary-200: #b8cdf1; /* oklch(0.845 0.055 260) */
-  --primary-300: #95b5eb; /* oklch(0.770 0.085 260) */
-  --primary-400: #729de4; /* oklch(0.695 0.115 260) */
-  --primary-500: #5285d9; /* oklch(0.620 0.140 260) */
-  --primary-600: #386dc6; /* oklch(0.545 0.150 260) */
-  --primary-700: #2457aa; /* oklch(0.470 0.145 260) */
-  --primary-800: #16428b; /* oklch(0.395 0.130 260) */
-  --primary-900: #0b2f6a; /* oklch(0.320 0.110 260) */
-  --primary-950: #051e48; /* oklch(0.245 0.085 260) */
+  /* primary: civic blue, h 246 */
+  --primary-50: #eef4fa; /* oklch(0.965 0.010 246) */
+  --primary-100: #dae6f2; /* oklch(0.920 0.021 246) */
+  --primary-200: #b8cfe4; /* oklch(0.845 0.038 246) */
+  --primary-300: #96b9d8; /* oklch(0.770 0.059 246) */
+  --primary-400: #73a2cc; /* oklch(0.695 0.081 246) */
+  --primary-500: #518cbe; /* oklch(0.620 0.098 246) */
+  --primary-600: #3575a9; /* oklch(0.545 0.105 246) */
+  --primary-700: #205f90; /* oklch(0.470 0.102 246) */
+  --primary-800: #114a74; /* oklch(0.395 0.091 246) */
+  --primary-900: #063557; /* oklch(0.320 0.077 246) */
+  --primary-950: #02223b; /* oklch(0.245 0.059 246) */
 
-  /* accent: analogous cyan, h 222 */
-  --accent-50: #e7f7fc; /* oklch(0.965 0.018 222) */
-  --accent-100: #cceaf6; /* oklch(0.920 0.035 222) */
-  --accent-200: #a1d6e8; /* oklch(0.845 0.060 222) */
-  --accent-300: #74c1db; /* oklch(0.770 0.085 222) */
-  --accent-400: #4aabc9; /* oklch(0.695 0.100 222) */
-  --accent-500: #2e93b1; /* oklch(0.620 0.100 222) */
-  --accent-600: #227b96; /* oklch(0.545 0.090 222) */
-  --accent-700: #1c6479; /* oklch(0.470 0.076 222) */
-  --accent-800: #114e60; /* oklch(0.395 0.066 222) */
-  --accent-900: #053947; /* oklch(0.320 0.056 222) */
-  --accent-950: #002530; /* oklch(0.245 0.045 222) (gamut-clipped) */
+  /* accent: analogous firuze, h 210 */
+  --accent-50: #e9f6f9; /* oklch(0.965 0.014 210) */
+  --accent-100: #d1eaef; /* oklch(0.920 0.027 210) */
+  --accent-200: #aad5dd; /* oklch(0.845 0.047 210) */
+  --accent-300: #81c0cc; /* oklch(0.770 0.066 210) */
+  --accent-400: #5eaab8; /* oklch(0.695 0.078 210) */
+  --accent-500: #4693a0; /* oklch(0.620 0.078 210) */
+  --accent-600: #387b87; /* oklch(0.545 0.070 210) */
+  --accent-700: #2d646d; /* oklch(0.470 0.059 210) */
+  --accent-800: #204e56; /* oklch(0.395 0.051 210) */
+  --accent-900: #13393f; /* oklch(0.320 0.044 210) */
+  --accent-950: #07252a; /* oklch(0.245 0.036 210) */
 
-  /* neutral: cool slate, h 260, low chroma */
-  --neutral-0: #fbfcfe; /* oklch(0.992 0.003 260) */
-  --neutral-50: #f4f7fc; /* oklch(0.975 0.007 260) */
-  --neutral-100: #ebeff5; /* oklch(0.950 0.010 260) */
-  --neutral-200: #dce2eb; /* oklch(0.910 0.014 260) */
-  --neutral-300: #c7ceda; /* oklch(0.850 0.018 260) */
-  --neutral-400: #9fa8b7; /* oklch(0.730 0.024 260) */
-  --neutral-500: #7c8797; /* oklch(0.620 0.028 260) */
-  --neutral-600: #606b7d; /* oklch(0.525 0.031 260) */
-  --neutral-700: #495467; /* oklch(0.445 0.034 260) */
-  --neutral-800: #323e50; /* oklch(0.360 0.036 260) */
-  --neutral-900: #1e293c; /* oklch(0.280 0.038 260) */
-  --neutral-950: #131e31; /* oklch(0.235 0.040 260) */
-  --neutral-975: #0b1628; /* oklch(0.200 0.040 260) */
-  --neutral-1000: #060f20; /* oklch(0.170 0.038 260) */
+  /* neutral: near-neutral slate, h 246, low chroma */
+  --neutral-0: #fcfcfd; /* oklch(0.992 0.002 246) */
+  --neutral-50: #f6f7f8; /* oklch(0.975 0.002 246) */
+  --neutral-100: #edeff0; /* oklch(0.950 0.003 246) */
+  --neutral-200: #dfe1e4; /* oklch(0.910 0.004 246) */
+  --neutral-300: #cbced1; /* oklch(0.850 0.005 246) */
+  --neutral-400: #a5a8ab; /* oklch(0.730 0.006 246) */
+  --neutral-500: #82878b; /* oklch(0.620 0.008 246) */
+  --neutral-600: #666b6f; /* oklch(0.525 0.009 246) */
+  --neutral-700: #505559; /* oklch(0.445 0.010 246) */
+  --neutral-800: #393e42; /* oklch(0.360 0.010 246) */
+  --neutral-900: #25292d; /* oklch(0.280 0.009 246) */
+  --neutral-950: #1b1f22; /* oklch(0.235 0.008 246) */
+  --neutral-975: #141619; /* oklch(0.200 0.007 246) */
+  --neutral-1000: #0d1012; /* oklch(0.170 0.006 246) */
 
   /* Metro İstanbul line colours, official values from metro.istanbul (read 2026-09-23).
      Fixed meaning: never tuned. -ink is the label colour with the higher contrast; lines whose
      best ink is under 4.5:1 must use the large-text badge (>= 18.66px bold) or the outline badge. */
   --line-M1A: #ee3124;
-  --line-M1A-ink: #060f20; /* 4.65:1 */
+  --line-M1A-ink: #0d1012; /* 4.64:1 */
   --line-M1B: #ee3124;
-  --line-M1B-ink: #060f20; /* 4.65:1 */
+  --line-M1B-ink: #0d1012; /* 4.64:1 */
   --line-M2: #009944;
-  --line-M2-ink: #060f20; /* 5.14:1 */
+  --line-M2-ink: #0d1012; /* 5.13:1 */
   --line-M3: #00a8e1;
-  --line-M3-ink: #060f20; /* 7.01:1 */
+  --line-M3-ink: #0d1012; /* 6.99:1 */
   --line-M4: #e91e76;
-  --line-M4-ink: #060f20; /* 4.48:1; large-text or outline badge only */
+  --line-M4-ink: #0d1012; /* 4.47:1; large-text or outline badge only */
   --line-M5: #683064;
-  --line-M5-ink: #fbfcfe; /* 9.32:1 */
+  --line-M5-ink: #fcfcfd; /* 9.33:1 */
   --line-M6: #caa977;
-  --line-M6-ink: #060f20; /* 8.62:1 */
+  --line-M6-ink: #0d1012; /* 8.59:1 */
   --line-M7: #f89aba;
-  --line-M7-ink: #060f20; /* 9.41:1 */
+  --line-M7-ink: #0d1012; /* 9.38:1 */
   --line-M8: #447abe;
-  --line-M8-ink: #060f20; /* 4.35:1; large-text or outline badge only */
+  --line-M8-ink: #0d1012; /* 4.34:1; large-text or outline badge only */
   --line-M9: #f0e514;
-  --line-M9-ink: #060f20; /* 14.52:1 */
+  --line-M9-ink: #0d1012; /* 14.48:1 */
   --line-T1: #004f7d;
-  --line-T1-ink: #fbfcfe; /* 8.47:1 */
+  --line-T1-ink: #fcfcfd; /* 8.48:1 */
   --line-T3: #a86528;
-  --line-T3-ink: #fbfcfe; /* 4.49:1; large-text or outline badge only */
+  --line-T3-ink: #fcfcfd; /* 4.49:1; large-text or outline badge only */
   --line-T4: #f47e46;
-  --line-T4-ink: #060f20; /* 7.22:1 */
+  --line-T4-ink: #0d1012; /* 7.20:1 */
   --line-T5: #7c72b3;
-  --line-T5-ink: #060f20; /* 4.48:1; large-text or outline badge only */
+  --line-T5-ink: #0d1012; /* 4.47:1; large-text or outline badge only */
   --line-TF1: #68bcb0;
-  --line-TF1-ink: #060f20; /* 8.58:1 */
+  --line-TF1-ink: #0d1012; /* 8.55:1 */
   --line-TF2: #68bcb0;
-  --line-TF2-ink: #060f20; /* 8.58:1 */
+  --line-TF2-ink: #0d1012; /* 8.55:1 */
   --line-F1: #7c7358;
-  --line-F1-ink: #fbfcfe; /* 4.60:1 */
+  --line-F1-ink: #fcfcfd; /* 4.60:1 */
   --line-F4: #7c7358;
-  --line-F4-ink: #fbfcfe; /* 4.60:1 */
+  --line-F4-ink: #fcfcfd; /* 4.60:1 */
   --line-M11: #a1609b; /* approximate: community value (Wikipedia), not published by Metro İstanbul */
-  --line-M11-ink: #fbfcfe; /* 4.39:1; large-text or outline badge only */
-  --line-unknown: #606b7d;
-  --line-unknown-ink: #fbfcfe;
+  --line-M11-ink: #fcfcfd; /* 4.39:1; large-text or outline badge only */
+  --line-unknown: #666b6f;
+  --line-unknown-ink: #fcfcfd;
 
   /* ---- semantic tokens: light theme (default) ---- */
   /* surfaces */
@@ -167,22 +167,22 @@
      marker); -ink = label on the fill; -text = the band as text, and the 1px edge a fill needs
      when it is under 3:1 against the surface. */
   --aqi-good: #54b08d; /* İyi, oklch(0.691 0.103 166.1) */
-  --aqi-good-ink: #060f20;
+  --aqi-good-ink: #0d1012;
   --aqi-good-text: #127b5b;
   --aqi-moderate: #f3dc50; /* Orta, oklch(0.889 0.157 99.8) */
-  --aqi-moderate-ink: #060f20;
+  --aqi-moderate-ink: #0d1012;
   --aqi-moderate-text: #7b6c00;
   --aqi-unhealthy_sensitive: #e47534; /* Hassas gruplar için sağlıksız, oklch(0.680 0.158 47.8) */
-  --aqi-unhealthy_sensitive-ink: #060f20;
+  --aqi-unhealthy_sensitive-ink: #0d1012;
   --aqi-unhealthy_sensitive-text: #b24e00;
   --aqi-unhealthy: #ac2728; /* Sağlıksız, oklch(0.490 0.169 25.8) */
-  --aqi-unhealthy-ink: #fbfcfe;
+  --aqi-unhealthy-ink: #fcfcfd;
   --aqi-unhealthy-text: #ac2728;
   --aqi-very_unhealthy: #78308c; /* Kötü, oklch(0.451 0.157 318.2) */
-  --aqi-very_unhealthy-ink: #fbfcfe;
+  --aqi-very_unhealthy-ink: #fcfcfd;
   --aqi-very_unhealthy-text: #78308c;
   --aqi-hazardous: #591020; /* Tehlikeli, oklch(0.309 0.104 13.7) */
-  --aqi-hazardous-ink: #fbfcfe;
+  --aqi-hazardous-ink: #fcfcfd;
   --aqi-hazardous-text: #591020;
 
   /* map marker kinds: a glyph carries the kind; colour is a second cue, not the only one.
@@ -196,13 +196,13 @@
   --marker-ring: var(--neutral-0);
 
   /* elevation: shadows tinted with the navy ink, never pure black */
-  --shadow-1: 0 1px 2px rgb(19 30 49 / .06);
-  --shadow-2: 0 1px 2px rgb(19 30 49 / .06), 0 8px 24px -12px rgb(19 30 49 / .20);
-  --shadow-3: 0 2px 6px rgb(19 30 49 / .08), 0 24px 48px -20px rgb(19 30 49 / .30);
+  --shadow-1: 0 1px 2px rgb(27 31 34 / .06);
+  --shadow-2: 0 1px 2px rgb(27 31 34 / .06), 0 8px 24px -12px rgb(27 31 34 / .20);
+  --shadow-3: 0 2px 6px rgb(27 31 34 / .08), 0 24px 48px -20px rgb(27 31 34 / .30);
 
   /* ==== Final spec additions: non-colour tokens (theme-independent) ==== */
-  /* type: Source Sans 3, self-hosted subset (OFL-1.1); 8 sizes, 3 weights */
-  --font-sans: "Nabız Sans", "Nabız Sans Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* type: platform-native system face; 8 sizes, 3 weights; no font request for the interface */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --text-xs: .75rem;     /* 12: chart axis labels and legends only, never sentences */
   --text-sm: .875rem;    /* 14: stamps, meta, helper, table cells; the smallest size a data age may use */
   --text-md: 1rem;       /* 16: body, input text (16 avoids iOS zoom) */
@@ -326,22 +326,22 @@
        marker); -ink = label on the fill; -text = the band as text, and the 1px edge a fill needs
        when it is under 3:1 against the surface. */
     --aqi-good: #48d18e; /* İyi, oklch(0.770 0.153 158.0) */
-    --aqi-good-ink: #060f20;
+    --aqi-good-ink: #0d1012;
     --aqi-good-text: #48d18e;
     --aqi-moderate: #f4e653; /* Orta, oklch(0.910 0.163 103.9) */
-    --aqi-moderate-ink: #060f20;
+    --aqi-moderate-ink: #0d1012;
     --aqi-moderate-text: #f4e653;
     --aqi-unhealthy_sensitive: #ef8439; /* Hassas gruplar için sağlıksız, oklch(0.719 0.157 52.1) */
-    --aqi-unhealthy_sensitive-ink: #060f20;
+    --aqi-unhealthy_sensitive-ink: #0d1012;
     --aqi-unhealthy_sensitive-text: #ef8439;
     --aqi-unhealthy: #d33b39; /* Sağlıksız, oklch(0.580 0.189 26.0) */
-    --aqi-unhealthy-ink: #fbfcfe;
+    --aqi-unhealthy-ink: #fcfcfd;
     --aqi-unhealthy-text: #e9504b;
     --aqi-very_unhealthy: #a145bb; /* Kötü, oklch(0.560 0.191 318.1) */
-    --aqi-very_unhealthy-ink: #fbfcfe;
-    --aqi-very_unhealthy-text: #ba5fd5;
+    --aqi-very_unhealthy-ink: #fcfcfd;
+    --aqi-very_unhealthy-text: #bc61d7;
     --aqi-hazardous: #92304a; /* Tehlikeli, oklch(0.460 0.133 7.9) */
-    --aqi-hazardous-ink: #fbfcfe;
+    --aqi-hazardous-ink: #fcfcfd;
     --aqi-hazardous-text: #cd657b;
 
     /* map marker kinds: a glyph carries the kind; colour is a second cue, not the only one.
@@ -355,9 +355,9 @@
     --marker-ring: var(--neutral-0);
 
     /* elevation: shadows tinted with the navy ink, never pure black */
-    --shadow-1: 0 1px 2px rgb(2 5 17 / .55);
-    --shadow-2: 0 1px 2px rgb(2 5 17 / .55), 0 10px 26px -12px rgb(2 5 17 / .75);
-    --shadow-3: 0 2px 8px rgb(2 5 17 / .60), 0 24px 50px -22px rgb(2 5 17 / .85);
+    --shadow-1: 0 1px 2px rgb(0 6 16 / .55);
+    --shadow-2: 0 1px 2px rgb(0 6 16 / .55), 0 10px 26px -12px rgb(0 6 16 / .75);
+    --shadow-3: 0 2px 8px rgb(0 6 16 / .60), 0 24px 50px -22px rgb(0 6 16 / .85);
 
     /* ==== Final spec additions: dark role aliases (same list for both dark blocks) ==== */
     --pulse-ink-low: var(--primary-300); /* pen ink at index 1 */
@@ -425,22 +425,22 @@
      marker); -ink = label on the fill; -text = the band as text, and the 1px edge a fill needs
      when it is under 3:1 against the surface. */
   --aqi-good: #48d18e; /* İyi, oklch(0.770 0.153 158.0) */
-  --aqi-good-ink: #060f20;
+  --aqi-good-ink: #0d1012;
   --aqi-good-text: #48d18e;
   --aqi-moderate: #f4e653; /* Orta, oklch(0.910 0.163 103.9) */
-  --aqi-moderate-ink: #060f20;
+  --aqi-moderate-ink: #0d1012;
   --aqi-moderate-text: #f4e653;
   --aqi-unhealthy_sensitive: #ef8439; /* Hassas gruplar için sağlıksız, oklch(0.719 0.157 52.1) */
-  --aqi-unhealthy_sensitive-ink: #060f20;
+  --aqi-unhealthy_sensitive-ink: #0d1012;
   --aqi-unhealthy_sensitive-text: #ef8439;
   --aqi-unhealthy: #d33b39; /* Sağlıksız, oklch(0.580 0.189 26.0) */
-  --aqi-unhealthy-ink: #fbfcfe;
+  --aqi-unhealthy-ink: #fcfcfd;
   --aqi-unhealthy-text: #e9504b;
   --aqi-very_unhealthy: #a145bb; /* Kötü, oklch(0.560 0.191 318.1) */
-  --aqi-very_unhealthy-ink: #fbfcfe;
-  --aqi-very_unhealthy-text: #ba5fd5;
+  --aqi-very_unhealthy-ink: #fcfcfd;
+  --aqi-very_unhealthy-text: #bc61d7;
   --aqi-hazardous: #92304a; /* Tehlikeli, oklch(0.460 0.133 7.9) */
-  --aqi-hazardous-ink: #fbfcfe;
+  --aqi-hazardous-ink: #fcfcfd;
   --aqi-hazardous-text: #cd657b;
 
   /* map marker kinds: a glyph carries the kind; colour is a second cue, not the only one.
@@ -454,9 +454,9 @@
   --marker-ring: var(--neutral-0);
 
   /* elevation: shadows tinted with the navy ink, never pure black */
-  --shadow-1: 0 1px 2px rgb(2 5 17 / .55);
-  --shadow-2: 0 1px 2px rgb(2 5 17 / .55), 0 10px 26px -12px rgb(2 5 17 / .75);
-  --shadow-3: 0 2px 8px rgb(2 5 17 / .60), 0 24px 50px -22px rgb(2 5 17 / .85);
+  --shadow-1: 0 1px 2px rgb(0 6 16 / .55);
+  --shadow-2: 0 1px 2px rgb(0 6 16 / .55), 0 10px 26px -12px rgb(0 6 16 / .75);
+  --shadow-3: 0 2px 8px rgb(0 6 16 / .60), 0 24px 50px -22px rgb(0 6 16 / .85);
 
   /* ==== Final spec additions: dark role aliases (same list for both dark blocks) ==== */
   --pulse-ink-low: var(--primary-300); /* pen ink at index 1 */

@@ -5,85 +5,85 @@
 :root {
   color-scheme: light;
 
-  --primary-50: #eef4fd;
-  --primary-100: #d9e5f9;
-  --primary-200: #b8cdf1;
-  --primary-300: #95b5eb;
-  --primary-400: #729de4;
-  --primary-500: #5285d9;
-  --primary-600: #386dc6;
-  --primary-700: #2457aa;
-  --primary-800: #16428b;
-  --primary-900: #0b2f6a;
-  --primary-950: #051e48;
+  --primary-50: #eef4fa;
+  --primary-100: #dae6f2;
+  --primary-200: #b8cfe4;
+  --primary-300: #96b9d8;
+  --primary-400: #73a2cc;
+  --primary-500: #518cbe;
+  --primary-600: #3575a9;
+  --primary-700: #205f90;
+  --primary-800: #114a74;
+  --primary-900: #063557;
+  --primary-950: #02223b;
 
-  --accent-50: #e7f7fc;
-  --accent-100: #cceaf6;
-  --accent-200: #a1d6e8;
-  --accent-300: #74c1db;
-  --accent-400: #4aabc9;
-  --accent-500: #2e93b1;
-  --accent-600: #227b96;
-  --accent-700: #1c6479;
-  --accent-800: #114e60;
-  --accent-900: #053947;
-  --accent-950: #002530;
+  --accent-50: #e9f6f9;
+  --accent-100: #d1eaef;
+  --accent-200: #aad5dd;
+  --accent-300: #81c0cc;
+  --accent-400: #5eaab8;
+  --accent-500: #4693a0;
+  --accent-600: #387b87;
+  --accent-700: #2d646d;
+  --accent-800: #204e56;
+  --accent-900: #13393f;
+  --accent-950: #07252a;
 
-  --neutral-0: #fbfcfe;
-  --neutral-50: #f4f7fc;
-  --neutral-100: #ebeff5;
-  --neutral-200: #dce2eb;
-  --neutral-300: #c7ceda;
-  --neutral-400: #9fa8b7;
-  --neutral-500: #7c8797;
-  --neutral-600: #606b7d;
-  --neutral-700: #495467;
-  --neutral-800: #323e50;
-  --neutral-900: #1e293c;
-  --neutral-950: #131e31;
-  --neutral-975: #0b1628;
-  --neutral-1000: #060f20;
+  --neutral-0: #fcfcfd;
+  --neutral-50: #f6f7f8;
+  --neutral-100: #edeff0;
+  --neutral-200: #dfe1e4;
+  --neutral-300: #cbced1;
+  --neutral-400: #a5a8ab;
+  --neutral-500: #82878b;
+  --neutral-600: #666b6f;
+  --neutral-700: #505559;
+  --neutral-800: #393e42;
+  --neutral-900: #25292d;
+  --neutral-950: #1b1f22;
+  --neutral-975: #141619;
+  --neutral-1000: #0d1012;
 
   --line-M1A: #ee3124;
-  --line-M1A-ink: #060f20;
+  --line-M1A-ink: #0d1012;
   --line-M1B: #ee3124;
-  --line-M1B-ink: #060f20;
+  --line-M1B-ink: #0d1012;
   --line-M2: #009944;
-  --line-M2-ink: #060f20;
+  --line-M2-ink: #0d1012;
   --line-M3: #00a8e1;
-  --line-M3-ink: #060f20;
+  --line-M3-ink: #0d1012;
   --line-M4: #e91e76;
-  --line-M4-ink: #060f20;
+  --line-M4-ink: #0d1012;
   --line-M5: #683064;
-  --line-M5-ink: #fbfcfe;
+  --line-M5-ink: #fcfcfd;
   --line-M6: #caa977;
-  --line-M6-ink: #060f20;
+  --line-M6-ink: #0d1012;
   --line-M7: #f89aba;
-  --line-M7-ink: #060f20;
+  --line-M7-ink: #0d1012;
   --line-M8: #447abe;
-  --line-M8-ink: #060f20;
+  --line-M8-ink: #0d1012;
   --line-M9: #f0e514;
-  --line-M9-ink: #060f20;
+  --line-M9-ink: #0d1012;
   --line-T1: #004f7d;
-  --line-T1-ink: #fbfcfe;
+  --line-T1-ink: #fcfcfd;
   --line-T3: #a86528;
-  --line-T3-ink: #fbfcfe;
+  --line-T3-ink: #fcfcfd;
   --line-T4: #f47e46;
-  --line-T4-ink: #060f20;
+  --line-T4-ink: #0d1012;
   --line-T5: #7c72b3;
-  --line-T5-ink: #060f20;
+  --line-T5-ink: #0d1012;
   --line-TF1: #68bcb0;
-  --line-TF1-ink: #060f20;
+  --line-TF1-ink: #0d1012;
   --line-TF2: #68bcb0;
-  --line-TF2-ink: #060f20;
+  --line-TF2-ink: #0d1012;
   --line-F1: #7c7358;
-  --line-F1-ink: #fbfcfe;
+  --line-F1-ink: #fcfcfd;
   --line-F4: #7c7358;
-  --line-F4-ink: #fbfcfe;
+  --line-F4-ink: #fcfcfd;
   --line-M11: #a1609b;
-  --line-M11-ink: #fbfcfe;
-  --line-unknown: #606b7d;
-  --line-unknown-ink: #fbfcfe;
+  --line-M11-ink: #fcfcfd;
+  --line-unknown: #666b6f;
+  --line-unknown-ink: #fcfcfd;
 
   --surface: var(--neutral-50);
   --surface-raised: var(--neutral-0);
@@ -126,22 +126,22 @@
   --info-wash: var(--primary-50);
 
   --aqi-good: #54b08d;
-  --aqi-good-ink: #060f20;
+  --aqi-good-ink: #0d1012;
   --aqi-good-text: #127b5b;
   --aqi-moderate: #f3dc50;
-  --aqi-moderate-ink: #060f20;
+  --aqi-moderate-ink: #0d1012;
   --aqi-moderate-text: #7b6c00;
   --aqi-unhealthy_sensitive: #e47534;
-  --aqi-unhealthy_sensitive-ink: #060f20;
+  --aqi-unhealthy_sensitive-ink: #0d1012;
   --aqi-unhealthy_sensitive-text: #b24e00;
   --aqi-unhealthy: #ac2728;
-  --aqi-unhealthy-ink: #fbfcfe;
+  --aqi-unhealthy-ink: #fcfcfd;
   --aqi-unhealthy-text: #ac2728;
   --aqi-very_unhealthy: #78308c;
-  --aqi-very_unhealthy-ink: #fbfcfe;
+  --aqi-very_unhealthy-ink: #fcfcfd;
   --aqi-very_unhealthy-text: #78308c;
   --aqi-hazardous: #591020;
-  --aqi-hazardous-ink: #fbfcfe;
+  --aqi-hazardous-ink: #fcfcfd;
   --aqi-hazardous-text: #591020;
 
   --kind-park: var(--primary-400);
@@ -152,12 +152,12 @@
   --kind-selected: var(--focus-ring);
   --marker-ring: var(--neutral-0);
 
-  --shadow-1: 0 1px 2px rgb(19 30 49 / .06);
-  --shadow-2: 0 1px 2px rgb(19 30 49 / .06), 0 8px 24px -12px rgb(19 30 49 / .20);
-  --shadow-3: 0 2px 6px rgb(19 30 49 / .08), 0 24px 48px -20px rgb(19 30 49 / .30);
+  --shadow-1: 0 1px 2px rgb(27 31 34 / .06);
+  --shadow-2: 0 1px 2px rgb(27 31 34 / .06), 0 8px 24px -12px rgb(27 31 34 / .20);
+  --shadow-3: 0 2px 6px rgb(27 31 34 / .08), 0 24px 48px -20px rgb(27 31 34 / .30);
 
   /* ==== Final spec additions: non-colour tokens (theme-independent) ==== */
-  --font-sans: "Nabız Sans", "Nabız Sans Fallback", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --text-xs: .75rem;
   --text-sm: .875rem;
   --text-md: 1rem;
@@ -262,22 +262,22 @@
     --info-wash: var(--primary-950);
 
     --aqi-good: #48d18e;
-    --aqi-good-ink: #060f20;
+    --aqi-good-ink: #0d1012;
     --aqi-good-text: #48d18e;
     --aqi-moderate: #f4e653;
-    --aqi-moderate-ink: #060f20;
+    --aqi-moderate-ink: #0d1012;
     --aqi-moderate-text: #f4e653;
     --aqi-unhealthy_sensitive: #ef8439;
-    --aqi-unhealthy_sensitive-ink: #060f20;
+    --aqi-unhealthy_sensitive-ink: #0d1012;
     --aqi-unhealthy_sensitive-text: #ef8439;
     --aqi-unhealthy: #d33b39;
-    --aqi-unhealthy-ink: #fbfcfe;
+    --aqi-unhealthy-ink: #fcfcfd;
     --aqi-unhealthy-text: #e9504b;
     --aqi-very_unhealthy: #a145bb;
-    --aqi-very_unhealthy-ink: #fbfcfe;
-    --aqi-very_unhealthy-text: #ba5fd5;
+    --aqi-very_unhealthy-ink: #fcfcfd;
+    --aqi-very_unhealthy-text: #bc61d7;
     --aqi-hazardous: #92304a;
-    --aqi-hazardous-ink: #fbfcfe;
+    --aqi-hazardous-ink: #fcfcfd;
     --aqi-hazardous-text: #cd657b;
 
     --kind-park: var(--primary-400);
@@ -288,9 +288,9 @@
     --kind-selected: var(--focus-ring);
     --marker-ring: var(--neutral-0);
 
-    --shadow-1: 0 1px 2px rgb(2 5 17 / .55);
-    --shadow-2: 0 1px 2px rgb(2 5 17 / .55), 0 10px 26px -12px rgb(2 5 17 / .75);
-    --shadow-3: 0 2px 8px rgb(2 5 17 / .60), 0 24px 50px -22px rgb(2 5 17 / .85);
+    --shadow-1: 0 1px 2px rgb(0 6 16 / .55);
+    --shadow-2: 0 1px 2px rgb(0 6 16 / .55), 0 10px 26px -12px rgb(0 6 16 / .75);
+    --shadow-3: 0 2px 8px rgb(0 6 16 / .60), 0 24px 50px -22px rgb(0 6 16 / .85);
 
     /* ==== Final spec additions: dark role aliases (same list for both dark blocks) ==== */
     --pulse-ink-low: var(--primary-300);
@@ -348,22 +348,22 @@
   --info-wash: var(--primary-950);
 
   --aqi-good: #48d18e;
-  --aqi-good-ink: #060f20;
+  --aqi-good-ink: #0d1012;
   --aqi-good-text: #48d18e;
   --aqi-moderate: #f4e653;
-  --aqi-moderate-ink: #060f20;
+  --aqi-moderate-ink: #0d1012;
   --aqi-moderate-text: #f4e653;
   --aqi-unhealthy_sensitive: #ef8439;
-  --aqi-unhealthy_sensitive-ink: #060f20;
+  --aqi-unhealthy_sensitive-ink: #0d1012;
   --aqi-unhealthy_sensitive-text: #ef8439;
   --aqi-unhealthy: #d33b39;
-  --aqi-unhealthy-ink: #fbfcfe;
+  --aqi-unhealthy-ink: #fcfcfd;
   --aqi-unhealthy-text: #e9504b;
   --aqi-very_unhealthy: #a145bb;
-  --aqi-very_unhealthy-ink: #fbfcfe;
-  --aqi-very_unhealthy-text: #ba5fd5;
+  --aqi-very_unhealthy-ink: #fcfcfd;
+  --aqi-very_unhealthy-text: #bc61d7;
   --aqi-hazardous: #92304a;
-  --aqi-hazardous-ink: #fbfcfe;
+  --aqi-hazardous-ink: #fcfcfd;
   --aqi-hazardous-text: #cd657b;
 
   --kind-park: var(--primary-400);
@@ -374,9 +374,9 @@
   --kind-selected: var(--focus-ring);
   --marker-ring: var(--neutral-0);
 
-  --shadow-1: 0 1px 2px rgb(2 5 17 / .55);
-  --shadow-2: 0 1px 2px rgb(2 5 17 / .55), 0 10px 26px -12px rgb(2 5 17 / .75);
-  --shadow-3: 0 2px 8px rgb(2 5 17 / .60), 0 24px 50px -22px rgb(2 5 17 / .85);
+  --shadow-1: 0 1px 2px rgb(0 6 16 / .55);
+  --shadow-2: 0 1px 2px rgb(0 6 16 / .55), 0 10px 26px -12px rgb(0 6 16 / .75);
+  --shadow-3: 0 2px 8px rgb(0 6 16 / .60), 0 24px 50px -22px rgb(0 6 16 / .85);
 
   /* ==== Final spec additions: dark role aliases (same list for both dark blocks) ==== */
   --pulse-ink-low: var(--primary-300);

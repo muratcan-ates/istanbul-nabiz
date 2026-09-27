@@ -3,7 +3,7 @@ import { PREFS_KEY, applyPrefs, parsePrefs, readPrefs, savePrefs } from './a11y.
 import { NEEDS, NEED_KEYS, answerLanguage, readProfile, setAnswerLanguage, writeProfile } from './profile.js';
 import { esc } from './format.js';
 import { icon } from './icons.js';
-
+import { revealTarget } from './workspace_nav.js';
 const PERSONA_KEY = 'nabiz.persona.v1';
 const PERSONA_ORDER = Object.freeze(['gorme', 'isitme', 'hareket', 'yasli', 'ilk_kez', 'yabanci', 'okuma']);
 const PRESETS = Object.freeze({
@@ -176,7 +176,10 @@ function openButton() {
 }
 function showPicker(open, focusFirst = false) {
   pickerOpen = open; picker.hidden = !open; openButton();
-  if (focusFirst) picker.querySelector('.persona-btn[tabindex="0"]')?.focus();
+  if (focusFirst) {
+    revealTarget('persona-picker');
+    picker.querySelector('.persona-btn[tabindex="0"]')?.focus();
+  }
 }
 function renderBadge() {
   const host = document.querySelector('#a11y-panel .a11y-quick') || document.querySelector('.topbar-inner');
@@ -188,10 +191,7 @@ function renderBadge() {
   host.insertAdjacentHTML('beforeend', badgeMarkup(state.active, offer));
   host.querySelector('#persona-undo')?.addEventListener('click', undoPersona);
   host.querySelector('#persona-change')?.addEventListener('click', () => showPicker(true, true));
-  host.querySelector('#persona-voice')?.addEventListener('click', () => {
-    const optin = document.querySelector('#voice-optin');
-    if (optin) { optin.scrollIntoView({ block: 'center' }); optin.focus(); }
-  });
+  host.querySelector('#persona-voice')?.addEventListener('click', () => revealTarget('voice-optin', { focus: true, block: 'center' }));
 }
 function applyPlan(plan, includeProfile) {
   applyAppearance(plan);
@@ -259,11 +259,9 @@ function clearPersona() {
 function mountPersonas() {
   if (typeof document === 'undefined' || document.documentElement.dataset.personasMounted === 'true') return;
   document.documentElement.dataset.personasMounted = 'true'; ensureStyles(); state = readState();
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = pickerMarkup();
-  const section = wrapper.firstElementChild;
-  const home = document.querySelector('#asistan') || document.querySelector('#home-screen');
-  if (home) home.insertAdjacentElement('afterend', section);
+  const wrapper = document.createElement('div'); wrapper.innerHTML = pickerMarkup();
+  const section = wrapper.firstElementChild, slot = document.querySelector('#persona-mount'); const home = document.querySelector('#asistan') || document.querySelector('#home-screen');
+  if (slot) slot.appendChild(section); else if (home) home.insertAdjacentElement('afterend', section);
   else document.querySelector('#main')?.prepend(section);
   picker = section; status = picker.querySelector('#persona-status'); document.body.appendChild(status);
   showPicker(state.active === null && !state.dismissed);

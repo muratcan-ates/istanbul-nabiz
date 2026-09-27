@@ -2561,3 +2561,27 @@ answers citing the gold page first.
   only when a reason is needed. "Son karar" is renamed "Karar son tarihi".
 - A shift summary card (one number, three columns, effects, suggested action, source line) reads only the ledger.
   System panels and the ledger drill sit in disclosures; the menu entry "NEXUS" reads "Karar motoru".
+
+## 63. Design revision: workspaces, a quieter answer, a Fluent icon subset (tasarım revizyonu, 27 Sep)
+
+### Decision
+
+- The citizen page keeps the composer as the hero (#60) over a decorative, locally served Istanbul panorama at low
+  opacity; city, journey, map, open data and personal areas open as workspaces (`js/workspace_nav.js`) that move the
+  existing form instead of recreating it, so the draft, listeners and focus survive. No section id was removed.
+- The answer card (#61) loses its enclosing box and arrival stripe: a reading column plus separate source cards.
+  The layout idea comes from DOU-Synapse's chat and source card; a line and shingle comparison against its
+  `apps/web` found no copied source lines (`docs/design/synapse-adaptation.md`).
+- Palette hue 260 to 246, firuze 222 to 210, regenerated through `scripts/design`; the interface font is the system
+  stack, so the archived woff2 stays in the byte budget but is not preloaded, and the font check asks a preload
+  only of faces some rule uses.
+- Ten Microsoft Fluent System Icons (24 regular, MIT) are vendored unchanged with `LICENSE`, `NOTICE` and SHA-256
+  checksums under `static/vendor/fluent-system-icons/` and listed in NOTICE.md; the sprite paints them
+  `currentColor`.
+- Service worker v14 adds the panorama and the workspace files to the shell.
+
+### Consequences
+
+- The panorama is 332 KB and sits in the offline shell; its provenance is not written down in the repository yet.
+- The project-local reference skills the lane installed (`.agents/`) were not committed: third-party text with no
+  licence file, used while designing, not shipped.

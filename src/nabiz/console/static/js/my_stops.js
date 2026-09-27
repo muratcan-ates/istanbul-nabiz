@@ -94,7 +94,7 @@ function stripMarkup(items, results = {}) {
   const cards = Array.isArray(items) ? items : [];
   const empty = '<li class="mystop mystop-add" id="mystop-0" tabindex="0">'
     + '<h3 class="mystop-title" id="mystop-0-t">Durak ekle</h3>'
-    + '<p>Sık kullandığın durağı ekle; varış burada görünür.</p><a href="#profilim">İstasyonu Profilim\'den ekle</a>'
+    + '<p>Sık kullandığınız durağı ekleyin; varış burada görünür.</p><a href="#profilim">İstasyonu Profilim\'den ekleyin</a>'
     + '<button type="button" class="btn" id="my-stops-add" aria-expanded="false" aria-controls="my-stops-form">Durak ekle</button></li>';
   const rows = cards.length ? cards.map((item, index) => {
     const id = `mystop-${index}`, result = results[item.key] || {};
@@ -261,13 +261,13 @@ async function mountMyStops(host) {
     const turn = beginTurn();
     get('/api/arrival', { line, stop }, turn.signal).then(() => {
       if (turn !== controller || turn.signal.aborted) return;
-      suggestion.innerHTML = `<p>Bu durağı ${ASK_THRESHOLD} kez sordun. Duraklarıma ekleyeyim mi? `
+      suggestion.innerHTML = `<p>Bu durağı ${ASK_THRESHOLD} kez sordunuz. Duraklarıma ekleyeyim mi? `
         + `<b>${lineBadge(line)} ${esc(trName(stop))}</b></p><div class="btn-row">`
         + '<button type="button" class="btn btn-primary" data-mystop-suggest="yes">Evet</button>'
         + '<button type="button" class="btn" data-mystop-suggest="no">Hayır</button></div>'
-        + '<p class="field-hint">Onaylamazsan hiçbir şey kaydedilmez. Kayıt yalnız bu tarayıcıda durur.</p>';
+        + '<p class="field-hint">Onaylamazsanız hiçbir şey kaydedilmez. Kayıt yalnız bu tarayıcıda durur.</p>';
       suggestion.dataset.key = stopKey(line, stop); suggestion.dataset.line = line; suggestion.dataset.stop = stop;
-      suggestion.hidden = false; status.textContent = 'Duraklarına ekleme önerisi var.';
+      suggestion.hidden = false; status.textContent = 'Duraklarınıza ekleme önerisi var.';
     }).catch(() => {});
   });
   suggestion.addEventListener('click', async (event) => {

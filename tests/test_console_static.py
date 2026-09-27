@@ -228,7 +228,11 @@ def test_the_home_screen_has_the_question_box_before_city_cards() -> None:
     assert html.index('id="quick-cards"') < html.index('id="city-cards"') < html.index('id="cards"')
     question = html[html.index('id="chat-input"'):html.index('id="chat-submit"')]
     assert 'placeholder="Örnek: M2\'de arıza var mı?"' in question
-    assert "autofocus" in question and 'tabindex="0"' in question
+    assert "autofocus" not in question and 'tabindex="0"' in question
+    textarea = re.search(r'<textarea\b[^>]*\bid="chat-input"[^>]*>\s*</textarea>', html)
+    assert textarea, "the composer accepts multiline questions without opening the mobile keyboard on load"
+    assert 'name="q"' in textarea.group() and 'rows="3"' in textarea.group()
+    assert 'aria-describedby="chat-hint"' in textarea.group()
     source = read("js/home.js")
     assert 'role="button" tabindex="0"' in source and "button[data-seed]" in source
     assert "requestSubmit()" in source and "localStorage" not in source

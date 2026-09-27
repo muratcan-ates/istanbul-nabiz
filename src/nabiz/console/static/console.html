@@ -7,10 +7,9 @@
 <title>Nabız konsol: simüle operatör</title>
 <meta name="description" content="İBB çalışanı karar konsolu prototipi: sinyal kutusu, kanıtlı onay kartı, karar defteri ve kural taslakları. Simüle operatör; resmî İBB hizmeti değildir.">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0b1628" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%232457aa%7Dpath%7Bstroke:%23fbfcfe%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%235285d9%7Dpath%7Bstroke:%23060f20%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
-<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="theme-color" content="#f6f7f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141619" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%23205f90%7Dpath%7Bstroke:%23fcfcfd%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%23518cbe%7Dpath%7Bstroke:%230d1012%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/components.css">
@@ -56,7 +55,7 @@
 <!-- Operatöre aktar + çeviri: the citizen requests queue fills #citizen-requests. -->
 <script type="module" src="/js/requests_console.js"></script>
 </head>
-<body>
+<body class="console-page">
 <a class="skip-link" href="#main">İçeriğe atla</a>
 
 <!-- icons:start -->
@@ -73,7 +72,7 @@
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="topbar-brand" href="/console">Nabız konsol</a>
+    <a class="topbar-brand" href="/console"><span class="console-brand-mark" aria-hidden="true"><svg class="icon"><use href="#i-shield-lock"></use></svg></span>Nabız konsol</a>
     <span class="topbar-role"><svg class="icon" aria-hidden="true"><use href="#i-shield-lock"></use></svg><span>Simüle operatör · Resmî İBB hizmeti değildir</span></span>
     <div class="topbar-actions">
       <span id="ledger-badge"><span class="tag">defter okunuyor</span></span>
@@ -110,7 +109,10 @@
   <main class="wrap" id="main" tabindex="-1">
     <h1 id="page-title" class="sr-only">Nabız konsol: simüle operatör</h1>
     <section class="desk" aria-labelledby="desk-title">
-      <h2 id="desk-title" class="sr-only">Karar masası</h2>
+      <div class="desk-heading">
+        <h2 id="desk-title">Karar masası</h2>
+        <p>Sinyali seçin, kanıtı inceleyin, karar verin.</p>
+      </div>
       <div class="console-grid">
         <section id="queue" aria-labelledby="queue-title">
           <div class="section-head">
@@ -122,7 +124,7 @@
           <p class="sr-only" id="queue-status" role="status"></p>
           <h3>Onay bekleyen <span class="section-note" id="queue-arena-count"></span></h3>
           <ol class="queue-list" id="queue-arena"><li class="queue-empty">yükleniyor</li></ol>
-          <details class="queue-reflex" open>
+          <details class="queue-reflex">
             <summary><h3><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>Refleksle kapananlar</h3><span id="queue-reflex-count"></span></summary>
             <ol class="queue-list" id="queue-reflex"><li class="queue-empty">yükleniyor</li></ol>
           </details>
@@ -139,7 +141,7 @@
     <section id="day" class="day" aria-labelledby="day-title"><h2 id="day-title">Günün kararları</h2></section>
 
     <details class="more system-more" id="system-more">
-      <summary><span>Sistem durumu</span><span id="system-summary" class="section-note">Durum okunuyor</span></summary>
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Sistem durumu</span><span id="system-summary" class="section-note">Durum okunuyor</span></summary>
       <section id="today" aria-labelledby="stats-title">
         <div class="section-head">
           <h2 id="stats-title">Bugün</h2>
@@ -152,9 +154,19 @@
       <section id="approval-health" class="health" aria-labelledby="health-title"><h2 id="health-title">Onay sağlığı</h2></section>
     </details>
 
-    <section id="report-map" aria-labelledby="report-map-title"><h2 id="report-map-title">Bildirim haritası</h2></section>
+    <div class="console-tools" aria-label="Çalışma alanları">
+    <details class="console-section">
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Bildirim haritası</span><span class="section-note">Bildirimleri konumuyla inceleyin</span></summary>
+      <section id="report-map" aria-labelledby="report-map-title"><h2 id="report-map-title">Bildirim haritası</h2></section>
+    </details>
 
-    <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
+    <details class="console-section">
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Vatandaş talepleri</span><span class="section-note">Operatöre aktarılan talepler</span></summary>
+      <section id="citizen-requests" aria-labelledby="citizen-requests-title"><h2 id="citizen-requests-title">Vatandaş talepleri</h2></section>
+    </details>
+
+    <details class="console-section">
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Kurallar ve taslaklar</span><span class="section-note">Etkin kurallar ve yeni öneriler</span></summary>
 
     <section id="rules" aria-labelledby="rules-title">
       <div class="section-head">
@@ -165,13 +177,6 @@
       <ul class="rules" id="rules-list"><li class="section-note">yükleniyor</li></ul>
     </section>
 
-    <section id="nx-organs" aria-labelledby="nx-organs-title">
-      <div class="section-head"><h2 id="nx-organs-title">Karar motoru (NEXUS)</h2>
-        <span class="section-note">Defterden okunur · kişi bazında metrik yok</span></div>
-      <p class="sr-only" id="nx-status" role="status" aria-live="polite"></p>
-      <div id="nx-organs-content"></div>
-    </section>
-
     <section aria-labelledby="drafts-title">
       <div class="section-head">
         <h2 id="drafts-title">Kural taslakları</h2>
@@ -180,6 +185,18 @@
       <ul class="drafts" id="drafts"><li class="section-note">yükleniyor</li></ul>
       <p class="status-line" id="drafts-status" role="status"></p>
     </section>
+    </details>
+
+    <details class="console-section">
+      <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Karar motoru</span><span class="section-note">İşleyiş, kayıtlar ve tatbikat</span></summary>
+      <section id="nx-organs" aria-labelledby="nx-organs-title">
+        <div class="section-head"><h2 id="nx-organs-title">Karar motoru (NEXUS)</h2>
+          <span class="section-note">Defterden okunur · kişi bazında metrik yok</span></div>
+        <p class="sr-only" id="nx-status" role="status" aria-live="polite"></p>
+        <div id="nx-organs-content"></div>
+      </section>
+    </details>
+    </div>
 
     <dialog id="revoke-dialog" class="revoke-dialog" aria-labelledby="revoke-title" aria-describedby="revoke-desc">
       <form id="revoke-form" novalidate>
@@ -213,8 +230,8 @@
   <p>
     <a href="https://github.com/muratcan-ates/istanbul-nabiz" rel="noopener noreferrer" target="_blank">Kaynak kod <svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></a><br>
     <a href="/nasil.html">Nasıl çalışır?</a><br>
-    Yazı tipi: Source Sans 3 (OFL)<br>
-    Simgeler: Tabler Icons (MIT)
+    Yazı tipi: Cihazınızın sistem yazısı<br>
+    Simgeler: Microsoft Fluent ve Tabler Icons (MIT)
   </p>
 </footer>
 </body>

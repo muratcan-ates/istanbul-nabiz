@@ -11,7 +11,7 @@
     "summary": "Kesinti 7 günü aştı, istasyonda çalışan başka asansör kaydı yok. E-01 eskalasyonu; tarih alanının anlamı belgesiz."
   },
   "evidence": [
-    { "text": "AYC-ASN-01: İBB kaydında Arıza; kayıttaki tarih 16.09 (anlamı belgesiz).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T09:00:00+03:00", "age_s": 6120, "mode": "live" } },
+    { "text": "AYC-ASN-01: İBB kaydında Arıza; kayıttaki tarih 16.09 (anlamı belgesiz).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T09:00:00+03:00", "age_s": 6120, "mode": "recorded" } },
     { "text": "İstasyonda başka asansör kaydı yok; peron erişimi kaynakta yok.", "provenance": { "source": "metro_stations", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-10T09:00:00+03:00", "age_s": 1302000, "mode": "recorded" } }
   ],
   "freshness_s": 6120,
@@ -21,7 +21,7 @@
     { "label": "D. Hiçbir şey yapma", "detail": "Kart son bilinen durumu yaşıyla gösterir." }
   ],
   "opinions": [
-    { "role": "Erişilebilirlik", "stance": "support", "rationale": "Uzun kesintide alternatif metni gecikmemeli.", "citations": [ { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T09:00:00+03:00", "age_s": 6120, "mode": "live" } ] },
+    { "role": "Erişilebilirlik", "stance": "support", "rationale": "Uzun kesintide alternatif metni gecikmemeli.", "citations": [ { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-25T09:00:00+03:00", "age_s": 6120, "mode": "recorded" } ] },
     { "role": "Operasyon", "stance": "oppose", "rationale": "Veri 1 saat 42 dakikalık; eşiği aşıyor. Önce yeniden oku.", "citations": [] },
     { "role": "İletişim", "stance": "conditional", "rationale": "Metin yayımlanacaksa 'doğrulanamadı' etiketi ve kayıt tarihiyle birlikte.", "citations": [] }
   ],

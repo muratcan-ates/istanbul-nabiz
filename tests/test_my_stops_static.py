@@ -99,13 +99,16 @@ console.log(JSON.stringify([
 def test_arrival_row_shows_the_server_minute_verbatim(tmp_path: Path) -> None:
     arrival = json.loads((STATIC / "mock/arrival.json").read_text(encoding="utf-8"))
     values = node_json(tmp_path, f"""
-const data = {json.dumps(arrival, ensure_ascii=False)};
+const recorded = {json.dumps(arrival, ensure_ascii=False)};
+const data = {{...recorded, provenance: {{...recorded.provenance, mode: 'live'}}}};
 const scheduled = stops.arrivalRow({{...data, display:'tarifeye göre', minutes:null}});
 const missing = stops.arrivalRow({{minutes:null}});
-console.log(JSON.stringify([stops.arrivalRow(data), scheduled, missing]));
+console.log(JSON.stringify([stops.arrivalRow(data), scheduled, missing, stops.arrivalRow(recorded)]));
 """)
     assert "7 dk" in values[0]
     assert "40 sn önce" in values[0]
+    # The shipped mock is a recorded sample: it shows its record time, never a live age.
+    assert "7 dk" in values[3] and "sn önce" not in values[3] and "25.09.2026 10:41" in values[3]
     assert "tarifeye göre" in values[1] and not re.search(r"\d+ dk", values[1])
     assert "doğrulanamadı" in values[2]
 

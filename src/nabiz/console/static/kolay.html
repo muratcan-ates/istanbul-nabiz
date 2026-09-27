@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>İstanbul Nabız: kolay ekran</title>
-<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/components.css">
@@ -22,8 +21,10 @@
 
 <header class="kolay-header">
   <div class="kolay-header-inner">
-    <a class="kolay-brand" href="/">İstanbul Nabız</a>
-    <span class="kolay-label">Kolay ekran</span>
+    <div class="kolay-brand-group">
+      <a class="kolay-brand" href="/">İstanbul Nabız</a>
+      <span class="kolay-label">Kolay ekran</span>
+    </div>
     <a class="kolay-full" href="/">Tam sürüm</a>
   </div>
   <p class="kolay-band kolay-identity" role="note">Resmî İBB hizmeti değildir</p>
@@ -34,8 +35,8 @@
   <div id="kolay-ai-band" class="kolay-band" role="note"></div>
 
   <nav id="kolay-actions" aria-label="Eylemler">
-    <button type="button" id="kolay-sor" aria-controls="kolay-panel-sor" aria-expanded="false">Sor</button>
-    <button type="button" id="kolay-durak" aria-controls="kolay-panel-durak" aria-expanded="false">Durağım</button>
+    <button type="button" id="kolay-sor" aria-controls="kolay-panel-sor" aria-expanded="false"><span class="kolay-action-title">Sor</span><span class="kolay-action-note">Şehir hizmetleri hakkında</span></button>
+    <button type="button" id="kolay-durak" aria-controls="kolay-panel-durak" aria-expanded="false"><span class="kolay-action-title">Durağım</span><span class="kolay-action-note">Otobüs varışına bakın</span></button>
   </nav>
 
   <section id="kolay-panel-sor" aria-labelledby="kolay-sor-title" hidden>
@@ -71,7 +72,7 @@
 </main>
 
 <footer class="kolay-footer">
-  <div class="kolay-callbar"><a id="kolay-call-153" class="kolay-call" href="tel:153">153'ü ara</a></div>
+  <div class="kolay-callbar"><div class="kolay-callbar-inner"><span>İBB iletişim hattı</span><a id="kolay-call-153" class="kolay-call" href="tel:153">153'ü ara</a></div></div>
   <p>Hayati tehlikede <a id="kolay-call-112" class="kolay-call-112" href="tel:112">112</a>'yi arayın.</p>
   <a href="/kvkk.html">KVKK / Gizlilik</a>
 </footer>

@@ -1,21 +1,21 @@
 /* E18's duration and reason view, using the shared light and dark tokens. */
 
-.health { display: grid; gap: var(--space-4); margin-block-start: var(--space-6); }
-.health-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
-.health-part { display: grid; align-content: start; gap: var(--space-3); min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
-.health-part h3 { font-size: var(--text-lg); }
-.health-value { font-size: var(--text-xl); font-weight: var(--weight-semibold); }
+.health { display: grid; gap: var(--space-4); margin-block-start: 0; }
+.health-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.health-part { display: grid; align-content: start; gap: var(--space-3); min-width: 0; padding: var(--space-4) 0; border-block-start: 1px solid var(--border); background: transparent; }
+.health-part h3 { font-size: var(--text-md); }
+.health-value { font-size: var(--text-xl); font-weight: var(--weight-semibold); line-height: var(--leading-snug); }
 .health-hist, .health-reasons { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
 .health-hist li { display: grid; grid-template-columns: minmax(8rem, auto) minmax(3rem, 1fr) 2.5rem; align-items: center; gap: var(--space-2); }
 .health-hist-label, .health-reason-count { color: var(--text-muted); font-size: var(--text-sm); }
 .health-meter { display: block; overflow: hidden; min-width: 0; height: .625rem; border: 1px solid var(--border-strong); border-radius: var(--radius-round); background: var(--surface-sunken); }
 .health-bar { display: block; width: var(--w); height: 100%; background: var(--primary); }
 .health-hist-count, .health-reason-count { text-align: end; font-variant-numeric: tabular-nums; }
-.health-median, .health-actions { font-weight: var(--weight-semibold); }
-.health-reasons li { display: flex; justify-content: space-between; gap: var(--space-3); }
+.health-median, .health-actions { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.health-reasons li { display: flex; justify-content: space-between; gap: var(--space-3); padding-block: var(--space-2); border-block-end: 1px solid var(--nd-line); font-size: var(--text-sm); }
 
 @media (min-width: 768px) {
-  .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-5); }
   .health-part:last-child { grid-column: 1 / -1; }
 }
 

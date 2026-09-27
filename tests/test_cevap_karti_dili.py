@@ -153,13 +153,10 @@ def test_the_emergency_card_is_unchanged(tmp_path: Path) -> None:
     assert "Kopyala" not in html and "Şunu da sorabilirsiniz" not in html
 
 
-def test_card_motion_is_guarded() -> None:
+def test_card_body_stays_still_while_reading() -> None:
     css = CARD_CSS.read_text(encoding="utf-8")
-    plain, _, guarded = css.partition("@media (prefers-reduced-motion: no-preference)")
-    assert "animation:" not in plain and "transition:" not in plain
-    assert "animation:" in guarded and "transition:" in guarded
-    assert "var(--nd-moment)" in css
-    assert css.count("var(--nd-moment)") == 1
+    # Transcript arrival motion is owned by citizen.css; nested source cards stay still.
+    assert "animation:" not in css and "transition:" not in css
     assert "text-transform" not in css
 
 
