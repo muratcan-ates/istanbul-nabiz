@@ -1,0 +1,450 @@
+/* E61 bill explainer. Tokens only, with a structural reduced-motion guard. */
+.bill-tool,
+.bill-inner,
+.bill-inner section,
+.bill-inner form,
+.bill-form-grid,
+.bill-line,
+.bill-explanation,
+.bill-source-line {
+  min-width: 0;
+}
+
+.bill-inner {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.bill-notice,
+.bill-disclaimer,
+.bill-summary,
+.bill-hint,
+.bill-status,
+.bill-no-source {
+  max-width: var(--measure);
+}
+
+.bill-notice,
+.bill-disclaimer,
+.bill-hint,
+.bill-status,
+.bill-no-source {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.bill-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.bill-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.bill-field input,
+.bill-field select,
+.bill-line select,
+.bill-line input,
+.bill-form-grid > select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.bill-field input:focus-visible,
+.bill-field select:focus-visible,
+.bill-line input:focus-visible,
+.bill-line select:focus-visible,
+.bill-draft textarea:focus-visible,
+.bill-choice:focus-within {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.bill-agencies,
+.bill-line {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.bill-agencies {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.bill-agencies legend,
+.bill-line legend {
+  padding-inline: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.bill-choice {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding-block: var(--space-2);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+.bill-choice input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  accent-color: var(--nd-accent);
+}
+
+.bill-lines {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.bill-line {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.bill-line .bill-item-name-wrap {
+  grid-column: 1 / -1;
+}
+
+.bill-line .bill-remove {
+  justify-self: start;
+  grid-column: 1 / -1;
+}
+
+.bill-consumption-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+  font-weight: var(--weight-regular);
+}
+
+.bill-consumption-row > span {
+  white-space: nowrap;
+}
+
+.bill-error {
+  display: block;
+  min-height: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  overflow-wrap: anywhere;
+}
+
+.bill-error:not(:empty) {
+  min-height: 1.5em;
+}
+
+.bill-agencies [aria-invalid="true"],
+.bill-field [aria-invalid="true"] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.bill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.bill-add {
+  justify-self: start;
+}
+
+.bill-result {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.bill-explanations,
+.bill-explanation,
+.bill-compare,
+.bill-points,
+.bill-draft,
+.bill-channels,
+.bill-tariff,
+#fatura-kayitlar {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.bill-explanation,
+.bill-compare,
+.bill-points,
+.bill-draft,
+.bill-channels,
+.bill-tariff,
+#fatura-kayitlar {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface-raised);
+}
+
+.bill-explanation h4,
+.bill-inner h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bill-explanation > p,
+.bill-points li > p,
+.bill-channels p,
+.bill-tariff > p {
+  max-width: var(--measure);
+}
+
+.bill-source {
+  min-width: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.bill-source summary,
+.bill-quote summary,
+.bill-tariff summary {
+  min-height: var(--tap);
+}
+
+.bill-source-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin-block: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.bill-source-line a,
+.bill-channels a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  overflow-wrap: anywhere;
+}
+
+.bill-quote blockquote {
+  margin-block: var(--space-2);
+  padding: var(--space-3);
+  border-inline-start: 2px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.bill-compare-wide,
+.bill-table-wrap {
+  min-width: 0;
+}
+
+.bill-compare-wide table,
+.bill-table-wrap table {
+  table-layout: fixed;
+}
+
+.bill-compare-narrow,
+.bill-tariff-narrow {
+  display: none;
+}
+
+.bill-trend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  color: var(--text);
+}
+
+.bill-trend .icon {
+  color: var(--nd-accent);
+}
+
+.bill-tier-current {
+  display: block;
+  max-width: 20ch;
+  margin-top: var(--space-1);
+  padding-inline-start: var(--space-2);
+  border-inline-start: 2px solid var(--nd-accent);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.bill-points ol {
+  display: grid;
+  gap: var(--space-3);
+  padding-inline-start: 1.25em;
+}
+
+.bill-points li {
+  min-width: 0;
+  padding-inline-start: var(--space-1);
+}
+
+.bill-points li > .bill-source {
+  margin-top: var(--space-2);
+}
+
+.bill-draft textarea {
+  width: 100%;
+  min-height: 11rem;
+  resize: vertical;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.bill-draft h3 span {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+.bill-saved-list {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bill-saved-list li,
+.bill-saved-list button {
+  min-width: 0;
+  white-space: normal;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.bill-saved-inline {
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .bill-inner {
+    padding-inline: var(--space-2);
+  }
+
+  .bill-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bill-lines {
+    grid-column: auto;
+  }
+
+  .bill-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bill-line .bill-item-name-wrap {
+    grid-column: auto;
+    grid-column: 1 / -1;
+  }
+
+  .bill-line .bill-remove {
+    grid-column: 1 / -1;
+  }
+
+  .bill-compare-wide {
+    display: none;
+  }
+
+  .bill-tariff .bill-table-wrap {
+    display: none;
+  }
+
+  .bill-compare-narrow,
+  .bill-tariff-narrow {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
+    margin: 0;
+  }
+
+  .bill-compare-narrow > div,
+  .bill-tariff-narrow > div {
+    min-width: 0;
+    padding-block: var(--space-2);
+    border-bottom: 1px solid var(--border);
+    overflow-wrap: anywhere;
+  }
+
+  .bill-compare-narrow dd,
+  .bill-tariff-narrow dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .bill-explanation,
+  .bill-compare,
+  .bill-points,
+  .bill-draft,
+  .bill-channels,
+  .bill-tariff,
+  #fatura-kayitlar {
+    padding: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduce"]):not([data-simple="on"]) #fatura-sonuc.bill-enter {
+    animation: bill-result-in var(--nd-dur-enter) var(--nd-ease-enter) both;
+  }
+
+  @keyframes bill-result-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}

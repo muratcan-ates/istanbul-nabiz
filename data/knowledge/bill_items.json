@@ -1,0 +1,214 @@
+{
+  "version": 1,
+  "captured_from": "data/knowledge/knowledge.db",
+  "captured_at": "2026-09-26T12:46:39.764965+00:00",
+  "agencies": {
+    "iski": {
+      "name": {"tr": "İSKİ", "en": "İSKİ"},
+      "url": "https://iski.istanbul/",
+      "channel": "185",
+      "channel_url": "https://iski.istanbul/iletisim/alo-185/"
+    },
+    "igdas": {
+      "name": {"tr": "İGDAŞ", "en": "İGDAŞ"},
+      "url": "https://www.igdas.istanbul/",
+      "channel": "153",
+      "channel_url": null
+    }
+  },
+  "items": [
+    {
+      "id": "su_bedeli",
+      "agency": "iski",
+      "label": {"tr": "Su bedeli", "en": "Water charge"},
+      "explain": {
+        "tr": "Tarife sayfasında su birim fiyatı ayrı bir sütunda gösterilir.",
+        "en": "The tariff page shows the water unit price in a separate column."
+      },
+      "source": {
+        "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/su-birim-fiyatlari",
+        "title": "İSKİ 2026 Su Satış Tarifeleri",
+        "page": null,
+        "quote": "Su Birim Fiyatı",
+        "fetched_at": "2026-09-26T12:46:39.764965+00:00",
+        "source_updated_at": "2026-09-25T11:50:16+00:00"
+      }
+    },
+    {
+      "id": "atiksu_bedeli",
+      "agency": "iski",
+      "label": {"tr": "Atık su bedeli", "en": "Wastewater charge"},
+      "explain": {
+        "tr": "Tarife sayfasında atık su birim fiyatı ayrı sütundadır; faturanızdaki adla eşleşmesini İSKİ'ye sorun.",
+        "en": "The tariff page lists a separate wastewater unit price; ask İSKİ whether it matches the label on your bill."
+      },
+      "source": {
+        "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/su-birim-fiyatlari",
+        "title": "İSKİ 2026 Su Satış Tarifeleri",
+        "page": null,
+        "quote": "Atık Su Birim Fiyat",
+        "fetched_at": "2026-09-26T12:46:39.764965+00:00",
+        "source_updated_at": "2026-09-25T11:50:16+00:00"
+      }
+    },
+    {
+      "id": "kdv",
+      "agency": "iski",
+      "label": {"tr": "KDV", "en": "VAT"},
+      "explain": {
+        "tr": "Kaynak sayfa KDV hariç fiyat verir; KDV oranı Nabız'ın kaynaklarında yer almadığı için burada gösterilmez.",
+        "en": "The source page gives prices excluding VAT; the VAT rate is not in Nabız's sources, so it is not shown here."
+      },
+      "source": {
+        "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/su-birim-fiyatlari",
+        "title": "İSKİ 2026 Su Satış Tarifeleri",
+        "page": null,
+        "quote": "İSKİ GENEL MÜDÜRLÜĞÜ 2026 SU SATIŞ TARİFELERİ (KDV HARİÇ)",
+        "fetched_at": "2026-09-26T12:46:39.764965+00:00",
+        "source_updated_at": "2026-09-25T11:50:16+00:00"
+      }
+    },
+    {
+      "id": "insani_su_hakki",
+      "agency": "iski",
+      "label": {"tr": "İnsani Su Hakkı", "en": "Humanitarian Water Allowance"},
+      "explain": {
+        "tr": "Kaynak notunda bu uygulamanın konut abonelerinin aylık tüketiminin 15 metreküplük kısmına kadar olduğu yazılıdır.",
+        "en": "The source note says this measure applies up to 15 cubic metres of a residential subscriber's monthly consumption."
+      },
+      "source": {
+        "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/su-birim-fiyatlari",
+        "title": "İSKİ 2026 Su Satış Tarifeleri",
+        "page": null,
+        "quote": "Not: Hanelerde her ay tüketilen her 2,5 metreküp suyun 0,50 metreküplük kısmı “İnsani Su Hakkı” olarak minha edilerek faturalandırılmaz. “İnsani Su Hakkı” konut abonelerinin aylık tüketiminin 15 metreküplük kısmına kadar uygulanır.",
+        "fetched_at": "2026-09-26T12:46:39.764965+00:00",
+        "source_updated_at": "2026-09-25T11:50:16+00:00"
+      }
+    },
+    {
+      "id": "diger",
+      "agency": "iski",
+      "label": {"tr": "Diğer kalem", "en": "Other item"},
+      "explain": {
+        "tr": "Bu kalemin açıklaması Nabız'ın kaynaklarında yok; kurumunuza sorun.",
+        "en": "Nabız's sources do not explain this item; ask your agency."
+      },
+      "source": null
+    },
+    {
+      "id": "igdas_diger",
+      "agency": "igdas",
+      "label": {"tr": "Diğer kalem", "en": "Other item"},
+      "explain": {
+        "tr": "Bu kalemin açıklaması Nabız'ın kaynaklarında yok; kurumunuza sorun.",
+        "en": "Nabız's sources do not explain this item; ask your agency."
+      },
+      "source": null
+    }
+  ],
+  "tariff": {
+    "agency": "iski",
+    "year": 2026,
+    "vat": "KDV hariç",
+    "unit": "TL/m³",
+    "rows": [
+      {"tier": 1, "range": "0-15", "water": 42.86, "wastewater": 21.40, "total": 64.26},
+      {"tier": 2, "range": "16-30", "water": 65.27, "wastewater": 32.64, "total": 97.91},
+      {"tier": 3, "range": "31 ve üzeri", "water": 94.42, "wastewater": 47.21, "total": 141.63}
+    ],
+    "note_human_right": {
+      "tr": "Kaynak notunda her 2,5 metreküp aylık tüketimin 0,50 metreküplük kısmının mahsup edildiği ve uygulamanın 15 metreküpe kadar olduğu yazılıdır.",
+      "en": "The source note says 0.50 cubic metres from each 2.5 cubic metres of monthly use is deducted, up to 15 cubic metres."
+    },
+    "source": {
+      "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/su-birim-fiyatlari",
+      "title": "İSKİ 2026 Su Satış Tarifeleri",
+      "page": null,
+      "quote": "İSKİ GENEL MÜDÜRLÜĞÜ 2026 SU SATIŞ TARİFELERİ (KDV HARİÇ)",
+      "fetched_at": "2026-09-26T12:46:39.764965+00:00",
+      "source_updated_at": "2026-09-25T11:50:16+00:00"
+    }
+  },
+  "concepts": [
+    {
+      "id": "donem_ortalamasi",
+      "label": {"tr": "Dönem ortalaması", "en": "Period average"},
+      "explain": {
+        "tr": "Yönetmelik dönem ortalamasını, fatura dönemi tüketiminden hesaplanan günlük ortalama olarak tanımlar.",
+        "en": "The regulation defines the period average as the daily average calculated from consumption in a billing period."
+      },
+      "source": {
+        "url": "https://cdn.iski.istanbul/uploads/ISKI_ABONE_HIZMETLERI_TARIFE_VE_UYGULAMA_Y_Oe_NETMELIGI_2024_150ea718d2.pdf",
+        "title": "İSKİ Abone Hizmetleri Tarife ve Uygulama Yönetmeliği",
+        "page": 6,
+        "quote": "(k) Dönem ortalaması (tüketim averajı):Abonenin bir fatura dönemindeki tüketimi esas alınarak hesaplanan ortalama günlük sarfiyattır.",
+        "fetched_at": "2026-09-26T12:11:25.012271+00:00",
+        "source_updated_at": "2025-01-13T13:26:38+00:00"
+      }
+    },
+    {
+      "id": "genel_ortalama",
+      "label": {"tr": "Genel ortalama", "en": "General average"},
+      "explain": {
+        "tr": "Yönetmelik genel ortalamayı on iki normal okuma döneminden hesaplanan günlük su sarfiyatı olarak tanımlar.",
+        "en": "The regulation defines the general average as daily water use calculated from twelve regular reading periods."
+      },
+      "source": {
+        "url": "https://cdn.iski.istanbul/uploads/ISKI_ABONE_HIZMETLERI_TARIFE_VE_UYGULAMA_Y_Oe_NETMELIGI_2024_150ea718d2.pdf",
+        "title": "İSKİ Abone Hizmetleri Tarife ve Uygulama Yönetmeliği",
+        "page": 6,
+        "quote": "(r)Genel ortalama (genel averaj): On iki normal okuma dönemi esas alınarak hesaplanan ortalama günlük su sarfiyatıdır.",
+        "fetched_at": "2026-09-26T12:11:25.012271+00:00",
+        "source_updated_at": "2025-01-13T13:26:38+00:00"
+      }
+    },
+    {
+      "id": "sayac_olcum",
+      "label": {"tr": "Sayaç ölçümü", "en": "Meter inspection"},
+      "explain": {
+        "tr": "Abonenin talebiyle sayaç ölçüme gönderilebilir; doğru çalıştığı saptanırsa sayaçla ilgili bedeller tahakkuk ettirilir.",
+        "en": "A subscriber may request a meter inspection; if it is found to work correctly, meter-related fees are charged."
+      },
+      "source": {
+        "url": "https://cdn.iski.istanbul/uploads/ISKI_ABONE_HIZMETLERI_TARIFE_VE_UYGULAMA_Y_Oe_NETMELIGI_2024_150ea718d2.pdf",
+        "title": "İSKİ Abone Hizmetleri Tarife ve Uygulama Yönetmeliği",
+        "page": 25,
+        "quote": "(f) Abonenin talebi veya İdarenin lüzum görmesi halinde sayaç atölye sorgusuna veya ölçüye tabi tutulur. (g) Abonenin talebi doğrultusunda ölçü sonucunda sayacın doğru çalıştığı veya atölye sorgusu müdahaleli olduğu tespit edilirse; sayaç bedeli, sayaç sökme takma bedeli ve sayaç muayene bedeli tahakkuk ettirilir.",
+        "fetched_at": "2026-09-26T12:11:25.012271+00:00",
+        "source_updated_at": "2025-01-13T13:26:38+00:00"
+      }
+    },
+    {
+      "id": "sayac_hatali",
+      "label": {"tr": "Hatalı sayaç", "en": "Incorrect meter reading"},
+      "explain": {
+        "tr": "Yönetmelikte sayaç hatalı çalıştığı tespit edilirse geçmiş tahakkukların düzeltilmesine ilişkin bir hüküm vardır.",
+        "en": "The regulation describes correcting past charges if a meter is found to have worked incorrectly."
+      },
+      "source": {
+        "url": "https://cdn.iski.istanbul/uploads/ISKI_ABONE_HIZMETLERI_TARIFE_VE_UYGULAMA_Y_Oe_NETMELIGI_2024_150ea718d2.pdf",
+        "title": "İSKİ Abone Hizmetleri Tarife ve Uygulama Yönetmeliği",
+        "page": 25,
+        "quote": "(ğ) Sayacın hatalı çalıştığı tespit edilirse, yeni sayacın endeksi ile geçmiş dönemlerdeki tahakkuk endekslerine bakılarak ortalaması alınır, hatalı dönemlere ait tahakkuklar itiraza alınarak düzeltilir.",
+        "fetched_at": "2026-09-26T12:11:25.012271+00:00",
+        "source_updated_at": "2025-01-13T13:26:38+00:00"
+      }
+    },
+    {
+      "id": "gizli_kacak",
+      "label": {"tr": "Gizli su kaçağı", "en": "Hidden water leak"},
+      "explain": {
+        "tr": "Yönetmelikte iç tesisattaki gizli su kaçağı için bir düzenleme bulunur; koşullarını ve uygulanıp uygulanmayacağını İSKİ belirler.",
+        "en": "The regulation has a provision for a hidden leak in internal plumbing; İSKİ decides whether its conditions apply."
+      },
+      "source": {
+        "url": "https://cdn.iski.istanbul/uploads/ISKI_ABONE_HIZMETLERI_TARIFE_VE_UYGULAMA_Y_Oe_NETMELIGI_2024_150ea718d2.pdf",
+        "title": "İSKİ Abone Hizmetleri Tarife ve Uygulama Yönetmeliği",
+        "page": 16,
+        "quote": "Aboneliklerinin ait olduğu bina ve/veya yerdeki iç tesisatta meydana gelen su kaçağının ve su kaçağının giderilmesine yönelik tedbirlerin abone tarafından alındığının en az 3 (üç) kişilik heyet marifetiyle tespit edilmesi halinde, iç tesisattaki gizli su kaçağı neticesinde oluşmuş yüksek meblağlı fatura iptal edilerek; bunun yerine bir yıllık genel su tüketim averajı oluşmamış veya genel averajı 0,33 m3/gün altında olan yerlerde su tüketim averajı 0,33 m 3/gün olarak, 0,33 m3/gün ve üzerinde olan yerlerde ise hesaplanan genel averaja tekabül eden su birim fiyatı üzerinden 10 (on) katı tutarlı fatura, abone hesabına tahakkuk ettirilir.",
+        "fetched_at": "2026-09-26T12:11:25.012271+00:00",
+        "source_updated_at": "2025-01-13T13:26:38+00:00"
+      }
+    }
+  ]
+}
