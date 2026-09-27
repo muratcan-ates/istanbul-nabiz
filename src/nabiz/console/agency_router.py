@@ -140,6 +140,16 @@ def _match_rule(rule: AgencyKeywordRule, text: str, words: list[str]) -> str | N
     return hit if hit and _in_context(rule, words) else None
 
 
+def agency_for(question: str) -> str | None:
+    """Return the first institution matched by the existing rules, without loading agency data."""
+    text = normalize_tr(question)
+    words = text.split()
+    for rule in RULES:
+        if _match_rule(rule, text, words):
+            return rule.agency
+    return None
+
+
 def _district_candidates(data: dict[str, Any]) -> list[tuple[str, str]]:
     candidates = [(normalize_tr(name), name) for name in data["districts"]]
     candidates.extend((normalize_tr(alias), canonical) for alias, canonical in data["district_aliases"].items())
