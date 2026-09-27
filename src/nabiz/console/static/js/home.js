@@ -2,6 +2,8 @@
    it keeps the choice in the URL and on the device and follows the answer-language button (#chat-lang). */
 
 import { esc } from './format.js';
+import { icon } from './icons.js';
+import { onLang, t } from './i18n_text.js';
 import { mountWorkspace, revealTarget } from './workspace_nav.js';
 
 // The first paint and the fallback: js/quick_chips.js replaces these with /api/quick's chips when it answers
@@ -22,6 +24,45 @@ const QUICK_QUESTIONS_EN = [
   ['Events', 'Where can I find out about events in Istanbul?'],
   ['Report a Problem / 153', 'How can I report a problem to İBB?'],
 ];
+
+export const EXAMPLES = [
+  { id: 'example_1', icon: 'elevator', tr: "Kadıköy'den Levent'e merdivensiz nasıl giderim?", en: 'How can I get from Kadıköy to Levent without stairs?' },
+  { id: 'example_2', icon: 'info-circle', tr: "M2'de asansör arızası var mı?", en: 'Is there a lift outage on the M2 line?' },
+  { id: 'example_3', icon: 'external-link', tr: 'Bu hafta sonu ücretsiz bir kültür etkinliği var mı?', en: 'Is there a free cultural event this weekend?' },
+  { id: 'example_4', icon: 'info-circle', tr: 'Sokağımdaki bozuk lambayı nasıl bildiririm?', en: 'How can I report a broken streetlight?' },
+];
+
+function mountExamples(form, input) {
+  const list = document.getElementById('capability-examples');
+  if (!list) return;
+  const render = (language) => {
+    const en = language === 'en';
+    list.setAttribute('aria-label', t('ui.shell.examples', en ? 'Things you can ask' : 'Neler sorabilirsiniz'));
+    list.replaceChildren(...EXAMPLES.map((example) => {
+      const li = document.createElement('li');
+      const button = document.createElement('button');
+      const label = document.createElement('span');
+      button.type = 'button';
+      button.className = 'chip-example';
+      button.dataset.example = example.id;
+      button.innerHTML = icon(example.icon);
+      label.textContent = t(`ui.shell.${example.id}`, en ? example.en : example.tr);
+      button.append(label);
+      li.append(button);
+      return li;
+    }));
+  };
+  list.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-example]');
+    if (!button) return;
+    const example = EXAMPLES.find((item) => item.id === button.dataset.example);
+    if (!example) return;
+    input.value = t(`ui.shell.${example.id}`, document.documentElement.lang === 'en' ? example.en : example.tr);
+    form.requestSubmit();
+  });
+  render(document.documentElement.lang);
+  onLang(render);
+}
 
 function quickCard(label, seedQuestion) {
   return `<button type="button" class="chip" role="button" tabindex="0" data-seed="${esc(seedQuestion)}">${esc(label)}</button>`;
@@ -50,7 +91,7 @@ function mountAskPill(form, input) {
   const visiblePrimaries = new Set();
   const update = () => {
     for (const button of visiblePrimaries) if (!button.isConnected) visiblePrimaries.delete(button);
-    pill.hidden = !mobile.matches || formVisible || visiblePrimaries.size > 0;
+    pill.hidden = document.body.classList.contains('has-conversation') || !mobile.matches || formVisible || visiblePrimaries.size > 0;
   };
   const observer = new IntersectionObserver(([entry]) => { formVisible = entry.isIntersecting; update(); });
   observer.observe(form);
@@ -124,6 +165,7 @@ function mountHome({ form, input }) {
     }
   };
   renderFallback(document.documentElement.lang);
+  mountExamples(form, input);
   window.addEventListener('nabiz:lang', (event) => {
     if (cards.querySelector('button[data-seed]') || moreCards?.querySelector('button[data-seed]')) renderFallback(event.detail?.lang);
   });
@@ -144,8 +186,6 @@ function mountHome({ form, input }) {
   document.querySelector('.topbar-nav')?.addEventListener('click', (event) => {
     const link = event.target.closest('a[href^="#"]');
     if (!link) return;
-    document.querySelectorAll('.topbar-nav a').forEach((node) => node.removeAttribute('aria-current'));
-    link.setAttribute('aria-current', 'location');
     if (link.getAttribute('href') === '#asistan') {
       event.preventDefault();
       pendingTarget = false;
@@ -153,7 +193,6 @@ function mountHome({ form, input }) {
       revealTarget('chat-input', { focus: true, block: 'center' });
     } else setTimeout(followHash, 0);
   });
-  document.querySelector('.topbar-nav a[href="#asistan"]')?.setAttribute('aria-current', 'location');
   mountWorkspace({ form, input });
   mountWorkspaces(revealPendingTarget);
   revealPendingTarget();

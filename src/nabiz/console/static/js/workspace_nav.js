@@ -1,10 +1,75 @@
 /* Native workspace and composer, adapted from DOU-Synapse ChatDraft (MIT).
  * Attribution and source revision: docs/design/synapse-adaptation.md. */
+import { onLang, t } from './i18n_text.js';
+
+// Murat's 27 Sep decision: city, travel, map and nearby under "Daha fazla"; open data waits for the
+// operator area (P08) and follow lives in Hesabım, both reachable by address; Kolay ekran in the top bar.
+// placement: 'nav' | 'more' | 'hash-only' | 'topbar'. No section is removed.
+export const LEGACY_PLACEMENT = [
+  { id: 'city', href: '#city-cards', i18n: 'design.nav_city', placement: 'more' },
+  { id: 'travel', href: '#city-tools', i18n: 'design.nav_tools', placement: 'more' },
+  { id: 'map', href: '#map-workspace', i18n: 'design.nav_map', placement: 'more' },
+  { id: 'nearby', href: '#explore-workspace', i18n: 'design.nav_nearby', placement: 'more' },
+  { id: 'data', href: '#acik-veri', i18n: 'design.nav_data', placement: 'hash-only' },
+  { id: 'follow', href: '#takip', i18n: 'ui.shell.nav_follow', placement: 'hash-only' },
+  { id: 'easy', href: '/kolay.html', i18n: 'design.nav_easy', placement: 'topbar' },
+];
+
 const VIEWS = {
-  assistant: ['home-screen', 'asistan'], city: ['city-cards'],
+  assistant: ['home-screen', 'asistan'], calendar: ['takvim'], city: ['city-cards'],
   travel: ['journey-workspace'], data: ['open-data-workspace'],
   map: ['map-workspace'], nearby: ['explore-workspace'], account: ['hesabim'],
 };
+
+export function applyLegacyPlacement() {
+  const nav = document.getElementById('legacy-nav');
+  const more = document.getElementById('legacy-more');
+  const moreLinks = document.getElementById('legacy-more-links');
+  if (!nav || !more || !moreLinks) return;
+  const topbar = document.getElementById('legacy-topbar');
+  const links = [...nav.querySelectorAll('a'), ...moreLinks.querySelectorAll('a'),
+    ...(topbar ? topbar.querySelectorAll('a') : [])];
+  for (const item of LEGACY_PLACEMENT) {
+    const link = links.find((node) => node.getAttribute('data-legacy') === item.id);
+    if (!link) continue;
+    link.setAttribute('href', item.href);
+    if (item.i18n) link.setAttribute('data-i18n', item.i18n);
+    const row = link.parentElement;
+    row.hidden = item.placement === 'hash-only';
+    const home = item.placement === 'more' ? moreLinks : item.placement === 'topbar' && topbar ? topbar : nav;
+    home.append(row);
+  }
+  nav.hidden = ![...nav.children].some((row) => !row.hidden);
+  more.hidden = ![...moreLinks.children].some((row) => !row.hidden);
+}
+
+function labelPrimaryNavigation(language) {
+  const labels = {
+    assistant: ['ui.shell.nav_assistant', 'Asistan', 'Assistant'],
+    calendar: ['ui.shell.nav_calendar', 'Takvim', 'Calendar'],
+    account: ['ui.shell.nav_account', 'Hesabım', 'My account'],
+  };
+  for (const link of document.querySelectorAll('.nav-primary a')) {
+    const [key, tr, en] = labels[link.getAttribute('data-primary')] || [];
+    const name = link.querySelector('span');
+    if (name && key) name.textContent = t(key, language === 'en' ? en : tr);
+  }
+  const follow = document.querySelector('[data-legacy="follow"] span');
+  if (follow) follow.textContent = t('ui.shell.nav_follow', language === 'en' ? 'Follow' : 'Takip');
+  const other = document.querySelector('.nav-secondary');
+  other?.setAttribute('aria-label', t('ui.shell.nav_other', language === 'en' ? 'Other sections' : 'Diğer bölümler'));
+  const summary = document.querySelector('#legacy-more summary');
+  if (summary) summary.textContent = t('ui.shell.more', language === 'en' ? 'More' : 'Daha fazla');
+  for (const [selector, key, tr, en] of [
+    ['#takvim-title', 'ui.shell.calendar_title', 'Takvim', 'Calendar'],
+    ['#takvim > p:not([id])', 'ui.shell.calendar_note', 'Kaydettiğiniz planlar burada görünür.', 'Your saved plans appear here.'],
+    ['#takvim-empty', 'ui.shell.calendar_empty', 'Henüz kaydedilmiş plan yok. Sohbette bir etkinliği takvime eklediğinizde burada görünür.',
+      'No saved plans yet. When you add an event to your calendar in chat, it will appear here.'],
+  ]) {
+    const node = document.querySelector(selector);
+    if (node) node.textContent = t(key, language === 'en' ? en : tr);
+  }
+}
 
 function targetForId(id) {
   const targetId = /^takibi-birak=[A-Za-z0-9.]{3,120}$/.test(id || '') ? 'takip' : id;
@@ -38,6 +103,9 @@ export function mountWorkspace({ form, input }) {
   const main = document.getElementById('main'), hero = document.getElementById('home-screen');
   const chat = document.getElementById('asistan'), log = document.getElementById('chat-log');
   if (!main || !hero || !chat || !log) return;
+  applyLegacyPlacement();
+  labelPrimaryNavigation(document.documentElement.lang);
+  onLang(labelPrimaryNavigation);
   const placeholder = document.createComment('composer home');
   form.before(placeholder);
   const submit = document.getElementById('chat-submit');
@@ -58,12 +126,7 @@ export function mountWorkspace({ form, input }) {
     const footer = document.querySelector('footer');
     if (footer) footer.hidden = name !== 'about';
     const links = [...document.querySelectorAll('.topbar-nav a')];
-    const candidates = links.filter((link) => {
-      const href = link.getAttribute('href');
-      const target = href?.startsWith('#') ? document.getElementById(href.slice(1)) : null;
-      return target && viewForTarget(target) === name;
-    });
-    const current = candidates.find((link) => destination?.closest(link.getAttribute('href'))) || candidates[0];
+    const current = links.find((link) => link.getAttribute('data-primary') === name);
     links.forEach((link) => {
       if (link === current) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
