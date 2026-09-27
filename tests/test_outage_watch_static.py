@@ -307,6 +307,9 @@ def test_static_modules_and_css_keep_the_feature_fences(tmp_path) -> None:
     shell = (REPO_ROOT / "src/nabiz/console/static/sw.js").read_text(encoding="utf-8")
     assert page.count('src="/js/outage_watch.js"') == 1 and "console_outage_watch" not in page
     assert "'/js/outage_watch.js', '/css/outage_watch.css'" in shell and "console_outage_watch" not in shell
+    # P00 D2a (K): the gas quote is picked by its evidence id, never by comparing Turkish text.
+    citizen = (REPO_ROOT / "src/nabiz/console/static/js/outage_watch.js").read_text(encoding="utf-8")
+    assert "item.id === 'gas_187_title'" in citizen and "item.text ===" not in citizen
     # P00 G5 wired the back end and the console panel; the citizen page and its cache wait for D2.
     app_source = (REPO_ROOT / "src/nabiz/console/app.py").read_text(encoding="utf-8")
     assert "from nabiz.console.outage_watch_api import outage_routes" in app_source

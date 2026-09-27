@@ -18,6 +18,8 @@ MODULES = (
     "notices_center.js", "audience.js", "audience_view.js", "booking.js", "visitor.js", "visitor_view.js",
     "family.js", "family_view.js", "troubleshoot.js", "troubleshoot_view.js", "recovery.js", "recovery_view.js", "bill.js",
     "disaster_kit.js",
+    # P00 D2a (K): E69 picks its quote by id now, so its Turkish lives only in t() fallbacks
+    "outage_watch.js", "console_outage_watch.js",
 )
 # P00 D2a: the chat shell (P01) and history and memory (P02) look their keys up through tables
 # (``t(`ui.memory.${key}`, COPY[key])``), so the literal-call scan above cannot see them. Their catalogues
