@@ -62,7 +62,7 @@ class KnowledgeAnswer:
             "answer": self.text,
             "citations": [
                 {
-                    key: value
+                    key: mask_personal(clean_for_display(value)) if key == "quote" else value
                     for key, value in hit.to_dict().items()
                     if key in {"url", "title", "quote", "fetched_at", "source_updated_at", "institution"}
                 }
