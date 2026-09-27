@@ -1,4 +1,4 @@
-/* A counted, explicit device reset. External calendar files and Outlook events are out of reach. */
+/* A counted, explicit browser reset. External calendar files and Outlook events are out of reach. */
 import * as conversationStore from './conversations.js';
 import { t } from './i18n_text.js';
 

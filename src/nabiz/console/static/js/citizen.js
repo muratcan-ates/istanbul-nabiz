@@ -236,7 +236,7 @@ function mountProfile() {
 let savedList = null;
 function keepTurn(turn) {
   return session?.keepTurn(turn).then(() => savedList?.refresh()).catch(() => {
-    savedList?.announce('Bu mesaj cihazda saklanamadı. Sohbet geçmişini kontrol edip yeniden deneyin.');
+    savedList?.announce('Bu mesaj tarayıcıda saklanamadı. Sohbet geçmişini kontrol edip yeniden deneyin.');
   });
 }
 function mountSaved(chat) {
@@ -260,6 +260,7 @@ function mountSaved(chat) {
   });
 }
 function personalChanged() {
+  profile = readProfile();
   memory = readMemory();
   renderProfileState();
   void memoryPanel?.refresh();
@@ -280,12 +281,14 @@ function boot() {
   $('#cards-refresh').addEventListener('click', () => refreshAll(true));
   const chat = mountChat({
     log: $('#chat-log'), form: $('#chat-form'), input: $('#chat-input'), submit: $('#chat-submit'), status: $('#chat-status'),
-    getNeeds: needs, onMemorySuggestion: null, onTurn: keepTurn,
+    getNeeds: needs, onMemorySuggestion: () => false, onTurn: keepTurn,
   });
   mountSaved(chat);
+  session?.bindFullSubmit($('#chat-form'), $('#chat-input'));
   memoryPanel = mountMemoryPanel($('#hafizam'), { store: memoryStore, session, getProfile: () => profile,
     onChanged: personalChanged });
-  mountMemorySuggestions({ store: memoryStore, session, onChanged: personalChanged });
+  mountMemorySuggestions({ store: memoryStore, session, onChanged: personalChanged,
+    legacyLog: $('#chat-log'), chatForm: $('#chat-form'), chatInput: $('#chat-input'), onLocalTurn: keepTurn });
   mountDataReset($('#hesabim'), { store: memoryStore, session, onChanged: () => {
     profile = readProfile();
     personalChanged();

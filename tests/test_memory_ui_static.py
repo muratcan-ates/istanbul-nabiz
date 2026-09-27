@@ -11,24 +11,29 @@ CATALOG = {
         "ui.history.title": "Sohbetlerim", "ui.history.clear": "Tüm sohbetleri sil",
         "ui.history.delete": "Sohbeti sil",
         "ui.history.unavailable": "Bu tarayıcı geçmişi saklamıyor. Sonraki ziyaretinizde sohbet görünmeyebilir.",
-        "ui.history.privacy": "Sohbetleriniz yalnız bu tarayıcıda, oluşturulduktan sonra 30 gün saklanır. Sunucuya kaydedilmez.",
+        "ui.history.privacy": "Sohbetleriniz yalnız bu tarayıcıda, son kullanımdan sonra 30 gün saklanır. Sunucuya kaydedilmez.",
         "ui.history.empty": "Henüz sohbet yok. Yeni sohbet başlatarak soru sorabilirsiniz.",
         "ui.history.delete_label": "{title} sohbetini sil",
         "ui.history.new": "Yeni sohbet", "ui.history.toggle": "Geçmiş",
         "ui.history.expires": "{date} tarihinde silinecek",
-        "ui.history.trimmed": "En eski {count} mesaj silindi (sohbet başına 80 mesaj).",
+        "ui.history.full": (
+            "Bu sohbet 80 mesaja ulaştı; yeni sohbette devam ediyoruz. "
+            "Eski sohbet olduğu gibi duruyor."
+        ),
+        "ui.history.full_hint": "Yeni sohbet önerilir",
+        "ui.history.trimmed": "En eski {count} mesaj daha önce silinmişti.",
         "ui.history.active_deleted": "Açık sohbet silindi. Yeni sohbet başladı.",
         "ui.history.delete_title": "Sohbeti sil",
         "ui.history.delete_body": "Bu sohbetin mesajları ve kartları bu tarayıcıdan silinir.",
         "ui.history.delete_all_body": "Tüm sohbetlerin mesajları ve kartları bu tarayıcıdan silinir.",
         "ui.history.delete_linked_memory": "Bu sohbette eklenen {count} hafıza kaydı ayrıca duruyor.",
         "ui.history.also_forget": "Bunları da unut",
-        "ui.history.linked_plans": "Bağlı {count} takvim ya da bildirim kaydı silinmez; kendi bölümünden yönetilir.",
+        "ui.history.linked_plans": "Bağlı {count} takvim, bildirim ya da işlem kaydı silinmez; kendi bölümünden yönetilir.",
         "ui.history.cancel": "Vazgeç", "ui.history.confirm": "Evet, sohbeti sil",
         "ui.history.confirm_all": "Evet, sohbetleri sil",
         "ui.history.deleted": "Sohbet silindi.", "ui.history.cleared": "Tüm sohbetler silindi.",
         "ui.history.scoped_gone": "{count} yalnız bu sohbetteki hafıza kaydı silindi.",
-        "ui.history.linked_kept": "{count} bağlı plan ya da bildirim kaydı kaldı.",
+        "ui.history.linked_kept": "{count} bağlı takvim, bildirim ya da işlem kaydı kaldı.",
         "ui.history.memory_kept": "{count} sonraki sohbet hafıza kaydı kaldı.",
         "ui.history.memory_forgotten": "{count} sonraki sohbet hafıza kaydı unutuldu.",
         "ui.history.memory_failed": "{count} hafıza kaydı unutulamadı; Hafızam bölümünden yeniden deneyin.",
@@ -48,7 +53,21 @@ CATALOG = {
         "ui.memory.scope": "Hatırlama süresi", "ui.memory.need": "Rotalarda şöyle kullan",
         "ui.memory.none": "Rotalarda kullanma",
         "ui.memory.health": "Bu bilgi yalnız bu tarayıcıda durur. Sunucuya, operatöre ve takvime gitmez. Teşhis değildir.",
-        "ui.memory.forgot": "Unutuldu. Eski sohbet metni silinmez.",
+        "ui.memory.forgot": "Unutuldu. Eski sohbet metni silinmez, 30 gün yeniden önerilmez.",
+        "ui.memory.forgot_profile_kept": (
+            'Hafızadan unutuldu. Profilim\'deki "{label}" seçimi duruyor; '
+            "rotalarda kullanılmaya devam eder. 30 gün yeniden önerilmez."
+        ),
+        "ui.memory.forgot_profile_inactive": (
+            'Hafızadan unutuldu. Profilim\'deki "{label}" seçimi duruyor; '
+            "kullanım onayı kapalı olduğu için isteklerde gönderilmez. 30 gün yeniden önerilmez."
+        ),
+        "ui.memory.remove_from_profile": "Profilimden de kaldır",
+        "ui.memory.removed_from_profile": "Profilimden de kaldırıldı; artık isteklerde gönderilmez.",
+        "ui.memory.removed_from_profile_still_used": (
+            'Profilimden de kaldırıldı; ancak başka bir hafıza kaydı '
+            '"{label}" ihtiyacını isteklerde kullanmaya devam ediyor.'
+        ),
         "ui.memory.saved": "Hafıza kaydedildi.", "ui.memory.updated": "Hafıza düzeltildi.",
         "ui.memory.cleared": "Hafızadaki kayıtlar unutuldu.",
         "ui.memory.failed": "Hafıza değiştirilemedi. Yeniden deneyin.",
@@ -73,6 +92,10 @@ CATALOG = {
         "ui.memory.expired": "Bu öneri artık geçerli değil.",
         "ui.memory.cardSaved": "Seçtiğiniz bilgiler Hafızam bölümüne eklendi.",
         "ui.memory.cardFailed": "Kaydedilemedi. Yeniden deneyin.",
+        "ui.memory.change": "Düzelt", "ui.memory.healthAdd": "Sağlık beyanı ekle",
+        "ui.memory.healthHint": "Sağlık beyanı Hafızam bölümünde ayrı onayla eklenir.",
+        "ui.memory.healthConsent": "Bu sağlık beyanını yalnız bu tarayıcıda saklamayı açıkça onaylıyorum.",
+        "ui.memory.healthConsentRequired": "Sağlık beyanını eklemek için ayrı onayınızı işaretleyin.",
         "ui.reset.title": "Tüm Nabız verimi sil", "ui.reset.confirm": "Evet, hepsini sil",
         "ui.reset.cancel": "Vazgeç",
         "ui.reset.description": "Bu tarayıcıdaki seçili veri grupları silinir. Bu işlem geri alınamaz.",
@@ -94,24 +117,32 @@ CATALOG = {
         "ui.history.title": "My chats", "ui.history.clear": "Delete all chats",
         "ui.history.delete": "Delete chat",
         "ui.history.unavailable": "This browser cannot save chat history. Your chats may not appear on your next visit.",
-        "ui.history.privacy": "Your chats stay in this browser for 30 days from creation. They are not saved on the server.",
+        "ui.history.privacy": (
+            "Your chats stay in this browser for 30 days after their last use. "
+            "They are not saved on the server."
+        ),
         "ui.history.empty": "No chats yet. Start a new chat to ask a question.",
         "ui.history.delete_label": "Delete the {title} chat",
         "ui.history.new": "New chat", "ui.history.toggle": "History",
         "ui.history.expires": "Will be deleted on {date}",
-        "ui.history.trimmed": "The oldest {count} messages were deleted (80 messages per chat).",
+        "ui.history.full": (
+            "This chat reached 80 messages; we’re continuing in a new chat. "
+            "The old chat remains as it was."
+        ),
+        "ui.history.full_hint": "A new chat is recommended",
+        "ui.history.trimmed": "The oldest {count} messages had been deleted earlier.",
         "ui.history.active_deleted": "The open chat was deleted. A new chat has started.",
         "ui.history.delete_title": "Delete chat",
         "ui.history.delete_body": "This chat's messages and cards will be deleted from this browser.",
         "ui.history.delete_all_body": "All chats' messages and cards will be deleted from this browser.",
         "ui.history.delete_linked_memory": "{count} memory items added in this chat remain separately.",
         "ui.history.also_forget": "Forget these too",
-        "ui.history.linked_plans": "{count} linked calendar or report items remain; manage them in their sections.",
+        "ui.history.linked_plans": "{count} linked calendar, report, or operation items remain; manage them in their sections.",
         "ui.history.cancel": "Cancel", "ui.history.confirm": "Yes, delete chat",
         "ui.history.confirm_all": "Yes, delete chats",
         "ui.history.deleted": "Chat deleted.", "ui.history.cleared": "All chats deleted.",
         "ui.history.scoped_gone": "{count} items remembered only in this chat were deleted.",
-        "ui.history.linked_kept": "{count} linked plan or report items remain.",
+        "ui.history.linked_kept": "{count} linked calendar, report, or operation items remain.",
         "ui.history.memory_kept": "{count} items remembered in later chats remain.",
         "ui.history.memory_forgotten": "{count} items remembered in later chats were forgotten.",
         "ui.history.memory_failed": "{count} memory items could not be forgotten. Please try again in Memory.",
@@ -134,7 +165,22 @@ CATALOG = {
             "This information stays in this browser. It is not sent to the server, "
             "an operator or a calendar. It is not a diagnosis."
         ),
-        "ui.memory.forgot": "Forgotten. The old chat text remains.",
+        "ui.memory.forgot": "Forgotten. The old chat text remains; it will not be suggested again for 30 days.",
+        "ui.memory.forgot_profile_kept": (
+            'Forgotten from Memory. The "{label}" choice remains in My profile and '
+            "continues to be used for routes. It will not be suggested again for 30 days."
+        ),
+        "ui.memory.forgot_profile_inactive": (
+            'Forgot from Memory. The "{label}" selection remains in My profile; '
+            "with usage consent off, it is not sent in requests. "
+            "It will not be suggested again for 30 days."
+        ),
+        "ui.memory.remove_from_profile": "Remove from My profile too",
+        "ui.memory.removed_from_profile": "Removed from My profile too; it is no longer sent in requests.",
+        "ui.memory.removed_from_profile_still_used": (
+            'Removed from My profile too; another memory item still sends '
+            'the "{label}" need in requests.'
+        ),
         "ui.memory.saved": "Memory saved.", "ui.memory.updated": "Memory updated.",
         "ui.memory.cleared": "Memory items forgotten.",
         "ui.memory.failed": "Memory could not be changed. Please try again.",
@@ -159,6 +205,10 @@ CATALOG = {
         "ui.memory.expired": "This suggestion is no longer available.",
         "ui.memory.cardSaved": "Your selected items were added to Memory.",
         "ui.memory.cardFailed": "Could not save. Please try again.",
+        "ui.memory.change": "Change", "ui.memory.healthAdd": "Add a health statement",
+        "ui.memory.healthHint": "Add a health statement in Memory with separate consent.",
+        "ui.memory.healthConsent": "I explicitly agree to store this health statement only in this browser.",
+        "ui.memory.healthConsentRequired": "Select the separate consent to add a health statement.",
         "ui.reset.title": "Delete all my Nabız data", "ui.reset.confirm": "Yes, delete it all",
         "ui.reset.cancel": "Cancel",
         "ui.reset.description": "Selected data groups in this browser will be deleted. This cannot be undone.",
@@ -224,8 +274,11 @@ class Node {
   setAttribute(key, value) { this.attrs[key] = String(value); }
   getAttribute(key) { return this.attrs[key] ?? null; }
   removeAttribute(key) { delete this.attrs[key]; }
-  addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); }
-  dispatchEvent(event) { event.target ||= this; for (const callback of this.listeners[event.type] || []) callback(event);
+  addEventListener(type, callback, options) {
+    (this.listeners[type] ||= []).push({callback, capture:options === true || options?.capture === true}); }
+  dispatchEvent(event) { event.target ||= this;
+    for (const listener of [...(this.listeners[event.type] || [])].sort((a, b) => Number(b.capture) - Number(a.capture))) {
+      listener.callback(event); if (event.immediate) break; }
     if (!event.stopped) this.parentElement?.dispatchEvent(event); }
   focus() { this.ownerDocument.activeElement = this; }
   showModal() { this.open = true; }
@@ -233,7 +286,7 @@ class Node {
   reset() { this.querySelectorAll('input').forEach(input => { input.value = ''; input.checked = false; }); }
 }
 function evt(type, target, detail = null) { return {type, target, detail, preventDefault() { this.prevented = true; },
-  stopPropagation() { this.stopped = true; }}; }
+  stopPropagation() { this.stopped = true; }, stopImmediatePropagation() { this.immediate = true; this.stopped = true; }}; }
 function setup() {
   const doc = new Node('document'); doc.documentElement = {lang: 'tr'}; doc.ownerDocument = doc;
   doc.createElement = tag => new Node(tag, doc); doc.defaultView = {location: {reload() { doc.reloaded = true; }}};
@@ -288,6 +341,9 @@ add.querySelector('[name="need_key"]').value = 'slow_walk'; submit(add); await s
 const requiresScope = s.root.querySelector('#memory-status').textContent.includes('süre');
 const scope = add.querySelectorAll('input[type="radio"]')[0]; scope.checked = true;
 submit(add); await settle();
+const requiresHealthConsent = s.root.querySelector('#memory-status').textContent.includes('ayrı onay');
+add.querySelector('[name="explicit_health_consent"]').checked = true;
+submit(add); await settle();
 let saved = await store.list({{scope:'conversation', conversationId:active.id}});
 const health = saved[0], grouped = s.root.querySelectorAll('.memory-group').length;
 click(s.root.querySelector('button[data-edit]'));
@@ -301,16 +357,76 @@ click(s.root.querySelector('button[data-forget]')); await settle();
 const forgotten = (await store.list({{}})).length === 0;
 console.log(JSON.stringify({{ids: ['memory-list','memory-empty','memory-clear','memory-status']
   .every(id => !!s.root.querySelector('#'+id)),
-  initiallyEmpty, requiresScope, healthType: health?.type, healthSensitive: health?.sensitive,
+  initiallyEmpty, requiresScope, requiresHealthConsent, healthType: health?.type, healthSensitive: health?.sensitive,
   needs: store.requestNeeds({{profile:{{consent:false,needs:[]}},conversation:await conversations.load(active.id)}}),
   grouped, moved, forgotten, status: s.root.querySelector('#memory-status').textContent,
   profileLink: s.root.querySelector('.memory-profile-needs').textContent.includes('Adımsız erişim')}}));
 """)
     assert out == {
-        "ids": True, "initiallyEmpty": True, "requiresScope": True,
+        "ids": True, "initiallyEmpty": True, "requiresScope": True, "requiresHealthConsent": True,
         "healthType": "health", "healthSensitive": True, "needs": [],
         "grouped": 1, "moved": True, "forgotten": True,
         "status": CATALOG["tr"]["ui.memory.forgot"], "profileLink": True,
+    }
+
+
+def test_forget_memory_keeps_profile_selection_until_separate_removal(tmp_path) -> None:
+    out = run_ui(tmp_path, {
+        "ui": "js/memory_ui.js", "memory": "js/memory_store.js", "profile": "js/profile.js",
+        "conversations": "js/conversations.js", "i18n": "js/i18n_text.js",
+    }, f"""
+const s = setup(); i18n.setCatalogs('tr', {json.dumps(CATALOG['tr'], ensure_ascii=False)}, {{}});
+profile.writeProfile({{consent:true, needs:['slow_walk'], stations:[], lines:[]}});
+const store = memory.createMemoryStore({{storage:s.storage, conversations}});
+await store.add({{type:'need',key:'slow_walk',label:'Yavaş yürüyorum',scope:'profile',source:'user_typed'}});
+const session = {{activeId:() => null, async refreshActive() {{}} }};
+const panel = ui.mountMemoryPanel(s.root, {{store, session, getProfile:() => profile.readProfile()}});
+await settle(); click(s.root.querySelector('button[data-forget]')); await settle();
+const button = s.root.querySelector('.memory-forget-result').querySelector('button');
+const kept = {{status:s.root.querySelector('#memory-status').textContent, visible:!button.hidden,
+  needs:store.requestNeeds({{profile:profile.readProfile(),conversation:null}}),
+  tombstone:store.isForgotten('need','slow_walk')}};
+click(button); await settle();
+const removed = {{status:s.root.querySelector('#memory-status').textContent,
+  profile:profile.readProfile().needs, needs:store.requestNeeds({{profile:profile.readProfile(),conversation:null}})}};
+await store.add({{type:'interest',key:'culture',label:'Kültür ve sanat',scope:'profile',source:'user_typed'}});
+await panel.refresh(); click(s.root.querySelector('button[data-forget]')); await settle();
+console.log(JSON.stringify({{kept, removed, plain:s.root.querySelector('#memory-status').textContent,
+  plainButtonHidden:button.hidden}}));
+""")
+    assert out["kept"] == {
+        "status": CATALOG["tr"]["ui.memory.forgot_profile_kept"].format(label="Yavaş yürüyorum"),
+        "visible": True, "needs": ["slow_walk"], "tombstone": True,
+    }
+    assert out["removed"] == {
+        "status": CATALOG["tr"]["ui.memory.removed_from_profile"],
+        "profile": [], "needs": [],
+    }
+    assert out["plain"] == CATALOG["tr"]["ui.memory.forgot"] and out["plainButtonHidden"]
+
+
+def test_profile_removal_reports_another_memory_still_uses_need(tmp_path) -> None:
+    out = run_ui(tmp_path, {
+        "ui": "js/memory_ui.js", "memory": "js/memory_store.js", "profile": "js/profile.js",
+        "conversations": "js/conversations.js", "i18n": "js/i18n_text.js",
+    }, f"""
+const s = setup(); i18n.setCatalogs('tr', {json.dumps(CATALOG['tr'], ensure_ascii=False)}, {{}});
+profile.writeProfile({{consent:true, needs:['slow_walk'], stations:[], lines:[]}});
+const store = memory.createMemoryStore({{storage:s.storage, conversations}});
+await store.add({{type:'need',key:'slow_walk',label:'Yavaş yürüyorum',scope:'profile',source:'user_typed'}});
+await store.add({{type:'health',key:null,label:'Örnek beyan',need_key:'slow_walk',scope:'profile',
+  source:'profile_form',explicit_health_consent:true}});
+const session = {{activeId:() => null, async refreshActive() {{}} }};
+ui.mountMemoryPanel(s.root, {{store, session, getProfile:() => profile.readProfile()}});
+await settle(); click(s.root.querySelector('button[data-forget]')); await settle();
+click(s.root.querySelector('.memory-forget-result').querySelector('button')); await settle();
+console.log(JSON.stringify({{status:s.root.querySelector('#memory-status').textContent,
+  profile:profile.readProfile().needs,
+  needs:store.requestNeeds({{profile:profile.readProfile(),conversation:null}})}}));
+""")
+    assert out == {
+        "status": CATALOG["tr"]["ui.memory.removed_from_profile_still_used"].format(label="Yavaş yürüyorum"),
+        "profile": [], "needs": ["slow_walk"],
     }
 
 
@@ -331,6 +447,9 @@ const registry = {{registerCardType(_type, render) {{ this.render = render; }},
 const mounted = card.mountMemorySuggestions({{store, session, registry, doc:s.doc}}); await mounted.ready;
 s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {{question:'Uzun yürümek istemiyorum, kültür etkinliklerini seviyorum',
   final:{{}}, host, messageId:'m1'}})); await settle();
+const firstOffer = host.querySelectorAll('.memory-card').length;
+s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {{question:'Uzun yürümek istemiyorum, kültür etkinliklerini seviyorum',
+  final:{{}}, host, messageId:'m2'}})); await settle();
 const offer = host.querySelector('.memory-card'); const checks = offer.querySelectorAll('input[type="checkbox"]');
 const before = (await store.list({{scope:'profile'}})).length;
 const disabled = offer.querySelector('button[data-cardAction]').getAttribute('aria-disabled');
@@ -347,20 +466,24 @@ await store.forget(saved.find(item => item.key === 'slow_walk').id);
 const forgottenServer = registry.render({{...appended[0],id:'forgotten-server',body:{{key:'slow_walk',label:'Yavaş yürüyorum'}}}},
   {{document:s.doc}});
 s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {{question:'Uzun yürümek istemiyorum, kültür etkinliklerini seviyorum',
-  final:{{}}, host, messageId:'m2'}})); await settle();
-console.log(JSON.stringify({{types:appended[0].body.items.map(item => item.key), before, disabled, action,
+  final:{{}}, host, messageId:'m3'}})); await settle();
+console.log(JSON.stringify({{firstOffer, types:appended[0].body.items.map(item => item.key), before, disabled, action,
   saved:saved.map(item => item.key).sort(), restoredButtons:restored.querySelectorAll('button').length,
   afterForgetOffers:appended.length, forgottenServerButtons:forgottenServer.querySelectorAll('button').length,
   cardStatuses, needs:store.requestNeeds({{profile:{{consent:true,needs:[]}},conversation:null}}),
+  linked:appended[0].linked, consentEvent:emitted[0]?.requires_consent,
   actions:appended[0].actions.map(a => [a.id, a.kind, a.requires_consent, a.operation_id]),
   emitted:emitted.map(d => [d.action, d.card_id === appended[0].id, Boolean(Date.parse(d.consented_at)), d.operation_id])}}));
 """)
     assert out == {
-        "types": ["slow_walk", "culture"], "before": 0, "disabled": "true",
+        "firstOffer": 0, "types": ["slow_walk", "culture"], "before": 0, "disabled": "true",
         "action": "remember_always", "saved": ["culture", "slow_walk"],
         "restoredButtons": 0, "afterForgetOffers": 1, "forgottenServerButtons": 0,
         "cardStatuses": ["awaiting_confirmation", "done"], "needs": [],
-        "actions": [["remember_here", "device", True, None], ["remember_always", "device", True, None]],
+        "actions": [["remember_here", "device", True, None], ["remember_always", "device", True, None],
+                    ["change", "view", False, None]],
+        "linked": {"event_id": None, "report_code": None, "operation_id": None},
+        "consentEvent": True,
         "emitted": [["remember_always", True, True, None]],
     }
 
@@ -376,6 +499,8 @@ const host = s.doc.createElement('div'); s.doc.append(host); const appended = []
 const registry = {registerCardType(_type, render) { this.render = render; },
   appendCard(target, value, ctx) { appended.push(value); target.append(this.render(value, {...ctx, document:s.doc})); }};
 await card.mountMemorySuggestions({store, session, registry, doc:s.doc}).ready;
+s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {question:'Uzun yürümek istemiyorum, kültür etkinliklerini seviyorum',
+  final:{}, host, messageId:'a0'})); await settle();
 const serverCard = {v:1,id:'server-1',conversation_id:firstId,message_id:'a1',type:'memory',
   status:'awaiting_confirmation',title:'Hatırlayayım mı?',body:{key:'slow_walk',label:'Yavaş yürüyorum'},
   sources:[],source_time:'',linked_id:null,actions:['remember_here','remember_always'],sensitive:false};
@@ -395,9 +520,12 @@ s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {question:'Kalp rahatsızlı�
 const afterHealth = host.querySelectorAll('.memory-card').length;
 s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {question:'Merdivensiz yol kullanıyorum',
   final:{}, host, messageId:'b2'})); await settle();
+const firstInNewChat = host.querySelectorAll('.memory-card').length;
+s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {question:'Merdivensiz yol kullanıyorum',
+  final:{}, host, messageId:'b3'})); await settle();
 const newCard = host.querySelectorAll('.memory-card').at(-1);
 click(newCard.querySelector('button[data-memoryDismiss]')); await settle();
-console.log(JSON.stringify({serverDeduped, expired, afterHealth,
+console.log(JSON.stringify({serverDeduped, expired, afterHealth, firstInNewChat,
   declined:newCard.textContent.includes('Bu öneri artık geçerli değil.'),
   stored:(await store.list({})).length, offers:host.querySelectorAll('.memory-card').length}));
 """.replace("__CATALOG__", json.dumps(CATALOG["tr"], ensure_ascii=False))
@@ -406,8 +534,122 @@ console.log(JSON.stringify({serverDeduped, expired, afterHealth,
         "conversations": "js/conversations.js", "i18n": "js/i18n_text.js",
     }, body)
     assert out == {
-        "serverDeduped": ["slow_walk", "culture"], "expired": True, "afterHealth": 1,
+        "serverDeduped": ["slow_walk", "culture"], "expired": True,
+        "afterHealth": 1, "firstInNewChat": 1,
         "declined": True, "stored": 0, "offers": 2,
+    }
+
+
+def test_health_card_only_opens_blank_health_form_without_consent_or_storage(tmp_path) -> None:
+    out = run_ui(tmp_path, {
+        "card": "js/memory_card.js", "memory": "js/memory_store.js",
+        "conversations": "js/conversations.js", "i18n": "js/i18n_text.js",
+    }, f"""
+const s = setup(); i18n.setCatalogs('tr', {json.dumps(CATALOG['tr'], ensure_ascii=False)}, {{}});
+s.doc.defaultView.CustomEvent = class {{ constructor(type, init) {{ this.type = type; this.detail = init.detail; }} }};
+const conversation = await conversations.newConversation();
+const store = memory.createMemoryStore({{storage:s.storage, conversations}});
+const savedCards = []; const session = {{activeId:() => conversation.id,
+  async addCard(_id, value) {{ savedCards.push(value); }}, async refreshActive() {{}} }};
+const host = s.doc.createElement('div'); s.doc.append(host);
+const registry = {{registerCardType(_type, render) {{ this.render = render; }},
+  appendCard(target, value, ctx) {{ target.append(this.render(value, {{...ctx, document:s.doc}})); }}}};
+const events = []; s.doc.addEventListener('nabiz:memory-health-form', event => events.push(event.detail));
+await card.mountMemorySuggestions({{store, session, registry, doc:s.doc}}).ready;
+s.doc.dispatchEvent(evt('nabiz:chat-final', s.doc, {{question:'Kalp rahatsızlığımı hafızaya ekle',
+  final:{{}}, host, messageId:'health-1'}})); await settle();
+const offer = host.querySelector('.memory-card');
+click(offer.querySelector('button[data-cardAction]')); await settle();
+console.log(JSON.stringify({{actions:savedCards[0].actions, body:savedCards[0].body,
+  sensitive:savedCards[0].sensitive, buttonActions:offer.querySelectorAll('button').map(n => n.dataset.cardAction),
+  containsRaw:JSON.stringify(savedCards[0]).includes('Kalp') || offer.textContent.includes('Kalp'),
+  events, stored:(await store.list({{}})).length}}));
+""")
+    assert out["sensitive"] and out["stored"] == 0 and not out["containsRaw"]
+    assert out["buttonActions"] == ["change"]
+    assert out["actions"] == [{
+        "id": "change", "label": CATALOG["tr"]["ui.memory.change"],
+        "kind": "view", "requires_consent": False, "operation_id": None,
+    }]
+    assert out["body"]["kind"] == "health" and out["events"] == [{"card_id": out["events"][0]["card_id"]}]
+
+
+def test_health_memory_request_is_captured_before_chat_stream(tmp_path) -> None:
+    out = run_ui(tmp_path, {
+        "card": "js/memory_card.js", "memory": "js/memory_store.js",
+        "conversations": "js/conversations.js", "i18n": "js/i18n_text.js",
+    }, f"""
+const s = setup(); i18n.setCatalogs('tr', {json.dumps(CATALOG['tr'], ensure_ascii=False)}, {{}});
+const conversation = await conversations.newConversation();
+const store = memory.createMemoryStore({{storage:s.storage, conversations}});
+const form = s.doc.createElement('form'), input = s.doc.createElement('input');
+form.append(input); s.doc.append(form); const log = s.doc.createElement('ul'); s.doc.append(log);
+let streamed = 0; form.addEventListener('submit', () => streamed++);
+const turns = [], cards = []; const session = {{activeId:() => conversation.id,
+  async addCard(_id, value) {{ cards.push(value); }} }};
+const registry = {{registerCardType(_type, render) {{ this.render = render; }},
+  appendCard(target, value, ctx) {{ target.append(this.render(value, {{...ctx, document:s.doc}})); }}}};
+await card.mountMemorySuggestions({{store, session, registry, doc:s.doc,
+  legacyLog:log, chatForm:form, chatInput:input,
+  onLocalTurn:async turn => turns.push(turn)}}).ready;
+input.value = 'Kalp rahatsızlığımı hafızaya ekle'; const healthSubmit = evt('submit', form);
+form.dispatchEvent(healthSubmit); await settle();
+const health = {{blocked:healthSubmit.prevented, streamed, input:input.value,
+  texts:log.querySelectorAll('.chat-text').map(node => node.textContent),
+  raw:JSON.stringify({{turns,cards}}).includes('Kalp'), actions:cards[0].actions.map(item => item.id),
+  restoredButtons:card.renderMemoryCard({{...cards[0],actions:[]}}, {{document:s.doc}}).querySelectorAll('button').length,
+  stored:(await store.list({{}})).length}};
+input.value = 'Kültür etkinliklerini seviyorum'; form.dispatchEvent(evt('submit', form));
+input.value = 'Kalp hastası için bekleme salonu nerede'; form.dispatchEvent(evt('submit', form));
+console.log(JSON.stringify({{health, streamedAfterNormal:streamed}}));
+""")
+    assert out == {
+        "health": {
+            "blocked": True, "streamed": 0, "input": "",
+            "texts": ["[hassas bilgi saklanmadı]"], "raw": False,
+            "actions": ["change"], "restoredButtons": 0, "stored": 0,
+        },
+        "streamedAfterNormal": 2,  # "bekleme" is a question, not "ekle"
+    }
+
+
+def test_legacy_server_suggestion_is_replaced_by_unchecked_card(tmp_path) -> None:
+    out = run_ui(tmp_path, {
+        "card": "js/memory_card.js", "memory": "js/memory_store.js",
+        "conversations": "js/conversations.js", "i18n": "js/i18n_text.js",
+    }, f"""
+const s = setup(); i18n.setCatalogs('tr', {json.dumps(CATALOG['tr'], ensure_ascii=False)}, {{}});
+const conversation = await conversations.newConversation();
+const store = memory.createMemoryStore({{storage:s.storage, conversations}});
+const session = {{activeId:() => conversation.id, activeRecord:() => conversation,
+  async refreshActive() {{}} }};
+const log = s.doc.createElement('ul'); s.doc.append(log);
+const shell = s.doc.createElement('li'); shell.className = 'is-assistant'; log.append(shell);
+const final = s.doc.createElement('div'); shell.append(final);
+const slot = s.doc.createElement('div'); slot.className = 'feedback-slot'; slot.dataset.turnId = 'turn-1'; shell.append(slot);
+const legacy = s.doc.createElement('div'); legacy.className = 'chat-suggest';
+const bold = s.doc.createElement('b'); bold.textContent = 'Yavaş yürüyüş'; legacy.append(bold); final.append(legacy);
+const privateText = s.doc.createElement('p'); privateText.className = 'chat-text';
+privateText.textContent = 'Diz ameliyatı oldum'; log.append(privateText);
+const ordinaryText = s.doc.createElement('p'); ordinaryText.className = 'chat-text';
+ordinaryText.textContent = 'Müze nerede?'; log.append(ordinaryText);
+const answerText = s.doc.createElement('p'); answerText.className = 'chat-text';
+answerText.textContent = 'Nöbetçi eczaneden ilaç alabilirsiniz.'; shell.append(answerText);
+const mounted = card.mountMemorySuggestions({{store, session, legacyLog:log, doc:s.doc}});
+await mounted.ready; await settle(); await mounted.scanLegacy();
+const offer = log.querySelector('.memory-card');
+console.log(JSON.stringify({{legacy:log.querySelectorAll('.chat-suggest').length,
+  masked:privateText.textContent, ordinary:ordinaryText.textContent, answer:answerText.textContent,
+  unchecked:offer.querySelector('input[type="checkbox"]').checked,
+  key:offer.querySelector('input[type="checkbox"]').dataset.key,
+  actions:offer.querySelectorAll('button').map(node => node.dataset.cardAction || null),
+  stored:(await store.list({{}})).length}}));
+""")
+    assert out == {
+        "legacy": 0, "unchecked": False, "key": "slow_walk",
+        "masked": "[hassas bilgi saklanmadı]", "ordinary": "Müze nerede?",
+        "answer": "Nöbetçi eczaneden ilaç alabilirsiniz.",
+        "actions": ["remember_here", "change", None], "stored": 0,
     }
 
 
@@ -531,3 +773,6 @@ def test_new_modules_fit_the_lane_and_use_the_registry_contract() -> None:
     assert not (STATIC / "css" / "memory.css").exists()  # 27 Eyl: memory rules live in conversations.css
     reset = (STATIC / "js" / "data_reset.js").read_text(encoding="utf-8")
     assert "retry.href = '#hesap'" in reset
+    citizen = (STATIC / "js" / "citizen.js").read_text(encoding="utf-8")
+    assert "onMemorySuggestion: () => false" in citizen
+    assert "legacyLog: $('#chat-log')" in citizen

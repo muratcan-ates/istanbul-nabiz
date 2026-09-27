@@ -12,15 +12,23 @@ from conftest import REPO_ROOT
 CATALOG = {
     "tr": {
         "ui.history.new": "Yeni sohbet",
+        "ui.history.full": "Bu sohbet 80 mesaja ulaştı; yeni sohbette devam ediyoruz. Eski sohbet olduğu gibi duruyor.",
+        "ui.history.full_hint": "Yeni sohbet önerilir",
         "ui.history.active_deleted": "Açık sohbet silindi. Yeni sohbet başladı.",
+        "ui.history.linked_plans": "Bağlı {count} takvim, bildirim ya da işlem kaydı silinmez; kendi bölümünden yönetilir.",
+        "ui.history.linked_kept": "{count} bağlı takvim, bildirim ya da işlem kaydı kaldı.",
         "ui.history.masked_emergency": "[acil yönlendirme]",
         "ui.history.masked_sensitive": "[hassas bilgi saklanmadı]",
     },
     "en": {
-        "ui.history.new": "New conversation",
-        "ui.history.active_deleted": "The open conversation was deleted. A new conversation has started.",
+        "ui.history.new": "New chat",
+        "ui.history.full": "This chat reached 80 messages; we’re continuing in a new chat. The old chat remains as it was.",
+        "ui.history.full_hint": "A new chat is recommended",
+        "ui.history.active_deleted": "The open chat was deleted. A new chat has started.",
+        "ui.history.linked_plans": "{count} linked calendar, report, or operation items remain; manage them in their sections.",
+        "ui.history.linked_kept": "{count} linked calendar, report, or operation items remain.",
         "ui.history.masked_emergency": "[emergency guidance]",
-        "ui.history.masked_sensitive": "[sensitive information was not saved]",
+        "ui.history.masked_sensitive": "[sensitive information not saved]",
     },
 }
 
@@ -38,7 +46,7 @@ def run_node(script: str) -> None:
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable")
-def test_v2_turns_masks_cards_links_and_trimmed_count() -> None:
+def test_v2_turns_masks_cards_links_and_full_limit() -> None:
     run_node(
         """
 import assert from 'node:assert/strict';
@@ -58,12 +66,13 @@ assert.equal(emergency.turns[1].content, '[acil yönlendirme]');
 await store.saveTurn(c.id, {role:'user', content:'Kartal yolculuğu', message_id:'q2'});
 const raw = {v:1, id:'card-1', conversation_id:null, message_id:'a1', type:'calendar_draft',
   status:'ready', title:'Takvim', body:{text:'x'.repeat(5000)}, sources:[{label:'Kaynak',url:'https://example.org'}],
-  source_time:'now', linked_id:'calendar:entry-1', actions:['save_calendar','unknown'], sensitive:false, extra:'omit'};
+  source_time:'now', linked_id:'event:entry-1', linked:{event_id:'entry-1',report_code:null,operation_id:null},
+  actions:['save_calendar','unknown'], sensitive:false, extra:'omit'};
 const cards = [raw, ...Array.from({length:7}, (_, i) => ({...raw,id:`card-${i+2}`}))];
 let saved = await store.saveTurn(c.id, {role:'assistant', content:'Rota hazır', mode:'answer', message_id:'a1', cards});
 assert.equal(saved.turns.at(-1).cards.length, 6);
 assert.equal(saved.turns.at(-1).cards[0].conversation_id, c.id);
-assert.equal(saved.turns.at(-1).cards[0].body.text.length, 4000);
+assert.equal(saved.turns.at(-1).cards[0].body.text.length, 600);
 assert.deepEqual(saved.turns.at(-1).cards[0].actions,
   [{id:'save_calendar', label:'', kind:'nabiz', requires_consent:true, operation_id:null}]);
 assert.equal('extra' in saved.turns.at(-1).cards[0], false);
@@ -79,21 +88,60 @@ assert.deepEqual(storedV01.actions, [
   {id:'add_outlook', label:'Outlook', kind:'external', requires_consent:true, operation_id:'op-2'},
   {id:'listen', label:'', kind:'view', requires_consent:false, operation_id:null}]);
 assert.deepEqual(storedV01.linked, {event_id:'e1', report_code:null, operation_id:null});
+assert.deepEqual(withV01.links, [{kind:'calendar',id:'entry-1'},{kind:'calendar',id:'e1'}]);
+const reportCard = {...raw,id:'report',linked_id:'op:wrong',linked:{event_id:null,report_code:'R-1',operation_id:null}};
+const withReport = await store.appendCardToTurn(c.id, 'a1', reportCard);
+assert.equal(store.linkedCounts(withReport).report, 1);
+const operationCard = {...raw,id:'operation',linked_id:null,linked:{event_id:null,report_code:null,operation_id:'op-3'}};
+const withOperation = await store.appendCardToTurn(c.id, 'a1', operationCard);
+assert.equal(store.linkedCounts(withOperation).operation, 1);
+const allLinks = {event_id:'e-multi',report_code:'R-multi',operation_id:'op-multi'};
+const multiCard = {...raw,id:'multi',linked:allLinks,linked_id:null};
+const withMulti = await store.appendCardToTurn(c.id, 'a1', multiCard);
+assert.deepEqual(withMulti.turns.at(-1).cards.at(-1).linked, allLinks);
+for (const id of Object.values(allLinks)) assert.equal(withMulti.links.some(link=>link.id===id), true);
+const aliasCard = {...raw,id:'aliases',linked_id:null,actions:['remember','add_calendar','download_ics',
+  {id:'open_map',operation_id:'must-be-null'}]};
+const aliases = (await store.appendCardToTurn(c.id, 'a1', aliasCard)).turns.at(-1).cards.at(-1).actions;
+assert.deepEqual(aliases.map(action=>action.id),
+  ['remember_here','save_calendar','export_ics','expand_map']);
+assert.equal(aliases[3].operation_id, null);
+const legacyOnly = {...raw,id:'legacy-only',linked:undefined,linked_id:'report:ignored'};
+const withoutLegacyLink = await store.appendCardToTurn(c.id, 'a1', legacyOnly);
+assert.equal(withoutLegacyLink.links.some(link=>link.id === 'ignored'), false);
 assert.equal(store.linkedCounts(saved).calendar, 1);
-assert.equal(Date.parse(store.expiresAt(saved)) - Date.parse(saved.createdAt), 30*86400000);
+assert.equal(Date.parse(store.expiresAt(saved)) - Date.parse(saved.updatedAt), 30*86400000);
 const privateCard = {...raw, id:'private', sensitive:true, title:'Kalp rahatsızlığım var',
-  body:{text:'Kalp rahatsızlığım var'}, actions:['send']};
+  body:{text:'Kalp rahatsızlığım var'}, linked:{event_id:null,report_code:'R-3',operation_id:null}, actions:['send']};
 saved = await store.appendCardToTurn(c.id, 'a1', privateCard);
 const storedPrivate = saved.turns.at(-1).cards.at(-1);
 assert.equal(storedPrivate.title, '[hassas bilgi saklanmadı]');
 assert.equal(JSON.stringify(storedPrivate).includes('Kalp'), false);
 assert.equal(storedPrivate.body, null);
 assert.deepEqual(storedPrivate.actions, []);
-for (let i=0; i<77; i++) saved = await store.saveTurn(c.id, {role:'assistant',content:`yanıt ${i}`});
+assert.deepEqual(storedPrivate.linked, {event_id:null,report_code:'R-3',operation_id:null});
+const healthCard = {...raw,id:'health',type:'memory',sensitive:true,title:'Özel tanı',
+  body:{kind:'health',label:'Özel tanı',items:[{key:'diagnosis',label:'Özel tanı'}]},
+  actions:[{id:'change',label:'Özel tanı'}],linked:{event_id:null,report_code:null,operation_id:null}};
+const restoredHealth = (await store.appendCardToTurn(c.id, 'a1', healthCard)).turns.at(-1).cards.at(-1);
+assert.deepEqual(restoredHealth.body, {key:null,label:'Sağlık beyanı ekle',kind:'health',
+  scope_options:['conversation','profile'],items:null});
+assert.equal(restoredHealth.title, 'Sağlık beyanı ekle');
+assert.deepEqual(restoredHealth.actions, []);
+assert.equal(JSON.stringify(restoredHealth).includes('Özel tanı'), false);
+for (let i=0; i<76; i++) saved = await store.saveTurn(c.id, {role:'assistant',content:`yanıt ${i}`});
 assert.equal(saved.turns.length, 80);
-assert.equal(saved.trimmed, 1);
+assert.equal(saved.trimmed, 0);
+assert.equal(saved.full, true);
+assert.equal(await store.saveTurn(c.id, {role:'user',content:'81. mesaj'}), null);
+assert.deepEqual(await store.load(c.id), saved);
 assert.equal(await store.remove(c.id), true);
 assert.equal(await store.load(c.id), null);
+const healthDeclaration = await store.newConversation();
+const hidden = await store.saveTurn(healthDeclaration.id, {role:'user',content:'Kalp rahatsızlığım var'});
+assert.equal(hidden.title, 'Yeni sohbet');
+assert.equal(hidden.turns[0].content, '[hassas bilgi saklanmadı]');
+assert.equal(JSON.stringify(hidden).includes('Kalp rahatsızlığım'), false);
 """
     )
 
@@ -104,7 +152,10 @@ def test_old_records_and_scoped_data_are_read_and_deleted_together() -> None:
 import assert from 'node:assert/strict';
 const data = new Map([['nabiz.conversations.v1', JSON.stringify([
   {id:'old', title:'Eski sohbet', createdAt:'2026-09-27T00:00:00Z',
-   updatedAt:'2026-09-27T00:00:00Z', turns:[null, {role:'user',content:'Merhaba',at:'2026-09-27T00:00:00Z'},
+   updatedAt:'2026-09-27T00:00:00Z', links:[{kind:'report',id:'R-2'}],
+   turns:[null, {role:'user',content:'Merhaba',at:'2026-09-27T00:00:00Z'},
+    {role:'assistant',content:'Yanıt',cards:[{id:'legacy-card',type:'status',status:'ready',title:'Durum',
+      actions:['remember_here'],linked_id:'report:R-2'}]},
     {role:'user',content:47}, {role:'invalid',content:'bad'}]},
   null, {id:'broken',turns:'not-array'}])]]);
 globalThis.localStorage = {getItem:key => data.get(key) || null, setItem:(key,value) => data.set(key,value)};
@@ -112,8 +163,11 @@ const store = await import('./src/nabiz/console/static/js/conversations.js');
 assert.equal((await store.list()).length, 1);
 const old = await store.load('old');
 assert.equal(old.schema, 2);
-assert.equal(old.turns.length, 1);
+assert.equal(old.turns.length, 2);
 assert.equal(old.turns[0].content, 'Merhaba');
+assert.deepEqual(old.turns[1].cards[0].actions,
+  [{id:'remember_here',label:'',kind:'device',requires_consent:true,operation_id:null}]);
+assert.deepEqual(old.links, [{kind:'report',id:'R-2'}]);
 assert.deepEqual(old.scoped, []);
 assert.equal(old.trimmed, 0);
 const updated = await store.updateScoped('old', scoped => [...scoped, {id:'mem-1',type:'need',key:'slow_walk'}]);
@@ -169,6 +223,118 @@ assert.equal(session.activeId(), null);
 assert.deepEqual(loaded.at(-1), []);
 await session.keepTurn({role:'user',content:'E sorusu',message_id:'E1'});
 assert.equal((await store.list()).length, 1);
+"""
+    )
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable")
+def test_81st_turn_continues_in_a_new_record_without_losing_the_old_one() -> None:
+    run_node(
+        """
+import assert from 'node:assert/strict';
+import * as store from './src/nabiz/console/static/js/conversations.js';
+import {mountConversationSession, FULL_TEXT} from './src/nabiz/console/static/js/conversation_session.js';
+await store.clearAll();
+const loaded = [], status = {textContent:''};
+const session = mountConversationSession({chat:{loadHistory:turns => loaded.push(turns)},
+  root:{querySelector:() => status},store});
+for (let i=0; i<80; i++) await session.keepTurn({role:i%2 ? 'assistant':'user',content:`Eski ${i}`});
+const oldId = session.activeId(), old = await store.load(oldId);
+assert.equal(old.full, true);
+await session.keepTurn({role:'user',content:'Yeni soru',message_id:'q81'});
+const nextId = session.activeId();
+assert.notEqual(nextId, oldId);
+assert.deepEqual(loaded.at(-1).map(turn => turn.content), ['Yeni soru']);
+assert.equal(status.textContent, FULL_TEXT);
+const card = {v:1,id:'new-card',type:'info',status:'ready',title:'Yanıt',body:{text:'Yeni bilgi'},actions:[]};
+await session.keepTurn({role:'assistant',content:'Yeni yanıt',message_id:'a82',cards:[card]});
+const next = await store.load(nextId);
+assert.equal(next.continued_from, oldId);
+assert.deepEqual(next.turns.map(turn => turn.content), ['Yeni soru','Yeni yanıt']);
+assert.equal(next.turns[1].cards[0].conversation_id, nextId);
+assert.deepEqual(loaded.at(-1).map(turn => turn.content), ['Yeni soru','Yeni yanıt']);
+assert.deepEqual(await store.load(oldId), old);
+assert.equal((await store.list()).length, 2);
+"""
+    )
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable")
+def test_full_submit_preflight_clears_old_context_once_before_dispatch() -> None:
+    run_node(
+        """
+import assert from 'node:assert/strict';
+import * as store from './src/nabiz/console/static/js/conversations.js';
+import {mountConversationSession} from './src/nabiz/console/static/js/conversation_session.js';
+await store.clearAll();
+let context = [];
+const session = mountConversationSession({chat:{loadHistory:turns => {context = turns; }},store});
+for (let i=0; i<79; i++) await session.keepTurn({role:'user',content:`Eski ${i}`});
+const oldId = session.activeId(), beforeLast = await store.load(oldId);
+context = beforeLast.turns;
+const capture = [], bubble = [], sentContexts = [];
+let replay, requests = 0, blankReached = 0;
+const input = {value:''};
+const form = {
+  addEventListener(type, handler, inCapture) { (inCapture ? capture : bubble).push(handler); },
+  async emit() {
+    const event = {submitter:null,stopped:false,prevented:false,
+      preventDefault() {this.prevented=true;},stopImmediatePropagation() {this.stopped=true;}};
+    for (const handler of capture) await handler(event);
+    if (!event.stopped) for (const handler of bubble) await handler(event);
+    return event;
+  },
+  requestSubmit() { requests += 1; replay = this.emit(); },
+};
+form.addEventListener('submit', () => {
+  if (!input.value.trim()) { blankReached += 1; return; }
+  sentContexts.push(context.map(turn=>turn.content));
+  return session.keepTurn({role:'user',content:'Yeni soru'});
+}, false);
+assert.equal(session.bindFullSubmit(form, input), true);
+assert.equal(session.bindFullSubmit(form, input), false);
+const blank = await form.emit();
+assert.equal(blank.prevented, false);
+assert.equal(blankReached, 1);
+assert.equal(requests, 0);
+input.value = 'Yeni soru';
+const lastWrite = session.keepTurn({role:'user',content:'Eski 79'});
+assert.equal(session.activeRecord().full, false);
+context = [...beforeLast.turns, {role:'user',content:'Eski 79'}];
+const first = form.emit(), duplicate = form.emit();
+const intercepted = await Promise.all([first, duplicate]);
+await lastWrite;
+await replay;
+assert.equal(intercepted.every(event=>event.prevented && event.stopped), true);
+assert.equal(requests, 1);
+assert.deepEqual(sentContexts, [[]]);
+const next = await store.load(session.activeId());
+const old = await store.load(oldId);
+assert.equal(old.full, true);
+assert.equal(old.turns.length, 80);
+assert.equal(old.turns.at(-1).content, 'Eski 79');
+assert.notEqual(next.id, oldId);
+assert.equal(next.continued_from, oldId);
+assert.deepEqual(next.turns.map(turn=>turn.content), ['Yeni soru']);
+"""
+    )
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable")
+def test_retention_uses_last_update_even_for_old_records() -> None:
+    run_node(
+        """
+import assert from 'node:assert/strict';
+const now = Date.parse('2026-09-27T12:00:00Z');
+const current = '2026-09-27T12:00:00Z', old = '2026-08-27T12:00:00Z';
+const data = new Map([['nabiz.conversations.v1',JSON.stringify([
+  {id:'active',createdAt:old,updatedAt:current,turns:[]},
+  {id:'stale',createdAt:current,updatedAt:old,turns:[]}])]]);
+globalThis.localStorage = {getItem:key=>data.get(key)||null,setItem:(key,value)=>data.set(key,value)};
+const store = await import('./src/nabiz/console/static/js/conversations.js');
+assert.equal(store.expiresAt(await store.load('active')), '2026-10-27T12:00:00.000Z');
+assert.equal(await store.purgeOlderThan(30, now), 1);
+assert.deepEqual((await store.list()).map(record=>record.id), ['active']);
 """
     )
 

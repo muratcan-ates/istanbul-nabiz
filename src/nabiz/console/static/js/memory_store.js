@@ -1,4 +1,4 @@
-/* Confirmed memory stays on this device. Profile records use localStorage; conversation records
+/* Confirmed memory stays in this browser. Profile records use localStorage; conversation records
  * live in the conversation store so deleting a conversation also deletes its scoped memory. */
 
 import * as conversationStore from './conversations.js';
@@ -59,6 +59,7 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
 
   function normalise(raw, fallbackScope = 'profile') {
     if (!raw || typeof raw !== 'object' || !TYPES.has(raw.type)) return null;
+    if (raw.owner != null && raw.owner !== 'browser') return null;
     const type = raw.type;
     const scope = raw.scope === 'conversation' ? 'conversation'
       : raw.scope === 'profile' ? 'profile' : fallbackScope;
@@ -115,7 +116,9 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
   function migrateV1() {
     const old = array(LEGACY_KEY);
     if (!read(LEGACY_KEY)) return 0;
-    const current = array(MEMORY_KEY).map((item) => normalise(item)).filter(Boolean);
+    const stored = array(MEMORY_KEY);
+    const foreign = stored.filter((item) => item?.owner != null && item.owner !== 'browser');
+    const current = stored.map((item) => normalise(item)).filter(Boolean);
     let added = 0;
     old.forEach((item) => {
       if (!item || typeof item.key !== 'string') return;
@@ -130,26 +133,47 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
       });
       if (entry) { current.push(entry); added += 1; }
     });
-    if (write(MEMORY_KEY, JSON.stringify(current))) erase(LEGACY_KEY);
+    if (write(MEMORY_KEY, JSON.stringify([...foreign, ...current]))) erase(LEGACY_KEY);
     return added;
   }
 
   function listProfile() {
     migrateV1();
-    return array(MEMORY_KEY).map((item) => normalise(item)).filter((item) => item?.scope === 'profile');
+    const stored = array(MEMORY_KEY);
+    const records = stored.map((item) => normalise(item)).filter((item) => item?.scope === 'profile');
+    if (stored.some((item) => item && typeof item === 'object' && item.owner == null)) {
+      write(MEMORY_KEY, JSON.stringify(stored.map((item) => item && typeof item === 'object'
+        && item.owner == null ? { ...item, owner: 'browser' } : item)));
+    }
+    return records;
   }
 
-  function addProfile(record) {
+  function writeProfileRecords(records) {
+    const foreign = array(MEMORY_KEY).filter((item) => item?.owner != null && item.owner !== 'browser');
+    return write(MEMORY_KEY, JSON.stringify([...foreign, ...records]));
+  }
+
+  function saveProfile(record) {
     const entry = normalise({ ...record, scope: 'profile', conversation_id: null });
     if (!entry) return null;
     const records = listProfile().filter((item) => item.id !== entry.id);
-    return write(MEMORY_KEY, JSON.stringify([...records, entry])) ? entry : null;
+    return writeProfileRecords([...records, entry]) ? entry : null;
+  }
+
+  function healthAllowed(record) {
+    return record?.type !== 'health' || (
+      (record.source === 'user_typed' || record.source === 'profile_form')
+      && record.explicit_health_consent === true);
+  }
+
+  function addProfile(record) {
+    return healthAllowed(record) ? saveProfile(record) : null;
   }
 
   function forgetProfileKey(key) {
     const records = listProfile();
     const removed = records.filter((item) => item.key === key);
-    if (write(MEMORY_KEY, JSON.stringify(records.filter((item) => item.key !== key)))) {
+    if (writeProfileRecords(records.filter((item) => item.key !== key))) {
       removed.forEach(markForgotten);
     }
     return listProfile();
@@ -157,7 +181,7 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
 
   function clearProfileRecords() {
     const records = listProfile();
-    if (write(MEMORY_KEY, '[]')) records.forEach(markForgotten);
+    if (writeProfileRecords([])) records.forEach(markForgotten);
     erase(LEGACY_KEY);
   }
 
@@ -173,9 +197,15 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
     const result = scope === 'conversation' ? [] : listProfile();
     if (scope !== 'profile') {
       for (const conversation of await scopedRecords(conversationId)) {
-        for (const raw of Array.isArray(conversation.scoped) ? conversation.scoped : []) {
+        const scoped = Array.isArray(conversation.scoped) ? conversation.scoped : [];
+        for (const raw of scoped) {
           const item = normalise(raw, 'conversation');
           if (item?.scope === 'conversation' && item.conversation_id === conversation.id) result.push(item);
+        }
+        if (scoped.some((item) => item && typeof item === 'object' && item.owner == null)) {
+          await conversations.updateScoped(conversation.id,
+            (items) => items.map((item) => item && typeof item === 'object' && item.owner == null
+              ? { ...item, owner: 'browser' } : item));
         }
       }
     }
@@ -183,14 +213,18 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
       && (!conversationId || item.scope === 'profile' || item.conversation_id === conversationId));
   }
 
-  async function add(record) {
-    const entry = normalise(record, record?.scope === 'conversation' ? 'conversation' : 'profile');
-    if (!entry) return null;
-    if (entry.scope === 'profile') return addProfile(entry);
+  async function saveScoped(entry) {
     const updated = await conversations.updateScoped(entry.conversation_id, (scoped) => [
       ...(Array.isArray(scoped) ? scoped : []).filter((item) => item.id !== entry.id), entry,
     ]);
     return updated ? entry : null;
+  }
+
+  async function add(record) {
+    if (!healthAllowed(record)) return null;
+    const entry = normalise(record, record?.scope === 'conversation' ? 'conversation' : 'profile');
+    if (!entry) return null;
+    return entry.scope === 'profile' ? saveProfile(entry) : saveScoped(entry);
   }
 
   async function update(id, patch) {
@@ -200,7 +234,7 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
     const next = normalise({ ...old, ...patch, id, updated_at: clock() }, old.scope);
     if (!next) return null;
     if (old.scope === next.scope && old.conversation_id === next.conversation_id) {
-      if (next.scope === 'profile') return addProfile(next);
+      if (next.scope === 'profile') return saveProfile(next);
       const saved = await conversations.updateScoped(old.conversation_id, (scoped) =>
         scoped.map((item) => item.id === id ? next : item));
       return saved ? next : null;
@@ -208,14 +242,14 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
     if (next.scope === 'conversation') {
       if (old.scope === 'profile') {
         const profileRecords = listProfile();
-        if (!write(MEMORY_KEY, JSON.stringify(profileRecords.filter((item) => item.id !== id)))) return null;
+        if (!writeProfileRecords(profileRecords.filter((item) => item.id !== id))) return null;
         try {
-          if (await add(next)) return next;
+          if (await saveScoped(next)) return next;
         } catch { /* Restore the original record below. */ }
-        write(MEMORY_KEY, JSON.stringify(profileRecords));
+        writeProfileRecords(profileRecords);
         return null;
       }
-      if (!await add(next)) return null;
+      if (!await saveScoped(next)) return null;
       try {
         if (await conversations.updateScoped(old.conversation_id,
           (scoped) => scoped.filter((item) => item.id !== id))) return next;
@@ -223,12 +257,12 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
       await conversations.updateScoped(next.conversation_id, (scoped) => scoped.filter((item) => item.id !== id));
       return null;
     } else {
-      if (!addProfile(next)) return null;
+      if (!saveProfile(next)) return null;
       try {
         if (await conversations.updateScoped(old.conversation_id,
           (scoped) => scoped.filter((item) => item.id !== id))) return next;
       } catch { /* Remove the destination copy below. */ }
-      write(MEMORY_KEY, JSON.stringify(listProfile().filter((item) => item.id !== id)));
+      writeProfileRecords(listProfile().filter((item) => item.id !== id));
       return null;
     }
   }
@@ -237,7 +271,7 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
     const old = (await list()).find((item) => item.id === id);
     if (!old) return null;
     if (old.scope === 'profile') {
-      if (!write(MEMORY_KEY, JSON.stringify(listProfile().filter((item) => item.id !== id)))) return null;
+      if (!writeProfileRecords(listProfile().filter((item) => item.id !== id))) return null;
     } else {
       const saved = await conversations.updateScoped(old.conversation_id, (scoped) =>
         scoped.filter((item) => item.id !== id));
@@ -249,13 +283,22 @@ function createMemoryStore({ storage = defaultStorage(), now = () => new Date(),
 
   async function forgetAll() {
     const all = await list();
-    if (!write(MEMORY_KEY, '[]')) return false;
+    const conversationsToClear = await scopedRecords();
+    if (!writeProfileRecords([])) return false;
     erase(LEGACY_KEY);
-    for (const conversation of await scopedRecords()) {
-      if (conversation.scoped?.length) await conversations.updateScoped(conversation.id, () => []);
+    all.filter((item) => item.scope === 'profile').forEach(markForgotten);
+    let complete = true;
+    for (const conversation of conversationsToClear) {
+      const owned = all.filter((item) => item.scope === 'conversation' && item.conversation_id === conversation.id);
+      if (!owned.length) continue;
+      try {
+        const saved = await conversations.updateScoped(conversation.id,
+          (scoped) => scoped.filter((item) => item?.owner != null && item.owner !== 'browser'));
+        if (saved) owned.forEach(markForgotten);
+        else complete = false;
+      } catch { complete = false; }
     }
-    all.forEach(markForgotten);
-    return true;
+    return complete;
   }
 
   function requestNeeds({ profile, conversation } = {}) {

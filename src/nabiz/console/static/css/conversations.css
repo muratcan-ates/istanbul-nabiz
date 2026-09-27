@@ -2,8 +2,8 @@
 .convo-root { min-width: 0; max-width: 100%; color: var(--text); }
 .convo-bar { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
 .convo-bar > button { min-height: var(--tap); }
-.convo-toggle, .convo-new, .convo-clear, .convo-delete, .convo-open { max-width: 100%; min-height: var(--tap); color: var(--text); font: inherit; }
-.convo-toggle, .convo-new, .convo-clear, .convo-delete { padding: var(--space-2) var(--space-3); cursor: pointer; }
+.convo-toggle, .convo-new, .convo-clear, .convo-delete, .convo-open, .convo-row-new { max-width: 100%; min-height: var(--tap); color: var(--text); font: inherit; }
+.convo-toggle, .convo-new, .convo-clear, .convo-delete, .convo-row-new { padding: var(--space-2) var(--space-3); cursor: pointer; }
 .convo-panel { display: grid; gap: var(--space-3); width: 100%; min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
 .convo-panel[hidden] { display: none; }
 .convo-header, .convo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
@@ -13,8 +13,9 @@
 .convo-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); min-width: 0; max-width: 100%; padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-control); }
 .convo-open { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); min-width: 0; padding: var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); text-align: start; cursor: pointer; }
 .convo-title { min-width: 0; overflow-wrap: anywhere; font-weight: var(--weight-semibold); }
-.convo-date, .convo-expires, .convo-note, .convo-empty, .convo-unavailable, .convo-privacy, .convo-status { min-width: 0; margin: 0; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
-.convo-expires, .convo-note, .convo-status { grid-column: 1 / -1; }
+.convo-date, .convo-expires, .convo-note, .convo-full-hint, .convo-empty, .convo-unavailable, .convo-privacy, .convo-status { min-width: 0; margin: 0; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.convo-expires, .convo-note, .convo-full-hint, .convo-status { grid-column: 1 / -1; }
+.convo-row-new { grid-column: 1 / -1; justify-self: start; }
 .convo-delete { align-self: start; }
 .convo-dialog { box-sizing: border-box; max-width: min(32rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; padding: var(--space-5); border: 1px solid var(--border-strong); border-radius: var(--radius-surface); background: var(--surface-raised); color: var(--text); }
 .convo-dialog::backdrop { background: var(--surface-inverse); opacity: .55; }
@@ -23,8 +24,12 @@
 .convo-dialog-error { color: var(--danger, var(--text)); }
 .convo-also-label { display: flex; gap: var(--space-2); align-items: center; min-height: var(--tap); }
 .convo-dialog-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
-.convo-toggle:focus-visible, .convo-new:focus-visible, .convo-clear:focus-visible, .convo-delete:focus-visible, .convo-open:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.convo-toggle:focus-visible, .convo-new:focus-visible, .convo-clear:focus-visible, .convo-delete:focus-visible, .convo-open:focus-visible, .convo-row-new:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .convo-dialog button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+@media (min-width: 1024px) {
+  .convo-toggle { display: none; }
+  .convo-panel[hidden] { display: grid; }
+}
 @media (max-width: 48rem) {
   .convo-panel { padding: var(--space-3); }
   .convo-actions { justify-content: flex-start; }
@@ -58,7 +63,11 @@
 .memory-choice, .memory-card-choice { display: flex; align-items: flex-start; gap: var(--space-2); min-width: 0; overflow-wrap: anywhere; }
 .memory-choice input, .memory-card-choice input { flex: none; margin-top: var(--space-1); }
 .memory-health-fields { display: grid; gap: var(--space-2); }
+.memory-health-consent { padding-block: var(--space-2); }
 .memory-health-note p { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.memory-forget-result { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); min-width: 0; }
+.memory-forget-result #memory-status { flex: 1 1 16rem; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.memory-forget-result .btn { flex: 0 1 auto; }
 .memory-demo-label { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
 .memory-card { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
 .memory-card-title { margin: 0; font-size: var(--text-md); }

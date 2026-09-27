@@ -1,21 +1,23 @@
 import { clearAll, expiresAt, linkedCounts, list, load, purgeOlderThan, removeWithScoped, storageStatus } from './conversations.js';
 import { currentLang, onLang, t } from './i18n_text.js';
 
-const PRIVACY_TEXT = 'Sohbetleriniz yalnız bu tarayıcıda, oluşturulduktan sonra 30 gün saklanır. Sunucuya kaydedilmez.';
+const PRIVACY_TEXT = 'Sohbetleriniz yalnız bu tarayıcıda, son kullanımdan sonra 30 gün saklanır. Sunucuya kaydedilmez.';
 const EMPTY_TEXT = 'Henüz sohbet yok. Yeni sohbet başlatarak soru sorabilirsiniz.';
 const COPY = {
   title: 'Sohbetlerim', new: 'Yeni sohbet', toggle: 'Geçmiş', clear: 'Tüm sohbetleri sil',
   delete: 'Sohbeti sil', unavailable: 'Bu tarayıcı geçmişi saklamıyor. Sonraki ziyaretinizde sohbet görünmeyebilir.',
   privacy: PRIVACY_TEXT, empty: EMPTY_TEXT, delete_label: '{title} sohbetini sil',
-  expires: '{date} tarihinde silinecek', trimmed: 'En eski {count} mesaj silindi (sohbet başına 80 mesaj).',
+  expires: '{date} tarihinde silinecek', trimmed: 'En eski {count} mesaj daha önce silinmişti.',
+  full: 'Bu sohbet 80 mesaja ulaştı; yeni sohbette devam ediyoruz. Eski sohbet olduğu gibi duruyor.',
+  full_hint: 'Yeni sohbet önerilir',
   delete_title: 'Sohbeti sil', delete_body: 'Bu sohbetin mesajları ve kartları bu tarayıcıdan silinir.',
   delete_all_body: 'Tüm sohbetlerin mesajları ve kartları bu tarayıcıdan silinir.',
   delete_linked_memory: 'Bu sohbette eklenen {count} hafıza kaydı ayrıca duruyor.',
-  also_forget: 'Bunları da unut', linked_plans: 'Bağlı {count} takvim ya da bildirim kaydı silinmez; kendi bölümünden yönetilir.',
+  also_forget: 'Bunları da unut', linked_plans: 'Bağlı {count} takvim, bildirim ya da işlem kaydı silinmez; kendi bölümünden yönetilir.',
   cancel: 'Vazgeç', confirm: 'Evet, sohbeti sil', confirm_all: 'Evet, sohbetleri sil',
   deleted: 'Sohbet silindi.', cleared: 'Tüm sohbetler silindi.', active_deleted: 'Açık sohbet silindi. Yeni sohbet başladı.',
   scoped_gone: '{count} yalnız bu sohbetteki hafıza kaydı silindi.',
-  linked_kept: '{count} bağlı plan ya da bildirim kaydı kaldı.',
+  linked_kept: '{count} bağlı takvim, bildirim ya da işlem kaydı kaldı.',
   memory_kept: '{count} sonraki sohbet hafıza kaydı kaldı.',
   memory_forgotten: '{count} sonraki sohbet hafıza kaydı unutuldu.',
   memory_failed: '{count} hafıza kaydı unutulamadı; Hafızam bölümünden yeniden deneyin.',
@@ -63,6 +65,12 @@ function mountConversations({ root, onOpen = () => {}, onNew = () => {}, onDelet
     + '<p class="convo-unavailable" hidden></p><p class="convo-privacy"></p></section>'
     + '<p class="convo-status" role="status" aria-live="polite"></p><dialog class="convo-dialog"></dialog>';
   const panel = root.querySelector('.convo-panel');
+  const wide = globalThis.matchMedia?.('(min-width: 1024px)');
+  if (wide) {
+    const adjust = () => { panel.hidden = !wide.matches && root.querySelector('.convo-toggle').getAttribute('aria-expanded') !== 'true'; };
+    wide.addEventListener?.('change', adjust);
+    adjust();
+  }
   const rows = root.querySelector('.convo-list');
   const statusLine = root.querySelector('.convo-status');
   const dialog = root.querySelector('.convo-dialog');
@@ -90,6 +98,10 @@ function mountConversations({ root, onOpen = () => {}, onNew = () => {}, onDelet
       });
       const trimmed = item.querySelector('.convo-note');
       if (trimmed) trimmed.textContent = convoText('trimmed', { count: Number(trimmed.dataset.count) });
+      const fullHint = item.querySelector('.convo-full-hint');
+      if (fullHint) fullHint.textContent = convoText('full_hint');
+      const rowNew = item.querySelector('.convo-row-new');
+      if (rowNew) rowNew.textContent = convoText('new');
       const deleteButton = item.querySelector('.convo-delete');
       deleteButton.textContent = convoText('delete');
       deleteButton.setAttribute('aria-label', convoText('delete_label', { title: title.textContent }));
@@ -116,15 +128,20 @@ function mountConversations({ root, onOpen = () => {}, onNew = () => {}, onDelet
       const expiry = node(doc, 'time', 'convo-expires');
       expiry.dateTime = expiresAt(conversation);
       openButton.append(title, date);
-      item.append(openButton, expiry);
+      const deleteButton = node(doc, 'button', 'convo-delete btn-quiet');
+      deleteButton.type = 'button';
+      item.append(openButton, deleteButton, expiry);
       if (conversation.trimmed > 0) {
         const note = node(doc, 'p', 'convo-note');
         note.dataset.count = String(conversation.trimmed);
         item.append(note);
       }
-      const deleteButton = node(doc, 'button', 'convo-delete btn-quiet');
-      deleteButton.type = 'button';
-      item.append(deleteButton);
+      if (conversation.full) {
+        item.append(node(doc, 'p', 'convo-full-hint', convoText('full_hint')));
+        const rowNew = node(doc, 'button', 'convo-row-new btn-quiet', convoText('new'));
+        rowNew.type = 'button';
+        item.append(rowNew);
+      }
       rows.append(item);
     }
     translate();
@@ -209,6 +226,7 @@ function mountConversations({ root, onOpen = () => {}, onNew = () => {}, onDelet
     const target = event.target.closest('button');
     if (!target || !root.contains(target) || dialog.contains(target)) return;
     if (target.matches('.convo-toggle')) {
+      if (wide?.matches) return;
       panel.hidden = !panel.hidden;
       target.setAttribute('aria-expanded', String(!panel.hidden));
     } else if (target.matches('.convo-new')) {
@@ -220,7 +238,12 @@ function mountConversations({ root, onOpen = () => {}, onNew = () => {}, onDelet
     } else {
       const item = target.closest('.convo-item');
       if (!item) return;
-      if (target.matches('.convo-delete')) await confirmDelete(item.dataset.id, target);
+      if (target.matches('.convo-row-new')) {
+        await onNew();
+        announce('');
+        await render();
+      }
+      else if (target.matches('.convo-delete')) await confirmDelete(item.dataset.id, target);
       else if (target.matches('.convo-open')) {
         const conversation = await load(item.dataset.id);
         if (conversation) await onOpen(conversation);
