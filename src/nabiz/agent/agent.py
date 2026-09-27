@@ -40,7 +40,7 @@ from ibb_mcp.models import ToolResult
 from ibb_mcp.telemetry import Span, span
 from ibb_mcp.text import normalize_tr
 from ibb_mcp.tools import Nabiz
-from nabiz.agent import injection, llm
+from nabiz.agent import injection, llm, place_guard
 from nabiz.agent.faithfulness import FaithfulnessReport, check_faithfulness
 from nabiz.agent.metro_route import metro_route, station_route
 from nabiz.agent.minutes import with_shown_minutes
@@ -463,7 +463,7 @@ class NabizAgent:
         text = normalize_tr(question)
         if (catalogue := dataset_route(text, question)) is not None:
             return catalogue  # "İBB'nin otopark verisi var mı?" asks for a dataset, not a car park
-        place = self._find_place(question)
+        place = match.name if (match := place_guard.find_place(question, (p.name for p in self.nabiz.places.places))) else None
         if _has(text, "air"):
             if not place:
                 return "", _NEEDS_PLACE_REASON
@@ -489,29 +489,12 @@ class NabizAgent:
             return "iett_stops_search", {"query": _stop_name(question) or place or question}
         if (city := _city_route(text)) is not None:
             return city
-        if place:
-            return "places_resolve", {"query": place}
+        if (fallback := place_guard.fallback_tool(question, match)) and fallback[0] == "places_resolve":
+            return fallback  # a billing/timetable/procedure intent falls through to the knowledge path in chat.py
         # Nothing matched and no place was named. Answering "how old is the data?" to
         # "how do I get to the airport?" is not a fallback, it is a non sequitur dressed
         # up as an answer; say what this agent can and cannot do instead.
         return "", _OUT_OF_SCOPE_REASON
-
-    def _find_place(self, question: str) -> str | None:
-        """Longest gazetteer name contained in the question, suffixes and all.
-
-        ``PlaceIndex.resolve`` scores a *query*; here the place is buried inside a sentence
-        and glued to Turkish case endings ("Taksim'e", "Kadıköy'den"), so a containment
-        scan over the normalised gazetteer is the reliable move.
-        """
-        haystack = f" {normalize_tr(question)} "
-        best: tuple[int, str] | None = None
-        for place in self.nabiz.places.places:
-            needle = normalize_tr(place.name)
-            if len(needle) < 4 or needle not in haystack:
-                continue
-            if best is None or len(needle) > best[0]:
-                best = (len(needle), place.name)
-        return best[1] if best else None
 
     async def _ask_deterministic(self, question: str, lang: str) -> AgentAnswer:
         """Route to one tool and render a template. No model, no free-form generation."""

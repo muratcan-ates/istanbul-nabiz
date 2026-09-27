@@ -296,7 +296,18 @@ def test_assets_follow_offline_and_accessible_surface_rules() -> None:
     assert transitions and contained == len(transitions)
     assert "prefers-reduced-motion" in css and "forced-colors" in css
     static = REPO_ROOT / "src/nabiz/console/static"
-    assert 'id="citizen-requests"' in (static / "console.html").read_text(encoding="utf-8")
-    for path in (static / "console.html", static / "index.html", static / "kolay.html", static / "sw.js"):
+    console = (static / "console.html").read_text(encoding="utf-8")
+    # P00 G1: the console loads the editor into its own "Bilgi ve planlama" mount; the old anchor stays the fallback.
+    assert 'id="knowledge-editor-mount"' in console and 'id="citizen-requests"' in console
+    assert '<script type="module" src="/js/console_knowledge_editor.js"></script>' in console
+    assert js.index("#knowledge-editor-mount") < js.index("#citizen-requests")
+    for path in (static / "index.html", static / "kolay.html", static / "sw.js"):
         if path.exists():
             assert "console_knowledge_editor" not in path.read_text(encoding="utf-8")
+
+
+def test_the_page_catalogues_carry_the_editor_keys_unchanged() -> None:
+    i18n = REPO_ROOT / "src/nabiz/console/static/i18n"
+    for lang in ("tr", "en"):
+        surface = json.loads((i18n / f"{lang}.json").read_text(encoding="utf-8"))
+        assert all(surface[k] == v for k, v in CATALOG[lang].items())

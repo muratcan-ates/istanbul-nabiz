@@ -17,6 +17,8 @@ data/console/
 # Example accounts (e-mail, followed topics) and the e-mail outbox (DECISIONS #38): personal data, never committed.
 data/accounts/
 data/outbox/
+# E74: source candidates the knowledge editor queues for ingest, written by the running server (P00 G1).
+data/knowledge/source_candidates.jsonl
 data/reference/gtfs/
 docs/screenshots/*.mov
 eval/results/*.json

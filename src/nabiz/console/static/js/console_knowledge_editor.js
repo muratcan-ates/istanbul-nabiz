@@ -166,7 +166,7 @@ function publishChange() {
 }
 async function boot() {
   const doc = document;
-  const anchor = doc.querySelector('#citizen-requests');
+  const anchor = doc.querySelector('#knowledge-editor-mount') || doc.querySelector('#citizen-requests');
   const fallback = doc.querySelector('#day');
   const section = doc.createElement('section');
   section.id = 'knowledge-editor';
