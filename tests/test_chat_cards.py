@@ -48,8 +48,8 @@ def action_ids(card: dict) -> list[str]:
 
 
 def test_card_defaults_and_stable_identity() -> None:
-    first = chat_cards.card("info", "Bilgi")
-    assert first == chat_cards.card("info", "Bilgi")
+    first = chat_cards.make_card("info", "Bilgi")
+    assert first == chat_cards.make_card("info", "Bilgi")
     assert first == {
         "v": 1, "id": first["id"], "conversation_id": None, "message_id": None,
         "type": "info", "status": "ready", "title": "Bilgi", "body": {},
@@ -57,8 +57,10 @@ def test_card_defaults_and_stable_identity() -> None:
         "actions": [], "sensitive": False,
     }
     assert first["id"].startswith("card-info-")
-    assert chat_cards.card("info", "Bilgi", linked_id="op:işlem-2")["id"] != first["id"]
-    assert chat_cards.card("info", "Bilgi", card_id="card-fixed")["id"] == "card-fixed"
+    assert chat_cards.make_card("info", "Bilgi", linked_id="op:işlem-2")["id"] != first["id"]
+    assert chat_cards.make_card("info", "Bilgi", card_id="card-fixed")["id"] == "card-fixed"
+    with pytest.raises(TypeError, match="unknown fields"):
+        chat_cards.make_card("info", "Bilgi", cardid="typo")
 
 
 @pytest.mark.parametrize("raw", [sample(type="unknown"), sample(title="<script>bad()</script>"),
@@ -160,7 +162,7 @@ def test_map_points_allow_sixty_while_other_arrays_stay_at_twenty() -> None:
     ({"operation_id": "op-9"}, "op:op-9"),
 ])
 def test_linked_triple_and_legacy_id(linked: dict, derived: str) -> None:
-    built = chat_cards.card("status", "Durum", linked=linked)
+    built = chat_cards.make_card("status", "Durum", linked=linked)
     key = next(iter(linked))
     assert built["linked"] == {**LINK_EMPTY, key: linked[key]}
     assert built["linked_id"] == derived

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime as dt
 import math
-from collections.abc import Iterable
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlsplit
@@ -249,17 +248,19 @@ def validate_card(raw: Any, *, restored: bool = False) -> dict[str, Any] | None:
     }
 
 
-def card(  # noqa: PLR0913 - public builder signature is part of the v1 contract
-    type: str, title: str, *, body: dict[str, Any] | None = None,
-    sources: Iterable[dict[str, Any]] = (), status: str = "ready",
-    linked: dict[str, Any] | None = None, linked_id: str | None = None,
-    actions: Iterable[str | dict[str, Any]] = (), sensitive: bool = False, card_id: str | None = None,
-) -> dict[str, Any]:
-    """Build one validated card for a trusted feature producer."""
+MAKE_CARD_FIELDS = frozenset({"body", "sources", "status", "linked", "linked_id", "actions", "sensitive", "card_id"})
+
+
+def make_card(type_: str, title: str, **fields: Any) -> dict[str, Any]:
+    """One validated card for a trusted producer; ``fields`` are the v1 optional parts in ``MAKE_CARD_FIELDS``
+    (``status`` defaults to "ready"). An unknown name raises, so a typo never ships a card without its part."""
+    if unknown := set(fields) - MAKE_CARD_FIELDS:
+        raise TypeError(f"make_card() got unknown fields: {sorted(unknown)}")
     result = validate_card({
-        "v": 1, "id": card_id, "type": type, "title": title, "body": body,
-        "sources": list(sources or ()), "status": status, "linked": linked, "linked_id": linked_id,
-        "actions": list(actions or ()), "sensitive": sensitive,
+        "v": 1, "id": fields.get("card_id"), "type": type_, "title": title, "body": fields.get("body"),
+        "sources": list(fields.get("sources") or ()), "status": fields.get("status", "ready"),
+        "linked": fields.get("linked"), "linked_id": fields.get("linked_id"),
+        "actions": list(fields.get("actions") or ()), "sensitive": fields.get("sensitive", False),
     })
     if result is None:
         raise ValueError("A card needs a known type and a nonempty title")
