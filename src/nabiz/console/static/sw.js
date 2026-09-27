@@ -1,6 +1,6 @@
 /* v15: E48's official-path source label in provenance.js (v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v15';
+const VERSION = 'v16';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
