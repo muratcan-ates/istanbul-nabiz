@@ -1,0 +1,117 @@
+.fare-panel {
+  display: grid;
+  gap: var(--space-4, 1rem);
+  min-width: 0;
+  padding: var(--space-4, 1rem) 0;
+}
+
+.fare-notice,
+.fare-disclaimer,
+.fare-status,
+.fare-comparison,
+.fare-other-result > p {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.fare-notice { font-weight: var(--weight-medium, 500); }
+.fare-disclaimer { color: var(--text-muted); }
+.fare-status { min-height: 1.5em; }
+.fare-status a { min-height: var(--tap, 44px); display: inline-flex; align-items: center; }
+
+#tarife-form { display: grid; gap: var(--space-4, 1rem); min-width: 0; }
+.fare-form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4, 1rem); align-items: end; }
+.fare-field { display: grid; gap: var(--space-2, .5rem); min-width: 0; }
+.fare-field > label,
+.fare-fieldset > legend { font-weight: var(--weight-semibold, 600); }
+.fare-field select { width: 100%; min-width: 0; min-height: var(--tap, 44px); }
+.fare-fieldset { display: grid; gap: var(--space-3, .75rem); min-width: 0; margin: 0; padding: var(--space-4, 1rem); border: 1px solid var(--border); border-radius: var(--nd-radius-surface, 12px); }
+.fare-radio-list { display: flex; flex-wrap: wrap; gap: var(--space-2, .5rem) var(--space-4, 1rem); }
+.fare-radio,
+.fare-check { display: inline-flex; align-items: center; gap: var(--space-2, .5rem); min-height: var(--tap, 44px); }
+.fare-radio input,
+.fare-check input { width: 1.125rem; height: 1.125rem; accent-color: var(--nd-accent); flex: 0 0 auto; }
+.fare-other-hint { margin: 0; color: var(--text-muted); }
+.fare-legs { display: grid; gap: var(--space-3, .75rem); min-width: 0; }
+.fare-leg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--space-3, .75rem); align-items: end; min-width: 0; padding: var(--space-3, .75rem); border: 1px solid var(--border); border-radius: var(--nd-radius-control, 8px); }
+.fare-leg[hidden],
+.fare-route-field[hidden],
+.fare-other-hint[hidden],
+.fare-transfer-options[hidden],
+.fare-error[hidden],
+.fare-result[hidden] { display: none !important; }
+.fare-route-field { min-width: 0; }
+.fare-leg select { overflow: hidden; text-overflow: ellipsis; }
+.fare-quiet { min-height: var(--tap, 44px); padding: .5rem .75rem; border: 1px solid var(--border-strong); border-radius: var(--nd-radius-control, 8px); background: var(--surface-raised); color: var(--text); font: inherit; cursor: pointer; }
+.fare-quiet:hover { border-color: var(--nd-accent); }
+.fare-quiet:disabled { cursor: not-allowed; opacity: .65; }
+.fare-transfer-options { display: grid; gap: var(--space-2, .5rem); padding-inline-start: var(--space-2, .5rem); }
+.fare-submit { min-height: var(--tap, 44px); justify-self: start; }
+.fare-error { margin: 0; color: var(--text); font-weight: var(--weight-semibold, 600); }
+.fare-save { display: grid; gap: var(--space-2, .5rem); border-top: 1px solid var(--border); padding-top: var(--space-3, .75rem); }
+.fare-save-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, .5rem); }
+
+.fare-result { min-width: 0; }
+.fare-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3, .75rem); align-items: start; }
+.fare-option { min-width: 0; padding: var(--space-4, 1rem); border: 1px solid var(--border); border-radius: var(--nd-radius-surface, 12px); background: var(--surface-raised); }
+.fare-option.is-lowest { border: 2px solid var(--nd-accent); }
+.fare-option h3,
+.fare-other-result h3 { margin: 0 0 var(--space-3, .75rem); font-size: var(--text-lg, 1.125rem); }
+.fare-result-total { margin: 0 0 var(--space-2, .5rem); font-weight: var(--weight-semibold, 600); overflow-wrap: anywhere; }
+.fare-option-note { margin: 0 0 var(--space-3, .75rem); color: var(--text-muted); }
+.fare-unknown,
+.fare-lowest { display: flex; align-items: flex-start; gap: var(--space-2, .5rem); margin: 0 0 var(--space-3, .75rem); }
+.fare-unknown .icon,
+.fare-lowest .icon { width: 1.125rem; height: 1.125rem; flex: 0 0 auto; }
+.fare-lines { display: grid; gap: var(--space-3, .75rem); list-style: none; margin: 0; padding: 0; }
+.fare-line { min-width: 0; padding-top: var(--space-3, .75rem); border-top: 1px solid var(--border); }
+.fare-line-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .45rem; min-width: 0; }
+.fare-line-value strong { overflow-wrap: anywhere; }
+.fare-amount { margin-inline-start: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fare-source { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; margin: var(--space-2, .5rem) 0; color: var(--text-muted); font-size: var(--text-sm, .875rem); overflow-wrap: anywhere; }
+.fare-source-link { display: inline-flex; align-items: center; gap: .25rem; min-height: var(--tap, 44px); color: var(--link); }
+.fare-source-link .icon { width: 1rem; height: 1rem; flex: 0 0 auto; }
+.fare-quote { margin-top: var(--space-2, .5rem); }
+.fare-quote summary,
+.fare-notes > summary { min-height: var(--tap, 44px); display: flex; align-items: center; width: fit-content; cursor: pointer; color: var(--link); }
+.fare-quote blockquote { margin: 0; padding: var(--space-3, .75rem); border-inline-start: 2px solid var(--border-strong); color: var(--text); overflow-wrap: anywhere; }
+.fare-line-note { margin: var(--space-2, .5rem) 0 0; color: var(--text-muted); }
+.fare-lowest { padding: var(--space-2, .5rem); border-inline-start: 2px solid var(--nd-accent); }
+.fare-notes { margin-top: var(--space-4, 1rem); padding-top: var(--space-3, .75rem); border-top: 1px solid var(--border); }
+.fare-note { padding-block: var(--space-2, .5rem); }
+.fare-note > p { margin: 0; }
+.fare-other-result { display: grid; gap: var(--space-3, .75rem); }
+.fare-other-quote { min-width: 0; padding: var(--space-3, .75rem); border: 1px solid var(--border); border-radius: var(--nd-radius-control, 8px); }
+.fare-other-quote h4 { margin: 0; overflow-wrap: anywhere; }
+
+#tarife :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .fare-options { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .fare-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .fare-leg { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .fare-route-field { grid-column: 1 / -1; }
+  .fare-leg > .fare-quiet { justify-self: end; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #tarife-sonuc[data-enter="true"] { animation: fare-enter var(--nd-dur-enter, 300ms) var(--nd-ease-enter, ease-out) both; }
+  @keyframes fare-enter { from { opacity: 0; } to { opacity: 1; } }
+}
+
+@media (prefers-contrast: more) {
+  .fare-fieldset,
+  .fare-leg,
+  .fare-option,
+  .fare-other-quote { border-color: var(--border-strong); }
+}
+
+@media (forced-colors: active) {
+  .fare-option.is-lowest,
+  .fare-lowest,
+  #tarife :focus-visible { outline-color: Highlight; border-color: Highlight; }
+  .fare-quiet { border: 1px solid ButtonText; }
+}
