@@ -33,6 +33,8 @@ from nabiz.console.photo_reports import (
     photo_report_ledger_withdrawn,
 )
 from nabiz.console.pii_guard import mask_labels
+from nabiz.console.report_link import unlink_photo
+from nabiz.console.report_timeline_api import attach_photo, open_report, timeline_store
 from nabiz.console.requests_api import SIMULATED_NOTE, emergency_answer, request_is_emergency
 from nabiz.console.text_guard import strip_invisible
 from nabiz.console.wiring import ledger_path
@@ -70,6 +72,14 @@ class PhotoReportBody(BaseModel):
     place: PhotoPlace
     lang: Literal["tr", "en"]
     consent: StrictBool
+    # P07: an open E33/E66 report code the citizen chose to attach this photo to; absent means standalone.
+    report_code: str | None = Field(default=None, min_length=1, max_length=16)
+
+
+class PhotoLinkBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    report_code: str = Field(min_length=1, max_length=16)
 
 
 class PhotoStatusBody(BaseModel):
@@ -121,6 +131,7 @@ def _citizen_view(row: dict[str, Any]) -> dict[str, Any]:
         "created_at": row["created_at"],
         "expires_at": row["expires_at"],
         "history": row["history"],
+        "linked_report_code": row.get("linked_report_code"),
         "simulated": SIMULATED_NOTE,
     }
 
@@ -258,6 +269,9 @@ async def create_photo_report(request: Request) -> Response:
     clean = _clean_encoded_photo(body.photo)
     if isinstance(clean, Response):
         return clean
+    report_code, report = await open_report(request, body.report_code) if body.report_code else (None, None)
+    if isinstance(report, Response):
+        return report
     masked, count, kinds = mask_labels(description)
     draft = NewPhotoReport(
         category=body.category,
@@ -273,11 +287,43 @@ async def create_photo_report(request: Request) -> Response:
     row = await _persist_report(desk, draft)
     if isinstance(row, Response):
         return row
-    return _no_store(Response(
-        content=json.dumps(_citizen_view(row), ensure_ascii=False),
-        status_code=201,
-        media_type="application/json",
-    ))
+    view = _citizen_view(row)
+    if report_code is not None:
+        linked = await attach_photo(request, row, report_code, report, desk.store.path)
+        if isinstance(linked, Response):
+            # Refused after the photo was stored (a race): never keep it as a quiet standalone report.
+            await _withdraw(desk, row["code"])
+            return linked
+        view.update(linked_report_code=report_code, photo_ref=linked["photo_ref"], card=linked["card"])
+    return _no_store(Response(content=json.dumps(view, ensure_ascii=False), status_code=201, media_type="application/json"))
+
+
+async def _withdraw(desk: _PhotoReportDesk, code: str) -> None:
+    await asyncio.to_thread(desk.store.withdraw, code)
+    try:
+        await asyncio.to_thread(photo_report_ledger_withdrawn, desk.ledger, code)
+    except (OSError, sqlite3.Error) as exc:
+        log.error("photo report withdrawal ledger failed (%s)", type(exc).__name__)
+
+
+@photo_report_routes.post("/api/photo-reports/{code}/link")
+async def link_photo_report(request: Request, code: str, body: PhotoLinkBody) -> Response:
+    """The photo's own code holder attaches it to an open report code; a code that does not match is 403."""
+    if problem := _allow_read(request):
+        return problem
+    key = normal_code(code)
+    desk = photo_report_desk(request)
+    row = await asyncio.to_thread(desk.store.get, key) if key else None
+    if row is None:
+        return _problem(404, "not_found", NOT_FOUND)
+    report_code, report = await open_report(request, body.report_code)
+    if isinstance(report, Response):
+        return report
+    linked = await attach_photo(request, row, report_code, report, desk.store.path)
+    if isinstance(linked, Response):
+        return linked
+    view = {**_citizen_view(row), "linked_report_code": report_code, "photo_ref": linked["photo_ref"], "card": linked["card"]}
+    return _no_store(Response(content=json.dumps(view, ensure_ascii=False), media_type="application/json"))
 
 
 async def _persist_report(desk: _PhotoReportDesk, draft: NewPhotoReport) -> dict[str, Any] | Response:
@@ -325,6 +371,8 @@ async def delete_photo_report(request: Request, code: str) -> Response:
     row = await asyncio.to_thread(desk.store.get, key)
     if row is None or not await asyncio.to_thread(desk.store.withdraw, key):
         return _problem(404, "not_found", NOT_FOUND)
+    if row.get("linked_report_code"):
+        await asyncio.to_thread(unlink_photo, key, row["linked_report_code"], timeline_db=timeline_store(request).path)
     try:
         await asyncio.to_thread(photo_report_ledger_withdrawn, desk.ledger, key)
     except (OSError, sqlite3.Error) as exc:
@@ -381,19 +429,23 @@ async def set_photo_report_status(request: Request, code: str) -> Response:
         return _problem(400, "reason_too_long", "Gerekçe en çok 280 karakter olabilir. Lütfen kısaltın.")
     masked, masked_count, _ = mask_labels(reason)
     desk = photo_report_desk(request)
+    def seal(before: str, row: dict[str, Any]) -> int:
+        return photo_report_ledger_status(desk.ledger, before, row)
+
     async with desk.status_lock:
         try:
-            row = await asyncio.to_thread(desk.store.set_status, key, body.status, masked, masked_count=masked_count)
+            sealed = await asyncio.to_thread(
+                desk.store.set_status_sealed, key, body.status, masked, masked_count=masked_count, seal=seal
+            )
         except ValueError:
             return _problem(409, "transition_not_allowed", "Bu durumdan seçilen geçiş yapılamaz. Bildirimi yeniden açın.")
-        if row is None:
-            return _problem(404, "not_found", NOT_FOUND)
-        before = row["history"][-2]["status"]
-        try:
-            entry_id = await asyncio.to_thread(photo_report_ledger_status, desk.ledger, before, row)
         except (OSError, sqlite3.Error) as exc:
+            # The seal runs inside the status transaction, so a failed seal leaves the status unchanged.
             log.error("photo report status ledger failed (%s)", type(exc).__name__)
-            return _problem(503, "ledger_failed", "Durum değişti ancak defter kaydı mühürlenemedi. Entegratöre başvurun.")
+            return _problem(503, "ledger_failed", "Defter kaydı mühürlenemediği için durum değişmedi. Yeniden deneyin.")
+        if sealed is None:
+            return _problem(404, "not_found", NOT_FOUND)
+        row, entry_id = sealed
     message = f"Durum: {STATUS_LABELS[row['status']]}. Defter kaydı {entry_id}."
     return _no_store(Response(
         content=json.dumps({"item": row, "ledger_entry_id": entry_id, "message": message}, ensure_ascii=False),
@@ -402,6 +454,6 @@ async def set_photo_report_status(request: Request, code: str) -> Response:
 
 
 __all__ = [
-    "CATEGORIES", "MAX_BODY_BYTES", "PhotoPlace", "PhotoReportBody", "PhotoStatusBody", "photo_report_desk",
+    "CATEGORIES", "MAX_BODY_BYTES", "PhotoLinkBody", "PhotoPlace", "PhotoReportBody", "PhotoStatusBody", "photo_report_desk",
     "photo_report_routes",
 ]
