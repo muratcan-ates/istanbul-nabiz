@@ -26,12 +26,16 @@
 <link rel="stylesheet" href="/css/account.css">
 <link rel="stylesheet" href="/css/culture.css">
 <link rel="stylesheet" href="/css/workspace.css">
+<link rel="stylesheet" href="/css/chat_cards.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/citizen.js">
 <link rel="modulepreload" href="/js/api.js">
 <link rel="modulepreload" href="/js/config.js">
 <link rel="modulepreload" href="/js/cards.js">
 <link rel="modulepreload" href="/js/chat.js">
+<link rel="modulepreload" href="/js/chat_cards.js">
+<link rel="modulepreload" href="/js/chat_card_actions.js">
+<link rel="modulepreload" href="/js/chat_scroll.js">
 <link rel="modulepreload" href="/js/profile.js">
 <link rel="modulepreload" href="/js/provenance.js">
 <link rel="modulepreload" href="/js/history.js">
@@ -118,6 +122,7 @@
     <a class="topbar-brand" href="/"><img src="/icons/nabiz.svg" width="32" height="32" alt="">İstanbul Nabız</a>
     <div class="topbar-actions">
       <button type="button" class="btn" id="a11y-toggle" aria-expanded="false" aria-controls="a11y-panel">Erişilebilirlik</button>
+      <ul class="topbar-links" id="legacy-topbar"></ul>
       <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
       <button type="button" class="icon-btn" id="theme-toggle" aria-label="Tema: sistem. Açık temaya geçmek için basın.">
         <svg class="icon" aria-hidden="true"><use href="#i-device-desktop"></use></svg>
@@ -125,16 +130,22 @@
     </div>
     <a class="topbar-role" href="#hakkinda"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Resmî İBB hizmeti değildir</span></a>
     <nav class="topbar-nav" aria-label="Sayfa bölümleri">
-      <a href="#asistan"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chat"></use></svg>Asistan</a>
-      <a href="#city-cards" data-i18n="design.nav_city"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Şehir durumu</a>
-      <a href="#city-tools" data-i18n="design.nav_tools"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-transport"></use></svg>Yolculuk</a>
-      <a href="#map-workspace" data-i18n="design.nav_map"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-map"></use></svg>Harita</a>
-      <a href="#explore-workspace" data-i18n="design.nav_nearby"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Yakınınızda</a>
-      <a href="#acik-veri" data-i18n="design.nav_data"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chart"></use></svg>Açık veri</a>
-      <a href="#profilim"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-profile"></use></svg>Profilim</a>
-      <a href="#takip"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-bookmark"></use></svg>Takip</a>
-      <a href="#hafizam"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-memory"></use></svg>Hafızam</a>
-      <a href="/kolay.html" data-i18n="design.nav_easy"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-accessibility"></use></svg>Kolay ekran</a>
+      <ul class="nav-primary">
+        <li><a href="#asistan" data-primary="assistant"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chat"></use></svg><span>Asistan</span></a></li>
+        <li><a href="#takvim" data-primary="calendar"><span>Takvim</span></a></li>
+        <li><a href="#hesabim" data-primary="account"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-profile"></use></svg><span>Hesabım</span></a></li>
+      </ul>
+      <div class="nav-secondary" role="group" aria-label="Diğer bölümler" hidden>
+        <ul id="legacy-nav">
+          <li><a data-legacy="city" href="#city-cards" data-i18n="design.nav_city"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Şehir durumu</a></li>
+          <li><a data-legacy="travel" href="#city-tools" data-i18n="design.nav_tools"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-transport"></use></svg>Yolculuk</a></li>
+          <li><a data-legacy="map" href="#map-workspace" data-i18n="design.nav_map"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-map"></use></svg>Harita</a></li>
+          <li><a data-legacy="nearby" href="#explore-workspace" data-i18n="design.nav_nearby"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Yakınınızda</a></li>
+          <li data-moved-to="console" hidden><a data-legacy="data" data-moved-to="console" href="#acik-veri" data-i18n="design.nav_data"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chart"></use></svg>Açık veri</a></li>
+          <li><a data-legacy="follow" href="#takip"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-bookmark"></use></svg><span>Takip</span></a></li>
+          <li><a data-legacy="easy" href="/kolay.html" data-i18n="ui.shell.easy_screen"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-accessibility"></use></svg><span>Kolay ekran</span></a></li>
+        </ul>
+      </div>
     </nav>
   </div>
 </header>
@@ -153,6 +164,7 @@
       <div class="composer-bottom"><details class="composer-voice"><summary data-i18n="design.voice">Sesle sorma</summary><div class="composer-tools" id="composer-tools"></div></details></div>
       <p class="field-error" hidden>Bir soru yazın.</p>
     </form>
+    <ul id="capability-examples" aria-label="Neler sorabilirsiniz"></ul>
     <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
     <div class="hero-options">
     <details class="more quick-more" id="quick-more" hidden>
@@ -172,11 +184,21 @@
     </div>
   </section>
 
-  <section class="chat" id="asistan" aria-labelledby="chat-title">
+  <section class="chat assistant-layout" id="asistan" aria-labelledby="chat-title">
     <h2 class="sr-only" id="chat-title">Yanıtlar</h2>
+    <div class="assistant-head">
+      <aside id="convo-root" aria-label="Sohbetlerim"></aside>
+      <details class="more assistant-more" id="assistant-more" hidden><summary>Daha fazla</summary><ul id="legacy-more-links"></ul></details>
+    </div>
     <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
     <p class="sr-only" id="chat-status" role="status"></p>
-    <aside id="convo-root" aria-label="Sohbetlerim"></aside>
+  </section>
+
+  <section id="takvim" aria-labelledby="takvim-title" hidden>
+    <h2 id="takvim-title" tabindex="-1" data-i18n="ui.shell.calendar_title">Takvim</h2>
+    <p data-i18n="ui.shell.calendar_note">Kaydettiğiniz planlar burada görünür.</p>
+    <p id="takvim-empty" data-i18n="ui.shell.calendar_empty">Henüz kaydedilmiş plan yok. Sohbette bir etkinliği takvime eklediğinizde burada görünür.</p>
+    <div id="takvim-mount"></div>
   </section>
 
   <section id="city-cards" aria-labelledby="cards-title">
@@ -266,7 +288,6 @@
 
   <section id="hesabim" aria-labelledby="you-title">
     <h2 id="you-title">Hesabım ve tercihlerim</h2>
-    <details class="more account-detail" id="appearance-options"><summary data-i18n="design.appearance">Size uygun görünüm</summary><div id="persona-mount"></div></details>
     <details class="more account-detail">
       <summary><h2 id="profile-title">Profilim</h2></summary>
       <section id="profilim" aria-labelledby="profile-title">
@@ -324,18 +345,18 @@
     </form>
       </section>
     </details>
-
     <details class="more account-detail">
-      <summary><h2 id="account-title">Hesap bağla (örnek)</h2></summary>
-      <section id="hesap" aria-labelledby="account-title">
-    <p class="section-note">isteğe bağlı, açık rızayla; hesapsız kullanım bu cihazda kalır</p>
-    <p>Hesap bağlarsanız günlük soru hakkınız artar ve takip ettiğiniz konular için günde en çok bir özet e-posta hazırlanır.
-      Giriş bir gösterimdir: gerçek İBB, İstanbulkart ya da Google hesabına bağlanılmaz.</p>
-    <div id="acct-body"></div>
-    <p class="status-line" id="acct-status" role="status"></p>
+      <summary><h2 id="memory-title"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg> Hafızam</h2></summary>
+      <section id="hafizam" aria-labelledby="memory-title">
+    <p class="section-note">asistanın önerdiği, sizin onayladığınız</p>
+    <p>Asistan bir şey öğrenmek istediğinde sorar: "Profilinize ekleyeyim mi?". Siz onaylamadan hiçbir şey kaydedilmez.
+      Kayıtlar burada görünür ve tek tuşla silinir.</p>
+    <ul class="memory-list" id="memory-list"></ul>
+    <p class="memory-empty" id="memory-empty">Henüz kayıt yok.</p>
+    <div class="btn-row"><button type="button" class="btn" id="memory-clear" hidden>Tümünü sil</button></div>
+    <p class="status-line" id="memory-status" role="status"></p>
       </section>
     </details>
-
     <details class="more account-detail">
       <summary><h2 id="follow-title">Takip ettiklerim</h2></summary>
       <section id="takip" aria-labelledby="follow-title">
@@ -349,19 +370,17 @@
     <p class="status-line" id="follow-status" role="status"></p>
       </section>
     </details>
-
     <details class="more account-detail">
-      <summary><h2 id="memory-title"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg> Hafızam</h2></summary>
-      <section id="hafizam" aria-labelledby="memory-title">
-    <p class="section-note">asistanın önerdiği, sizin onayladığınız</p>
-    <p>Asistan bir şey öğrenmek istediğinde sorar: "Profilinize ekleyeyim mi?". Siz onaylamadan hiçbir şey kaydedilmez.
-      Kayıtlar burada görünür ve tek tuşla silinir.</p>
-    <ul class="memory-list" id="memory-list"></ul>
-    <p class="memory-empty" id="memory-empty">Henüz kayıt yok.</p>
-    <div class="btn-row"><button type="button" class="btn" id="memory-clear" hidden>Tümünü sil</button></div>
-    <p class="status-line" id="memory-status" role="status"></p>
+      <summary><h2 id="account-title">Hesap bağla (örnek)</h2></summary>
+      <section id="hesap" aria-labelledby="account-title">
+    <p class="section-note">isteğe bağlı, açık rızayla; hesapsız kullanım bu cihazda kalır</p>
+    <p>Hesap bağlarsanız günlük soru hakkınız artar ve takip ettiğiniz konular için günde en çok bir özet e-posta hazırlanır.
+      Giriş bir gösterimdir: gerçek İBB, İstanbulkart ya da Google hesabına bağlanılmaz.</p>
+    <div id="acct-body"></div>
+    <p class="status-line" id="acct-status" role="status"></p>
       </section>
     </details>
+    <details class="more account-detail" id="appearance-options"><summary data-i18n="design.appearance">Size uygun görünüm</summary><div id="persona-mount"></div></details>
   </section>
   <button type="button" class="btn btn-primary ask-pill" id="ask-pill" hidden data-i18n="page.ask_pill">Sor</button>
 </main>
