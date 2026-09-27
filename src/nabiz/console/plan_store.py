@@ -21,6 +21,11 @@ TIME_ZONE = "Europe/Istanbul"
 _FIELDS = ("title", "starts_at", "ends_at", "all_day", "time_zone", "place", "source_url", "source_date", "conversation_id")
 
 
+def plans_path() -> Path:
+    """``NABIZ_PLAN_DB_PATH``, else the default file."""
+    return Path(os.environ.get("NABIZ_PLAN_DB_PATH") or DEFAULT_PATH)
+
+
 class PlanNotFound(LookupError):
     """No plan belongs to this principal under the requested identifier."""
 
@@ -98,9 +103,15 @@ class PlanStore:
             db.execute("CREATE INDEX IF NOT EXISTS plans_owner ON plans(owner_id, starts_at)")
             OperationLedger.create_schema(db)
 
+    def erase_owner(self, owner_id: str) -> int:
+        """Every plan and operation of an account, for the account's erasure (P00 D2a); the plans removed."""
+        with self._db() as db:
+            db.execute("DELETE FROM operation_ledger WHERE owner_id = ?", (owner_id,))
+            return db.execute("DELETE FROM plans WHERE owner_id = ?", (owner_id,)).rowcount
+
     @classmethod
     def from_env(cls) -> PlanStore:
-        return cls(Path(os.environ.get("NABIZ_PLAN_DB_PATH", DEFAULT_PATH)))
+        return cls(plans_path())
 
     @contextmanager
     def _db(self) -> Iterator[sqlite3.Connection]:

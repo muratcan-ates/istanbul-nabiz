@@ -194,6 +194,11 @@ class QuotaBook:
             self._add(holder, 1, calls)
             return True
 
+    def erase_account(self, account_id: str) -> int:
+        """Forget today's counts of a deleted account (the persistent book forgets every day's)."""
+        with self._lock:
+            return 1 if self._counts.pop(self.pseudonym("hesap", account_id), None) is not None else 0
+
     def purge_old_days(self, *, keep_days: int = 2) -> int:
         """The persistent book's start-up purge; in memory only today is ever kept, so nothing to do."""
         return 0

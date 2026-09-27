@@ -3199,3 +3199,24 @@ answers citing the gold page first.
 ### Consequences
 
 - The app's data root on the share (`/var/lib/nabiz`) and the env names the module sets are the data-root work (I).
+
+## 104. Account erasure is one chain over every store, or a 503 (H, P00 D2a, 27 Sep)
+
+### Decision
+
+- `DELETE /api/account` runs `erasure_chain` (`src/nabiz/console/account_links.py`) over the stores in the owner's
+  order: calendar plans, Outlook tokens, appeals, bookings, saved journeys, photo reports, account memory, citizen
+  requests, e-mail outbox, family links, quota, sessions, and the account row last (`REQUIRED_HOOKS`). An unknown hook
+  name is a `ValueError`.
+- A hook that fails stops the chain: the route answers 503 `erasure_incomplete` (no-store) and the account stays, so
+  the person can retry and is never told everything went when it did not.
+- Photo reports and citizen requests are keyed by a code on the device, and memory lives in the browser: the account
+  holds nothing there, and their hooks say so with 0. The Outlook token hook fails the chain if a token store cannot
+  delete (today there is no store: 0).
+- New erase methods: `PlanStore.erase_owner` and `QuotaBook.erase_account` (in memory, like the persistent book's);
+  the family hook uses the store's own `leave` (an owner's leaving dissolves the group) and `cancel_request`. The
+  answer adds the counts per store; kvkk's deletion paragraph names the stores.
+
+### Consequences
+
+- A store added later joins `REQUIRED_HOOKS` and `account_links.py` in the same change, or the chain refuses to run.
