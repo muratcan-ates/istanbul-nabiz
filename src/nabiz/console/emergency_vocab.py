@@ -225,3 +225,56 @@ VOCAB: dict[str, Vocab] = {
         negations=("نه", "بدون", "هیچ"),
     ),
 }  # fmt: skip
+
+
+# -- a stated condition next to an everyday question (KARAR 5), read by emergency_lang ------------------
+# Written the way a person types; folded like the health mask (nabiz.console.health_mask), case and
+# accents away, one character for one. A word ending in ``!`` matches whole; any other entry matches at a
+# word's start ("agri" is "ağrıyor", "ağrım"). A missed emergency costs more than a false alarm, so the
+# acute list leans wide: a condition is set aside only when none of it is in the message.
+
+#: Acute signs: pain, breath, consciousness, bleeding, a fall, a plea, a sudden change.
+ACUTE_SIGNS: tuple[str, ...] = (
+    # Turkish
+    "ağrı", "sancı", "nefes", "soluk", "soluy", "boğul", "bilinc", "bayıl", "baygın", "kanam", "kanıyor",
+    "kan geliyor", "kan kus", "düştü", "düştüm", "düşme", "düşecek", "yığıl", "acil", "yardım", "imdat", "kriz",
+    "nöbet", "fenalaş", "kötüleş", "kötüyüm", "titri", "morar", "konuşamıy", "kusuy", "felç", "inme geçir",
+    "inme indi", "göğsüm", "göğüs", "kalbim", "kalbi dur", "şekerim düş", "şekerim çık", "tansiyonum çık",
+    "tansiyonum düş", "tansiyonum yüksel", "uyuşu", "ateş", "zehirlen", "ayılmıy", "hareket etmiyor",
+    "cevap vermiyor", "duman", "alev", "yanıyor", "112!",
+    # English
+    "pain", "hurt", "chest", "breath", "faint", "dizzy", "unconscious", "collaps", "bleed", "fell!", "falling",
+    "emergency", "help", "attack", "seizure", "vomit", "numb", "poison",
+    # German
+    "schmerz", "atem", "luft", "bewusstlos", "ohnmacht", "ohnmächtig", "blut", "gestürzt", "notfall", "hilfe",
+    "anfall", "schwindel",
+    # Russian
+    "болит", "боль!", "боли!", "дыш", "сознан", "обморок", "кров", "упал", "срочно", "помог", "приступ", "плохо",
+    # Arabic
+    "ألم", "يتنفس", "تنفس", "الوعي", "إغماء", "نزيف", "سقط", "طوارئ", "مساعدة", "ساعد", "نوبة",
+)  # fmt: skip
+#: A request for medical advice stays refused (R-06) even after a stated condition.
+MEDICAL_ADVICE: tuple[str, ...] = (
+    "ilaç", "doz", "teşhis", "tanı!", "tanısı", "tedavi", "reçete", "yan etki", "ne yapmalıyım", "ne yapayım",
+    "yiyebilir", "içebilir", "kullanabilir", "zararlı", "insülin", "mg!", "dose", "medication", "medicine",
+    "diagnos", "treatment", "should i take", "side effect", "can i eat",
+)  # fmt: skip
+#: What makes the rest of the question an everyday one: travel, a stop, a lift, a service. Without one of
+#: these a stated condition still refuses ("Kalp hastasıyım, bugün yürüyebilir miyim?" asks health advice).
+SERVICE_CUES: tuple[str, ...] = (
+    # Turkish
+    "asansör", "yürüyen merdiven", "rampa", "metro", "otobüs", "tramvay", "vapur", "marmaray", "teleferik",
+    "füniküler", "dolmuş", "minibüs", "durak", "istasyon", "iskele", "hat!", "hatt", "sefer", "aktarma",
+    "nasıl gider", "nasıl gidebilir", "nasıl ulaş", "yol tarifi", "rota", "istanbulkart", "otopark", "ispark",
+    "adımsız", "tekerlekli", "tuvalet", "kütüphane", "müze", "hastaneye", "hastanesine", "sağlık ocağına",
+    # English
+    "lift", "elevator", "escalator", "ramp", "bus", "tram", "ferry", "station", "stop!", "line!",
+    "how do i get", "how can i get", "route", "step free", "wheelchair", "parking", "toilet",
+)  # fmt: skip
+#: Turkish phrases that name fire equipment or a drill, not a fire: "Yangın tüpü nereden alınır?", "yangın
+#: merdiveni nerede?". Taken out before the Turkish rules read "yangın", unless the message carries an acute
+#: sign ("yangın merdiveninde duman var", "yangın çıkışında yardım edin").
+TURKISH_MASKS: tuple[str, ...] = (
+    "yangın merdiven", "yangın çıkış", "yangın kapı", "yangın tüp", "yangın söndür", "yangın dolab", "yangın alarm",
+    "yangın tatbikat", "yangın sigorta", "yangın yönetmeliğ", "yangın güvenliğ", "yangın ihbar hattı",
+)  # fmt: skip

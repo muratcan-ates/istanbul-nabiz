@@ -362,6 +362,54 @@ def test_guard_modules_import_only_allowed_layers() -> None:
                 if node.level:
                     assert path.name == "text_guard.py" and module == "forbidden_terms", (path, module)
                 else:
+                    # health_mask (P09a-2, KARAR 5): pii_guard and ibb_mcp.text at import, no I/O; the guard masks a
+                    # health statement before any verdict, model or index sees the question.
                     assert module.split(".")[0] in sys.stdlib_module_names or module in {
-                        "ibb_mcp.text", "ibb_mcp.knowledge.answer",
+                        "ibb_mcp.text", "ibb_mcp.knowledge.answer", "nabiz.console.health_mask",
                     }, (path, module)
+
+
+# ---- a health statement stops at the input guard (P02, KVKK; KARAR 5) ------------------------------------
+def test_a_health_statement_is_masked_by_the_input_guard() -> None:
+    from nabiz.console.health_mask import HEALTH_LABEL
+
+    verdict = check_input("Diyaliz hastasıyım, Kadıköy'den Kartal'a nasıl giderim?")
+    assert verdict.ok and "diyaliz" not in verdict.text.casefold() and verdict.text.startswith(HEALTH_LABEL)
+    assert check_input("Kalp Damar Hastanesi'ne nasıl giderim?").text == "Kalp Damar Hastanesi'ne nasıl giderim?"
+    assert check_input("Tekerlekli sandalye kullanıyorum").text == "Tekerlekli sandalye kullanıyorum"
+
+
+def test_the_masked_question_keeps_every_verdict() -> None:
+    from nabiz.console import policy
+
+    for acute in ("Kalp hastasıyım, göğsüm çok ağrıyor", "Diyabetim var, bayılacak gibiyim", "Epilepsi nöbeti geçiriyor"):
+        assert policy.emergency_intent(check_input(acute).text), acute
+    for advice in ("Kalp hastasıyım bugün yürüyebilir miyim?", "Diyabetim var, hangi ilacı kullanmalıyım?",
+                   "I have asthma; is it safe for me to go outside today?"):  # fmt: skip
+        assert policy.refuses(check_input(advice).text), advice
+    for question in ("Kalp hastasıyım, M4'te asansör var mı?", "Diyaliz hastasıyım, Kadıköy'den Kartal'a nasıl giderim?"):
+        text = check_input(question).text
+        assert not policy.emergency_intent(text) and not policy.refuses(text), question
+
+
+def test_the_model_never_sees_the_diagnosis(monkeypatch) -> None:
+    import httpx
+    from conftest import offline_settings, refuse_network
+    from test_console_chat import CLOUD, FakeModel, ask, client_for, reply
+
+    from ibb_mcp.cache import TTLCache
+    from ibb_mcp.http import PoliteClient
+    from ibb_mcp.sources.base import SourceContext
+    from ibb_mcp.tools import Nabiz
+    from nabiz.agent import llm
+
+    fake = FakeModel(reply("Kadıköy'den Kartal'a M4 metrosu gider."))
+    monkeypatch.setattr(llm, "chat", fake)
+    context = SourceContext.create(
+        client=PoliteClient(transport=httpx.MockTransport(refuse_network)), cache=TTLCache(), settings=offline_settings()
+    )
+    with client_for(Nabiz(context), CLOUD) as client:
+        _, final = ask(client, "Diyaliz hastasıyım, Kadıköy'den Kartal'a nasıl giderim?")
+    assert final["emergency"] is False and final["refused"] is False
+    sent = repr([call["messages"] for call in fake.calls]).casefold()
+    assert fake.calls and "diyaliz" not in sent and "hastas" not in sent

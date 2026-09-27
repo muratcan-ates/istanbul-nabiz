@@ -35,6 +35,9 @@ HEALTH_KIND = "SAĞLIK"
 #: The line the citizen reads before sending (KARAR 4); the page shows it from its i18n files.
 CITIZEN_NOTE = "Sağlık bilginiz operatöre gösterilmez."
 
+_TURKISH_MARKS = "çğıöşüâî"
+_TURKISH_WORD = re.compile(r"(?<![a-z])(?:var|yok|ve|bir|mi|mı|mu|ne|nasıl|nerede|için|ile|hastasıyım|hastayım)(?![a-z])")
+
 #: ``stem*`` takes any suffix; a bare entry is a whole word or phrase.
 _TERMS: dict[str, tuple[str, ...]] = {
     "tr": (
@@ -98,13 +101,15 @@ def health_spans(text: str) -> list[tuple[int, int]]:
 
 
 def _label_for(text: str) -> str:
-    """The Turkish label unless the request reads as another Latin-script language (another script decides
-    the guess by itself, so the Turkish label cannot change it there)."""
-    # Imported here: policy imports this module for the emergency rules and must not load the model client.
-    from nabiz.console.translate import guess_request_language
-
-    lang, source = guess_request_language(text, None)
-    return HEALTH_LABEL if lang == "tr" or source == "alfabe" else HEALTH_LABEL_OTHER
+    """The Turkish label unless the request reads as another Latin-script language. Checked here with letters
+    and a few words, not with :func:`~nabiz.console.translate.guess_request_language`: the input guard uses
+    this module and translate uses the guard, so importing it would close a cycle."""
+    lowered = text.lower()
+    if any(ch in lowered for ch in _TURKISH_MARKS) or _TURKISH_WORD.search(lowered):
+        return HEALTH_LABEL
+    if not any("a" <= ch <= "z" for ch in lowered):
+        return HEALTH_LABEL  # another script decides the language guess by itself
+    return HEALTH_LABEL_OTHER
 
 
 def mask_health(text: str) -> tuple[str, int]:
