@@ -1,0 +1,94 @@
+/* A single active workspace. The city portal stays one navigation step away. */
+.citizen-page { background: var(--surface); }
+.citizen-page main { padding-top: 0; gap: 0; min-height: calc(100dvh - 96px); }
+.citizen-page .topbar-brand { color: var(--text); font-weight: 600; letter-spacing: -.04em; }
+.citizen-page .topbar-nav { background: var(--surface-raised); }
+.citizen-page .topbar-nav > a { color: var(--text-muted); font-size: 1rem; font-weight: 500; }
+.citizen-page .topbar-nav > a[aria-current] { color: var(--link); background: var(--primary-subtle); }
+.citizen-page .topbar-nav > a:nth-child(5) { margin-top: 0; }
+.citizen-page .topbar-nav > a[href="#profilim"] { margin-top: 20px; }
+.citizen-page .hero { min-height: calc(100dvh - 112px); align-content: center; padding: 64px 32px 88px; border-radius: 0; background: transparent; gap: 16px; overflow: visible; }
+.hero::before { inset: 36% 0 0; background-position: center bottom; background-size: cover; opacity: .34; mask-image: linear-gradient(transparent, var(--text) 32%, var(--text) 78%, transparent); }
+.hero::after { background: linear-gradient(180deg, var(--surface) 8%, color-mix(in srgb, var(--surface) 96%, transparent) 32%, color-mix(in srgb, var(--surface) 35%, transparent) 80%, var(--surface)); }
+.hero .eyebrow { font-size: 0.875rem; color: var(--text-muted); letter-spacing: .01em; font-weight: 400; }
+.hero h1 { color: var(--text); font-size: clamp(2.125rem, 3.7vw, 3.25rem); font-weight: 600; letter-spacing: -.045em; }
+.hero-sub { font-size: 1.125rem; max-width: 38rem; margin-bottom: 18px; }
+.composer { width: min(100%, 46rem); padding: 20px 22px 14px; gap: 0; border: 1px solid var(--border); border-radius: 24px; background: var(--surface-raised); box-shadow: 0 4px 28px -8px color-mix(in srgb, var(--neutral-800) 15%, transparent), 0 1px 3px color-mix(in srgb, var(--neutral-800) 4%, transparent); }
+.composer::after { inset: -1px; border-radius: inherit; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.composer .chat-row { display: block; }
+.composer .chat-row > textarea { display: block; width: 100%; min-height: 84px; max-height: 240px; resize: none; field-sizing: content; padding: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 1.1875rem; line-height: 1.6; box-shadow: none; }
+.composer .chat-row > textarea::placeholder { color: var(--text-muted); opacity: 1; }
+.composer-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 8px; }
+.composer-bottom #chat-submit { border-radius: 50%; min-width: 44px; width: 44px; min-height: 44px; height: 44px; padding: 0; flex: none; box-shadow: none; }
+.composer-bottom #chat-submit .icon { width: 22px; height: 22px; }
+.composer #chat-count { position: absolute; bottom: 23px; right: 84px; margin: 0; font-size: 0.6875rem; color: var(--text-subtle); }
+.composer #chat-count:not(.is-warn) { visibility: hidden; }
+.composer-voice { width: auto; border: 0; }
+.composer-voice > summary { display: inline-flex; min-height: 44px; padding-inline: 12px; border-radius: 12px; font-size: 0.875rem; color: var(--text-muted); }
+.composer-voice > summary:hover { background: var(--surface); }
+.composer-voice .composer-tools { padding: 14px 0; }
+.composer-voice[open] { flex: 1; }
+.hero .chips { margin-top: 8px; gap: 10px; }
+.hero .chip, .citizen-page .quick-chip { border-color: var(--border); border-radius: 24px; padding: 11px 18px; min-height: 44px; font-size: 0.875rem; background: color-mix(in srgb, var(--surface-raised) 86%, transparent); box-shadow: 0 2px 5px color-mix(in srgb, var(--neutral-800) 3%, transparent); }
+.hero-options { gap: 28px; }
+.hero-options summary { color: var(--text-muted); font-weight: 400; }
+.hero > .band { max-width: 36rem; color: var(--text-muted); font-size: 0.75rem; line-height: 1.6; }
+.hero .band .tag { color: var(--text-muted); background: transparent; font-weight: 400; }
+.citizen-page .chat { width: min(100%, 48rem); margin-inline: auto; }
+.citizen-page .chat-msg.is-user { padding: 16px 20px; background: var(--primary-subtle); border: 0; border-radius: 22px 22px 6px 22px; max-width: 86%; }
+.chat-msg.is-user .chat-who { color: var(--text-muted); font-size: 0.75rem; }
+.citizen-page.has-conversation .hero { min-height: 0; padding: 32px 24px 20px; align-content: start; }
+.has-conversation .hero::before, .has-conversation .hero::after,
+.has-conversation .hero-sub, .has-conversation .hero #quick-cards, .has-conversation .hero #quick-more,
+.has-conversation .hero .eyebrow { display: none; }
+.has-conversation .hero h1 { font-size: 1.5rem; text-align: left; max-width: 48rem; }
+.has-conversation .hero > .band { max-width: 48rem; text-align: left; }
+.has-conversation .hero .band .tag { display: inline; margin: 0; padding: 0; }
+.has-conversation .chat { padding: 16px 12px 32px; gap: 32px; }
+.has-conversation .chat-log { gap: 32px; }
+.has-conversation .chat > .composer { position: relative; margin-top: 12px; }
+.has-conversation .composer .chat-row > textarea { min-height: 56px; }
+.has-conversation .chat-msg.is-notice:not(.chat-compaction) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+.has-conversation .hero-options { justify-content: flex-start; width: min(100%, 48rem); }
+.citizen-page[data-view]:not([data-view="assistant"]) main { padding-top: 36px; padding-bottom: 48px; }
+.citizen-page .workspace-main { gap: 0; }
+.citizen-page .work-group { border: 0; border-radius: 0; padding: 0 24px; background: transparent; }
+.work-group > summary { min-height: 80px; padding-bottom: 16px; }
+.work-group > summary strong, .work-group > summary h2 { font-size: 1.875rem; font-weight: 600; color: var(--text); letter-spacing: -.035em; }
+.work-group > summary::after { display: none; }
+.work-group > :not(summary) { padding-top: 28px; }
+#open-data-workspace #acik-veri-form { grid-template-columns: 1fr auto; max-width: 850px; margin-block: 24px; }
+#city-cards > .section-head { margin-bottom: 24px; }
+#city-cards .card { background: var(--surface-raised); border-color: var(--border); border-radius: 20px; }
+#city-cards .card:nth-child(3n + 2) { background: var(--surface-raised); }
+.citizen-page #hesabim { border-top: 0; padding: 0 24px; }
+.citizen-page #ask-pill { display: none; }
+@media (min-width: 1100px) {
+  .citizen-page .topbar-nav { padding-top: 22px; }
+  .citizen-page .topbar-nav > a { min-height: 44px; }
+}
+@media (max-width: 1099px) {
+  .citizen-page .topbar-nav > a[href="#profilim"] { margin-top: 0; }
+}
+@media (max-width: 767px) {
+  .citizen-page main { min-height: calc(100dvh - 130px); }
+  .citizen-page .hero { min-height: calc(100dvh - 150px); padding: 42px 10px 36px; gap: 14px; }
+  .hero h1 { font-size: 2.25rem; }
+  .hero-sub { font-size: 1rem; margin-bottom: 12px; }
+  .hero::before { background-size: auto 65%; opacity: .24; }
+  .composer { padding: 18px 16px 12px; border-radius: 22px; }
+  .composer .chat-row > textarea { font-size: 1.0625rem; min-height: 90px; }
+  .composer-bottom { padding-top: 0; }
+  .hero .chips { justify-content: center; gap: 7px; }
+  .hero .chip, .citizen-page .quick-chip { font-size: 0.8125rem; padding: 8px 12px; }
+  .hero-options { gap: 14px; }
+  .citizen-page .chat:not(:has(.is-user, .is-assistant)) #convo-root { justify-self: center; margin-block: 8px 24px; }
+  .has-conversation .chat { padding: 8px 0 20px; }
+  .has-conversation .chat > .composer { margin-top: 8px; }
+  .citizen-page.has-conversation .hero { padding: 26px 0 16px; }
+  .citizen-page .work-group, .citizen-page #hesabim { padding-inline: 0; }
+  .work-group > summary strong, .work-group > summary h2 { font-size: 1.625rem; }
+  #open-data-workspace #acik-veri-form { grid-template-columns: 1fr; }
+}
+:root[data-contrast="more"] .composer, :root[data-contrast="more"] .hero .chip { border-color: var(--border-strong); }
+@media (forced-colors: active) { .composer { border: 1px solid CanvasText; } }

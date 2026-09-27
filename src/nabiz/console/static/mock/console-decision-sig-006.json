@@ -12,7 +12,7 @@
   },
   "evidence": [
     { "text": "KRT-ASN-02 (peron katı): kayıtlı fixture'da Arıza (tests/fixtures/metro_faulty_kartal).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-24T18:00:00+03:00", "age_s": 60240, "mode": "recorded" } },
-    { "text": "Onaylı alternatif OA-KRT-ASN-02: Pendik (M4), +6 dk (tahmin); son onay 25.09 10:44.", "provenance": { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T10:44:32+03:00", "age_s": 30, "mode": "live" } },
+    { "text": "Onaylı alternatif OA-KRT-ASN-02: Pendik (M4), +6 dk (tahmin); son onay 25.09 10:44.", "provenance": { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T10:44:32+03:00", "age_s": 30, "mode": "recorded" } },
     { "text": "Pendik asansörleri aynı kayıtta arızasız (R-05 birinci şart).", "provenance": { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-24T18:00:00+03:00", "age_s": 60240, "mode": "recorded" } }
   ],
   "freshness_s": 60240,
@@ -22,7 +22,7 @@
     { "label": "D. Hiçbir şey yapma", "detail": "Kart son bilinen durumu yaşıyla gösterir." }
   ],
   "opinions": [
-    { "role": "Erişilebilirlik", "stance": "conditional", "rationale": "Alternatif hazır; ancak veri kayıtlı (16 saat). Yayımlanacaksa yaşı görünür olmalı.", "citations": [ { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T10:44:32+03:00", "age_s": 30, "mode": "live" } ] },
+    { "role": "Erişilebilirlik", "stance": "conditional", "rationale": "Alternatif hazır; ancak veri kayıtlı (16 saat). Yayımlanacaksa yaşı görünür olmalı.", "citations": [ { "source": "nexus_ledger", "url": null, "observed_at": "2026-09-25T10:44:32+03:00", "age_s": 30, "mode": "recorded" } ] },
     { "role": "Operasyon", "stance": "oppose", "rationale": "R-05 ikinci şart (veri yaşı eşiğin altında) sağlanmıyor: 16 saatlik kayıt. E-05 açılmalı, canlı okuma beklenmeli.", "citations": [ { "source": "metro_equipment", "url": "https://www.metro.istanbul/", "observed_at": "2026-09-24T18:00:00+03:00", "age_s": 60240, "mode": "recorded" } ] },
     { "role": "İletişim", "stance": "conditional", "rationale": "Metin 'kayıtlı · 24.09 18:00' damgasıyla yayımlanabilir; 'canlı' kelimesi geçmemeli.", "citations": [] }
   ],

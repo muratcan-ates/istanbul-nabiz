@@ -11,6 +11,20 @@ const EXAMPLE = { from: 'Kadıköy', to: 'Levent' };
 let activeController = null;
 let activeRun = 0;
 
+function revealSection(id, workspaceId) {
+  document.dispatchEvent(new CustomEvent('nabiz:reveal', { detail: { id: workspaceId } }));
+  const reveal = () => {
+    const section = document.getElementById(id), workspace = document.getElementById(workspaceId);
+    if (workspace) workspace.open = true;
+    let details = section?.closest('details');
+    while (details) { details.open = true; details = details.parentElement?.closest('details'); }
+    return section;
+  };
+  reveal();
+  // Workspace placement runs in a mutation observer before the next frame.
+  requestAnimationFrame(() => reveal()?.scrollIntoView({ block: 'start' }));
+}
+
 function profileNeeds() {
   try {
     const profile = readProfile();
@@ -119,12 +133,14 @@ function wireMapAction(result, journey) {
   if (!button) return;
   button.addEventListener('click', async () => {
     const points = mapPoints(journey);
+    const workspace = document.getElementById('map-workspace');
+    if (workspace) workspace.open = true;
     document.dispatchEvent(new CustomEvent('nabiz:show-on-map', { detail: { points, source: 'trip' } }));
     if (!document.getElementById('harita-katmanlari')) {
       const { showOnMap } = await import('./map.js');
       showOnMap(points);
     }
-    document.getElementById('harita')?.scrollIntoView({ block: 'start' });
+    revealSection('harita', 'map-workspace');
   });
 }
 
@@ -210,7 +226,7 @@ function openTrip(from, to) {
   const toInput = section.querySelector('#trip-to');
   fromInput.value = String(from || '').trim().slice(0, 120);
   toInput.value = String(to || '').trim().slice(0, 120);
-  section.scrollIntoView({ block: 'start' });
+  revealSection('yolculugum', 'journey-workspace');
   return runTrip(fromInput.value, toInput.value);
 }
 

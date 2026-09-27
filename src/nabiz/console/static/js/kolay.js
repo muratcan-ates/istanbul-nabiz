@@ -5,7 +5,7 @@ import { quoteBox } from './transcript.js';
 import { readProfile, readMemory, effectiveNeeds } from './profile.js';
 import { HISTORY_TURNS } from './config.js';
 import { ageText, ageSentence, sourceLabel, AUTHOR_TR } from './provenance.js';
-
+import { mountToggles } from './theme.js';
 const KOLAY_KEY = 'nabiz.kolay.v1';
 const GAS_LINE = 'İGDAŞ 187 Doğal Gaz Acil Hattı';
 
@@ -111,11 +111,11 @@ function forgetStop(storage) {
 
 async function boot() {
   if (typeof document === 'undefined') return;
+  mountToggles();
   const aiBand = document.getElementById('kolay-ai-band');
   const privacy = document.getElementById('kolay-privacy');
   if (aiBand) aiBand.textContent = AI_NOTICE;
   if (privacy) privacy.innerHTML = privacyBandMarkup();
-
   const log = document.getElementById('chat-log');
   const status = document.getElementById('kolay-status');
   const [{ MOCK, get, stream }, { UNKNOWN_TEXT }] = await Promise.all([

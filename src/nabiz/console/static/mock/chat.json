@@ -51,7 +51,7 @@
     {
       "event": "token",
       "data": {
-        "text": "Kayıt 12 dakika önce alındı. "
+        "text": "Örnek kaydın alınma zamanı: 25.09.2026 10:30 (TSİ). "
       }
     },
     {
@@ -81,11 +81,14 @@
     {
       "event": "final",
       "data": {
-        "answer": "Kartal istasyonunda İBB kaydına göre bir asansör arızalı (KRT-ASN-02, peron katı). Kayıt 12 dakika önce alındı. Adımsız yol için en yakın seçenek Pendik (M4), yaklaşık 6 dakika ek süre; bu alternatif operatör onaylı (simüle).",
+        "answer": "Kartal istasyonunda İBB kaydına göre bir asansör arızalı (KRT-ASN-02, peron katı). Örnek kaydın alınma zamanı: 25.09.2026 10:30 (TSİ). Adımsız yol için en yakın seçenek Pendik (M4), yaklaşık 6 dakika ek süre; bu alternatif operatör onaylı (simüle).",
         "citations": [
           {
             "url": "https://example.ibb.gov.tr/metro/equipment",
             "title": "Metro ekipman kaydı örneği",
+            "source": "Metro ekipman kaydı örneği",
+            "mode": "recorded",
+            "observed_at": "2026-09-25T10:30:00+03:00",
             "quote": "Bu, yalnız arayüz örneği için yazılmış sahte kaynak metnidir.",
             "fetched_at": "2026-09-25T10:30:00+03:00",
             "source_updated_at": null,
@@ -95,7 +98,7 @@
         "author": "model",
         "memory_suggestion": null,
         "refused": false,
-        "answer_text": "Kartal istasyonunda İBB kaydına göre bir asansör arızalı (KRT-ASN-02, peron katı). Kayıt 12 dakika önce alındı. Adımsız yol için en yakın seçenek Pendik (M4), yaklaşık 6 dakika ek süre; bu alternatif operatör onaylı (simüle).",
+        "answer_text": "Kartal istasyonunda İBB kaydına göre bir asansör arızalı (KRT-ASN-02, peron katı). Örnek kaydın alınma zamanı: 25.09.2026 10:30 (TSİ). Adımsız yol için en yakın seçenek Pendik (M4), yaklaşık 6 dakika ek süre; bu alternatif operatör onaylı (simüle).",
         "mode": "answer",
         "steps": null,
         "emergency": false,

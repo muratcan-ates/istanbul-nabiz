@@ -25,6 +25,9 @@
           {
             "url": "https://example.ibb.gov.tr/ornek/hassas",
             "title": "Hassas bilgi için örnek kaynak",
+            "source": "Hassas bilgi için örnek kaynak",
+            "mode": "recorded",
+            "observed_at": "2026-09-25T10:30:00+03:00",
             "quote": "Bu ifade yalnızca sahte arayüz örneğidir.",
             "fetched_at": "2026-09-25T10:30:00+03:00",
             "source_updated_at": "2026-09-01T00:00:00+03:00",

@@ -1,12 +1,23 @@
 /* The theme toggle cycles system, light and dark; the simple-mode toggle enlarges type and stops
  * motion. Both remember the choice in this browser only. Adapted from the web page's theme.js. */
 
+import { onLang, t } from './i18n_text.js';
+
 const $ = (sel) => document.querySelector(sel);
 
 const THEME_ORDER = ['system', 'light', 'dark'];
-const THEME_TR = { system: 'sistem', light: 'açık', dark: 'koyu' };
-const NEXT_TR = { system: 'Açık temaya', light: 'Koyu temaya', dark: 'Sistem temasına' };
+const THEME_LABELS_TR = {
+  system: 'Tema: sistem. Açık temaya geçmek için basın.',
+  light: 'Tema: açık. Koyu temaya geçmek için basın.',
+  dark: 'Tema: koyu. Sistem temasına geçmek için basın.',
+};
 const THEME_ICONS = { system: 'device-desktop', light: 'sun', dark: 'moon' };
+
+function updateThemeLabel(mode) {
+  const known = THEME_ORDER.includes(mode) ? mode : 'system';
+  const btn = $('#theme-toggle');
+  if (btn) btn.setAttribute('aria-label', t(`dyn.theme_${known}`, THEME_LABELS_TR[known]));
+}
 
 function readStored(key, fallback) {
   try { return window.localStorage.getItem(key) || fallback; } catch (err) { return fallback; }
@@ -18,12 +29,12 @@ function store(key, value) {
 
 function applyTheme(mode) {
   const root = document.documentElement;
-  const known = THEME_TR[mode] ? mode : 'system';
+  const known = THEME_ORDER.includes(mode) ? mode : 'system';
   if (known === 'system') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', known);
   const btn = $('#theme-toggle');
   if (btn) {
-    btn.setAttribute('aria-label', `Tema: ${THEME_TR[known]}. ${NEXT_TR[known]} geçmek için basın.`);
+    updateThemeLabel(known);
     btn.querySelector('use').setAttribute('href', `#i-${THEME_ICONS[known]}`);
   }
   store('nabiz-theme', known);
@@ -42,6 +53,7 @@ function applySimple(on) {
 function mountToggles() {
   let theme = readStored('nabiz-theme', 'system');
   applyTheme(theme);
+  onLang(() => updateThemeLabel(document.documentElement.getAttribute('data-theme') || 'system'));
   const themeBtn = $('#theme-toggle');
   if (themeBtn) {
     themeBtn.addEventListener('click', () => {

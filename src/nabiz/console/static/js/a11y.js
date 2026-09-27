@@ -1,9 +1,20 @@
 /* Adapted from DOU-Synapse apps/web/lib/accessibility.ts, apps/web/components/accessibility-provider.tsx, and apps/web/public/accessibility-boot.js (MIT, Copyright (c) 2026 Muratcan Ates). */
 
 import { readProfile } from './profile.js';
+import { onLang, t } from './i18n_text.js';
 
 const PREFS_KEY = 'nabiz.a11y.v1';
 const DEFAULT_PREFS = Object.freeze({ version: 1, text: 100, contrast: 'standard', motion: 'system' });
+const A11Y_TEXT = {
+  title: 'Erişilebilirlik tercihleri', text: 'Yazı boyutu', normal: 'Normal', large: 'Büyük', largest: 'Çok büyük',
+  contrast: 'Yüksek kontrast', motion: 'Hareketi azalt', simple: 'Sade mod', reset: 'Sıfırla',
+  privacy: 'Kişisel veriler ve gizlilik', toggle: 'Erişilebilirlik', text_toggle: 'Büyük yazı',
+  shortcuts: 'Kısayollar: Alt + Shift + B yazı boyutu, K kontrast, H hareket, S sade mod, E bu panel, O kolay okunur, D dinle.',
+  text_updated: 'Yazı boyutu güncellendi.', contrast_on: 'Yüksek kontrast açık.', contrast_off: 'Yüksek kontrast kapalı.',
+  motion_on: 'Hareket azaltıldı.', motion_system: 'Sistem hareket tercihi kullanılıyor.',
+  simple_on: 'Sade mod açık.', simple_off: 'Sade mod kapalı.', reset_done: 'Erişilebilirlik tercihleri sıfırlandı.',
+};
+const a11yText = (key) => t(`dyn.a11y_${key}`, A11Y_TEXT[key]);
 
 function parsePrefs(raw) {
   try {
@@ -110,18 +121,18 @@ function mountA11y() {
     panel.className = 'a11y-panel wrap';
     panel.hidden = true;
     panel.setAttribute('aria-labelledby', 'a11y-title');
-    panel.innerHTML = '<h2 id="a11y-title">Erişilebilirlik tercihleri</h2>'
-      + '<fieldset><legend>Yazı boyutu</legend><div class="a11y-options">'
-      + '<label class="check"><input type="radio" name="a11y-text" value="100"><span>Normal</span></label>'
-      + '<label class="check"><input type="radio" name="a11y-text" value="125"><span>Büyük</span></label>'
-      + '<label class="check"><input type="radio" name="a11y-text" value="150"><span>Çok büyük</span></label></div></fieldset>'
-      + '<label class="check"><input id="a11y-contrast" type="checkbox"><span>Yüksek kontrast</span></label>'
-      + '<label class="check"><input id="a11y-motion" type="checkbox"><span>Hareketi azalt</span></label>'
-      + '<label class="check"><input id="a11y-simple" type="checkbox"><span>Sade mod</span></label>'
-      + '<div class="btn-row"><button type="button" class="btn" id="a11y-reset">Sıfırla</button>'
-      + '<a href="/kvkk.html">Kişisel veriler ve gizlilik</a></div>'
+    panel.innerHTML = '<h2 id="a11y-title" data-a11y-text="title">Erişilebilirlik tercihleri</h2>'
+      + '<fieldset><legend data-a11y-text="text">Yazı boyutu</legend><div class="a11y-options">'
+      + '<label class="check"><input type="radio" name="a11y-text" value="100"><span data-a11y-text="normal">Normal</span></label>'
+      + '<label class="check"><input type="radio" name="a11y-text" value="125"><span data-a11y-text="large">Büyük</span></label>'
+      + '<label class="check"><input type="radio" name="a11y-text" value="150"><span data-a11y-text="largest">Çok büyük</span></label></div></fieldset>'
+      + '<label class="check"><input id="a11y-contrast" type="checkbox"><span data-a11y-text="contrast">Yüksek kontrast</span></label>'
+      + '<label class="check"><input id="a11y-motion" type="checkbox"><span data-a11y-text="motion">Hareketi azalt</span></label>'
+      + '<label class="check"><input id="a11y-simple" type="checkbox"><span data-a11y-text="simple">Sade mod</span></label>'
+      + '<div class="btn-row"><button type="button" class="btn" id="a11y-reset" data-a11y-text="reset">Sıfırla</button>'
+      + '<a href="/kvkk.html" data-a11y-text="privacy">Kişisel veriler ve gizlilik</a></div>'
       + '<p class="sr-only" id="a11y-status" role="status" aria-live="polite"></p>'
-      + '<p class="a11y-shortcuts">Kısayollar: Alt + Shift + B yazı boyutu, K kontrast, H hareket, S sade mod, E bu panel, O kolay okunur, D dinle.</p>';
+      + '<p class="a11y-shortcuts" data-a11y-text="shortcuts">Kısayollar: Alt + Shift + B yazı boyutu, K kontrast, H hareket, S sade mod, E bu panel, O kolay okunur, D dinle.</p>';
     const topbar = document.querySelector('.topbar');
     if (topbar) topbar.insertAdjacentElement('afterend', panel);
     else actions.insertAdjacentElement('afterend', panel);
@@ -135,9 +146,21 @@ function mountA11y() {
   }
 
   const status = panel.querySelector('#a11y-status');
+  function announce(key) {
+    if (status) { status.dataset.a11yText = key; status.textContent = a11yText(key); }
+  }
+  function translatePanel() {
+    panel.querySelectorAll('[data-a11y-text]').forEach((el) => { el.textContent = a11yText(el.dataset.a11yText); });
+    textButton.textContent = a11yText('text_toggle');
+    panelButton.textContent = a11yText('toggle');
+    const simpleButton = document.querySelector('#simple-toggle');
+    if (simpleButton) simpleButton.textContent = a11yText('simple');
+  }
+  translatePanel();
+  onLang(translatePanel);
   const textToggle = () => {
     prefs = { ...prefs, text: prefs.text === 100 ? 125 : prefs.text === 125 ? 150 : 100 };
-    persist('Yazı boyutu güncellendi.');
+    persist('text_updated');
   };
   const syncControls = () => {
     panel.querySelectorAll('input[name="a11y-text"]').forEach((input) => { input.checked = Number(input.value) === prefs.text; });
@@ -153,9 +176,9 @@ function mountA11y() {
     applyPrefs(prefs, systemReduced, root);
     try { savePrefs(prefs, window.localStorage); } catch (error) { /* Storage can be disabled by the browser. */ }
     syncControls();
-    if (status) status.textContent = message;
+    announce(message);
   }
-  function setSimple(on, announce = true) {
+  function setSimple(on, shouldAnnounce = true) {
     const button = document.querySelector('#simple-toggle');
     if (button && (button.getAttribute('aria-pressed') === 'true') !== on) button.click();
     else if (!button) {
@@ -164,7 +187,7 @@ function mountA11y() {
       try { window.localStorage.setItem('nabiz-simple', on ? 'on' : 'off'); } catch (error) { /* Storage can be disabled. */ }
     }
     syncControls();
-    if (announce && status) status.textContent = on ? 'Sade mod açık.' : 'Sade mod kapalı.';
+    if (shouldAnnounce) announce(on ? 'simple_on' : 'simple_off');
   }
   function openPanel(open) {
     panel.hidden = !open;
@@ -176,10 +199,10 @@ function mountA11y() {
     if (action === 'text') textToggle();
     else if (action === 'contrast') {
       prefs = { ...prefs, contrast: prefs.contrast === 'more' ? 'standard' : 'more' };
-      persist(prefs.contrast === 'more' ? 'Yüksek kontrast açık.' : 'Yüksek kontrast kapalı.');
+      persist(prefs.contrast === 'more' ? 'contrast_on' : 'contrast_off');
     } else if (action === 'motion') {
       prefs = { ...prefs, motion: prefs.motion === 'reduce' ? 'system' : 'reduce' };
-      persist(prefs.motion === 'reduce' ? 'Hareket azaltıldı.' : 'Sistem hareket tercihi kullanılıyor.');
+      persist(prefs.motion === 'reduce' ? 'motion_on' : 'motion_system');
     } else if (action === 'simple') setSimple(root.getAttribute('data-simple') !== 'on');
     else if (action === 'panel') openPanel(panel.hidden);
   }
@@ -190,25 +213,25 @@ function mountA11y() {
   if (simpleButton) simpleButton.addEventListener('click', () => {
     queueMicrotask(() => {
       syncControls();
-      if (status) status.textContent = root.getAttribute('data-simple') === 'on' ? 'Sade mod açık.' : 'Sade mod kapalı.';
+      announce(root.getAttribute('data-simple') === 'on' ? 'simple_on' : 'simple_off');
     });
   });
   panel.addEventListener('change', (event) => {
     const input = event.target;
     if (input.matches('input[name="a11y-text"]')) {
       prefs = { ...prefs, text: Number(input.value) };
-      persist('Yazı boyutu güncellendi.');
+      persist('text_updated');
     } else if (input.id === 'a11y-contrast') {
       prefs = { ...prefs, contrast: input.checked ? 'more' : 'standard' };
-      persist(input.checked ? 'Yüksek kontrast açık.' : 'Yüksek kontrast kapalı.');
+      persist(input.checked ? 'contrast_on' : 'contrast_off');
     } else if (input.id === 'a11y-motion') {
       prefs = { ...prefs, motion: input.checked ? 'reduce' : 'system' };
-      persist(input.checked ? 'Hareket azaltıldı.' : 'Sistem hareket tercihi kullanılıyor.');
+      persist(input.checked ? 'motion_on' : 'motion_system');
     } else if (input.id === 'a11y-simple') setSimple(input.checked);
   });
   panel.querySelector('#a11y-reset').addEventListener('click', () => {
     prefs = { ...DEFAULT_PREFS };
-    persist('Erişilebilirlik tercihleri sıfırlandı.');
+    persist('reset_done');
     setSimple(false, false);
   });
   document.addEventListener('keydown', (event) => {

@@ -163,13 +163,23 @@ def test_the_favicon_wears_the_primary_button_colours_of_both_themes() -> None:
     assert "M3 12h4l3 8l4 -16l3 8h4" in image
 
 
-def test_the_web_font_is_one_preloaded_woff2_inside_its_budget() -> None:
+def test_the_preserved_web_font_stays_inside_its_budget() -> None:
     font = STATIC_DIR / "fonts" / "nabiz-sans-tr-v1.woff2"
     assert font.read_bytes()[:4] == b"wOF2"
     assert font.stat().st_size <= 60_000
-    assert '<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>' in HEAD
     base = (STATIC_DIR / "css" / "base.css").read_text(encoding="utf-8")
     assert 'src: url(/fonts/nabiz-sans-tr-v1.woff2) format("woff2")' in base
+
+
+def test_the_interface_uses_system_fonts_without_preloading_the_preserved_font() -> None:
+    for static in (STATIC_DIR, CONSOLE_STATIC):
+        tokens = (static / "css" / "tokens.css").read_text(encoding="utf-8")
+        font = re.search(r"--font-sans:\s*([^;]+);", tokens)
+        assert font
+        assert font.group(1).strip() == 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        for page in static.glob("*.html"):
+            head = page.read_text(encoding="utf-8").partition("</head>")[0]
+            assert not re.search(r'<link\b(?=[^>]*\brel="preload")(?=[^>]*\bas="font")[^>]*>', head), page
 
 
 def test_the_fallback_face_carries_the_computed_metric_overrides() -> None:

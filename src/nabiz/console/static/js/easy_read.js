@@ -1,4 +1,5 @@
 import { RATES, collectBlocks, listenPlan, chooseVoice, createListener, splitSentences } from './easy_read_listen.js';
+import { currentLang, onLang, t } from './i18n_text.js';
 export const EASY_PREFS_KEY = 'nabiz.easyread.v1';
 export const DEFAULT_EASY_PREFS = Object.freeze({ version: 1, on: false, rate: 1 });
 export const TARGET_SELECTOR = '.chat-msg.is-assistant .answer-short p, .chat-msg.is-assistant .chat-final ol > li, .answer-card .ac-short p, .answer-card .ac-steps li, .answer-card .ac-fixed, [data-er-target]';
@@ -120,6 +121,8 @@ function wrapElement(el) {
 function unwrapElement(el) { if (originals.has(el)) { el.textContent = originals.get(el); originals.delete(el); wrapped.delete(el); } }
 function updateToggleButtons() { document.querySelectorAll('.er-toggle').forEach((button) => button.setAttribute('aria-pressed', String(enabled))); }
 function updateRateButtons() { document.querySelectorAll('.er-rate').forEach((button) => button.setAttribute('aria-pressed', String(Number(button.dataset.rate) === preferences.rate))); }
+function readingOptionsLabel() { return t('dyn.reading_options', currentLang() === 'en' ? 'Reading options' : 'Okuma seçenekleri'); }
+function updateReadingOptions() { document.querySelectorAll('.er-options > summary').forEach((summary) => { summary.textContent = readingOptionsLabel(); }); }
 function loadGlossary() {
   if (!glossaryPromise) glossaryPromise = fetch('/data/glossary_tr.json')
     .then((response) => { if (!response.ok) throw new Error('glossary'); return response.json(); })
@@ -143,9 +146,12 @@ function markBubble(bubble) {
     const button = makeButton('er-rate', TEXT.rates[index], rate === preferences.rate);
     button.dataset.rate = String(rate); rates.appendChild(button);
   });
+  const options = makeElement('details', 'er-options');
+  options.appendChild(makeElement('summary', '', readingOptionsLabel()));
+  options.appendChild(rates);
   const progress = makeElement('span', 'er-progress'); progress.setAttribute('aria-hidden', 'true');
   const note = makeElement('p', 'er-note'); note.hidden = true;
-  [toggle, speak, stop, rates, progress, note].forEach((item) => bar.appendChild(item));
+  [toggle, speak, stop, progress, options, note].forEach((item) => bar.appendChild(item));
   final.insertBefore(bar, final.firstChild);
   toggle.addEventListener('click', () => {
     preferences = { ...preferences, on: !enabled }; savePreferences(); applyEnabled(preferences.on); say(enabled ? TEXT.on : TEXT.off);
@@ -249,6 +255,7 @@ export function mountEasyRead() {
     const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '/css/easy_read.css'; document.head.appendChild(link);
   }
   status = addStatus(); tip = makeTooltip();
+  onLang(updateReadingOptions);
   try { preferences = parseEasyPrefs(window.localStorage.getItem(EASY_PREFS_KEY)); } catch (error) { preferences = { ...DEFAULT_EASY_PREFS }; }
   enabled = preferences.on;
   if (enabled) root.dataset.easyRead = 'on';

@@ -31,12 +31,22 @@ SW = STATIC / "sw.js"
 PWA = STATIC / "js/pwa.js"
 MANIFEST = STATIC / "manifest.webmanifest"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-BG = (0x24, 0x57, 0xAA)
-FG = (0xFB, 0xFC, 0xFE)
 PATH_POINTS = ((3, 12), (7, 12), (10, 20), (14, 4), (17, 12), (21, 12))
 
 def read(path: str) -> str:
     return (STATIC / path).read_text(encoding="utf-8")
+
+def token_colour(name: str) -> str:
+    value = re.search(rf"--{re.escape(name)}:\s*(#[0-9a-fA-F]{{6}})", read("css/tokens.css"))
+    assert value, f"missing colour token: {name}"
+    return value.group(1)
+
+def token_rgb(name: str) -> tuple[int, int, int]:
+    colour = token_colour(name)
+    return tuple(int(colour[index:index + 2], 16) for index in (1, 3, 5))
+
+BG = token_rgb("primary-700")
+FG = token_rgb("neutral-0")
 
 def node() -> str:
     executable = shutil.which("node")
@@ -137,7 +147,8 @@ def test_manifest_icons_exist_and_carry_no_ibb_mark() -> None:
     assert "ibb" not in manifest["short_name"].lower()
     assert "ibb" not in svg.lower()
     assert 'viewBox="-3 -3 30 30"' in svg
-    assert 'fill="#2457aa"' in svg and 'stroke="#fbfcfe"' in svg
+    assert f'fill="{token_colour("primary-700")}"' in svg
+    assert f'stroke="{token_colour("neutral-0")}"' in svg
 
 def png_chunks(data: bytes) -> list[tuple[bytes, bytes]]:
     assert data.startswith(PNG_SIGNATURE)
@@ -327,7 +338,7 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source += "'nabiz-shell-v3','nabiz-brief-v3','nabiz-shell-v4','nabiz-brief-v4','nabiz-shell-v5','nabiz-brief-v5',"
     source += "'nabiz-shell-v6','nabiz-brief-v6','nabiz-shell-v7','nabiz-brief-v7','nabiz-shell-v8','nabiz-brief-v8',"
     source += "'nabiz-shell-v9','nabiz-brief-v9','nabiz-shell-v10','nabiz-brief-v10','nabiz-shell-v11','nabiz-brief-v11',"
-    source += "'nabiz-shell-v12','nabiz-brief-v12','nabiz-shell-v13','nabiz-brief-v13',"
+    source += "'nabiz-shell-v12','nabiz-brief-v12','nabiz-shell-v13','nabiz-brief-v13','nabiz-shell-v14','nabiz-brief-v14',"
     source += "'baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
@@ -336,12 +347,13 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
         "nabiz-shell-v4", "nabiz-brief-v4", "nabiz-shell-v5", "nabiz-brief-v5", "nabiz-shell-v6", "nabiz-brief-v6",
         "nabiz-shell-v7", "nabiz-brief-v7", "nabiz-shell-v8", "nabiz-brief-v8", "nabiz-shell-v9", "nabiz-brief-v9",
         "nabiz-shell-v10", "nabiz-brief-v10", "nabiz-shell-v11", "nabiz-brief-v11",
-        "nabiz-shell-v12", "nabiz-brief-v12",
+        "nabiz-shell-v12", "nabiz-brief-v12", "nabiz-shell-v13", "nabiz-brief-v13",
     ]
     # v7: the 26 Sep integration (DECISIONS #38-#41); v8: its second round; v9: E35's lazy map module (gun2);
     # v10: E40's i18n_text.js in the shell; v11: E27's voice report modules, E33's report list;
     # v12: E30's culture.js and culture.css; v13: E45's answer_actions.js and the new answer card.
-    assert result == {"version": "v13", "stale": stale}
+    # v14: the redesigned citizen shell and its local Istanbul panorama.
+    assert result == {"version": "v14", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """

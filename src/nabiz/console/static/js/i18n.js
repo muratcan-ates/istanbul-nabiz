@@ -3,6 +3,19 @@ import { setCatalogs } from './i18n_text.js';
 export const LANGS = Object.freeze(['tr', 'en']);
 export const STORAGE_KEY = 'nabiz.lang.v1';
 export const BINDINGS = Object.freeze([
+  ['[data-i18n="design.nav_city"]', 'design.nav_city', 'text'],
+  ['[data-i18n="design.nav_tools"]', 'design.nav_tools', 'text'],
+  ['[data-i18n="design.nav_data"]', 'design.nav_data', 'text'],
+  ['[data-i18n="design.nav_easy"]', 'design.nav_easy', 'text'],
+  ['[data-i18n="design.voice"]', 'design.voice', 'text'],
+  ['[data-i18n="design.journey"]', 'design.journey', 'text'],
+  ['[data-i18n="design.journey_note"]', 'design.journey_note', 'text'],
+  ['[data-i18n="design.map"]', 'design.map', 'text'],
+  ['[data-i18n="design.map_note"]', 'design.map_note', 'text'],
+  ['[data-i18n="design.explore"]', 'design.explore', 'text'],
+  ['[data-i18n="design.explore_note"]', 'design.explore_note', 'text'],
+  ['[data-i18n="design.appearance"]', 'design.appearance', 'text'],
+  ['[data-i18n="design.saved"]', 'design.saved', 'text'],
   ['title', 'page.title', 'title'],
   ['.skip-link', 'page.skip', 'text'],
   ['.topbar-nav', 'page.nav_label', 'aria'],
@@ -17,8 +30,10 @@ export const BINDINGS = Object.freeze([
   ['#home-sub', 'page.home_sub', 'text'],
   ['.topbar-actions [role="group"]', 'switch.label', 'aria'],
   ['#chat-form > label', 'page.question_label', 'text'],
+  ['[data-i18n="design.nav_map"]', 'design.nav_map', 'text'],
+  ['[data-i18n="design.nav_nearby"]', 'design.nav_nearby', 'text'],
   ['#chat-input', 'page.question_placeholder', 'placeholder'],
-  ['#chat-submit', 'page.ask', 'lead'],
+  ['#chat-submit .sr-only', 'page.ask', 'text'],
   ['#chat-form > .field-error', 'page.question_empty', 'text'],
   ['#chat-hint', 'page.chat_hint', 'segments'],
   ['#chat-lang', 'page.answer_lang', 'lead'],
@@ -87,7 +102,7 @@ export const BINDINGS = Object.freeze([
   ['#acik-veri-form > button', 'page.open_data_search', 'text'],
   ['#acik-veri-chips', 'page.open_data_categories', 'aria'],
 ]);
-const EXCLUDED = '.chat-msg.is-user .chat-text, blockquote.quote-exact, .quote-box blockquote, input, textarea, #cards, #arrival, #alternative, #compare-result, #quick-cards, figcaption.quote-src';
+const EXCLUDED = '.chat-msg.is-user .chat-text, .convo-title, blockquote.quote-exact, .quote-box blockquote, input, textarea, #cards, #arrival, #alternative, #compare-result, #quick-cards, figcaption.quote-src';
 const textOriginals = new Map(), attributeOriginals = new Map(), catalogPromises = new Map();
 let activeLanguage = 'tr', activeFallback = {}, activeCatalog = {}, originalTitle = null, mounted = false, syncing = false;
 export function sameText(left, right) { return typeof left === 'string' && typeof right === 'string' && left.replace(/\s+/g, ' ').trim() === right.replace(/\s+/g, ' ').trim(); }

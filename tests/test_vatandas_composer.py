@@ -171,17 +171,18 @@ def test_home_opens_the_details_that_holds_the_target(tmp_path) -> None:
     module = json.dumps((STATIC / "js" / "home.js").as_uri())
     result = node_json(tmp_path, "home_details", f"""
       globalThis.window = {{location: {{hash: '#profilim'}}}};
-      let focused = false;
+      let focused = false; const revealed = [];
       const heading = {{focus: () => {{ focused = true; }}, hasAttribute: () => false, setAttribute: () => {{}}}};
       const details = {{tagName: 'DETAILS', open: false}};
-      const target = {{getAttribute: (name) => name === 'aria-labelledby' ? 'profile-title' : null,
+      const target = {{id: 'profilim', getAttribute: (name) => name === 'aria-labelledby' ? 'profile-title' : null,
         closest: (selector) => selector === 'details' ? details : null, focus: () => {{}}}};
-      globalThis.document = {{getElementById: (id) => ({{profilim: target, 'profile-title': heading}})[id] || null}};
+      globalThis.document = {{dispatchEvent: (event) => revealed.push(event.detail.id),
+        getElementById: (id) => ({{profilim: target, 'profile-title': heading}})[id] || null}};
       const {{openTargetDetails}} = await import({module});
       openTargetDetails();
-      console.log(JSON.stringify({{open: details.open, focused}}));
+      console.log(JSON.stringify({{open: details.open, focused, revealed}}));
     """)
-    assert result == {"open": True, "focused": True}
+    assert result == {"open": True, "focused": True, "revealed": ["profilim"]}
 
 
 def test_quick_chips_show_three_and_keep_the_rest(tmp_path) -> None:

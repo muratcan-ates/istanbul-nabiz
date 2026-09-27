@@ -6,12 +6,11 @@
 <meta name="color-scheme" content="light dark">
 <title>İstanbul Nabız: şehir kartları ve yapay zekâ asistanı</title>
 <meta name="description" content="Kayıtlı hat ve istasyonlarınızın durumu, asansör kayıtları, tek dakikalık varış ve kaynak gösteren bir yapay zekâ asistanı. Bağımsız öğrenci projesi; resmî İBB hizmeti değildir.">
-<meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0b1628" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%232457aa%7Dpath%7Bstroke:%23fbfcfe%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%235285d9%7Dpath%7Bstroke:%23060f20%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#f6f7f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141619" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 30 30'%3E%3Cstyle%3Erect%7Bfill:%23205f90%7Dpath%7Bstroke:%23fcfcfd%7D%40media (prefers-color-scheme:dark)%7Brect%7Bfill:%23518cbe%7Dpath%7Bstroke:%230d1012%7D%7D%3C/style%3E%3Crect x='-3' y='-3' width='30' height='30' rx='7'/%3E%3Cpath fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 12h4l3 8l4 -16l3 8h4'/%3E%3C/svg%3E">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/nabiz-192.png">
-<link rel="preload" href="/fonts/nabiz-sans-tr-v1.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/components.css">
@@ -26,6 +25,7 @@
 <link rel="stylesheet" href="/css/conversations.css">
 <link rel="stylesheet" href="/css/account.css">
 <link rel="stylesheet" href="/css/culture.css">
+<link rel="stylesheet" href="/css/workspace.css">
 <!-- Native ES modules, no build step. Mock data: append ?mock=1 (js/config.js). No inline script. -->
 <link rel="modulepreload" href="/js/citizen.js">
 <link rel="modulepreload" href="/js/api.js">
@@ -95,7 +95,7 @@
 <script type="module" src="/js/follow.js"></script>
 <script type="module" src="/js/model_strip.js"></script>
 </head>
-<body>
+<body class="citizen-page">
 <a class="skip-link" href="#main">İçeriğe atla</a>
 
 <!-- icons:start -->
@@ -115,7 +115,7 @@
 
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="topbar-brand" href="/">İstanbul Nabız</a>
+    <a class="topbar-brand" href="/"><img src="/icons/nabiz.svg" width="32" height="32" alt="">İstanbul Nabız</a>
     <div class="topbar-actions">
       <button type="button" class="btn" id="a11y-toggle" aria-expanded="false" aria-controls="a11y-panel">Erişilebilirlik</button>
       <button type="button" class="btn" id="simple-toggle" aria-pressed="false">Sade mod</button>
@@ -125,11 +125,16 @@
     </div>
     <a class="topbar-role" href="#hakkinda"><svg class="icon" aria-hidden="true"><use href="#i-info-circle"></use></svg><span>Resmî İBB hizmeti değildir</span></a>
     <nav class="topbar-nav" aria-label="Sayfa bölümleri">
-      <a href="#asistan">Asistan</a>
-      <a href="#profilim">Profilim</a>
-      <a href="#takip">Takip</a>
-      <a href="#hafizam">Hafızam</a>
-      <a href="/kolay.html">Kolay ekran</a>
+      <a href="#asistan"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chat"></use></svg>Asistan</a>
+      <a href="#city-cards" data-i18n="design.nav_city"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Şehir durumu</a>
+      <a href="#city-tools" data-i18n="design.nav_tools"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-transport"></use></svg>Yolculuk</a>
+      <a href="#map-workspace" data-i18n="design.nav_map"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-map"></use></svg>Harita</a>
+      <a href="#explore-workspace" data-i18n="design.nav_nearby"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Yakınınızda</a>
+      <a href="#acik-veri" data-i18n="design.nav_data"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chart"></use></svg>Açık veri</a>
+      <a href="#profilim"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-profile"></use></svg>Profilim</a>
+      <a href="#takip"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-bookmark"></use></svg>Takip</a>
+      <a href="#hafizam"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-memory"></use></svg>Hafızam</a>
+      <a href="/kolay.html" data-i18n="design.nav_easy"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-accessibility"></use></svg>Kolay ekran</a>
     </nav>
   </div>
 </header>
@@ -140,15 +145,16 @@
     <h1 id="home-title">İstanbul'a sorun.</h1>
     <p class="hero-sub" id="home-sub">Ulaşım, erişim ve şehir hizmetleri: her cevap kaynağı ve saatiyle.</p>
     <form id="chat-form" class="chat-form composer glass" autocomplete="off">
-      <label for="chat-input">Sorunuz</label>
+      <label class="sr-only" for="chat-input">Sorunuz</label>
       <div class="chat-row">
-        <input id="chat-input" name="q" type="text" enterkeyhint="send" placeholder="Örnek: M2'de arıza var mı?" autofocus tabindex="0" aria-describedby="chat-hint">
-        <button type="submit" class="btn btn-primary" id="chat-submit">Sor<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
+        <textarea id="chat-input" name="q" rows="3" enterkeyhint="send" placeholder="Örnek: M2'de arıza var mı?" tabindex="0" aria-describedby="chat-hint"></textarea>
+        <button type="submit" class="btn btn-primary" id="chat-submit"><span class="sr-only">Sor</span><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
       </div>
-      <div class="composer-tools" id="composer-tools"></div>
+      <div class="composer-bottom"><details class="composer-voice"><summary data-i18n="design.voice">Sesle sorma</summary><div class="composer-tools" id="composer-tools"></div></details></div>
       <p class="field-error" hidden>Bir soru yazın.</p>
     </form>
     <div class="chips" id="quick-cards" role="group" aria-label="Hızlı sorular"></div>
+    <div class="hero-options">
     <details class="more quick-more" id="quick-more" hidden>
       <summary>Daha fazla soru</summary>
       <div id="quick-more-cards"></div>
@@ -159,6 +165,7 @@
       <p class="quota-strip" id="quota-strip" hidden></p>
       <p id="chat-lang">Cevap dili: <button type="button" class="btn" id="chat-lang-en" aria-pressed="false">English</button></p>
     </details>
+    </div>
     <div class="band" role="note">
       <p>Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum. Resmî karar veren bir görevli değilim.
         <span class="tag is-warn" id="data-mode" hidden>Örnek veri: sunucu bağlı değil</span></p>
@@ -180,15 +187,15 @@
         <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
       </button>
     </div>
-    <div id="my-stops"></div>
+    <details class="more saved-stops"><summary data-i18n="design.saved">Kayıtlı duraklarım</summary><div id="my-stops"></div></details>
     <div class="cards" id="cards"></div>
     <p class="sr-only" id="cards-status" role="status"></p>
   </section>
 
   <div class="workspace">
     <div class="workspace-main">
-      <section id="city-tools" aria-labelledby="tools-title">
-        <h2 id="tools-title">Şehir araçları</h2>
+      <details class="more work-group" id="journey-workspace"><summary><span class="work-icon"><svg class="icon" aria-hidden="true"><use href="#i-bus"></use></svg></span><span><strong data-i18n="design.journey">Yolculuğunuzu planlayın</strong><small data-i18n="design.journey_note">Varış, erişilebilir rotalar ve ulaşım seçenekleri</small></span></summary><section id="city-tools" aria-labelledby="tools-title">
+        <h2 class="sr-only" id="tools-title">Şehir araçları</h2>
         <details class="more tool-detail">
           <summary><h2 id="arrival-title">Tahmini varış</h2></summary>
           <section aria-labelledby="arrival-title">
@@ -224,8 +231,13 @@
           </section>
         </details>
 
-        <details class="more tool-detail">
-          <summary><h2 id="acik-veri-title">İBB Açık Veri</h2></summary>
+
+      </section>
+
+      </details>
+
+        <details class="more work-group" id="open-data-workspace">
+          <summary><span class="work-icon"><svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></span><h2 id="acik-veri-title">İBB Açık Veri</h2></summary>
           <section id="acik-veri" aria-labelledby="acik-veri-title">
         <p class="section-note">hangi veri var, kim yayımlıyor, ne zaman güncellendi</p>
         <form id="acik-veri-form" class="arrival-form" role="search" autocomplete="off">
@@ -236,7 +248,8 @@
         <div id="acik-veri-result" aria-live="polite" aria-busy="false"></div>
           </section>
         </details>
-      </section>
+
+      <details class="more work-group" id="map-workspace"><summary><span class="work-icon"><svg class="icon" aria-hidden="true"><use href="#i-elevator"></use></svg></span><span><strong data-i18n="design.map">Şehri haritada görün</strong><small data-i18n="design.map_note">İstasyonlar, asansörler ve erişim bilgileri</small></span></summary><div id="map-space"></div></details>
 
       <section id="equipment-history" aria-labelledby="equipment-history-title" hidden>
         <div class="section-head">
@@ -246,13 +259,14 @@
         <div id="equipment-history-body"></div>
       </section>
 
-      <section id="yakinimda-mount"></section>
+      <details class="more work-group" id="explore-workspace"><summary><span class="work-icon"><svg class="icon" aria-hidden="true"><use href="#i-external-link"></use></svg></span><span><strong data-i18n="design.explore">Yakınınızda keşfedin</strong><small data-i18n="design.explore_note">Duraklar, kütüphaneler ve müzeler</small></span></summary><section id="yakinimda-mount"></section></details>
     </div>
 
   </div>
 
   <section id="hesabim" aria-labelledby="you-title">
     <h2 id="you-title">Hesabım ve tercihlerim</h2>
+    <details class="more account-detail" id="appearance-options"><summary data-i18n="design.appearance">Size uygun görünüm</summary><div id="persona-mount"></div></details>
     <details class="more account-detail">
       <summary><h2 id="profile-title">Profilim</h2></summary>
       <section id="profilim" aria-labelledby="profile-title">
@@ -340,7 +354,7 @@
       <summary><h2 id="memory-title"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg> Hafızam</h2></summary>
       <section id="hafizam" aria-labelledby="memory-title">
     <p class="section-note">asistanın önerdiği, sizin onayladığınız</p>
-    <p>Asistan bir şey öğrenmek istediğinde sorar: "Profiline ekleyeyim mi?". Siz onaylamadan hiçbir şey kaydedilmez.
+    <p>Asistan bir şey öğrenmek istediğinde sorar: "Profilinize ekleyeyim mi?". Siz onaylamadan hiçbir şey kaydedilmez.
       Kayıtlar burada görünür ve tek tuşla silinir.</p>
     <ul class="memory-list" id="memory-list"></ul>
     <p class="memory-empty" id="memory-empty">Henüz kayıt yok.</p>
@@ -371,8 +385,8 @@
     <a href="/kvkk.html">KVKK / Gizlilik</a><br>
     <a href="/kolay.html">Kolay ekran (büyük düğmeler)</a><br>
     <a href="/offline.html">Çevrimdışı sayfa</a><br>
-    Yazı tipi: Source Sans 3 (OFL)<br>
-    Simgeler: Tabler Icons (MIT)
+    Yazı tipi: Cihazınızın sistem yazısı<br>
+    Simgeler: Microsoft Fluent ve Tabler Icons (MIT)
   </p>
 </footer>
 </body>

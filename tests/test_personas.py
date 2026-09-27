@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -250,8 +251,9 @@ def test_chat_lang_button_only_toggles_reply_language() -> None:
     assert language_row in page
     for label in ("Profilim", "İhtiyaçlarım", "Kayıtlı yerlerim", "Profili sil"):
         assert label in page
-    # G1 renamed the chat button from "Gönder" to "Sor" (citizen home, 46f701d).
-    assert 'id="chat-submit">Sor<' in page
+    # The icon composer keeps the same accessible action name inside its screen-reader label.
+    submit = re.search(r'<button\b[^>]*\bid="chat-submit"[^>]*>(.*?)</button>', page, re.S)
+    assert submit and re.sub(r"<[^>]+>", "", submit.group(1)).strip() == "Sor"
     profile_js = (Path(__file__).resolve().parents[1] / "src/nabiz/console/static/js/profile.js").read_text(encoding="utf-8")
     assert "function setAnswerLanguage(profile, lang)" in profile_js
     assert "function answerLanguage(profile)" in profile_js

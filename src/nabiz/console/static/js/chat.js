@@ -34,10 +34,10 @@ function suggestionBox(suggestion) {
   box.className = 'chat-suggest';
   box.setAttribute('role', 'group');
   box.setAttribute('aria-label', 'Hafıza önerisi');
-  box.innerHTML = `<p>Profiline ekleyeyim mi? <b>${esc(suggestion.label || suggestion.key)}</b></p>`
+  box.innerHTML = `<p>Profilinize ekleyeyim mi? <b>${esc(suggestion.label || suggestion.key)}</b></p>`
     + '<div class="btn-row"><button type="button" class="btn btn-primary" data-act="add">Ekle</button>'
     + '<button type="button" class="btn" data-act="skip">Hayır</button></div>'
-    + '<p class="field-hint">Onaylamazsan hiçbir şey kaydedilmez. Kayıt yalnız bu tarayıcıda durur.</p>';
+    + '<p class="field-hint">Onaylamazsanız hiçbir şey kaydedilmez. Kayıt yalnız bu tarayıcıda durur.</p>';
   return box;
 }
 
@@ -215,7 +215,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
         const btn = evt.target.closest('button[data-act]');
         if (!btn) return;
         const added = btn.dataset.act === 'add' && onMemorySuggestion(data.memory_suggestion);
-        const said = typeof added === 'string' ? added : 'Eklendi. Hafızam bölümünde görünür; istediğin an silebilirsin.';
+        const said = typeof added === 'string' ? added : 'Eklendi. Hafızam bölümünde görünür; istediğiniz an silebilirsiniz.';
         box.innerHTML = added ? `<p>${esc(said)}</p>` : '<p>Eklenmedi.</p>';
       });
       finalEl.appendChild(box);
