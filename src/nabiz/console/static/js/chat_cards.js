@@ -1,43 +1,40 @@
 /* ChatCard v1 is data only. Renderers receive normalized data, never model HTML. */
 import { t } from './i18n_text.js';
-
+import { ACTION_KIND, CARD_RESULTS, RESTORED_ACTIONS, normalizeAction, fromV0,
+  resultLabel, appendActionControls } from './chat_card_actions.js';
+export { ACTION_KIND, CARD_ACTIONS, CARD_RESULTS, CONSENT_ACTIONS, ACTION_ALIASES, RESTORED_ACTIONS,
+  normalizeAction, fromV0, prepareCardActions, releaseCardAction, operationId } from './chat_card_actions.js';
 export const CARD_TYPES = Object.freeze(['route', 'map', 'event', 'calendar_draft', 'photo_report', 'status', 'info', 'memory']);
 export const CARD_STATUSES = Object.freeze(['preparing', 'needs_input', 'ready', 'awaiting_confirmation', 'done', 'unavailable', 'error']);
-export const CARD_ACTIONS = Object.freeze(['use_location', 'type_place', 'expand_map', 'listen', 'remember_here',
-  'remember_always', 'change', 'forget', 'save_calendar', 'export_ics', 'review_report', 'send', 'open_official']);
-export const RESTORED_ACTIONS = Object.freeze(['expand_map', 'listen', 'open_official']);
 export const FRESHNESS = Object.freeze(['guncel', 'kayitli', 'tarife', 'dogrulanamadi']);
 
 const MAX_CARDS = 6;
 const renderers = new Map();
-const pending = new Map();
 let titleCount = 0;
 let warned = false;
-
 const TYPE_ACTIONS = {
-  route: ['use_location', 'type_place', 'expand_map', 'listen', 'open_official'],
-  map: ['expand_map', 'listen', 'open_official'],
-  event: ['save_calendar', 'listen', 'open_official'],
-  calendar_draft: ['change', 'save_calendar', 'export_ics', 'open_official'],
-  photo_report: ['review_report', 'send', 'open_official'],
-  status: ['listen', 'open_official'], info: ['listen', 'open_official'],
+  route: ['use_location', 'type_place', 'expand_map', 'listen', 'open_official', 'share'],
+  map: ['expand_map', 'listen', 'open_official', 'share'],
+  event: ['save_calendar', 'add_outlook', 'export_ics', 'listen', 'open_official', 'share'],
+  calendar_draft: ['change', 'save_calendar', 'add_outlook', 'export_ics', 'cancel', 'open_official'],
+  photo_report: ['review_report', 'send', 'confirm_resolved', 'reopen', 'cancel', 'open_official'],
+  status: ['listen', 'open_official', 'appeal', 'cancel'], info: ['listen', 'open_official', 'share'],
   memory: ['remember_here', 'remember_always', 'change', 'forget'],
 };
 const STATUS_ACTIONS = {
   preparing: [], needs_input: ['use_location', 'type_place', 'change'],
-  ready: ['expand_map', 'listen', 'save_calendar', 'export_ics', 'review_report', 'open_official', 'change'],
-  awaiting_confirmation: ['remember_here', 'remember_always', 'send', 'save_calendar', 'change', 'forget'],
-  done: ['expand_map', 'listen', 'open_official', 'export_ics', 'forget'],
+  ready: ['expand_map', 'listen', 'save_calendar', 'add_outlook', 'export_ics', 'review_report',
+    'open_official', 'change', 'share', 'appeal', 'cancel', 'use_location'],
+  awaiting_confirmation: ['remember_here', 'remember_always', 'send', 'save_calendar', 'add_outlook',
+    'change', 'forget', 'confirm_resolved', 'reopen', 'cancel', 'appeal', 'share', 'use_location'],
+  done: ['expand_map', 'listen', 'open_official', 'export_ics', 'forget', 'add_outlook',
+    'confirm_resolved', 'reopen', 'cancel', 'appeal', 'share'],
   unavailable: [], error: [],
 };
 const STATUS_TR = { preparing: 'Hazırlanıyor', needs_input: 'Bilgi bekliyor', ready: 'Hazır',
   awaiting_confirmation: 'Onayınızı bekliyor', done: 'Tamamlandı', unavailable: 'Kullanılamıyor', error: 'Hata' };
 const FRESHNESS_TR = { guncel: 'güncel', kayitli: 'kayıtlı', tarife: 'tarifeye göre',
   dogrulanamadi: 'doğrulanamadı' };
-const ACTION_TR = { use_location: 'Konumumu kullan', type_place: 'Yer yaz', listen: 'Dinle',
-  remember_here: 'Burada hatırla', remember_always: 'Her zaman hatırla', change: 'Değiştir', forget: 'Unut',
-  save_calendar: 'Takvime kaydet', export_ics: 'Takvim dosyası indir', review_report: 'Bildirimi gözden geçir',
-  send: 'Gönder', open_official: 'Resmî kaynağı aç' };
 
 function plain(value, limit) {
   if (typeof value !== 'string') return '';
@@ -67,7 +64,7 @@ function safeUrl(raw) {
     || /[\s\u0000-\u001f<>"'\\]/.test(raw)) return null;
   try {
     const url = new URL(raw);
-    return url.protocol === 'https:' && url.hostname && !url.username && !url.password ? url.href : null;
+    return url.protocol === 'https:' && url.hostname && !url.username && !url.password ? raw : null;
   } catch { return null; }
 }
 
@@ -99,9 +96,32 @@ function cleanSources(raw, errors) {
     });
 }
 
+function cleanLinked(raw, errors, legacyId) {
+  const legacy = typeof legacyId === 'string' ? /^(event|report|op):(.+)$/.exec(legacyId) : null;
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const linked = { event_id: plain(source.event_id, 120) || null,
+    report_code: plain(source.report_code, 120) || null,
+    operation_id: plain(source.operation_id, 120) || null };
+  const active = Object.entries(linked).filter(([, value]) => value);
+  if (active.length > 1) {
+    errors.push('linked');
+    Object.keys(linked).forEach((name) => { linked[name] = null; });
+  } else if (!active.length && legacy) linked[{ event: 'event_id', report: 'report_code',
+    op: 'operation_id' }[legacy[1]]] = plain(legacy[2], 120) || null;
+  return linked;
+}
+
+function linkedId(linked) {
+  if (linked.event_id) return `event:${linked.event_id}`;
+  if (linked.report_code) return `report:${linked.report_code}`;
+  if (linked.operation_id) return `op:${linked.operation_id}`;
+  return null;
+}
+
 export function validateCard(raw) {
   const errors = [];
-  const data = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const candidate = raw?.v === 0 ? fromV0(raw) : raw;
+  const data = candidate && typeof candidate === 'object' && !Array.isArray(candidate) ? candidate : {};
   const type = CARD_TYPES.includes(data.type) ? data.type : null;
   const title = plain(data.title, 120);
   if (data.v !== 1) errors.push('v');
@@ -110,21 +130,35 @@ export function validateCard(raw) {
   const sources = cleanSources(data.sources, errors);
   const status = CARD_STATUSES.includes(data.status) ? data.status : 'unavailable';
   if (data.status !== undefined && !CARD_STATUSES.includes(data.status)) errors.push('status');
-  const linkedId = plain(data.linked_id, 120) || null;
+  const linked = cleanLinked(data.linked, errors, data.linked_id);
+  const linkId = linkedId(linked);
   const candidateActions = Array.isArray(data.actions) ? data.actions : [];
   if (data.actions !== undefined && !Array.isArray(data.actions)) errors.push('actions');
-  const actions = [...new Set(candidateActions.filter((action) => CARD_ACTIONS.includes(action)))];
-  if (candidateActions.length !== actions.length) errors.push('actions_filtered');
-  const filteredActions = data.sensitive === true || !CARD_STATUSES.includes(data.status) ? []
-    : actions.filter((action) => action !== 'open_official' || sources.some((source) => source.url));
+  const actions = [];
+  for (const rawAction of candidateActions.slice(0, 20)) {
+    const action = normalizeAction(rawAction);
+    if (!action) {
+      const id = typeof rawAction === 'string' ? rawAction : rawAction?.id;
+      errors.push(`unknown_action:${plain(id, 80) || 'invalid'}`);
+    } else if (!actions.some((item) => item.id === action.id)) {
+      if (action.id !== 'open_official' || sources.some((source) => source.url)) actions.push(action);
+    }
+  }
   const sourceTimes = [iso(data.source_time), ...sources.map((source) => source.source_time)].filter(Boolean);
   sourceTimes.sort((a, b) => Date.parse(a) - Date.parse(b));
-  const card = { v: 1, id: plain(data.id, 120) || stableId(type || 'unknown', title, linkedId),
+  const body = cleanBody(data.body && typeof data.body === 'object' && !Array.isArray(data.body) ? data.body : {});
+  if (type === 'map' && Array.isArray(data.body?.points)) body.points = data.body.points.slice(0, 60)
+    .map((point) => cleanBody(point, 2));
+  if (body.result !== undefined && !CARD_RESULTS.includes(body.result)) { body.result = null; errors.push('result'); }
+  const healthMemory = type === 'memory' && body.kind === 'health';
+  const sensitive = data.sensitive === true || healthMemory;
+  const filteredActions = (!CARD_STATUSES.includes(data.status) ? [] : sensitive
+    ? actions.filter((action) => action.kind === 'view' && (!healthMemory || action.id === 'change')) : actions).slice(0, 4);
+  const card = { v: 1, id: plain(data.id, 120) || stableId(type || 'unknown', title, linkId),
     conversation_id: plain(data.conversation_id, 120) || null,
     message_id: plain(data.message_id, 120) || null, type: type || 'unknown', status, title,
-    body: cleanBody(data.body && typeof data.body === 'object' && !Array.isArray(data.body) ? data.body : {}),
-    sources, source_time: sourceTimes[0] || null, linked_id: linkedId,
-    actions: filteredActions, sensitive: data.sensitive === true };
+    body, sources, source_time: sourceTimes[0] || null, linked, linked_id: linkId,
+    actions: filteredActions, sensitive };
   return { ok: data.v === 1 && Boolean(type && title), card, errors };
 }
 
@@ -163,7 +197,7 @@ function timeLabel(value) {
   return `${parts.day}.${parts.month} ${parts.hour}:${parts.minute}`;
 }
 
-function sourcesLine(card) {
+function sourcesLine(card, restored = false) {
   const row = element('div', 'chat-card-sources');
   row.append(element('span', 'chat-card-sources-label', t('ui.cards.sources', 'Kaynak')));
   card.sources.forEach((source) => {
@@ -176,9 +210,10 @@ function sourcesLine(card) {
       link.rel = 'noopener noreferrer';
       item.append(link);
     } else item.append(element('span', '', label));
-    const freshness = t(`ui.cards.freshness_${source.freshness}`, FRESHNESS_TR[source.freshness]);
-    const stamp = timeLabel(source.source_time || card.source_time);
-    item.append(element('span', 'chat-card-freshness', ` · ${freshness}${stamp ? ` · ${stamp}` : ''}`));
+    const freshnessKey = restored ? 'kayitli' : source.freshness;
+    const freshness = t(`ui.cards.freshness_${freshnessKey}`, FRESHNESS_TR[freshnessKey]);
+    const stamp = timeLabel(source.source_time) || t('ui.cards.time_unknown', 'zaman bilinmiyor');
+    item.append(element('span', 'chat-card-freshness', ` · ${freshness} · ${stamp}`));
     row.append(item);
   });
   return row;
@@ -192,44 +227,14 @@ function mapHasPoint(card) {
 }
 
 function allowedActions(card, ctx, normal) {
-  if (!normal || card.sensitive) return [];
-  return card.actions.filter((action) => TYPE_ACTIONS[card.type]?.includes(action)
-    && STATUS_ACTIONS[card.status]?.includes(action)
-    && (!ctx.restored || RESTORED_ACTIONS.includes(action))
-    && (action !== 'expand_map' || card.type !== 'map' || mapHasPoint(card))
-    && (action !== 'open_official' || card.sources.some((source) => source.url)));
-}
-
-function actionKey(cardId, action) { return `${cardId}\0${action}`; }
-
-export function releaseCardAction(cardId, action) {
-  const key = actionKey(cardId, action);
-  const button = pending.get(key);
-  if (button) button.removeAttribute('aria-disabled');
-  pending.delete(key);
-}
-
-function actionRow(card, ctx, actions) {
-  const row = element('div', 'chat-card-actions');
-  actions.forEach((action, index) => {
-    const label = action === 'expand_map' ? t('ui.cards.expand_map', 'Haritayı büyüt')
-      : t(`ui.cards.action_${action}`, ACTION_TR[action]);
-    const button = element('button', index < 2 ? 'btn' : 'btn btn-quiet', label);
-    button.type = 'button';
-    button.dataset.cardAction = action;
-    button.addEventListener('click', () => {
-      const key = actionKey(card.id, action);
-      if (pending.has(key)) return;
-      pending.set(key, button);
-      button.setAttribute('aria-disabled', 'true');
-      document.dispatchEvent(new CustomEvent('nabiz:card-action', { detail: {
-        card_id: card.id, type: card.type, action,
-        message_id: card.message_id, conversation_id: card.conversation_id,
-      } }));
-    });
-    row.append(button);
-  });
-  return row;
+  if (!normal || card.type === 'memory') return [];
+  return card.actions.filter((action) => TYPE_ACTIONS[card.type]?.includes(action.id)
+    && STATUS_ACTIONS[card.status]?.includes(action.id)
+    && (!ctx.restored || RESTORED_ACTIONS.includes(action.id))
+    && (!card.sensitive || (ACTION_KIND[action.id] === 'view' && !action.requires_consent))
+    && !(card.sensitive && card.type === 'map' && action.id === 'expand_map')
+    && (action.id !== 'expand_map' || card.type !== 'map' || mapHasPoint(card))
+    && (!['open_official', 'share'].includes(action.id) || card.sources.some((source) => source.url)));
 }
 
 export function appendCard(host, raw, ctx = {}) {
@@ -247,6 +252,8 @@ export function appendCard(host, raw, ctx = {}) {
   article.setAttribute('aria-labelledby', title.id);
   article.append(title);
   article.append(element('span', 'chat-card-status', t(`ui.cards.status_${card.status}`, STATUS_TR[card.status])));
+  const outcome = resultLabel(card.body?.result);
+  if (outcome) article.append(element('p', 'chat-card-result', outcome));
   let normal = result.ok && renderers.has(card.type);
   if (normal) {
     try {
@@ -261,9 +268,14 @@ export function appendCard(host, raw, ctx = {}) {
     if (!warned) { console.warn('Chat card used its safe fallback.'); warned = true; }
     article.append(fallback(card));
   }
-  if (card.sources.length) article.append(sourcesLine(card));
+  if (card.sources.length) article.append(sourcesLine(card, ctx.restored));
   const actions = allowedActions(card, ctx, normal);
-  if (actions.length) article.append(actionRow(card, ctx, actions));
+  if (actions.length) appendActionControls(article, card, actions);
+  if (result.errors.some((error) => error.startsWith('unknown_action:'))) {
+    article.append(element('p', 'chat-card-action-unsupported', t('ui.cards.action_unsupported',
+      'Bu kartta desteklenmeyen bir işlem var; düğme gösterilmedi.')));
+    if (!warned) { console.warn('Chat card has an unsupported action.'); warned = true; }
+  }
   host.append(article);
   return article;
 }

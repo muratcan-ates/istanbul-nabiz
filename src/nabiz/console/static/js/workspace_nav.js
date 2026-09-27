@@ -2,17 +2,17 @@
  * Attribution and source revision: docs/design/synapse-adaptation.md. */
 import { onLang, t } from './i18n_text.js';
 
-// Murat's 27 Sep decision: city, travel, map and nearby under "Daha fazla"; open data waits for the
-// operator area (P08) and follow lives in Hesabım, both reachable by address; Kolay ekran in the top bar.
-// placement: 'nav' | 'more' | 'hash-only' | 'topbar'. No section is removed.
+// Placement changes where a link appears; its destination always remains addressable.
+// The operator area owns open data after integration, while this address stays available.
+// placement: 'nav' | 'more' | 'account' | 'topbar' | 'operator' | 'hash-only'.
 export const LEGACY_PLACEMENT = [
   { id: 'city', href: '#city-cards', i18n: 'design.nav_city', placement: 'more' },
   { id: 'travel', href: '#city-tools', i18n: 'design.nav_tools', placement: 'more' },
   { id: 'map', href: '#map-workspace', i18n: 'design.nav_map', placement: 'more' },
   { id: 'nearby', href: '#explore-workspace', i18n: 'design.nav_nearby', placement: 'more' },
-  { id: 'data', href: '#acik-veri', i18n: 'design.nav_data', placement: 'hash-only' },
-  { id: 'follow', href: '#takip', i18n: 'ui.shell.nav_follow', placement: 'hash-only' },
-  { id: 'easy', href: '/kolay.html', i18n: 'design.nav_easy', placement: 'topbar' },
+  { id: 'data', href: '#acik-veri', i18n: 'design.nav_data', placement: 'operator' },
+  { id: 'follow', href: '#takip', i18n: 'ui.shell.nav_follow', placement: 'account' },
+  { id: 'easy', href: '/kolay.html', i18n: 'ui.shell.easy_screen', placement: 'topbar' },
 ];
 
 const VIEWS = {
@@ -23,7 +23,7 @@ const VIEWS = {
 
 export function applyLegacyPlacement() {
   const nav = document.getElementById('legacy-nav');
-  const more = document.getElementById('legacy-more');
+  const more = document.getElementById('assistant-more');
   const moreLinks = document.getElementById('legacy-more-links');
   if (!nav || !more || !moreLinks) return;
   const topbar = document.getElementById('legacy-topbar');
@@ -35,12 +35,21 @@ export function applyLegacyPlacement() {
     link.setAttribute('href', item.href);
     if (item.i18n) link.setAttribute('data-i18n', item.i18n);
     const row = link.parentElement;
-    row.hidden = item.placement === 'hash-only';
+    row.hidden = ['hash-only', 'account', 'operator'].includes(item.placement);
+    if (item.placement === 'operator') {
+      row.setAttribute('data-moved-to', 'console');
+      link.setAttribute('data-moved-to', 'console');
+    } else {
+      row.removeAttribute('data-moved-to');
+      link.removeAttribute('data-moved-to');
+    }
     const home = item.placement === 'more' ? moreLinks : item.placement === 'topbar' && topbar ? topbar : nav;
     home.append(row);
   }
   nav.hidden = ![...nav.children].some((row) => !row.hidden);
   more.hidden = ![...moreLinks.children].some((row) => !row.hidden);
+  const secondary = document.querySelector('.nav-secondary');
+  if (secondary) secondary.hidden = nav.hidden;
 }
 
 function labelPrimaryNavigation(language) {
@@ -58,8 +67,10 @@ function labelPrimaryNavigation(language) {
   if (follow) follow.textContent = t('ui.shell.nav_follow', language === 'en' ? 'Follow' : 'Takip');
   const other = document.querySelector('.nav-secondary');
   other?.setAttribute('aria-label', t('ui.shell.nav_other', language === 'en' ? 'Other sections' : 'Diğer bölümler'));
-  const summary = document.querySelector('#legacy-more summary');
+  const summary = document.querySelector('#assistant-more summary');
   if (summary) summary.textContent = t('ui.shell.more', language === 'en' ? 'More' : 'Daha fazla');
+  const easy = document.querySelector('[data-legacy="easy"] span');
+  if (easy) easy.textContent = t('ui.shell.easy_screen', language === 'en' ? 'Easy screen' : 'Kolay ekran');
   for (const [selector, key, tr, en] of [
     ['#takvim-title', 'ui.shell.calendar_title', 'Takvim', 'Calendar'],
     ['#takvim > p:not([id])', 'ui.shell.calendar_note', 'Kaydettiğiniz planlar burada görünür.', 'Your saved plans appear here.'],
@@ -126,7 +137,8 @@ export function mountWorkspace({ form, input }) {
     const footer = document.querySelector('footer');
     if (footer) footer.hidden = name !== 'about';
     const links = [...document.querySelectorAll('.topbar-nav a')];
-    const current = links.find((link) => link.getAttribute('data-primary') === name);
+    const primaryView = ['city', 'travel', 'map', 'nearby'].includes(name) ? 'assistant' : name;
+    const current = links.find((link) => link.getAttribute('data-primary') === primaryView);
     links.forEach((link) => {
       if (link === current) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
@@ -142,7 +154,17 @@ export function mountWorkspace({ form, input }) {
   document.addEventListener('click', (event) => {
     const link = event.target.closest('a[href^="#"]');
     if (link) {
-      try { reveal(decodeURIComponent(link.getAttribute('href').slice(1))); } catch { /* Ignore malformed fragments. */ }
+      try {
+        const id = decodeURIComponent(link.getAttribute('href').slice(1));
+        reveal(id);
+        if (link.closest('#assistant-more')) {
+          const target = targetForId(id);
+          if (target) {
+            if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+            target.focus({ preventScroll: true });
+          }
+        }
+      } catch { /* Ignore malformed fragments. */ }
     }
   });
   const followHash = () => {

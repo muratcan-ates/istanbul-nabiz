@@ -2,6 +2,7 @@
  * until the answer is ready, while #chat-status announces one sentence. */
 import { renderAnswerCard } from './answer_card.js';
 import { appendCard, hasCardType, renderCards, validateCard } from './chat_cards.js';
+import { normalizeAction, prepareCardActions } from './chat_card_actions.js';
 import './chat_card_map.js';
 import { createFollower, mountNewReplyButton, newMessageId } from './chat_scroll.js';
 import { stream } from './api.js';
@@ -154,7 +155,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     }
     el.querySelector('p').textContent = note;
   }
-  function renderFinal(shell, data, question, streamed, turnId, messageId, userId) {
+  async function renderFinal(shell, data, question, streamed, turnId, messageId, userId, signal) {
     const textEl = shell.querySelector('.chat-text');
     const finalEl = shell.querySelector('.chat-final');
     const answer = data.answer_text ?? data.answer ?? streamed;
@@ -173,15 +174,16 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
         document.dispatchEvent(new CustomEvent('nabiz:emergency', { detail: { lang, hazard: data.hazard } }));
       }
     }
-    // The sourced answer card (js/answer_card.js) draws answers, quotes and the fixed cards; the
-    // emergency card and any mode it does not know stay on answerCard below.
+    // Keep the fallback for emergency and modes the sourced card does not handle.
     finalEl.innerHTML = renderAnswerCard(finalData, { turnId }) || answerCard(finalData, turnId);
     const incoming = data.emergency ? [] : (Array.isArray(data.cards) ? data.cards.slice(0, 6) : [])
       .map((raw) => ({ ...raw, sensitive: data.refused === true || data.sensitive === true || raw?.sensitive === true }));
-    const cards = incoming.map(validateCard).filter((result) => result.ok)
-      .map((result) => ({ ...result.card, message_id: messageId }));
-    const cardHost = document.createElement('div');
-    cardHost.className = 'chat-cards';
+    const cards = (await Promise.all(incoming.map(async (raw) => {
+      const result = validateCard(raw);
+      return result.ok ? prepareCardActions({ ...result.card, message_id: messageId }, messageId) : null;
+    }))).filter(Boolean);
+    if (signal.aborted) return;
+    const cardHost = document.createElement('div'); cardHost.className = 'chat-cards';
     if (incoming.length || (data.memory_suggestion && hasCardType('memory'))) finalEl.append(cardHost);
     renderCards(cardHost, incoming, { messageId, restored: false, lang: data.lang || document.documentElement.lang });
     answerActions.remember(shell, finalData);
@@ -190,8 +192,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     }
     shell.classList.add('is-new');
     setTimeout(() => shell.classList.remove('is-new'), 1200);
-    // The refusal text is not context. The refused question stays so the server can refuse a
-    // follow-up to it ("peki öğrenciler için?"); the server never hands it to the model.
+    // Keep a refused question for follow-up refusal, but exclude the refusal text from context.
     if (!data.emergency) history.push({ role: 'user', content: question });
     if (!data.refused && !data.emergency && mode !== 'unknown') history.push({ role: 'assistant', content: answer });
     turn({ role: 'user', content: question, emergency: data.emergency === true, sensitive: data.refused === true, mode, message_id: userId });
@@ -200,7 +201,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       const suggestion = data.memory_suggestion;
       const memory = validateCard({ v: 1, id: `card-memory-${messageId}`, type: 'memory', status: 'awaiting_confirmation',
         title: 'Hafıza önerisi', body: { key: suggestion.key, label: suggestion.label },
-        actions: ['remember_here', 'remember_always'], sources: [] }).card;
+        actions: ['remember_here', 'remember_always', 'change'].map(normalizeAction), sources: [] }).card;
       memory.message_id = messageId;
       cards.push(memory);
       appendCard(cardHost, memory, { messageId, restored: false, lang: data.lang || document.documentElement.lang });
@@ -218,7 +219,6 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     turn({ role: 'assistant', content: answer, emergency: data.emergency === true, sensitive: data.refused === true,
       mode, message_id: messageId, cards });
     document.dispatchEvent(new CustomEvent('nabiz:chat-final', { detail: { question, final: data, host: finalEl, messageId } }));
-    // DECISIONS #38: js/follow.js draws "Takip edilecek konu: M2 · onayla" into this answer.
     if (data.follow_suggestion) {
       document.dispatchEvent(new CustomEvent('nabiz:follow-suggestion', { detail: { suggestion: data.follow_suggestion, host: finalEl } }));
     }
@@ -283,7 +283,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2), lang },
         onEvent, requestController.signal);
       if (requestController.signal.aborted) return;
-      if (finalData) renderFinal(shell, finalData, question, streamed, turnId, messageId, userId);
+      if (finalData) await renderFinal(shell, finalData, question, streamed, turnId, messageId, userId, requestController.signal);
       else { shell.setAttribute('aria-busy', 'false'); say('Yanıt tamamlanmadı.'); }
     } catch (err) {
       if (requestController.signal.aborted) {

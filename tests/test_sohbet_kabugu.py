@@ -20,6 +20,7 @@ CATALOG = {
         "ui.shell.nav_assistant": "Asistan", "ui.shell.nav_calendar": "Takvim",
         "ui.shell.nav_account": "Hesabım", "ui.shell.nav_other": "Diğer bölümler",
         "ui.shell.nav_follow": "Takip", "ui.shell.more": "Daha fazla",
+        "ui.shell.easy_screen": "Kolay ekran",
         "ui.shell.new_reply": "Yeni yanıt", "ui.shell.examples": "Neler sorabilirsiniz",
         "ui.shell.example_1": "Kadıköy'den Levent'e merdivensiz nasıl giderim?",
         "ui.shell.example_2": "M2'de asansör arızası var mı?",
@@ -33,6 +34,7 @@ CATALOG = {
         "ui.shell.nav_assistant": "Assistant", "ui.shell.nav_calendar": "Calendar",
         "ui.shell.nav_account": "My account", "ui.shell.nav_other": "Other sections",
         "ui.shell.nav_follow": "Follow", "ui.shell.more": "More",
+        "ui.shell.easy_screen": "Easy screen",
         "ui.shell.new_reply": "New reply", "ui.shell.examples": "Things you can ask",
         "ui.shell.example_1": "How can I get from Kadıköy to Levent without stairs?",
         "ui.shell.example_2": "Is there a lift outage on the M2 line?",
@@ -69,6 +71,17 @@ def test_shell_markup_and_honest_text() -> None:
     primary_links = [item.attrs.get("href") for item in document.elements if item.tag == "a" and inside(item, primary)]
     assert primary_links == ["#asistan", "#takvim", "#hesabim"]
     assert secondary.attrs.get("aria-label") == CATALOG["tr"]["ui.shell.nav_other"]
+    assistant_more = document.id("assistant-more")
+    assert assistant_more.tag == "details" and "hidden" in assistant_more.attrs
+    assert assistant_more.children[0].tag == "summary"
+    assert text_of(assistant_more.children[0]) == CATALOG["tr"]["ui.shell.more"]
+    assert assistant_more.attrs.get("open") is None
+    assert "hidden" in secondary.attrs
+    assert document.id("legacy-more-links").order > document.id("convo-root").order
+    assert inside(document.id("legacy-more-links"), assistant_more)
+    assert document.id("legacy-topbar").order < nav.order
+    assert "data-moved-to" in next(item for item in document.elements
+                                   if item.attrs.get("data-legacy") == "data").attrs
 
     calendar = document.id("takvim")
     assert calendar.tag == "section" and "hidden" in calendar.attrs
@@ -85,6 +98,7 @@ def test_shell_markup_and_honest_text() -> None:
     assistant = document.id("asistan")
     assistant_head = next(item for item in document.elements if "assistant-head" in item.classes())
     assert inside(assistant_head, assistant) and inside(document.id("convo-root"), assistant_head)
+    assert inside(assistant_more, assistant_head)
     for name in ("profilim", "hafizam", "takip", "map-workspace", "acik-veri"):
         assert document.id(name)
 
@@ -164,12 +178,13 @@ const s = setup('#city-cards');
 const original = workspace.LEGACY_PLACEMENT.map(item => [item.id, item.placement]);
 const item = workspace.LEGACY_PLACEMENT[0];
 const values = [];
-for (const placement of ['nav', 'more', 'hash-only']) {{
+for (const placement of ['nav', 'more', 'account', 'topbar', 'operator', 'hash-only']) {{
   item.placement = placement;
   workspace.applyLegacyPlacement();
   const link = s.links[3];
   const row = link.parentElement;
   values.push({{placement, hidden: row.hidden, parent: row.parentElement.id,
+    moved: row.getAttribute('data-moved-to'),
     view: workspace.viewForTarget(s.doc.getElementById('city-cards'))}});
 }}
 workspace.mountWorkspace(s);
@@ -177,24 +192,72 @@ console.log(JSON.stringify({{original, values, hashView: s.body.dataset.view}}))
 """
     values = run_node("placement", "", script)
     assert len(values["original"]) == 7
-    # Murat's 27 Sep decision (P01 integration): four under "Daha fazla", open data and follow by
-    # address only, Kolay ekran in the top bar.
+    # The four city workspaces belong under Assistant; their old addresses remain valid.
     assert dict(values["original"]) == {
         "city": "more", "travel": "more", "map": "more", "nearby": "more",
-        "data": "hash-only", "follow": "hash-only", "easy": "topbar",
+        "data": "operator", "follow": "account", "easy": "topbar",
     }
     assert values["values"] == [
-        {"placement": "nav", "hidden": False, "parent": "legacy-nav", "view": "city"},
-        {"placement": "more", "hidden": False, "parent": "legacy-more-links", "view": "city"},
-        {"placement": "hash-only", "hidden": True, "parent": "legacy-nav", "view": "city"},
+        {"placement": "nav", "hidden": False, "parent": "legacy-nav", "moved": None, "view": "city"},
+        {"placement": "more", "hidden": False, "parent": "legacy-more-links", "moved": None, "view": "city"},
+        {"placement": "account", "hidden": True, "parent": "legacy-nav", "moved": None, "view": "city"},
+        {"placement": "topbar", "hidden": False, "parent": "legacy-topbar", "moved": None, "view": "city"},
+        {"placement": "operator", "hidden": True, "parent": "legacy-nav", "moved": "console", "view": "city"},
+        {"placement": "hash-only", "hidden": True, "parent": "legacy-nav", "moved": None, "view": "city"},
     ]
     assert values["hashView"] == "city"
+
+
+def test_decided_placement_reveals_four_assistant_tools_and_keeps_old_addresses() -> None:
+    script = f"""
+import * as workspace from {json.dumps((JS / 'workspace_nav.js').as_uri())};
+{WORKSPACE_DOM}
+const s = setup(); workspace.mountWorkspace(s);
+const more = s.doc.getElementById('assistant-more');
+const initiallyClosed = !more.open;
+const ids = [...s.doc.getElementById('legacy-more-links').children]
+  .filter(row => !row.hidden).map(row => row.querySelector('a').getAttribute('data-legacy'));
+const results = {{}};
+more.open = true;
+for (const [legacy, view] of [['city', 'city'], ['travel', 'travel'], ['map', 'map'], ['nearby', 'nearby']]) {{
+  const link = s.links.find(item => item.getAttribute('data-legacy') === legacy);
+  s.doc.dispatchEvent(event('click', {{target: link}}));
+  results[legacy] = {{view: s.body.dataset.view, focus: s.doc.activeElement?.id,
+    current: s.links.filter(item => item.hasAttribute('aria-current'))
+      .map(item => item.getAttribute('href'))}};
+  s.doc.dispatchEvent(event('nabiz:reveal', {{detail: {{id: 'asistan'}}}}));
+}}
+const hidden = ['follow', 'data'].map(legacy => {{
+  const link = s.links.find(item => item.getAttribute('data-legacy') === legacy);
+  return {{legacy, hidden: link.parentElement.hidden, parent: link.parentElement.parentElement.id,
+    moved: link.getAttribute('data-moved-to')}};
+}});
+const easy = s.links.find(item => item.getAttribute('data-legacy') === 'easy');
+console.log(JSON.stringify({{ids, results, hidden, moreClosedInitially: initiallyClosed,
+  secondaryHidden: s.doc.querySelector('.nav-secondary').hidden,
+  easyParent: easy.parentElement.parentElement.id}}));
+"""
+    values = run_node("decided_placement", "", script)
+    assert values["ids"] == ["city", "travel", "map", "nearby"]
+    assert {name: item["view"] for name, item in values["results"].items()} == {
+        "city": "city", "travel": "travel", "map": "map", "nearby": "nearby",
+    }
+    assert {name: item["focus"] for name, item in values["results"].items()} == {
+        "city": "city-cards", "travel": "city-tools", "map": "map-workspace", "nearby": "explore-workspace",
+    }
+    assert all(item["current"] == ["#asistan"] for item in values["results"].values())
+    assert values["hidden"] == [
+        {"legacy": "follow", "hidden": True, "parent": "legacy-nav", "moved": None},
+        {"legacy": "data", "hidden": True, "parent": "legacy-nav", "moved": "console"},
+    ]
+    assert values["moreClosedInitially"] is True and values["secondaryHidden"] is True
+    assert values["easyParent"] == "legacy-topbar"
 
 
 def test_primary_and_legacy_hashes_reveal_the_expected_workspace() -> None:
     targets = {
         "asistan": "assistant", "takvim": "calendar", "hesabim": "account",
-        "profilim": "account", "hafizam": "account", "takip": "account",
+        "profilim": "account", "hafizam": "account", "takip": "account", "hesap": "account",
         "harita": "map", "acik-veri": "data",
     }
     code = f"""
@@ -348,6 +411,7 @@ const input = add(form, 'textarea', 'chat-input'), submit = add(form, 'button', 
 const status = add(chat, 'p', 'chat-status'), tools = add(form, 'div', 'composer-tools');
 add(form, 'p', '', 'field-error').hidden = true;
 const sent = [], turns = [];
+let memorySuggestion = null;
 const finalCard = {v: 1, id: 'card-a', type: 'info', status: 'ready', title: 'A kartı',
   body: {text: 'A içeriği'}, sources: [], actions: ['listen']};
 globalThis.fetch = async (url, options = {}) => {
@@ -357,7 +421,8 @@ globalThis.fetch = async (url, options = {}) => {
   const events = [{event: 'session_started', data: {}},
     ...Array.from({length: 20}, (_, index) => ({event: 'token', data: {text: index === 0 ? `Yanıt ${number}` : ''}})),
     {event: 'final', data: {answer: `Yanıt ${number}`, answer_text: `Yanıt ${number}`,
-      mode: 'answer', author: 'kural', citations: [], cards: number === 1 ? [finalCard] : []}}];
+      mode: 'answer', author: 'kural', citations: [], cards: number === 1 ? [finalCard] : [],
+      memory_suggestion: memorySuggestion}}];
   const sse = events.map(item => `event: ${item.event}\ndata: ${JSON.stringify(item.data)}\n\n`).join('');
   return new Response(sse, {status: 200, headers: {'Content-Type': 'text/event-stream'}});
 };
@@ -433,6 +498,49 @@ console.log(JSON.stringify({fallback: !!card.querySelector('.chat-card-fallback'
     assert values == {"fallback": True, "actions": 0}
 
 
+def test_memory_suggestion_saves_object_actions_without_duplicate_shell_buttons() -> None:
+    values = run_chat("memory_actions", """
+const cards = await import(new URL('./src/nabiz/console/static/js/chat_cards.js',
+  `file://${process.cwd()}/`).href);
+cards.registerCardType('memory', card => {
+  const body = document.createElement('p'); body.textContent = card.body.label; return body;
+});
+memorySuggestion = {key: 'step_free', label: 'Merdivensiz yol'};
+await send('Bana merdivensiz yol bul');
+const saved = turns.at(-1).cards.find(card => card.type === 'memory');
+const shown = log.querySelector('.chat-card[data-card-type="memory"]');
+console.log(JSON.stringify({actions: saved.actions, messageId: saved.message_id,
+  shellButtons: shown.querySelectorAll('button').length,
+  shellActionRow: !!shown.querySelector('.chat-card-actions')}));
+""")
+    assert [action["id"] for action in values["actions"]] == ["remember_here", "remember_always", "change"]
+    assert [action["kind"] for action in values["actions"]] == ["device", "device", "view"]
+    assert [action["requires_consent"] for action in values["actions"]] == [True, True, False]
+    assert all(action["operation_id"] is None for action in values["actions"])
+    assert values["messageId"] and values["shellButtons"] == 0 and values["shellActionRow"] is False
+
+
+def test_saved_operation_id_survives_restoration_while_share_button_does_not() -> None:
+    values = run_chat("restored_objects", """
+finalCard.actions = ['listen', 'share'];
+finalCard.sources = [{label: 'Resmî kaynak', url: 'https://example.org/record', freshness: 'kayitli'}];
+await send('Kaynak kartını göster');
+const saved = turns.at(-1).cards[0];
+const before = saved.actions.find(action => action.id === 'share');
+api.loadHistory(turns);
+const restored = log.querySelector('.chat-card');
+console.log(JSON.stringify({ids: saved.actions.map(action => action.id), kind: before.kind,
+  consent: before.requires_consent, operationId: before.operation_id,
+  storedOperationId: turns.at(-1).cards[0].actions.find(action => action.id === 'share').operation_id,
+  buttons: restored.querySelectorAll('button').map(button => button.dataset.cardAction)}));
+""")
+    assert values["ids"] == ["listen", "share"]
+    assert values["kind"] == "external" and values["consent"] is True
+    assert re.fullmatch(r"op-[0-9a-f]{16}", values["operationId"])
+    assert values["storedOperationId"] == values["operationId"]
+    assert values["buttons"] == ["listen"]
+
+
 def test_thirty_restored_turns_show_all_three_cards_but_send_bounded_context() -> None:
     values = run_chat("restore", """
 const restored = Array.from({length: 30}, (_, index) => ({role: index % 2 ? 'assistant' : 'user',
@@ -489,3 +597,8 @@ def test_kolay_ekran_has_a_top_bar_slot_and_every_legacy_link_stays_in_markup() 
         assert f'data-legacy="{legacy}"' in html
     code = (JS / "workspace_nav.js").read_text(encoding="utf-8")
     assert "getElementById('legacy-topbar')" in code
+    css = (STATIC / "css" / "citizen.css").read_text(encoding="utf-8")
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
+    assert ".citizen-page .nav-primary a { justify-content: center; width: 100%; min-height: 44px" in css
+    assert ".citizen-page .topbar-actions > #a11y-toggle { font-size: 0.8125rem; min-height: 44px" in css
+    assert ".citizen-page .topbar-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px" in css

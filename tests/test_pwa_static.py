@@ -32,6 +32,7 @@ PWA = STATIC / "js/pwa.js"
 MANIFEST = STATIC / "manifest.webmanifest"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PATH_POINTS = ((3, 12), (7, 12), (10, 20), (14, 4), (17, 12), (21, 12))
+STATIC_IMPORT = re.compile(r"(?:from\s+|import\s+)['\"]\./([^'\"]+)['\"]")
 
 def read(path: str) -> str:
     return (STATIC / path).read_text(encoding="utf-8")
@@ -251,7 +252,7 @@ def test_shell_covers_everything_the_page_loads(tmp_path: Path) -> None:
             continue
         visited.add(path)
         text = read(path.lstrip("/"))
-        imports = re.findall(r"from\s+['\"]\.\/([^'\"]+)['\"]", text)
+        imports = STATIC_IMPORT.findall(text)
         dynamic = re.findall(r"['\"](/(?:css|js)/[^'\"]+)['\"]", text)
         for relative in imports:
             child = str(Path(path).parent / relative)
@@ -259,6 +260,10 @@ def test_shell_covers_everything_the_page_loads(tmp_path: Path) -> None:
             pending.append(child)
         required.update(dynamic)
     assert not (required - shell), sorted(required - shell)
+
+def test_shell_import_scanner_covers_side_effect_imports() -> None:
+    imports = "import './chat_card_map.js'; import { appendCard } from './chat_cards.js';"
+    assert STATIC_IMPORT.findall(imports) == ["chat_card_map.js", "chat_cards.js"]
 
 def test_saved_brief_never_says_live(tmp_path: Path) -> None:
     source = """

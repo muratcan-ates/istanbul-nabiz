@@ -34,6 +34,7 @@
 <link rel="modulepreload" href="/js/cards.js">
 <link rel="modulepreload" href="/js/chat.js">
 <link rel="modulepreload" href="/js/chat_cards.js">
+<link rel="modulepreload" href="/js/chat_card_actions.js">
 <link rel="modulepreload" href="/js/chat_scroll.js">
 <link rel="modulepreload" href="/js/profile.js">
 <link rel="modulepreload" href="/js/provenance.js">
@@ -134,17 +135,16 @@
         <li><a href="#takvim" data-primary="calendar"><span>Takvim</span></a></li>
         <li><a href="#hesabim" data-primary="account"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-profile"></use></svg><span>Hesabım</span></a></li>
       </ul>
-      <div class="nav-secondary" role="group" aria-label="Diğer bölümler">
+      <div class="nav-secondary" role="group" aria-label="Diğer bölümler" hidden>
         <ul id="legacy-nav">
           <li><a data-legacy="city" href="#city-cards" data-i18n="design.nav_city"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Şehir durumu</a></li>
           <li><a data-legacy="travel" href="#city-tools" data-i18n="design.nav_tools"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-transport"></use></svg>Yolculuk</a></li>
           <li><a data-legacy="map" href="#map-workspace" data-i18n="design.nav_map"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-map"></use></svg>Harita</a></li>
           <li><a data-legacy="nearby" href="#explore-workspace" data-i18n="design.nav_nearby"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-city"></use></svg>Yakınınızda</a></li>
-          <li><a data-legacy="data" href="#acik-veri" data-i18n="design.nav_data"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chart"></use></svg>Açık veri</a></li>
+          <li data-moved-to="console" hidden><a data-legacy="data" data-moved-to="console" href="#acik-veri" data-i18n="design.nav_data"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-chart"></use></svg>Açık veri</a></li>
           <li><a data-legacy="follow" href="#takip"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-bookmark"></use></svg><span>Takip</span></a></li>
-          <li><a data-legacy="easy" href="/kolay.html" data-i18n="design.nav_easy"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-accessibility"></use></svg>Kolay ekran</a></li>
+          <li><a data-legacy="easy" href="/kolay.html" data-i18n="ui.shell.easy_screen"><svg class="icon" aria-hidden="true"><use href="/icons.svg#i-accessibility"></use></svg><span>Kolay ekran</span></a></li>
         </ul>
-        <details class="nav-more" id="legacy-more" hidden><summary>Daha fazla</summary><ul id="legacy-more-links"></ul></details>
       </div>
     </nav>
   </div>
@@ -186,7 +186,10 @@
 
   <section class="chat assistant-layout" id="asistan" aria-labelledby="chat-title">
     <h2 class="sr-only" id="chat-title">Yanıtlar</h2>
-    <div class="assistant-head"><aside id="convo-root" aria-label="Sohbetlerim"></aside></div>
+    <div class="assistant-head">
+      <aside id="convo-root" aria-label="Sohbetlerim"></aside>
+      <details class="more assistant-more" id="assistant-more" hidden><summary>Daha fazla</summary><ul id="legacy-more-links"></ul></details>
+    </div>
     <ol class="chat-log" id="chat-log" aria-live="polite" aria-busy="false" aria-label="Sohbet"></ol>
     <p class="sr-only" id="chat-status" role="status"></p>
   </section>

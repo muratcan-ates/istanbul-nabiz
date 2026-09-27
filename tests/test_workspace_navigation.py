@@ -108,6 +108,10 @@ function setup(hash = '') {
   };
   const add = (parent, tag, id, classes = '') => { const node = new Node(tag, id, classes); parent.append(node); return node; };
   const hero = add(main, 'section', 'home-screen'), chat = add(main, 'section', 'asistan');
+  const assistantHead = add(chat, 'div', '', 'assistant-head');
+  add(assistantHead, 'aside', 'convo-root');
+  const assistantMore = add(assistantHead, 'details', 'assistant-more');
+  add(assistantMore, 'summary'); add(assistantMore, 'ul', 'legacy-more-links');
   add(main, 'section', 'takvim');
   const log = add(chat, 'ol', 'chat-log'), form = add(hero, 'form', 'chat-form');
   const input = add(form, 'textarea', 'chat-input'), submit = add(form, 'button', 'chat-submit');
@@ -120,11 +124,11 @@ function setup(hash = '') {
     'map-workspace': 'harita', 'explore-workspace': 'kultur'};
   for (const [id, child] of Object.entries(nested)) add(add(tools, 'details', id), 'section', child);
   const account = add(main, 'section', 'hesabim');
-  ['profilim', 'takip', 'hafizam'].forEach(id => add(add(account, 'details', `details-${id}`), 'section', id));
+  ['profilim', 'takip', 'hafizam', 'hesap'].forEach(id => add(add(account, 'details', `details-${id}`), 'section', id));
   const footer = add(body, 'footer', 'about'), nav = add(body, 'nav', '', 'topbar-nav');
   const primary = add(nav, 'ul', '', 'nav-primary'), secondary = add(nav, 'div', '', 'nav-secondary');
-  const legacy = add(secondary, 'ul', 'legacy-nav'), navMore = add(secondary, 'details', 'legacy-more');
-  add(navMore, 'summary'); add(navMore, 'ul', 'legacy-more-links');
+  const legacy = add(secondary, 'ul', 'legacy-nav');
+  add(body, 'ul', 'legacy-topbar');
   const links = ['asistan', 'takvim', 'hesabim'].map((id, index) => {
     const link = add(add(primary, 'li'), 'a'); link.setAttribute('href', `#${id}`);
     link.setAttribute('data-primary', ['assistant', 'calendar', 'account'][index]); return link;
@@ -210,19 +214,20 @@ s.form.addEventListener('submit', () => {
 s.input.focus(); s.input.dispatchEvent(event('keydown', {key: 'Enter'})); s.flush();
 const moved = s.form.parentElement === s.chat && s.chat.children.at(-1) === identity;
 const focusPreserved = s.doc.activeElement === s.input, focusOptions = s.input.focusOptions;
-s.doc.getElementById('legacy-more').open = true;
+s.doc.getElementById('assistant-more').open = true;
 s.doc.dispatchEvent(event('click', {target: s.links[3]})); s.links[3].focus();
 s.log.append(new Node('li', '', 'chat-msg is-assistant')); s.flush();
 const cityAfterStream = s.body.dataset.view;
-const cityFocusPreserved = s.doc.activeElement === s.links[3];
+const cityDestinationFocused = s.doc.activeElement === s.doc.getElementById('city-cards');
 s.form.requestSubmit();
-console.log(JSON.stringify({moved, focusPreserved, focusOptions, cityAfterStream, cityFocusPreserved, same: s.form === identity,
+console.log(JSON.stringify({moved, focusPreserved, focusOptions, cityAfterStream, cityDestinationFocused,
+  same: s.form === identity,
   draft: s.input.value, selection: [s.input.selectionStart, s.input.selectionEnd], listenerCalls,
   view: s.body.dataset.view, buttonMoved: s.submit.parentElement === s.bottom}));
 """)
     assert values == {
         "moved": True, "focusPreserved": True, "focusOptions": {"preventScroll": True},
-        "cityAfterStream": "city", "cityFocusPreserved": True, "same": True, "draft": "Kartal\nLevent",
+        "cityAfterStream": "city", "cityDestinationFocused": True, "same": True, "draft": "Kartal\nLevent",
         "selection": [3, 6], "listenerCalls": 2, "view": "assistant", "buttonMoved": True,
     }
 
@@ -250,7 +255,7 @@ s.chat.append = (...nodes) => {{
   if (scenario === 'detached') s.input.remove();
   if (scenario === 'different-focus') s.links[3].focus();
 }};
-s.doc.getElementById('legacy-more').open = true;
+s.doc.getElementById('assistant-more').open = true;
 if (scenario === 'outside-form') s.links[3].focus(); else s.input.focus();
 s.log.append(new Node('li', '', 'chat-msg is-user')); s.flush();
 console.log(JSON.stringify({{inputFocused: s.doc.activeElement === s.input,

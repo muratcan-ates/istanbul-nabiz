@@ -26,7 +26,7 @@ function pointsOf(card) {
     && Number.isFinite(point.lat) && point.lat >= -90 && point.lat <= 90
     && Number.isFinite(point.lon) && point.lon >= -180 && point.lon <= 180
     && typeof point.label === 'string' && point.label.trim())
-    .slice(0, 20);
+    .slice(0, 60);
 }
 
 function stylesheet() {
@@ -182,7 +182,7 @@ function listenActions() {
     const detail = event.detail || {};
     if (detail.type !== 'map' || detail.action !== 'expand_map') return;
     const inst = instances.get(key(detail.card_id, detail.message_id));
-    if (inst) openDialog(inst);
+    if (inst) { event.preventDefault(); openDialog(inst); }
   });
   listening = true;
 }
