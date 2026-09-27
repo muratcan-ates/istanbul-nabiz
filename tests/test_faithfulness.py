@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 import httpx
 import pytest
@@ -631,4 +632,17 @@ def test_an_arrival_is_one_whole_minute_in_turkish_words():
     for leak in ("7,4", "0,4", "12 dakika", "stop_sequence", "medium", "yöntem:"):
         assert leak not in text, leak
     check = check_faithfulness(text, [{"data": with_shown_minutes(data, stale=False)}])
+    assert check.passed, check.explanation
+
+
+def test_arrivals_with_no_minute_collapse_to_one_honest_line():
+    from nabiz.agent.minutes import with_shown_minutes
+
+    data = {"line_code": "500T", "stop": {"name": "Şifa"}, "arrivals": [
+        {"eta_minutes": 5.0, "method": "stop_sequence", "confidence": "low"} for _ in range(3)]}  # fmt: skip
+    shown = with_shown_minutes(data, stale=True)
+    text = "\n".join(templates.RENDERERS["iett_next_arrivals"](shown))
+    assert text.count("•") == 1 and "Hatta araç görünüyor" in text and "tarifeye göre" in text
+    assert not re.search(r"\d+ dk", text)
+    check = check_faithfulness(text, [{"data": shown}])
     assert check.passed, check.explanation
