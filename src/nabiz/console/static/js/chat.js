@@ -1,11 +1,9 @@
-/* The assistant panel: a question goes to POST /api/chat, the answer streams back as events (token,
- * tool, final). Tokens are written as they arrive; the final event is authoritative and carries the
- * citations, the author and, sometimes, a memory suggestion the visitor confirms or declines.
- *
- * Screen readers: the log is aria-live and aria-busy while a reply streams, so it is read once when
- * the reply is complete rather than word by word; #chat-status says the state in one sentence. */
-
+/* Chat streams tokens, then treats final as authoritative. aria-busy keeps the live log quiet
+ * until the answer is ready, while #chat-status announces one sentence. */
 import { renderAnswerCard } from './answer_card.js';
+import { appendCard, hasCardType, renderCards, validateCard } from './chat_cards.js';
+import './chat_card_map.js';
+import { createFollower, mountNewReplyButton, newMessageId } from './chat_scroll.js';
 import { stream } from './api.js';
 import { HISTORY_TURNS } from './config.js';
 import { compactionNote } from './conversations.js';
@@ -16,10 +14,8 @@ import { AUTHOR_TR, TOOL_TR, ageText, howPanel, sourceLabel, sourceLink } from '
 import { progressLine } from './tool_labels.js';
 import { mountAnswerActions } from './answer_actions.js';
 import { t } from './i18n_text.js';
-
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
 const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';
-
 function refusalNote() {
   return `<div class="callout callout-warn">${icon('info-circle')}<div>`
     + '<p class="callout-title">Bu soruda asistan cevap üretmez.</p>'
@@ -28,7 +24,6 @@ function refusalNote() {
     + '<a href="https://www.ibb.istanbul/" target="_blank" rel="noopener noreferrer">ibb.istanbul</a> sayfasına bakın. '
     + 'Acil durumda 112.</p></div></div>';
 }
-
 function suggestionBox(suggestion) {
   const box = document.createElement('div');
   box.className = 'chat-suggest';
@@ -40,25 +35,20 @@ function suggestionBox(suggestion) {
     + '<p class="field-hint">Onaylamazsanız hiçbir şey kaydedilmez. Kayıt yalnız bu tarayıcıda durur.</p>';
   return box;
 }
-
 function message(cls, inner) {
   const li = document.createElement('li');
-  li.className = `chat-msg ${cls}`;
-  li.innerHTML = inner;
+  li.className = `chat-msg ${cls}`; li.innerHTML = inner;
   return li;
 }
-
 function sourceItem(item) {
   const place = item.institution || sourceLabel(item.source) || 'Kurum bilinmiyor';
   const title = item.title || item.source || 'Başlık bilinmiyor';
-  const updated = item.source_updated_at
-    ? `güncelleme ${dateTime(item.source_updated_at)}` : 'güncelleme tarihi kaynakta yok';
+  const updated = item.source_updated_at ? `güncelleme ${dateTime(item.source_updated_at)}` : 'güncelleme tarihi kaynakta yok';
   const fetchedAt = item.fetched_at || item.observed_at;
   const fetched = fetchedAt ? `alınma ${dateTime(fetchedAt)}` : 'alınma tarihi bilinmiyor';
   const link = sourceLink({ source: item.source || place, url: item.url || item.source_url });
   return `<li class="cite">${esc(place)} · ${esc(title)} · ${esc(updated)} · ${esc(fetched)} ${link}</li>`;
 }
-
 function answerCard(data, turnId) {
   const mode = data.mode || (data.refused ? 'refused' : 'answer');
   const how = data.how;
@@ -67,18 +57,15 @@ function answerCard(data, turnId) {
       + '<div class="btn-row"><a class="btn btn-danger" href="tel:112">112 (Acil)</a>'
       + '<a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>' + howPanel(how, turnId);
   }
-
   if (mode === 'small_talk' || mode === 'clarify') {
     const text = esc(data.answer_text ?? data.answer ?? '');
     return `<section class="answer-short"><p>${text}</p></section>`;
   }
-
   if (mode === 'guard') {
     // E16's input guard: its own plain sentence, with no source, author line or feedback slot.
     return `<section class="answer-card is-unknown" data-card="guard"><p class="ac-fixed">${esc(data.answer_text ?? data.answer ?? '')}</p>`
       + '<div class="btn-row"><a class="btn btn-primary" href="tel:153">153\'e sor</a></div></section>';
   }
-
   const unknown = mode === 'unknown' || mode === 'refused';
   const answer = unknown ? UNKNOWN_TEXT : (data.answer_text ?? data.answer ?? '');
   const cited = Array.isArray(data.citations) ? data.citations.filter(Boolean) : [];
@@ -119,22 +106,17 @@ function answerCard(data, turnId) {
   }
   return html;
 }
-
-/**
- * Wire the panel. `getNeeds` returns the functional constraints allowed to leave the device;
- * `onMemorySuggestion(suggestion)` stores a confirmed suggestion and returns true when it did;
- * `onTurn(turn)` hands each finished turn to Sohbetlerim (js/conversations.js), which keeps it on
- * this device only. `loadHistory(turns)` reopens a saved conversation in the log.
- */
+/** The callbacks keep functional needs and saved turns on their existing boundaries. */
 function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggestion, onTurn = () => {} }) {
   const history = [];
   let controller = null;
   let sessionStarted = false;
   let turnCount = 0;
   const stoppedRequests = new WeakSet();
-
+  const follower = createFollower(window, document);
+  const newReply = mountNewReplyButton(form);
+  window.addEventListener('scroll', () => { if (follower.following()) newReply.hide(); }, { passive: true });
   const say = (text) => { status.textContent = text; };
-  const scrollDown = () => { log.scrollTop = log.scrollHeight; };
   const answerActions = mountAnswerActions(log, { input, form, status });
   const composerTools = document.querySelector('#composer-tools');
   let stopButton = composerTools && composerTools.querySelector('#chat-stop');
@@ -162,7 +144,6 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
   };
   stopButton?.addEventListener('click', stopAnswer);
   const turn = (item) => { try { onTurn(item); } catch { /* Saving on the device must never break the chat. */ } };
-
   function showCompaction() {
     const note = compactionNote(history.length, HISTORY_TURNS);
     let el = log.querySelector('.chat-compaction');
@@ -173,8 +154,7 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     }
     el.querySelector('p').textContent = note;
   }
-
-  function renderFinal(shell, data, question, streamed, turnId) {
+  function renderFinal(shell, data, question, streamed, turnId, messageId, userId) {
     const textEl = shell.querySelector('.chat-text');
     const finalEl = shell.querySelector('.chat-final');
     const answer = data.answer_text ?? data.answer ?? streamed;
@@ -196,6 +176,14 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     // The sourced answer card (js/answer_card.js) draws answers, quotes and the fixed cards; the
     // emergency card and any mode it does not know stay on answerCard below.
     finalEl.innerHTML = renderAnswerCard(finalData, { turnId }) || answerCard(finalData, turnId);
+    const incoming = data.emergency ? [] : (Array.isArray(data.cards) ? data.cards.slice(0, 6) : [])
+      .map((raw) => ({ ...raw, sensitive: data.refused === true || data.sensitive === true || raw?.sensitive === true }));
+    const cards = incoming.map(validateCard).filter((result) => result.ok)
+      .map((result) => ({ ...result.card, message_id: messageId }));
+    const cardHost = document.createElement('div');
+    cardHost.className = 'chat-cards';
+    if (incoming.length || (data.memory_suggestion && hasCardType('memory'))) finalEl.append(cardHost);
+    renderCards(cardHost, incoming, { messageId, restored: false, lang: data.lang || document.documentElement.lang });
     answerActions.remember(shell, finalData);
     if (!data.refused && !data.emergency && (mode === 'answer' || mode === 'quote_only')) {
       void answerActions.showNextChips(finalEl, finalData, question, data.lang || document.documentElement.lang || 'tr');
@@ -206,10 +194,17 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     // follow-up to it ("peki öğrenciler için?"); the server never hands it to the model.
     if (!data.emergency) history.push({ role: 'user', content: question });
     if (!data.refused && !data.emergency && mode !== 'unknown') history.push({ role: 'assistant', content: answer });
-    turn({ role: 'user', content: question, emergency: data.emergency === true, sensitive: data.refused === true, mode });
-    turn({ role: 'assistant', content: answer, emergency: data.emergency === true, sensitive: data.refused === true, mode });
+    turn({ role: 'user', content: question, emergency: data.emergency === true, sensitive: data.refused === true, mode, message_id: userId });
     showCompaction();
-    if (data.memory_suggestion && onMemorySuggestion) {
+    if (data.memory_suggestion && hasCardType('memory') && !data.emergency && incoming.length < 6) {
+      const suggestion = data.memory_suggestion;
+      const memory = validateCard({ v: 1, id: `card-memory-${messageId}`, type: 'memory', status: 'awaiting_confirmation',
+        title: 'Hafıza önerisi', body: { key: suggestion.key, label: suggestion.label },
+        actions: ['remember_here', 'remember_always'], sources: [] }).card;
+      memory.message_id = messageId;
+      cards.push(memory);
+      appendCard(cardHost, memory, { messageId, restored: false, lang: data.lang || document.documentElement.lang });
+    } else if (data.memory_suggestion && onMemorySuggestion) {
       const box = suggestionBox(data.memory_suggestion);
       box.addEventListener('click', (evt) => {
         const btn = evt.target.closest('button[data-act]');
@@ -220,6 +215,9 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       });
       finalEl.appendChild(box);
     }
+    turn({ role: 'assistant', content: answer, emergency: data.emergency === true, sensitive: data.refused === true,
+      mode, message_id: messageId, cards });
+    document.dispatchEvent(new CustomEvent('nabiz:chat-final', { detail: { question, final: data, host: finalEl, messageId } }));
     // DECISIONS #38: js/follow.js draws "Takip edilecek konu: M2 · onayla" into this answer.
     if (data.follow_suggestion) {
       document.dispatchEvent(new CustomEvent('nabiz:follow-suggestion', { detail: { suggestion: data.follow_suggestion, host: finalEl } }));
@@ -227,28 +225,30 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     shell.setAttribute('aria-busy', 'false');
     say(data.emergency ? 'Acil iletişim bilgileri gösterildi.'
       : data.refused || mode === 'unknown' ? 'Asistan doğrulanmış kaynak bulamadı; 153 ve resmî sayfaya yönlendirdi.' : 'Yanıt hazır.');
-    if (typeof shell.scrollIntoView === 'function') shell.scrollIntoView({ block: 'nearest' });
-    scrollDown();
+    if (follower.following()) shell.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+    else newReply.show(shell);
   }
-
   async function ask(question) {
     if (controller) controller.abort();
     controller = new AbortController();
     const requestController = controller;
     input.focus();
     const userItem = message('is-user', `<p class="chat-who">Siz</p><p class="chat-text">${esc(question)}</p>`);
+    const userId = newMessageId();
+    userItem.dataset.messageId = userId;
     log.appendChild(userItem);
     if (typeof userItem.scrollIntoView === 'function') userItem.scrollIntoView({ block: 'start' });
     const shell = message('is-assistant', '<p class="chat-who">Asistan</p><p class="chat-tool" hidden></p>'
       + '<p class="chat-text"></p><div class="chat-final"></div>');
     const turnId = `turn-${++turnCount}`;
+    const messageId = newMessageId();
+    shell.dataset.messageId = messageId;
     shell.setAttribute('aria-busy', 'true');
     log.appendChild(shell);
     log.setAttribute('aria-busy', 'true');
     submit.setAttribute('aria-disabled', 'true');
     setStopVisible(true);
     say('Asistan yanıt yazıyor.');
-    scrollDown();
     const textEl = shell.querySelector('.chat-text');
     const toolEl = shell.querySelector('.chat-tool');
     let streamed = '';
@@ -262,7 +262,6 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       } else if (event === 'token') {
         streamed += (data && data.text) || '';
         textEl.textContent = streamed;
-        scrollDown();
       } else if (event === 'tool') {
         // js/tool_labels.js says what is being asked, in Turkish, and never claims success.
         const step = progressLine(data);
@@ -283,7 +282,8 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       const lang = new URLSearchParams(window.location.search).get('lang') || document.documentElement.lang || 'tr';
       await stream(`/api/chat?lang=${encodeURIComponent(lang)}`, { message: question, needs: getNeeds(), history: history.slice(-HISTORY_TURNS * 2), lang },
         onEvent, requestController.signal);
-      if (finalData) renderFinal(shell, finalData, question, streamed, turnId);
+      if (requestController.signal.aborted) return;
+      if (finalData) renderFinal(shell, finalData, question, streamed, turnId, messageId, userId);
       else { shell.setAttribute('aria-busy', 'false'); say('Yanıt tamamlanmadı.'); }
     } catch (err) {
       if (requestController.signal.aborted) {
@@ -307,7 +307,6 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
       }
     }
   }
-
   form.addEventListener('submit', (evt) => {
     evt.preventDefault();
     if (submit.getAttribute('aria-disabled') === 'true') return;
@@ -322,32 +321,38 @@ function mountChat({ log, form, input, submit, status, getNeeds, onMemorySuggest
     input.value = '';
     ask(question);
   });
-
   form.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !controller || event.isComposing) return;
     event.preventDefault();
     stopAnswer();
   });
-
   /** Show a saved conversation (Sohbetlerim) and make it the context of the next question. */
   function loadHistory(turns) {
     if (controller) controller.abort();
+    newReply.hide();
     log.querySelectorAll('.chat-msg:not(.is-notice), .chat-compaction').forEach((node) => node.remove());
     history.length = 0;
     (Array.isArray(turns) ? turns : []).forEach((item) => {
       if (!item || (item.role !== 'user' && item.role !== 'assistant')) return;
       const content = String(item.content ?? '');
       const who = item.role === 'user' ? 'Siz' : 'Asistan';
-      log.appendChild(message(item.role === 'user' ? 'is-user' : 'is-assistant',
-        `<p class="chat-who">${who}</p><p class="chat-text">${esc(content)}</p>`));
-      if (content && content !== '[acil yönlendirme]') history.push({ role: item.role, content });
+      const shell = message(item.role === 'user' ? 'is-user' : 'is-assistant',
+        `<p class="chat-who">${who}</p><p class="chat-text">${esc(content)}</p>`);
+      shell.dataset.messageId = item.message_id || newMessageId();
+      log.appendChild(shell);
+      if (item.role === 'assistant' && !item.emergency && Array.isArray(item.cards) && item.cards.length) {
+        const host = document.createElement('div');
+        host.className = 'chat-cards';
+        shell.append(host);
+        renderCards(host, item.cards, { messageId: shell.dataset.messageId, conversationId: item.conversation_id,
+          restored: true, lang: document.documentElement.lang });
+      }
+      if (content && content !== '[acil yönlendirme]' && !item.redacted) history.push({ role: item.role, content });
     });
     showCompaction();
     say(history.length ? 'Kayıtlı sohbet açıldı.' : 'Yeni sohbet başladı.');
-    scrollDown();
+    follower.reset();
   }
-
   return { ask, loadHistory };
 }
-
 export { mountChat, refusalNote, answerCard, UNKNOWN_TEXT };
