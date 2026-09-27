@@ -1,0 +1,94 @@
+{
+  "available": true,
+  "from": "Zeytinburnu",
+  "to": "Bağcılar",
+  "lang": "tr",
+  "sample": true,
+  "summary": "Zeytinburnu → Bağcılar · yaklaşık 31 dk",
+  "total_minutes": 31,
+  "cards": [
+    {
+      "n": 1,
+      "kind": "ride",
+      "icon": "train",
+      "title": "M1A ile Bakırköy-İncirli istasyonuna gidin",
+      "detail": "Zeytinburnu istasyonunda binin. 1 durak, yaklaşık 3 dk. İlk durakta inin.",
+      "lift_status": "working",
+      "lift_text": "Bakırköy-İncirli için İBB kaydında asansör arızası yok.",
+      "minutes": 3,
+      "stops": 1,
+      "between": [],
+      "speech": "Adım 1. M1A ile Bakırköy-İncirli istasyonuna gidin. Zeytinburnu istasyonunda binin. 1 durak, yaklaşık 3 dakika. İlk durakta inin. Bakırköy-İncirli için İBB kaydında asansör arızası yok.",
+      "next_stop": "Bakırköy-İncirli"
+    },
+    {
+      "n": 2,
+      "kind": "transfer",
+      "icon": "arrows-exchange",
+      "title": "İncirli istasyonunda M3 hattına aktarma yapın",
+      "detail": "Yaklaşık 4 dk.",
+      "lift_status": "working",
+      "lift_text": "İncirli için İBB kaydında asansör arızası yok.",
+      "minutes": 4,
+      "stops": 0,
+      "between": [],
+      "speech": "Adım 2. İncirli istasyonunda M3 hattına aktarma yapın. Yaklaşık 4 dakika. İncirli için İBB kaydında asansör arızası yok."
+    },
+    {
+      "n": 3,
+      "kind": "ride",
+      "icon": "train",
+      "title": "M3 ile Kirazlı-Bağcılar istasyonuna gidin",
+      "detail": "İncirli istasyonunda binin. 5 durak, yaklaşık 13 dk. Sıradaki durak Haznedar olmalı; yönü böyle doğrulayabilirsiniz.",
+      "lift_status": "working",
+      "lift_text": "Kirazlı-Bağcılar için İBB kaydında asansör arızası yok.",
+      "minutes": 13,
+      "stops": 5,
+      "between": [
+        "Haznedar",
+        "İlkyuva",
+        "Yıldıztepe",
+        "Molla Gürani"
+      ],
+      "speech": "Adım 3. M3 ile Kirazlı-Bağcılar istasyonuna gidin. İncirli istasyonunda binin. 5 durak, yaklaşık 13 dakika. Sıradaki durak Haznedar olmalı; yönü böyle doğrulayabilirsiniz. Kirazlı-Bağcılar için İBB kaydında asansör arızası yok.",
+      "next_stop": "Haznedar"
+    },
+    {
+      "n": 4,
+      "kind": "walk",
+      "icon": "walk",
+      "title": "Kirazlı-Bağcılar istasyonundan çıkın",
+      "detail": "Varış noktası Bağcılar: yaklaşık 11 dk yürüyüş. Kuş uçuşu tahmin; sokak tarifi değildir.",
+      "lift_status": null,
+      "lift_text": "",
+      "minutes": 11,
+      "stops": 0,
+      "between": [],
+      "speech": "Adım 4. Kirazlı-Bağcılar istasyonundan çıkın. Varış noktası Bağcılar: yaklaşık 11 dakika yürüyüş. Kuş uçuşu tahmin; sokak tarifi değildir.",
+      "map_links": {
+        "apple": "https://maps.apple.com/?daddr=41.038480%2C28.847010&dirflg=w&q=Ba%C4%9Fc%C4%B1lar",
+        "google": "https://www.google.com/maps/dir/?api=1&destination=41.038480%2C28.847010&travelmode=walking"
+      }
+    }
+  ],
+  "notes": [],
+  "reason": null,
+  "disclaimer": "Adımlar raylı sistem grafiğinden ve İBB asansör kaydından çıkarıldı; sokak navigasyonu değildir. Süreler mesafe modeline dayanan tahmindir, tarife değildir. Kayıtta arıza olmaması asansörün çalıştığını kanıtlamaz.",
+  "freshness": {
+    "mode": "recorded",
+    "text": "kayıtlı · 26.09 05:15"
+  },
+  "provenance": {
+    "source": "metro_equipment",
+    "url": "https://api.ibb.gov.tr/MetroIstanbul/api/MetroMobile/V2/GetFaultyEquipmentDetails",
+    "observed_at": "2026-09-26T02:15:44+00:00",
+    "age_s": 82454,
+    "mode": "recorded"
+  },
+  "uncertainty": [
+    "summary_detail_mismatch",
+    "date_semantics_unknown",
+    "location_empty"
+  ],
+  "sample_route": "Zeytinburnu → Bağcılar"
+}

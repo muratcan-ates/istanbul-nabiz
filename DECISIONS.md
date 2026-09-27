@@ -2839,3 +2839,92 @@ answers citing the gold page first.
 
 - A citizen sees no results after voting (not built); if added, the same sentence goes on the citizen card.
 - Whether the decision engine's human-approval count includes poll publications and closures is still open.
+
+## 80. Step-by-step voice route: read aloud only on request (E50, 27 Sep)
+
+### Decision
+
+- Step-by-step voice route (E50): station and recorded route steps read aloud only on request; not street
+  navigation. `GET /api/route/steps` keeps no query. The one deliberate exception to
+  the "only the composer is translucent" rule is the route suggestion under a chat answer (`.glass`, the panel stays
+  opaque); the panel always shows its own scope line, so it does not contradict `journey_accessible.DISCLAIMER_TR`.
+- `index.html` and the service worker shell do not change in this round; the module joins the chat's route card
+  with P01 (D2), together with the voice paragraph in the privacy page.
+
+### Consequences
+
+- The suggestion reads the chat's DOM through a `MutationObserver`; a class rename in the chat silently drops it.
+- The E50 note says the answer is `no-store`; the handler sets no cache header (checked 27 Sep). The service
+  worker never caches `/api/`, so only a proxy could; the header is a one-line change for the module's owner.
+
+## 81. İBB places: four recorded open data lists (E79, 27 Sep)
+
+### Decision
+
+- İBB places: four recorded open data lists (Halk Ekmek, Kent Lokantası, social facilities, ibbWiFi) served from
+  captured files; the ibbWiFi list is from 15 Mar 2023 and is marked old; no live occupancy (E79).
+- The capture script fetched robots.txt and the four catalogue download files from data.ibb.gov.tr, 10 s apart
+  (Crawl-Delay), and refuses any `/api/` path; guardrail `no-raw-ibb-calls` allows only its `fetch` function. A
+  district comes from the row, then the address, then the name; never from coordinates.
+
+### Consequences
+
+- The E79 note's "CKAN API used" sentence does not match the script, which never calls `/api/`; this entry follows
+  the script. Two view texts give one key two fallbacks, so its catalogue stays in the module for now.
+
+## 82. Weekly fare: a sample calculation from quoted tariff rows (E68, 27 Sep)
+
+### Decision
+
+- Fare sample: deterministic, source-quoted, unknown fares stay empty; every fare card says 'Örnek hesaplama' with
+  its official source and date; no payment (E68, owner decision 27 Sep).
+- The chat's R-06 refusal of prices is unchanged in this round; a chat sample card needs a policy change and an eval
+  scenario of its own.
+
+### Consequences
+
+- İETT bus and metrobus fares could not be captured, so a pattern with a bus is never ranked cheapest.
+
+## 83. Saved journeys: on the device first, the account only with its own consent (E65, 27 Sep)
+
+### Decision
+
+- Saved journeys: on the device by default; account storage only with separate explicit consent (90 days idle);
+  aggregate-only use in operator scenarios is part of that consent text (E65).
+- Deleting the account deletes its saved journeys (`accounts_api.account_delete`); with no journey store yet there is
+  nothing to delete and no file is created.
+
+### Consequences
+
+- `POST /api/journey-watch/check` is open and has no rate limit yet; each request plans at most three journeys.
+- Its `ui.jw.*` keys stay in the module for now: they go through a local helper and a status table the page's
+  i18n check does not read, so moving them waits for the module to call `t('ui.jw.…', '…')` directly.
+
+## 84. Intervention scenario: hypothetical, in memory, totals only, gate closed (E77, 27 Sep)
+
+### Decision
+
+- Intervention scenario: a hypothetical station closure, re-planned offline in memory; saved journeys only as
+  consented totals with cells under 3 hidden; never a real closure or an announcement (E77).
+- `SCENARIO_CONSENT_VERSIONS` stays empty, so the scenario does not read saved journeys yet, although E65's consent
+  text (version 2026-09-27) and the privacy page already describe the use. It opens only after the differencing
+  attack is closed: two scenarios one station apart can reveal a single journey, and hiding cells under 3 does not
+  stop that (rounding to 5 or limiting repeat queries are the proposals).
+
+### Consequences
+
+- Until then the panel says the consent does not yet cover this use and works from the operator's route list.
+- Its `ui.scn.*` keys stay in the module for now, for the same reason as E65's (#83).
+
+## 85. Motion moments: the decision path strip and the shift count (E47, 27 Sep)
+
+### Decision
+
+- Motion moments: the decision path strip and the shift count enter once, on a real decision (E47). The strip says
+  what the code does: a `publish_card` approval reaches the citizen page (`published.py`); other approvals,
+  rejections and deferrals stay in the ledger.
+
+### Consequences
+
+- Publishing is detected by the visible action label; if that label changes, the strip stops saying "published"
+  without an error. A `data-kind` attribute on the decision card is the lasting fix (later, optional).

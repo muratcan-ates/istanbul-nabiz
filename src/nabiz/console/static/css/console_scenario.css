@@ -1,0 +1,64 @@
+.scenario {
+  min-width: 0;
+  margin-block: var(--space-6);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.scenario h2 { margin: 0 0 var(--space-2); font-size: var(--text-xl); }
+.scenario h3 { margin: var(--space-4) 0 var(--space-2); font-size: var(--text-lg); line-height: var(--leading-body); }
+.scenario h4 { margin: 0 0 var(--space-1); font-size: var(--text-sm); }
+.scenario p { margin-block: var(--space-2); }
+.scenario-description { max-width: 65ch; color: var(--text-muted); }
+.scenario-note, .scenario-source, .scenario .field-hint { color: var(--text-muted); }
+.scenario form { display: grid; gap: var(--space-2); max-width: 60rem; }
+.scenario label { font-weight: var(--weight-semibold); }
+.scenario input, .scenario select, .scenario textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--nd-radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.scenario textarea { resize: vertical; }
+.scenario .scenario-consent { display: flex; align-items: flex-start; gap: var(--space-2); }
+.scenario .scenario-consent input { flex: 0 0 auto; width: var(--tap); height: var(--tap); margin: 0; }
+.scenario-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.scenario .btn-primary, .scenario .btn-quiet { min-width: var(--tap); min-height: var(--tap); }
+.scenario .field-error { color: var(--warn); }
+.scenario-result { min-width: 0; margin-block: var(--space-4); }
+.scenario-assumptions { margin-block: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--nd-radius-surface); }
+.scenario-assumptions ul, .scenario-result details ul { margin: 0; padding-inline-start: 1.25rem; }
+.scenario-routes, .scenario-result table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.scenario-result caption { padding-block: var(--space-2); text-align: start; font-weight: var(--weight-semibold); }
+.scenario-result th, .scenario-result td { min-height: 36px; padding: var(--space-2); border-bottom: 1px solid var(--border); text-align: start; vertical-align: top; overflow-wrap: anywhere; }
+.scenario-badge, .scenario-sample { display: inline-block; padding: 2px var(--space-2); border: 1px solid var(--border); border-radius: var(--nd-radius-control); }
+.scenario-badge.is-warn { border-color: var(--warn); background: var(--warn-wash); }
+.scenario-badge.is-accent { color: var(--nd-accent); }
+.scenario-badge.is-quiet { color: var(--text-muted); }
+.scenario-sample { color: var(--text-muted); font-size: var(--text-xs); }
+.scenario-result details, .scenario-saved { margin-block: var(--space-3); }
+.scenario-result summary, .scenario-saved summary { min-height: var(--tap); padding-block: var(--space-2); cursor: pointer; }
+.scenario-source a { margin-inline-start: var(--space-2); }
+.scenario-saved ul { padding-inline-start: 1.25rem; }
+.scenario-saved li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--border); }
+.scenario-saved button { margin-inline-start: auto; }
+
+@media (max-width: 600px) {
+  .scenario-result table, .scenario-result thead, .scenario-result tbody,
+  .scenario-result tr, .scenario-result th, .scenario-result td { display: block; width: auto; }
+  .scenario-result thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .scenario-result tr { margin-block: var(--space-2); padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--nd-radius-control); }
+  .scenario-result th, .scenario-result td { min-height: 0; padding: var(--space-1); border: 0; }
+  .scenario-result td::before { display: block; color: var(--text-muted); font-size: var(--text-xs); content: attr(data-label); }
+  .scenario .scenario-actions { align-items: stretch; }
+  .scenario .scenario-actions > * { flex: 1 1 100%; }
+}

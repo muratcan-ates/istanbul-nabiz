@@ -61,11 +61,14 @@ from nabiz.console.day_api import day_routes
 from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
 from nabiz.console.escort_api import escort_routes
+from nabiz.console.fare_api import fare_routes
 from nabiz.console.feedback_api import feedback_routes
 from nabiz.console.history_api import history_routes
 from nabiz.console.how_api import how_routes
+from nabiz.console.ibb_yerleri_api import ibb_yerleri_routes
 from nabiz.console.incident_api import incident_routes
 from nabiz.console.journey_api import accessible_journey_route
+from nabiz.console.journey_watch_api import journey_watch_routes
 from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
 from nabiz.console.knowledge_editor_api import knowledge_editor_routes
@@ -91,7 +94,9 @@ from nabiz.console.report_outcome_api import outcome_routes
 from nabiz.console.report_timeline_api import timeline_routes
 from nabiz.console.report_triage import triage_routes
 from nabiz.console.requests_api import request_routes
+from nabiz.console.route_steps_api import route_steps_routes
 from nabiz.console.rules_api import rules_routes
+from nabiz.console.scenario_api import scenario_routes
 from nabiz.console.stop_card import stop_card_router
 
 log = logging.getLogger("nabiz.console")
@@ -348,13 +353,21 @@ PRODUCT_ROUTERS = (
     knowledge_routes,
     # E74: knowledge editor; approval queues a source for ingest and never edits the index.
     knowledge_editor_routes,
+    # E77: intervention scenario; a closure is hypothetical and in memory, saved journeys only as totals.
+    scenario_routes,
     # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).
     quick_routes,
     open_data_routes,
     how_routes,
+    # E50: recorded step-by-step route cards; voice only on request, never street navigation.
+    route_steps_routes,
     map_layers_routes,
+    # E79: four recorded İBB open data place lists; at most 60 points, no live occupancy.
+    ibb_yerleri_routes,
     # E30: İBB libraries and museums open now by their recorded hours, for a district the visitor picks.
     culture_routes,
+    # E68: weekly fare estimate, a sample from quoted tariff rows; the pattern is neither stored nor logged.
+    fare_routes,
     agency_routes,
     operator_routes,
     # E23: which model rung answers today (no keys, no probe) and the console's service receipts and spend.
@@ -372,6 +385,8 @@ PRODUCT_ROUTERS = (
     stop_card_router,
     quota_routes,
     account_routes,
+    # E65: saved journeys; the check is stateless, account storage needs its own consent.
+    journey_watch_routes,
     # Operatöre aktar + çeviri: /api/requests for visitors, /api/console/requests behind the console's door.
     request_routes,
     # E51: consented photo reports; EXIF stripped twice, 30 days, photo gone on close; the queue sits behind the console door.

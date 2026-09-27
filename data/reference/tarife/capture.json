@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "captured_at": "2026-09-27T00:39:17.466806+00:00",
+  "user_agent": "istanbul-nabiz-ogrenci-projesi/1",
+  "requests": 2,
+  "entries": [
+    {
+      "url": "https://iett.istanbul/icerik/IETT-Toplu-Ulasim-ucret-Tarifesi",
+      "requested_at": "2026-09-27T00:39:16.882422+00:00",
+      "source": "https://iett.istanbul/icerik/IETT-Toplu-Ulasim-ucret-Tarifesi",
+      "license": "belirtilmemiş; kurumun kamuya açık sayfası, yalnız kısa alıntı ve bağlantı",
+      "robots": "robots_izin",
+      "http_status": 200,
+      "final_url": "https://iett.istanbul/icerik/IETT-Toplu-Ulasim-ucret-Tarifesi",
+      "sha256": "e34afc8ce0120861ef1cca845839e8b1be536158635ff75321c80b94506957ba",
+      "status": "alinamadi",
+      "reason": "HTML'de ücret yok; içerik JavaScript ile yükleniyor olabilir",
+      "excerpt": "İETT Toplu Ulaşım Ücret Tarifesi İçeriğe atla İETT Toplu Ulaşım Ücret Tarifesi Ücret Tarifesi Duyurular Haberler Kurumsal Arama... EN EN / TR Arama... Ücret Tarifesi Duyurular Haberler Kurumsal Kurumsal İBB Başkanı Genel Müdür Yönetim Şeması Misyon-Vizyon-Temel Değerler Kurumsal Etik İlkelerimiz ve Politikalarımız Kişisel Verileri Koruma Kanunu Genel Aydınlatma Beyanı Kamera Aydınlatma Metni Yetki Alanı Hizmet Standartlarımız Kalite Belgelerimiz Mevzuat İETT 2026-2030 Yılı Stratejik Planı Raporl"
+    },
+    {
+      "url": "https://www.istanbulkart.istanbul/sitemap.xml",
+      "requested_at": "2026-09-27T00:39:17.367442+00:00",
+      "source": "https://www.istanbulkart.istanbul/sitemap.xml",
+      "license": "belirtilmemiş; kurumun kamuya açık sayfası, yalnız kısa alıntı ve bağlantı",
+      "robots": "robots_izin",
+      "http_status": 200,
+      "final_url": "https://www.istanbulkart.istanbul/sitemap.xml",
+      "sha256": "49fac0bff7bdab4f91ae86a5d21d68c21c1b45e00ec779bf9434e3ae88e9e6b2",
+      "status": "sitemap",
+      "reason": "HTML'de ücret yok; içerik JavaScript ile yükleniyor olabilir",
+      "candidates": []
+    },
+    {
+      "url": null,
+      "status": "aday_yok",
+      "requested_at": "2026-09-27T00:39:17.466640+00:00"
+    }
+  ]
+}
