@@ -1,0 +1,37 @@
+.rt-console { display: grid; gap: var(--space-3); min-width: 0; margin-top: var(--space-4); padding: var(--space-4); border: 1px solid var(--nd-line); border-radius: var(--nd-radius-surface); background: var(--surface-raised); }
+.rt-console h2 { margin: 0; font-size: var(--text-lg); }
+.rt-console-status { min-height: 1.25em; margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.rt-console-table-wrap { max-width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.rt-console table { width: 100%; min-width: 52rem; border-collapse: collapse; font-size: var(--text-sm); }
+.rt-console th, .rt-console td { height: 36px; padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--nd-line); text-align: start; vertical-align: middle; }
+.rt-console th { color: var(--text-muted); font-weight: var(--weight-semibold); }
+.rt-console-row:hover { background: var(--surface-sunken); }
+.rt-console-row:focus-within { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.rt-toggle { min-height: var(--tap); padding: 0; border: 0; background: transparent; color: var(--link); font: inherit; text-decoration: underline; }
+.rt-console-detail td { height: auto; padding: var(--space-3); background: var(--surface); }
+.rt-console-detail-inner { display: grid; gap: var(--space-3); min-width: 0; }
+.rt-console-detail-inner h3 { margin: 0; font-size: var(--text-md); }
+.rt-console-history { display: grid; gap: var(--space-2); margin: 0; padding-inline-start: 1.5rem; }
+.rt-console-history li { display: grid; grid-template-columns: minmax(8rem, 1fr) auto; gap: var(--space-1) var(--space-3); min-width: 0; padding-block: var(--space-1); border-bottom: 1px solid var(--nd-line); overflow-wrap: anywhere; }
+.rt-console-history time, .rt-console-history li > span:nth-child(2) { color: var(--text-muted); font-size: var(--text-sm); }
+.rt-console-history p { grid-column: 1 / -1; margin: 0; }
+.rt-console-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.rt-console-actions .btn, .rt-console-form .btn { min-height: var(--tap); }
+.rt-console-form { display: grid; gap: var(--space-2); max-width: 42rem; }
+.rt-console-form textarea { min-height: 5rem; resize: vertical; }
+.rt-console-form p { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.rt-console-error { margin: 0; color: var(--text); }
+.rt-console button:focus-visible, .rt-console textarea:focus-visible, .rt-console select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .rt-console .rt-status-badge.is-updated { animation: rt-console-update var(--nd-dur-enter) var(--nd-ease-state) both; }
+  @keyframes rt-console-update { from { opacity: .45; } to { opacity: 1; } }
+}
+@media (max-width: 480px) {
+  .rt-console { padding: var(--space-3); }
+  .rt-console-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .rt-console-actions .btn, .rt-console-form .btn { width: 100%; }
+}
+@media (forced-colors: active) {
+  .rt-console, .rt-console-detail td, .rt-console-history li { border-color: CanvasText; }
+  .rt-console-row:focus-within { outline-color: Highlight; }
+}
