@@ -5,14 +5,18 @@ import { MOCK, get } from './api.js';
 import { alternativeCard, arrivalCard, cardsSentence, cityCard, errorCard, skeleton } from './cards.js';
 import { mountChat } from './chat.js';
 import { mountConversations } from './conversations-ui.js';
-import { newConversation, purgeOlderThan, saveTurn } from './conversations.js';
+import { mountConversationSession } from './conversation_session.js';
+import { mountDataReset } from './data_reset.js';
 import { mountHome } from './home.js';
-import { DEFAULT_ARRIVAL, DEFAULT_LINES, DEFAULT_STATIONS, HISTORY_TURNS, REFRESH_MS } from './config.js';
+import { DEFAULT_ARRIVAL, DEFAULT_LINES, DEFAULT_STATIONS, REFRESH_MS } from './config.js';
 import { dateTime, esc } from './format.js';
 import { icon } from './icons.js';
+import { mountMemorySuggestions } from './memory_card.js';
+import { createMemoryStore } from './memory_store.js';
+import { mountMemoryPanel } from './memory_ui.js';
 import {
-  NEEDS, addMemory, answerLanguage, clearMemory, clearProfile, effectiveNeeds, profileReview, readMemory, readProfile,
-  removeMemory, savedPlaces, setAnswerLanguage, writeProfile,
+  NEEDS, answerLanguage, clearProfile, profileReview, readMemory, readProfile,
+  savedPlaces, setAnswerLanguage, writeProfile,
 } from './profile.js';
 import { mountToggles } from './theme.js';
 
@@ -20,7 +24,10 @@ const $ = (sel) => document.querySelector(sel);
 
 let profile = readProfile();
 let memory = readMemory();
-const needs = () => effectiveNeeds(profile, memory);
+const memoryStore = createMemoryStore({});
+let session = null;
+let memoryPanel = null;
+const needs = () => memoryStore.requestNeeds({ profile, conversation: session?.activeRecord() });
 const places = () => savedPlaces(profile, memory);
 
 /* ---- cards ------------------------------------------------------------------------------ */
@@ -108,27 +115,23 @@ function renderNeeds() {
     + `<input type="checkbox" name="needs" value="${n.key}"${profile.needs.includes(n.key) ? ' checked' : ''}>`
     + `<span><span class="check-label">${esc(n.label)}</span><br><span class="field-hint">${esc(n.hint)}</span></span></label>`).join('');
 }
-
 function placeChip(kind, value) {
   return `<li class="place"><span>${esc(value)}</span>`
     + `<button type="button" class="icon-btn" data-remove="${kind}" data-value="${esc(value)}" aria-label="${esc(value)} kaydını kaldır">`
     + `${icon('search-off')}</button></li>`;
 }
-
 function renderPlaces() {
   $('#stations-list').innerHTML = profile.stations.map((s) => placeChip('stations', s)).join('');
   $('#lines-list').innerHTML = profile.lines.map((l) => placeChip('lines', l)).join('');
 }
-
 function renderProfileState() {
-  const consent = $('#profile-consent');
-  consent.checked = profile.consent;
+  $('#profile-consent').checked = profile.consent;
   const sent = needs();
   const places = ' Kayıtlı durak ve hat adları yalnız kartları istemek için gider, sunucuda saklanmaz;'
     + ' asansör kartı her ziyaretçi için aynı sabit soruyu (adımsız erişim) sorar.';
-  $('#profile-sent').textContent = (profile.consent
-    ? (sent.length ? `Sunucuya giden kısıt listesi: ${sent.join(', ')}.` : 'Sunucuya giden kısıt listesi boş.')
-    : 'Onay verilmedi: sunucuya hiçbir kısıt gitmiyor.') + places;
+  $('#profile-sent').textContent = (sent.length
+    ? `Sunucuya giden kısıt listesi: ${sent.join(', ')}.`
+    : 'Sunucuya giden kısıt listesi boş.') + places;
   const review = profileReview(profile, new Date().toISOString());
   const reviewHost = $('#profile-review');
   const clearButton = $('#profile-clear');
@@ -146,9 +149,7 @@ function renderProfileState() {
     actions.className = 'btn-row';
     actions.append(keep, clearButton);
     reviewHost.append(message, actions);
-  } else {
-    $('#profile-actions').append(clearButton);
-  }
+  } else $('#profile-actions').append(clearButton);
   const languageButton = $('#chat-lang-en');
   if (languageButton) {
     const english = answerLanguage(profile) === 'en';
@@ -156,7 +157,6 @@ function renderProfileState() {
     languageButton.textContent = english ? "Türkçe'ye dön" : 'English';
   }
 }
-
 function mountProfile() {
   renderNeeds();
   renderPlaces();
@@ -179,6 +179,7 @@ function mountProfile() {
     if (saved) profile = readProfile();
     status.textContent = saved ? 'Kaydedildi. Yalnız bu tarayıcıda durur.' : 'Kaydedilemedi: tarayıcı depolamaya izin vermiyor.';
     renderProfileState();
+    void memoryPanel?.refresh();
     refreshAll();
   });
   $('#profile-clear').addEventListener('click', () => {
@@ -187,6 +188,7 @@ function mountProfile() {
     renderNeeds();
     renderPlaces();
     renderProfileState();
+    void memoryPanel?.refresh();
     status.textContent = 'Profil silindi.';
     refreshAll();
   });
@@ -230,80 +232,45 @@ function mountProfile() {
     });
   }
 }
-
-/* ---- Hafızam ----------------------------------------------------------------------------- */
-function renderMemory() {
-  const list = $('#memory-list');
-  const empty = $('#memory-empty');
-  list.innerHTML = memory.map((e) => `<li class="memory-item"><span><b>${esc(e.label)}</b><br>`
-    + `<span class="memory-meta">${esc(e.key)} · eklendi ${dateTime(e.added_at)}</span></span>`
-    + `<button type="button" class="btn" data-forget="${esc(e.key)}">Sil</button></li>`).join('');
-  empty.hidden = memory.length > 0;
-  $('#memory-clear').hidden = memory.length === 0;
-}
-
-function mountMemory() {
-  renderMemory();
-  $('#memory-list').addEventListener('click', (evt) => {
-    const btn = evt.target.closest('button[data-forget]');
-    if (!btn) return;
-    memory = removeMemory(btn.dataset.forget);
-    renderMemory();
-    renderProfileState();
-    $('#memory-status').textContent = 'Kayıt silindi.';
-    refreshAll();
-  });
-  $('#memory-clear').addEventListener('click', () => {
-    clearMemory();
-    memory = readMemory();
-    renderMemory();
-    renderProfileState();
-    $('#memory-status').textContent = 'Hafıza temizlendi.';
-    refreshAll();
-  });
-}
-
-function acceptSuggestion(suggestion) {
-  if (!suggestion || !suggestion.key) return false;
-  memory = addMemory(suggestion);
-  renderMemory();
-  renderProfileState();
-  refreshAll();
-  return profile.consent
-    ? 'Eklendi. Hafızam bölümünde görünür; istediğin an silebilirsin.'
-    : 'Bu tarayıcıda Hafızam\'a eklendi. Sunucuya gönderilmesi için Profilim\'de onay kutusunu işaretle.';
-}
-
 /* ---- Sohbetlerim: conversations stay on this device (js/conversations.js), 30 days ----------- */
-let conversationId = null;
-let saving = Promise.resolve();
 let savedList = null;
-
 function keepTurn(turn) {
-  saving = saving.then(async () => {
-    if (!conversationId) conversationId = (await newConversation()).id;
-    await saveTurn(conversationId, turn);
-    savedList?.refresh();
-  }).catch(() => {});
+  return session?.keepTurn(turn).then(() => savedList?.refresh()).catch(() => {
+    savedList?.announce('Bu mesaj tarayıcıda saklanamadı. Sohbet geçmişini kontrol edip yeniden deneyin.');
+  });
 }
-
 function mountSaved(chat) {
-  purgeOlderThan(30).catch(() => {});
   const root = $('#convo-root');
   if (!root) return;
+  session = mountConversationSession({ chat, root });
   savedList = mountConversations({
-    root,
-    onOpen: (conversation) => { conversationId = conversation.id; chat.loadHistory(conversation.turns.slice(-HISTORY_TURNS * 2)); },
-    onNew: (conversation) => { conversationId = conversation.id; chat.loadHistory([]); },
+    root, memoryStore, activeId: () => session.activeId(),
+    onOpen: (conversation) => session.open(conversation.id),
+    onNew: () => session.startNew(),
+    onDelete: async (id) => {
+      const removed = await session.deleteConversation(id);
+      await memoryPanel?.refresh();
+      return removed;
+    },
+    onClearAll: async () => {
+      const cleared = await session.clearConversations();
+      await memoryPanel?.refresh();
+      return cleared;
+    },
   });
 }
-
+function personalChanged() {
+  profile = readProfile();
+  memory = readMemory();
+  renderProfileState();
+  void memoryPanel?.refresh();
+  refreshAll();
+}
 /* ---- boot -------------------------------------------------------------------------------- */
 function boot() {
   mountToggles();
   if (MOCK) $('#data-mode').hidden = false;
   mountProfile();
-  mountMemory();
   const arrivalForm = $('#arrival-form');
   arrivalForm.line.value = DEFAULT_ARRIVAL.line;
   arrivalForm.stop.value = DEFAULT_ARRIVAL.stop;
@@ -314,9 +281,21 @@ function boot() {
   $('#cards-refresh').addEventListener('click', () => refreshAll(true));
   const chat = mountChat({
     log: $('#chat-log'), form: $('#chat-form'), input: $('#chat-input'), submit: $('#chat-submit'), status: $('#chat-status'),
-    getNeeds: needs, onMemorySuggestion: acceptSuggestion, onTurn: keepTurn,
+    getNeeds: needs, onMemorySuggestion: () => false, onTurn: keepTurn,
   });
   mountSaved(chat);
+  session?.bindFullSubmit($('#chat-form'), $('#chat-input'));
+  memoryPanel = mountMemoryPanel($('#hafizam'), { store: memoryStore, session, getProfile: () => profile,
+    onChanged: personalChanged });
+  mountMemorySuggestions({ store: memoryStore, session, onChanged: personalChanged,
+    legacyLog: $('#chat-log'), chatForm: $('#chat-form'), chatInput: $('#chat-input'), onLocalTurn: keepTurn });
+  mountDataReset($('#hesabim'), { store: memoryStore, session, onChanged: () => {
+    profile = readProfile();
+    personalChanged();
+    renderNeeds();
+    renderPlaces();
+    void savedList?.refresh();
+  } });
   mountHome({ form: $('#chat-form'), input: $('#chat-input') });
   document.querySelectorAll('.chip[data-ask]').forEach((chip) => {
     chip.addEventListener('click', () => { $('#chat-input').value = chip.dataset.ask; $('#chat-form').requestSubmit(); });
@@ -329,5 +308,4 @@ function boot() {
     if (document.visibilityState === 'visible') { quietly(); timer = setInterval(quietly, REFRESH_MS); }
   });
 }
-
 boot();
