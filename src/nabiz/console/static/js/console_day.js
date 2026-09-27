@@ -12,6 +12,7 @@ let section = document.getElementById('day');
 let refresh = null;
 let loading = false;
 let handoff = '';
+let displayedDecisionCount = null;
 
 function shell() {
   section = section || document.createElement('section');
@@ -85,7 +86,9 @@ function showMessage(markup) {
   message.hidden = false;
   const value = section.querySelector('#brief-value');
   value.classList.add('is-empty');
+  value.classList.remove('is-number-entering');
   value.textContent = 'Vardiya özeti gösterilemiyor.';
+  displayedDecisionCount = null;
   section.querySelector('#day-content').hidden = true;
 }
 
@@ -96,12 +99,23 @@ function render(data) {
   const humanDecisions = (Number(data.today.approved) || 0)
     + (Number(data.today.rejected) || 0) + (Number(data.today.deferred) || 0);
   const value = section.querySelector('#brief-value');
+  const enterNumber = humanDecisions > 0
+    && (displayedDecisionCount === null || displayedDecisionCount !== humanDecisions);
+  displayedDecisionCount = humanDecisions;
   if (humanDecisions === 0) {
     value.classList.add('is-empty');
+    value.classList.remove('is-number-entering');
     value.textContent = 'Bugün henüz insan kararı yok.';
   } else {
     value.classList.remove('is-empty');
     value.textContent = int(humanDecisions);
+    if (enterNumber && numberMotionAllowed()) {
+      value.classList.remove('is-number-entering');
+      void value.offsetWidth;
+      value.classList.add('is-number-entering');
+    } else {
+      value.classList.remove('is-number-entering');
+    }
   }
   const metric = (label, count, yesterday) => `<div><dt>${label}</dt><dd>${Number.isFinite(count) ? int(count) : 'henüz yok'}</dd>`
     + `${Number.isFinite(yesterday) ? `<span>dün ${int(yesterday)}</span>` : ''}</div>`;
@@ -138,6 +152,12 @@ function render(data) {
     handoff = data.handoff;
     section.querySelector('#day-handoff').value = handoff;
   }
+}
+
+function numberMotionAllowed() {
+  return !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    && document.documentElement.dataset.motion !== 'reduce'
+    && document.documentElement.dataset.simple !== 'on';
 }
 
 async function load() {

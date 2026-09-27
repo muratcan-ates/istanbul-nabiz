@@ -19,6 +19,7 @@
 .brief-lead { display: grid; gap: var(--space-1); }
 .brief-value.is-empty { font-size: var(--text-md); line-height: var(--leading-body); }
 .day .brief-context { font-size: var(--text-sm); }
+.day .brief-value { transform-origin: center; }
 .day .brief-metrics { gap: var(--space-3); padding-block: var(--space-3); border-block: 1px solid var(--nd-line); }
 .day .brief-metrics dd { font-size: var(--text-xl); }
 .day .brief-metrics > div > span { color: var(--text-subtle); font-size: var(--text-sm); }
@@ -102,3 +103,17 @@
   .day-table tr { border: 1px solid CanvasText; }
   #day-handoff { border: 1px solid CanvasText; }
 }
+
+@keyframes brief-count-enter {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) { :root:not([data-motion="reduce"]):not([data-simple="on"]) .day .brief-value.is-number-entering:not(.is-empty) { animation: brief-count-enter var(--nd-dur-enter) var(--nd-ease-enter) 1 both; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .day .brief-value.is-number-entering { opacity: 1; transform: none; }
+}
+
+:root[data-motion="reduce"] .day .brief-value.is-number-entering,
+:root[data-simple="on"] .day .brief-value.is-number-entering { opacity: 1; transform: none; }
