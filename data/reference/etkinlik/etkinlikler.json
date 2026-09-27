@@ -1,0 +1,452 @@
+{
+ "source": "Kültür AŞ · kultur.istanbul",
+ "source_url": "https://kultur.istanbul/",
+ "captured_at": "2026-09-27T00:39:34+00:00",
+ "user_agent": "istanbul-nabiz-ogrenci-projesi/1",
+ "requests": 4,
+ "license": null,
+ "license_note": "Sitede açık veri lisansı bulunamadı; yalnız ad, tarih metni, mekân, tür ve bağlantı saklandı. Görsel ve tanıtım metni saklanmadı.",
+ "robots": {
+  "url": "https://kultur.istanbul/robots.txt",
+  "checked_with": "urllib.robotparser"
+ },
+ "home_events": [
+  {
+   "link": "https://kultur.istanbul/etkinlik/okur-yazar-bulusmasi/",
+   "title": "Okur Yazar Buluşması",
+   "date_text": "03-10-2026 15:00",
+   "venue": "İstanbul Kitapçısı Kadıköy Şubesi",
+   "types": [
+    "İmza Günü",
+    "Okur yazar buluşması",
+    "Ücretsiz"
+   ],
+   "type_slugs": [
+    "imza-gunu",
+    "okur-yazar-bulusmasi",
+    "ucretsiz"
+   ]
+  },
+  {
+   "link": "https://kultur.istanbul/etkinlik/sanat-rotasi/",
+   "title": "Sanat Rotası",
+   "date_text": "26-09-2026 13:00",
+   "venue": "Sadberk Hanım Müzesi",
+   "types": [
+    "Sergi",
+    "Ücretsiz"
+   ],
+   "type_slugs": [
+    "sergi",
+    "ucretsiz"
+   ]
+  },
+  {
+   "link": "https://kultur.istanbul/etkinlik/istanbul-arasi/",
+   "title": "İstanbul Arası",
+   "date_text": "25-09-2026 20:00 - 25-09-2026",
+   "venue": "Kabataş İskelesi",
+   "types": [
+    "Deneyim",
+    "Konser",
+    "Performans",
+    "Satışta",
+    "Tiyatro"
+   ],
+   "type_slugs": [
+    "deneyim",
+    "konser",
+    "performans",
+    "satista",
+    "tiyatro"
+   ]
+  },
+  {
+   "link": "https://kultur.istanbul/etkinlik/harbiye-acik-hava-etkinlikleri/",
+   "title": "Harbiye Açık Hava etkinlikleri",
+   "date_text": "02-05-2026 - 11-10-2026",
+   "venue": "Harbiye Cemil Topuzlu Açık Hava Tiyatrosu",
+   "types": [
+    "Konser",
+    "Performans",
+    "Satışta"
+   ],
+   "type_slugs": [
+    "konser",
+    "performans",
+    "satista"
+   ]
+  },
+  {
+   "link": "https://kultur.istanbul/etkinlik/contemporary-istanbul/",
+   "title": "Contemporary Istanbul",
+   "date_text": "23-09-2026",
+   "venue": "Tersane İstanbul",
+   "types": [
+    "Sergi"
+   ],
+   "type_slugs": [
+    "sergi"
+   ]
+  }
+ ],
+ "types": [
+  {
+   "id": 110,
+   "count": 0,
+   "name": "Atölye &amp; Eğitim",
+   "slug": "atolye"
+  },
+  {
+   "id": 2041,
+   "count": 0,
+   "name": "Bale",
+   "slug": "bale"
+  },
+  {
+   "id": 88,
+   "count": 0,
+   "name": "Çocuklar için",
+   "slug": "cocuklar-icin-2"
+  },
+  {
+   "id": 1083,
+   "count": 1,
+   "name": "Deneyim",
+   "slug": "deneyim"
+  },
+  {
+   "id": 1119,
+   "count": 0,
+   "name": "Dinleti",
+   "slug": "dinleti"
+  },
+  {
+   "id": 2021,
+   "count": 0,
+   "name": "Drama",
+   "slug": "drama"
+  },
+  {
+   "id": 1433,
+   "count": 0,
+   "name": "Ertelendi",
+   "slug": "ertelendi"
+  },
+  {
+   "id": 324,
+   "count": 0,
+   "name": "Festival",
+   "slug": "festival"
+  },
+  {
+   "id": 197,
+   "count": 0,
+   "name": "Film Gösterimi",
+   "slug": "film-gosterimi"
+  },
+  {
+   "id": 746,
+   "count": 0,
+   "name": "Fuar",
+   "slug": "fuar"
+  },
+  {
+   "id": 1996,
+   "count": 0,
+   "name": "Gezi",
+   "slug": "gezi"
+  },
+  {
+   "id": 2028,
+   "count": 1,
+   "name": "İmza Günü",
+   "slug": "imza-gunu"
+  },
+  {
+   "id": 229,
+   "count": 0,
+   "name": "İptal",
+   "slug": "iptal"
+  },
+  {
+   "id": 3,
+   "count": 5,
+   "name": "Konser",
+   "slug": "konser"
+  },
+  {
+   "id": 893,
+   "count": 0,
+   "name": "Masal",
+   "slug": "masal"
+  },
+  {
+   "id": 1529,
+   "count": 0,
+   "name": "Müzikal",
+   "slug": "muzikal"
+  },
+  {
+   "id": 2027,
+   "count": 1,
+   "name": "Okur yazar buluşması",
+   "slug": "okur-yazar-bulusmasi"
+  },
+  {
+   "id": 284,
+   "count": 2,
+   "name": "Performans",
+   "slug": "performans"
+  },
+  {
+   "id": 1708,
+   "count": 0,
+   "name": "Radar İstanbul",
+   "slug": "radar_istanbul"
+  },
+  {
+   "id": 2024,
+   "count": 0,
+   "name": "Radar Türkiye",
+   "slug": "radar-turkiye"
+  },
+  {
+   "id": 42,
+   "count": 3,
+   "name": "Satışta",
+   "slug": "satista"
+  },
+  {
+   "id": 122,
+   "count": 0,
+   "name": "Seminer",
+   "slug": "seminer"
+  },
+  {
+   "id": 5,
+   "count": 6,
+   "name": "Sergi",
+   "slug": "sergi"
+  },
+  {
+   "id": 126,
+   "count": 1,
+   "name": "Söyleşi",
+   "slug": "soylesi"
+  },
+  {
+   "id": 216,
+   "count": 0,
+   "name": "Stand Up",
+   "slug": "stand-up"
+  },
+  {
+   "id": 4,
+   "count": 1,
+   "name": "Tiyatro",
+   "slug": "tiyatro"
+  },
+  {
+   "id": 43,
+   "count": 0,
+   "name": "Tükendi",
+   "slug": "tukendi"
+  },
+  {
+   "id": 41,
+   "count": 5,
+   "name": "Ücretsiz",
+   "slug": "ucretsiz"
+  },
+  {
+   "id": 2020,
+   "count": 1,
+   "name": "Yetişkinler için",
+   "slug": "yetiskinler-icin"
+  }
+ ],
+ "listings": [
+  {
+   "id": 43140,
+   "link": "https://kultur.istanbul/etkinlik/ilhan-ersahins-istanbul-sessions/",
+   "title": "İlhan Ersahin’s İstanbul Sessions",
+   "modified_gmt": "2026-09-24T11:36:02",
+   "type_ids": [
+    3
+   ],
+   "venue_ids": [
+    2015
+   ]
+  },
+  {
+   "id": 43120,
+   "link": "https://kultur.istanbul/etkinlik/piksel-avi/",
+   "title": "Piksel Avı",
+   "modified_gmt": "2026-09-23T08:09:16",
+   "type_ids": [
+    41,
+    2020
+   ],
+   "venue_ids": [
+    846
+   ]
+  },
+  {
+   "id": 43106,
+   "link": "https://kultur.istanbul/etkinlik/okur-yazar-bulusmasi/",
+   "title": "Okur Yazar Buluşması",
+   "modified_gmt": "2026-09-24T11:39:12",
+   "type_ids": [
+    2028,
+    2027,
+    41
+   ],
+   "venue_ids": [
+    64
+   ]
+  },
+  {
+   "id": 43090,
+   "link": "https://kultur.istanbul/etkinlik/contemporary-istanbul/",
+   "title": "Contemporary Istanbul",
+   "modified_gmt": "2026-09-23T07:19:46",
+   "type_ids": [
+    5
+   ],
+   "venue_ids": []
+  },
+  {
+   "id": 43088,
+   "link": "https://kultur.istanbul/etkinlik/sanat-rotasi-3/",
+   "title": "Sanat Rotası",
+   "modified_gmt": "2026-09-21T08:19:31",
+   "type_ids": [
+    5
+   ],
+   "venue_ids": [
+    433
+   ]
+  },
+  {
+   "id": 43080,
+   "link": "https://kultur.istanbul/etkinlik/sanat-rotasi-2/",
+   "title": "Sanat Rotası",
+   "modified_gmt": "2026-09-21T07:50:56",
+   "type_ids": [
+    5
+   ],
+   "venue_ids": []
+  },
+  {
+   "id": 43033,
+   "link": "https://kultur.istanbul/etkinlik/cok-dusunuyoruz/",
+   "title": "Çok Düşünüyoruz",
+   "modified_gmt": "2026-09-16T10:27:02",
+   "type_ids": [
+    126,
+    41
+   ],
+   "venue_ids": [
+    846
+   ]
+  },
+  {
+   "id": 42990,
+   "link": "https://kultur.istanbul/etkinlik/sanat-rotasi/",
+   "title": "Sanat Rotası",
+   "modified_gmt": "2026-09-21T08:24:57",
+   "type_ids": [
+    5,
+    41
+   ],
+   "venue_ids": [
+    2074
+   ]
+  },
+  {
+   "id": 42880,
+   "link": "https://kultur.istanbul/etkinlik/terasta-caz/",
+   "title": "Terasta Caz",
+   "modified_gmt": "2026-09-01T06:59:57",
+   "type_ids": [
+    3,
+    41
+   ],
+   "venue_ids": [
+    64
+   ]
+  },
+  {
+   "id": 42525,
+   "link": "https://kultur.istanbul/etkinlik/istanbul-arasi/",
+   "title": "İstanbul Arası",
+   "modified_gmt": "2026-09-16T10:53:36",
+   "type_ids": [
+    1083,
+    3,
+    284,
+    42,
+    4
+   ],
+   "venue_ids": []
+  },
+  {
+   "id": 41445,
+   "link": "https://kultur.istanbul/etkinlik/koltuk-senin/",
+   "title": "Koltuk Senin",
+   "modified_gmt": "2026-08-31T10:45:45",
+   "type_ids": [
+    3
+   ],
+   "venue_ids": [
+    1552
+   ]
+  },
+  {
+   "id": 40829,
+   "link": "https://kultur.istanbul/etkinlik/dusler-zamani-japonya/",
+   "title": "Düşler Zamanı: Japonya",
+   "modified_gmt": "2026-09-18T17:13:57",
+   "type_ids": [
+    42,
+    5
+   ],
+   "venue_ids": [
+    2009
+   ]
+  },
+  {
+   "id": 39849,
+   "link": "https://kultur.istanbul/etkinlik/gelenekselin-izinde-istanbul-ii/",
+   "title": "“Gelenekselin İzinde İstanbul II”",
+   "modified_gmt": "2026-04-08T13:11:54",
+   "type_ids": [
+    5
+   ],
+   "venue_ids": [
+    904
+   ]
+  },
+  {
+   "id": 35198,
+   "link": "https://kultur.istanbul/etkinlik/harbiye-acik-hava-etkinlikleri/",
+   "title": "Harbiye Açık Hava etkinlikleri",
+   "modified_gmt": "2026-09-23T05:45:51",
+   "type_ids": [
+    3,
+    284,
+    42
+   ],
+   "venue_ids": [
+    1552
+   ]
+  }
+ ],
+ "not_captured": [
+  {
+   "url": "https://kultur.istanbul/etkinlikler/",
+   "reason": "Liste JavaScript ile yükleniyor; veri alınamadı."
+  }
+ ]
+}
