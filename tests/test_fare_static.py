@@ -230,7 +230,7 @@ def test_fare_catalogs_match_module_fallbacks_and_have_equal_placeholders() -> N
         assert set(re.findall(r"\{(\w+)\}", turkish)) == set(re.findall(r"\{(\w+)\}", CATALOG["en"][key]))
     for language in ("tr", "en"):
         page_catalog = json.loads((I18N / f"{language}.json").read_text(encoding="utf-8"))
-        assert not (set(page_catalog) & set(CATALOG[language]))
+        assert all(page_catalog[k] == v for k, v in CATALOG[language].items())  # P00 G3: moved into the page catalogues
 
 
 def test_new_module_has_no_bare_turkish_or_untranslated_surface_copy() -> None:

@@ -28,6 +28,7 @@ from nabiz.console.scenario_store import SavedJourneys, ScenarioStore
 def _client(tmp_path: pathlib.Path, monkeypatch, *, reader: SavedJourneys | None = None, clock=None):
     path = tmp_path / "scenarios.db"
     monkeypatch.setenv("NABIZ_SCENARIOS_DB_PATH", str(path))
+    monkeypatch.setenv("NABIZ_JOURNEY_WATCH_DB_PATH", str(tmp_path / "journey_watch.sqlite"))  # E65 joined in P00 G3
     settings = offline_settings()
     nabiz = Nabiz(
         SourceContext.create(
@@ -118,7 +119,7 @@ def test_run_matches_measured_demo_and_persists_with_private_errors(tmp_path, mo
         assert body["routes"][0]["sample"] is True
         assert body["closure"]["hypothetical"] is True
         assert body["counts"]["affected"] == 1
-        assert body["saved"]["status"] == "missing"
+        assert body["saved"]["status"] == "no_table"  # E65 present (P00 G3), its store not created yet
         assert counts == {"stations": 1, "snapshot": 1}
         assert source_snapshots and all(record.code != "nabiz-scenario" for record in source_snapshots[0].records)
         assert engine.states() == states_before

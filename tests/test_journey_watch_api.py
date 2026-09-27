@@ -213,3 +213,37 @@ def test_account_check_maps_an_unwired_journey_port_to_503(tmp_path, monkeypatch
         import asyncio
 
         asyncio.run(nabiz.aclose())
+
+
+def test_deleting_the_account_deletes_its_saved_journeys(tmp_path, monkeypatch) -> None:
+    """P00 G3 (E65 note): "Hesabımı ve verilerimi sil" leaves no journey row behind, and no store means none saved."""
+    app, nabiz = make_app(tmp_path)
+    try:
+        account_a, token_a = app.state.accounts.create(email="journey-a@example.com", provider="ibb", consent=True)
+        account_b, token_b = app.state.accounts.create(email="journey-b@example.com", provider="ibb", consent=True)
+        with TestClient(app) as client:
+            for token in (token_a, token_b):
+                saved = client.post("/api/account/journeys", json={"journey": journey(1, "Kadıköy", "Levent"), "consent": True},
+                                    headers={"x-nabiz-account": token})
+                assert saved.status_code in {200, 201}
+            gone = client.delete("/api/account", headers={"x-nabiz-account": token_a}).json()
+        assert gone["deleted"] is True and gone["journeys_deleted"] == 1
+        store = app.state.journey_watch_store
+        assert store.delete_account(account_a.id) == 0 and store.delete_account(account_b.id) == 1
+    finally:
+        import asyncio
+
+        asyncio.run(nabiz.aclose())
+    absent = tmp_path / "never" / "journey_watch.sqlite"
+    monkeypatch.setenv("NABIZ_JOURNEY_WATCH_DB_PATH", str(absent))
+    bare, bare_nabiz = make_app(tmp_path / "bare")
+    bare.state.journey_watch_store = None
+    try:
+        _, token = bare.state.accounts.create(email="journey-c@example.com", provider="ibb", consent=True)
+        with TestClient(bare) as client:
+            assert client.delete("/api/account", headers={"x-nabiz-account": token}).json()["journeys_deleted"] == 0
+        assert not absent.exists()
+    finally:
+        import asyncio
+
+        asyncio.run(bare_nabiz.aclose())

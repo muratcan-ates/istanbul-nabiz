@@ -77,7 +77,7 @@ function addStylesheet(doc) {
 
 function mountScenario(doc = globalThis.document) {
   if (!doc?.getElementById || doc.getElementById('scenario')) return null;
-  const anchor = doc.getElementById('citizen-requests') || doc.getElementById('day');
+  const anchor = doc.getElementById('scenario-mount') || doc.getElementById('citizen-requests') || doc.getElementById('day');
   if (!anchor) return null;
   const section = doc.createElement('section'); section.id = 'scenario'; section.className = 'scenario';
   section.setAttribute('aria-labelledby', 'scenario-title'); anchor.after(section); addStylesheet(doc);

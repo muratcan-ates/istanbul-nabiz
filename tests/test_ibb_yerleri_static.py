@@ -276,8 +276,10 @@ def test_owned_module_keys_are_absent_from_files_owned_by_other_lanes() -> None:
         "src/nabiz/console/static/js/map_layers.js",
         "src/nabiz/console/static/index.html",
         "src/nabiz/console/static/sw.js",
-        "src/nabiz/console/app.py",
         "src/nabiz/console/static/js/home.js",
     ):
         source = (REPO_ROOT / relative).read_text(encoding="utf-8")
         assert "ibb_yerleri" not in source and "ibb-places" not in source
+    # P00 G3 wired the back end: app.py now names the router, and nothing else of E79.
+    app = (REPO_ROOT / "src/nabiz/console/app.py").read_text(encoding="utf-8")
+    assert "from nabiz.console.ibb_yerleri_api import ibb_yerleri_routes" in app and "ibb-places" not in app

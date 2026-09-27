@@ -253,5 +253,6 @@ def test_styles_and_mounting_stay_inside_console_boundaries() -> None:
         assert "console_scenario" not in path.read_text(encoding="utf-8")
     console = (STATIC / "console.html").read_text(encoding="utf-8")
     assert 'id="citizen-requests"' in console
+    assert 'id="scenario-mount"' in console and js.index("'scenario-mount'") < js.index("'citizen-requests'")  # P00 G3
     checked = subprocess.run(["node", "--check", str(JS)], cwd=ROOT, text=True, capture_output=True)
     assert checked.returncode == 0, checked.stderr

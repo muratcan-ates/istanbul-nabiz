@@ -208,7 +208,7 @@ def test_catalog_matches_ui_fallbacks_and_english_is_complete(tmp_path: Path) ->
     assert values == list(CATALOG["en"].values())
     for language in ("tr", "en"):
         surface = json.loads((STATIC / "i18n" / f"{language}.json").read_text(encoding="utf-8"))
-        assert not set(CATALOG[language]).intersection(surface)
+        assert all(surface[k] == v for k, v in CATALOG[language].items())  # P00 G3: moved into the page catalogues
 
 
 def test_step_voice_ui_copy_has_no_bare_turkish_literals() -> None:
