@@ -2282,7 +2282,7 @@ come without a model.
 
 ### Consequences
 
-- `chat.py` is 389 lines. The knowledge index's model path is still not wired. The input guard's sentence
+- `chat.py` is 389 lines. The knowledge index's model path was wired on 27 Sep (#70). The input guard's sentence
   (`text_guard.py`) and "Doğrulamak için 153 Çözüm Merkezi'ni ara." stay Turkish on the English page.
 
 ## 51. The new sections in English (E40, 26 Sep)
@@ -2644,3 +2644,99 @@ answers citing the gold page first.
 - FastAPI 0.14x nests included routers, so the fallback opens them through `effective_route_contexts`; a FastAPI
   upgrade that renames it turns refused requests' lines into `<unmatched>`, never the raw path
   (`tests/test_request_log_paths.py`).
+
+## 67. Follow-up questions keep place, topic and time; a correction outranks the follow-up (E62, 27 Sep)
+
+### Decision
+
+- Follow-up questions keep place, topic and time from closed vocabularies; a correction replaces the old value and
+  outranks the E38 follow-up; nothing is stored (E62). `context_slots.py` is pure: it replays only this chat's
+  history as the page sends it, and a slot takes a value only from a closed list, so free text never enters one.
+- `chat_pipeline.layer_turn` asks `context_turn` when the E38 layer says `pass` or `followup`: "Kadıköy değil Kartal"
+  becomes the Kartal question, "Kadıköy değil" asks which place, "baştan başlayalım" drops the context. After a
+  correction or a reset the model does not see the earlier questions on that turn (`LayerOutcome.keep_context`).
+- Why: with the real place list, the E38 layer answered "Kadıköy değil" with the Kadıköy car park (E62 note). Wired
+  in P00 G1 under Murat's P00 brief (27 Sep).
+
+### Consequences
+
+- On the rule path a time slot other than now appears in the rewritten question, but the answer is still the
+  current record and the template does not yet say there is no forecast (templates owner).
+- Memory (P02) must not fill these slots: they read only the chat's own history.
+
+## 68. A place is a whole Turkish token; a service intent is not a place lookup (E64, 27 Sep)
+
+### Decision
+
+- Place names match whole Turkish tokens with case endings; a service intent is not a place lookup and falls
+  through to the knowledge path (E64). `agent.route` uses `place_guard.find_place` and takes only a
+  `places_resolve` fallback from `place_guard.fallback_tool`; `_find_place` is gone and `agent.py` is back at its
+  445-line ceiling.
+- Why: a substring match answered "Elektrik faturamı kontrol et" with a place. Returning `ibb_services_search` from
+  the rule path was tried and rejected: it broke three knowledge-path tests and fell to a generic tool template
+  (E64 note).
+
+### Consequences
+
+- "Fatiha suresi nedir?" still matches Fatih, a known limit. On the model path the model picks the tools and
+  `place_guard` does not run.
+
+## 69. Sentence-level citations, computed after the answer (E63, 27 Sep)
+
+### Decision
+
+- Sentence-level citations, source dates and a value conflict flag, computed after the answer; the newer source is
+  named, neither is judged (E63). The chat's knowledge turn adds `how.citation_map`, and each conflict adds
+  "kaynak çelişkisi: cümle n" to `how.uncertainty`; the `final` key set does not change.
+- `POST /api/knowledge/citations` (`citation_api.py`) is not wired: the chat already carries the map, and a
+  separate endpoint would widen the surface with no caller (Murat, 27 Sep, P00 default decision 4).
+
+### Consequences
+
+- Most İBB pages give no date, so most sources say the page gives none. An unsupported sentence with "153" in it
+  counts as a referral, "153 TL" included (E63 note, risk 1).
+
+## 70. The knowledge model path: claims cite evidence ids, the rule gate still decides (E78, 27 Sep)
+
+### Decision
+
+- The knowledge model path: claims cite evidence ids and fall back to the quote; the rule gate still decides (E78).
+  `knowledge_turn.py`, one helper for E63 and E78, builds a generator only online and for a non-sensitive question;
+  offline the rule path answers exactly as before. The author comes from the wrapper ("kural", "model",
+  "yerel model"); `how.generation` carries status, reason, label and drop counts, never the question or a quote.
+- The window stays today's: `_from_knowledge` runs only when the rule path says out of scope (Murat, 27 Sep, P00
+  default decision 3, not asked again). This replaces #50's "model path is still not wired".
+
+### Consequences
+
+- The model rarely writes here: the knowledge path is mostly reached when no model has room. A real model's
+  acceptance rate is not measured (Murat's step, `--generate model`).
+- The chat turn and the generator share one `SpendGuard`; the generator is outside the chat's model-turn limit.
+
+## 71. Knowledge editor: unanswered questions and source candidates (E74, 27 Sep)
+
+### Decision
+
+- Knowledge editor: unanswered questions from operator requests and eval sets, tagged missing / wrong route /
+  stale; the operator proposes source candidates, tries them offline against the current index, approves or undoes
+  with a ledger line; approval queues for ingest, never edits the index (E74).
+- Nine endpoints under `/api/console/knowledge-editor`, behind the console's door. The console shows it in a new
+  closed disclosure, "Bilgi ve planlama", with no new left-menu link (P00 console layout).
+- `data/knowledge/source_candidates.jsonl` is written by the running server and gitignored (P00 default; the E74
+  note had proposed committing it).
+
+### Consequences
+
+- Not measured: "Değerlendirme sorularını ölç" needs the robots copy under `data/knowledge/`, so no number is
+  claimed yet.
+- A request reference is an unsalted hash of the code; the request log writes the route template (#66), so the
+  reference never reaches the log.
+- The candidate card has its own primary button, inside a closed disclosure (E74 note, risk 3).
+
+## 72. data.ibb.gov.tr's `/api/` is developer access, at least 10 s apart (27 Sep)
+
+### Decision
+
+- data.ibb.gov.tr `/api/` was used as developer access; requests at least 10 s apart; the crawler rules
+  ("tarayıcı kuralları") were applied in knowledge collection (Murat, 27 Sep; the handoff note said this was not
+  yet written into the repository).

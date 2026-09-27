@@ -65,6 +65,7 @@ from nabiz.console.how_api import how_routes
 from nabiz.console.journey_api import accessible_journey_route
 from nabiz.console.kill_switch_api import chat_gate, kill_switch_routes
 from nabiz.console.knowledge_api import knowledge_routes
+from nabiz.console.knowledge_editor_api import knowledge_editor_routes
 from nabiz.console.map_layers_api import map_layers_routes
 from nabiz.console.model_api import model_routes
 from nabiz.console.nearby_api import nearby_router
@@ -361,6 +362,8 @@ def build_console_app(
     app.include_router(outcome_routes)
     app.include_router(history_routes)
     app.include_router(knowledge_routes)
+    # E74: knowledge editor; approval queues a source for ingest and never edits the index.
+    app.include_router(knowledge_editor_routes)
     # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).
     app.include_router(quick_routes)
     app.include_router(open_data_routes)

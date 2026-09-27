@@ -41,9 +41,9 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from ibb_mcp.models import utcnow
-from nabiz.agent import templates_i18n
+from nabiz.agent import context_slots, templates_i18n
 from nabiz.agent.agent import detect_language
-from nabiz.agent.layers import LayerReply, TurnLayer, classify_turn, layer_reply
+from nabiz.agent.layers import LayerReply, TurnLayer, classify_turn, layer_reply, load_phrases
 from nabiz.console import policy, text_guard
 from nabiz.console.cards import Mode, mode_for
 from nabiz.console.emergency_model import MODEL_RULE_ID
@@ -96,6 +96,7 @@ class LayerOutcome:
     question: str
     parts: list[str]
     kind: str
+    keep_context: bool = True  # E62: after a correction or a reset the model no longer sees the earlier questions
 
 
 @dataclass(frozen=True)
@@ -173,12 +174,35 @@ def layer_turn(message: str, earlier: Sequence[str], places: Sequence[str], lang
     """Classify a masked turn and return fixed replies, a rewritten question or split parts."""
     turn: TurnLayer = classify_turn(message, earlier, places=places)
     localized = {**turn, "lang": lang}
+    # E62: a correction or a reset outranks the E38 follow-up ("Kadıköy değil" is not a Kadıköy question).
+    kind = localized["kind"]
+    if kind in {"pass", "followup"} and (context := context_turn(message, earlier, places, lang, kind)):
+        return context
     return LayerOutcome(
         reply=layer_reply(localized),
         question=localized["message"],
         parts=list(localized["parts"]),
         kind=localized["kind"],
     )
+
+
+def context_turn(
+    message: str, earlier: Sequence[str], places: Sequence[str], lang: str, kind: str
+) -> LayerOutcome | None:
+    """E62: a short follow-up or a correction completed from closed vocabularies; nothing is stored."""
+    res = context_slots.resolve(message, earlier, places=places, lang=lang)
+    if kind == "followup" and res.action not in {"correction", "clarify", "reset"}:
+        return None  # the E38 layer's own follow-up stands
+    if res.action in {"followup", "correction"}:
+        return LayerOutcome(None, res.question, [res.question], "followup", keep_context=res.action == "followup")
+    if res.action == "clarify":
+        page = "en" if lang == "en" else "tr"
+        text = context_slots.CLARIFY_PLACE[page] if res.ask == "places" else load_phrases()["clarify"]["generic"][page]
+        reply: LayerReply = {"answer": text, "mode": "clarify", "rule_id": "layer:clarify", "handoff": False}
+        return LayerOutcome(reply, message, [message], "unclear")
+    if kind == "pass" or res.action == "reset":
+        return LayerOutcome(None, message, [message], "pass", keep_context=res.action != "reset")
+    return None
 
 
 def sse(event: str, data: dict[str, Any]) -> str:

@@ -24,9 +24,11 @@ import asyncio
 import json
 import math
 import os
+import re
 import sqlite3
 import sys
 from collections import Counter
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
@@ -64,29 +66,111 @@ def read_rows(path: Path, source: str) -> list[dict[str, Any]]:
     return rows
 
 
-async def measure(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+class FakeKnowledgeModel:
+    """Offline deterministic reply used only by the calibration's fake mode."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def __call__(self, config: Any, messages: list[dict[str, str]], **_kwargs: Any) -> dict[str, Any]:
+        self.calls += 1
+        user = next(item for item in reversed(messages) if item.get("role") == "user")
+        payload = json.loads(user["content"])
+        source = payload["sources"][0]
+        quote = source["quote"]
+        first = re.split(r"(?<=[.!?])\s+", quote.strip())[0]
+        number = 987654321
+        while str(number) in quote or str(number) in payload["question"]:
+            number += 1
+        if first[-1:] in {".", "!", "?"}:
+            invented = f"{first[:-1]} {number}{first[-1]}"
+        else:
+            middle = len(first) // 2
+            invented = f"{first[:middle]} {number} {first[middle:]}"
+        claims = [
+            {"text": first, "evidence_ids": [source["evidence_id"]]},
+            {"text": invented, "evidence_ids": [source["evidence_id"]]},
+            {"text": first, "evidence_ids": ["fake-evidence-id"]},
+        ]
+        return {
+            "content": json.dumps({"mode": "answer", "claims": claims}, ensure_ascii=False),
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+            "provider": config.provider,
+        }
+
+
+async def measure(
+    rows: list[dict[str, Any]],
+    generate: str = "off",
+    *,
+    config: Any = None,
+    guard: Any = None,
+) -> list[dict[str, Any]]:
     from ibb_mcp.knowledge import answer as knowledge_answer
     from ibb_mcp.knowledge import open_from_env, search
     from ibb_mcp.knowledge.answer import assess_evidence, evidence_thresholds
     from ibb_mcp.text import looks_like_instruction
+    from nabiz.agent import llm
     from nabiz.console.policy import refuses
+
+    if generate not in {"off", "fake", "model"}:
+        raise ValueError("generate must be off, fake, or model")
+    if generate != "off":
+        from nabiz.console.budget import BudgetConfig, SpendGuard
+        from nabiz.console.knowledge_generate import answer_with_model, build_generator
+
+        if generate == "fake":
+            from unittest.mock import patch
+
+            config = llm.LlmConfig(base_url="http://model.invalid/v1", model="fake-model", provider="openai_compatible")
+            guard = SpendGuard(BudgetConfig(state_path=None))
+            chat_patch = patch.object(llm, "chat", FakeKnowledgeModel())
+        else:
+            guard = guard or SpendGuard(BudgetConfig.from_env())
+            chat_patch = nullcontext()
+    else:
+        chat_patch = nullcontext()
 
     store, _ = open_from_env()
     if store is None:
         raise SystemExit("no knowledge index at NABIZ_KNOWLEDGE_DB (default data/knowledge/knowledge.db)")
     thresholds = evidence_thresholds()
     out = []
-    for row in rows:
-        question = row["question"]
-        sensitive = refuses(question)
-        hits = [hit for hit in await search(store, question, embedder=None, limit=8) if not looks_like_instruction(hit.quote)]
-        verdict = assess_evidence(hits, query=question, **thresholds)
-        found = await knowledge_answer(question, store=store, embedder=None, sensitive=sensitive)
-        gold = {canonical(url) for url in row["gold_urls"]}
-        ranks = [index for index, hit in enumerate(hits, start=1) if canonical(hit.url) in gold]
-        cited = [hit.url for hit in found.citations]
-        out.append(
-            {
+    with chat_patch:
+        for row in rows:
+            question = row["question"]
+            sensitive = refuses(question)
+            hits = [hit for hit in await search(store, question, embedder=None, limit=8) if not looks_like_instruction(hit.quote)]
+            verdict = assess_evidence(hits, query=question, **thresholds)
+            baseline = None
+            generation_row = None
+            if generate == "off":
+                found = await knowledge_answer(question, store=store, embedder=None, sensitive=sensitive)
+            else:
+                from nabiz.console.knowledge_generate import answer_with_model, build_generator
+
+                baseline = await knowledge_answer(question, store=store, embedder=None, sensitive=sensitive)
+                generated = await answer_with_model(
+                    question,
+                    store=store,
+                    embedder=None,
+                    sensitive=sensitive,
+                    generator=build_generator(config, guard, lang="tr"),
+                )
+                found = generated.answer
+                generation_row = {
+                    "status": generated.generation["status"],
+                    "reason": generated.generation["reason"],
+                    "dropped": generated.generation["dropped"],
+                    "claims": len(generated.generation["claims"]),
+                    "called": generated.rung is not None,
+                    "answered_off": baseline.mode in ANSWERED,
+                    "author": generated.author,
+                }
+            gold = {canonical(url) for url in row["gold_urls"]}
+            ranks = [index for index, hit in enumerate(hits, start=1) if canonical(hit.url) in gold]
+            cited = [hit.url for hit in found.citations]
+            measured = {
                 **row,
                 "sensitive": sensitive,
                 "top_url": hits[0].url if hits else None,
@@ -102,8 +186,30 @@ async def measure(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "cited_urls": cited,
                 "cited_is_gold": bool(gold) and bool(cited) and all(canonical(url) in gold for url in cited[:1]),
             }
-        )
+            if generation_row is not None:
+                measured["generation"] = generation_row
+            out.append(measured)
     return out
+
+
+def generation_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    generated = [row["generation"] for row in rows if "generation" in row]
+    dropped = {
+        key: sum(item["dropped"].get(key, 0) for item in generated)
+        for key in ("shape", "unknown_id", "url_or_quote", "unfaithful", "unsupported", "over_limit")
+    }
+    reasons = Counter(
+        item["reason"] for item in generated if item["status"] == "declined" and item["reason"] is not None
+    )
+    return {
+        "called": sum(item["called"] for item in generated),
+        "accepted": sum(item["status"] == "accepted" for item in generated),
+        "declined_by_reason": dict(sorted(reasons.items())),
+        "dropped": dropped,
+        "answered_off": sum(item["answered_off"] for item in generated),
+        "answered_with_model": sum(row["mode"] in ANSWERED for row in rows),
+        "negative_answered": sum(row["group"] == "negatif" and row["mode"] in ANSWERED for row in rows),
+    }
 
 
 def chat_modes(rows: list[dict[str, Any]]) -> None:
@@ -218,11 +324,12 @@ def grid(rows: list[dict[str, Any]], fts_values: list[float], coverage_values: l
     return results
 
 
-def run(args: argparse.Namespace) -> int:
+def run(args: argparse.Namespace, *, config: Any = None, guard: Any = None) -> int:
     rows = read_rows(SET_PATH, "calibration")
     if args.seed:
         rows = read_rows(Path(args.seed), "seed") + rows
-    measured = asyncio.run(measure(rows))
+    generate = getattr(args, "generate", "off")
+    measured = asyncio.run(measure(rows, generate, config=config, guard=guard))
     if args.chat:
         chat_modes(measured)
     from ibb_mcp.knowledge.answer import evidence_thresholds
@@ -235,10 +342,14 @@ def run(args: argparse.Namespace) -> int:
         "summary": summary(measured),
         "rows": measured,
     }
+    if generate != "off":
+        result["generation_summary"] = generation_summary(measured)
     text = json.dumps(result, ensure_ascii=False, indent=1)
     if args.json:
         Path(args.json).write_text(text + "\n", encoding="utf-8")
     brief = {"label": args.label, "thresholds": result["thresholds"], "summary": result["summary"]}
+    if generate != "off":
+        brief["generation_summary"] = result["generation_summary"]
     print(json.dumps(brief, ensure_ascii=False, indent=1))
     return 0
 
@@ -438,12 +549,45 @@ def _parse_values(raw: str, name: str, *, maximum: float | None = None) -> list[
     return values
 
 
+def _run_grid(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.generate != "off":
+        parser.error("--generate cannot be combined with --grid")
+    if not args.json:
+        parser.error("--grid needs --json to save its results")
+    if args.chat:
+        parser.error("--grid cannot be combined with --chat")
+    try:
+        fts_values = _parse_values(args.grid[0], "FTS_LIST")
+        coverage_values = _parse_values(args.grid[1], "COV_LIST", maximum=1.0)
+    except ValueError as exc:
+        parser.error(str(exc))
+    rows = read_rows(SET_PATH, "calibration")
+    if args.seed:
+        rows = read_rows(Path(args.seed), "seed") + rows
+    result = {"label": args.label, "grid": grid(rows, fts_values, coverage_values)}
+    Path(args.json).write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps({"label": args.label, "grid_rows": len(result["grid"])}, ensure_ascii=False, indent=1))
+    return 0
+
+
+def _model_runtime() -> tuple[Any, Any]:
+    from nabiz.agent import llm
+    from nabiz.console.budget import BudgetConfig, SpendGuard
+
+    config = llm.LlmConfig.from_env(probe=False)
+    if not llm.available(config):
+        print("model yapılandırılmadı", file=sys.stderr)
+        return None, None
+    return config, SpendGuard(BudgetConfig.from_env())
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--seed", help="research seed JSONL (id, question, gold_urls, sensitive)")
     parser.add_argument("--json", help="write the run here")
     parser.add_argument("--label", default="run")
     parser.add_argument("--chat", action="store_true", help="also ask /api/chat in-process, offline, rules only")
+    parser.add_argument("--generate", choices=("off", "fake", "model"), default="off")
     parser.add_argument("--grid", nargs=2, metavar=("FTS_LIST", "COV_LIST"), help="comma-separated FTS and coverage lists")
     parser.add_argument("--report", nargs=2, metavar=("BEFORE", "AFTER"), help="render two runs as a Markdown table")
     parser.add_argument("--md", help="Markdown output for --report")
@@ -457,23 +601,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--grid-json requires --report")
     _offline_environment()
     if args.grid:
-        if not args.json:
-            parser.error("--grid needs --json to save its results")
-        if args.chat:
-            parser.error("--grid cannot be combined with --chat")
-        try:
-            fts_values = _parse_values(args.grid[0], "FTS_LIST")
-            coverage_values = _parse_values(args.grid[1], "COV_LIST", maximum=1.0)
-        except ValueError as exc:
-            parser.error(str(exc))
-        rows = read_rows(SET_PATH, "calibration")
-        if args.seed:
-            rows = read_rows(Path(args.seed), "seed") + rows
-        result = {"label": args.label, "grid": grid(rows, fts_values, coverage_values)}
-        Path(args.json).write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-        print(json.dumps({"label": args.label, "grid_rows": len(result["grid"])}, ensure_ascii=False, indent=1))
-        return 0
-    return run(args)
+        return _run_grid(args, parser)
+    if args.generate == "model":
+        config, guard = _model_runtime()
+        if config is None:
+            return 2
+    else:
+        config = guard = None
+    return run(args, config=config, guard=guard)
 
 
 if __name__ == "__main__":

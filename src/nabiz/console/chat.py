@@ -33,7 +33,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from ibb_mcp.http import RateLimitExceeded, UpstreamUnavailable
-from ibb_mcp.knowledge import answer as knowledge_answer
 from ibb_mcp.knowledge import open_from_env
 from nabiz.agent import llm
 from nabiz.agent.agent import PROMPT_PATH, AgentAnswer, NabizAgent
@@ -46,6 +45,7 @@ from nabiz.console.budget import FREE_PROVIDERS, SpendGuard
 from nabiz.console.cards import display_text
 from nabiz.console.chat_pipeline import FinalFields, context_messages, earlier_questions, sse, system_prompt
 from nabiz.console.emergency_model import model_emergency
+from nabiz.console.knowledge_turn import knowledge_turn
 from nabiz.console.pii_guard import mask, mask_turn, pii_final_fields
 from nabiz.console.policy import emergency_card, functional_needs, memory_suggestion, names_a_price
 
@@ -192,8 +192,8 @@ class ChatService:
     ) -> tuple[list[str], list[dict[str, str]], pipeline.LayerOutcome]:
         with turn.trace.step("maske"):
             earlier = [mask(text)[0] for text in earlier_questions(request.history)]
-            context = context_messages(earlier)
             layer = pipeline.layer_turn(question, earlier, self._place_names(), turn.lang)
+            context = context_messages(earlier) if layer.keep_context else []
         if layer.kind in {"followup", "split"}:
             with turn.trace.step("katman"):
                 turn.trace.mark("gecti")
@@ -319,7 +319,9 @@ class ChatService:
         if store is None:
             return None
         try:
-            found = await knowledge_answer(question, store=store, embedder=embedder, sensitive=sensitive)
+            found, author, extra = await knowledge_turn(
+                self, question, store=store, embedder=embedder, sensitive=sensitive, lang=turn.lang
+            )
         except Exception as exc:  # noqa: BLE001 - a broken index must not break the turn
             log.warning("knowledge answer failed, keeping the fixed text: %s", type(exc).__name__)
             return None
@@ -337,12 +339,13 @@ class ChatService:
             return fallback
         text = fixed_text("UNKNOWN", turn.lang) if found.mode == "unknown" else found.text
         if (stopped := pipeline.output_guard(
-            display_text(text), cited, found.author, turn.started, trace, turn.lang
+            display_text(text), cited, author, turn.started, trace, turn.lang
         )) is not None:
             return searched + stopped
         how = pipeline.empty_how(turn.started, rule_id="knowledge", trace=trace)
+        how |= {**extra, "uncertainty": how["uncertainty"] + extra["uncertainty"]}  # E63 map, E78 generation
         fields = FinalFields(refused=found.refused, how=how, mode=found.mode, steps=list(found.steps) or None)
-        return searched + pipeline.answer_events(display_text(text), cited, found.author, turn.suggestion, fields)
+        return searched + pipeline.answer_events(display_text(text), cited, author, turn.suggestion, fields)
 
     def _reserve_rung(self) -> llm.LlmConfig | None:
         """The rung this turn runs on, with room for a whole turn held on it; ``None`` for the rules.
