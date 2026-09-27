@@ -434,3 +434,66 @@ async def fetch_all(
     """Fetch reviewed sources politely; robots policy precedes uncached page requests."""
     session = _FetchSession(client, pathlib.Path(cache_dir), min_interval_s, refresh, user_agent)
     return await session.run(sources)
+
+
+# -- the knowledge editor's approved candidates (E74 → ingest → index → E78) ------------------------------
+#: Events the editor writes (``nabiz.console.knowledge_editor_store``) and the two this step adds. The file
+#: only grows: a candidate's state is its last line, and "indexed" or "removed" is a new line, never an edit.
+APPROVED, UNDONE, INDEXED, REMOVED = "approved", "undone", "indexed", "removed"
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateStep:
+    """What the ingest does with one candidate: ``fetch``, ``remove``, or a reason it does nothing."""
+
+    candidate_id: int
+    url: str
+    host: str
+    action: str
+    row: dict
+
+
+def read_candidates(path: str | pathlib.Path) -> list[dict]:
+    """The candidate file's rows in order; a line that is not a JSON object is skipped."""
+    rows = []
+    for line in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and isinstance(row.get("candidate_id"), int) and row.get("url"):
+            rows.append(row)
+    return rows
+
+
+def plan_candidates(rows: list[dict], allowlist: frozenset[str] = ALLOWLIST) -> list[CandidateStep]:
+    """One step per candidate from its last line: approved and not yet indexed → ``fetch`` (or why not);
+    undone after it was indexed → ``remove``; anything else → ``skip:<state>``."""
+    last: dict[int, dict] = {}
+    indexed: set[int] = set()
+    for row in rows:
+        if row.get("event") in {INDEXED, REMOVED}:
+            (indexed.add if row["event"] == INDEXED else indexed.discard)(row["candidate_id"])
+            continue
+        last[row["candidate_id"]] = row
+    steps, seen = [], set()
+    for cid, row in last.items():
+        url = canonical_url(str(row.get("canonical_url") or row["url"]))
+        host = (urlsplit(url).hostname or "").lower()
+        if row.get("event") == APPROVED and row.get("status_after", APPROVED) == APPROVED:
+            action = "skip:indexed" if cid in indexed else "fetch"
+            if action == "fetch" and not is_allowed_url(url, allowlist):
+                action = "refused:allowlist"
+            elif action == "fetch" and url in seen:
+                action = "skip:duplicate"
+            seen.add(url)
+        else:
+            action = "remove" if cid in indexed else f"skip:{row.get('event') or 'unknown'}"
+        steps.append(CandidateStep(cid, url, host, action, row))
+    return steps
+
+
+def candidate_source(step: CandidateStep) -> Source:
+    """The fetch row for an approved candidate; a ``.pdf`` path is read as PDF."""
+    kind = "pdf" if urlsplit(step.url).path.lower().endswith(".pdf") else "html"
+    return Source(step.url, step.host, str(step.row.get("category") or "aday"), "orta", "E74 aday", True, kind)
