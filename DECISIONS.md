@@ -3239,3 +3239,71 @@ answers citing the gold page first.
 ### Consequences
 
 - Appeal retention (a purge after a decision) is D2b's; until then kvkk says there is none.
+
+## 106. Chat shell and ChatCard v1 in the product (P01, P00 D2a, 27 Sep)
+
+### Decision
+
+- The citizen page is one conversation surface with one composer (P01). The chat `final` carries `cards`: each passes
+  `chat_cards.validate_card` (a v0 producer card through `from_v0`), at most six, and an emergency final carries none.
+- A ChatCard action is published as `nabiz:card-action`; a card with an action nobody handles says so and saves
+  nothing. The share action sends only the card's title and one https source (`share.js`); a memory card draws no
+  action row (its own card asks).
+- The builder is `chat_cards.make_card(type_, title, **fields)`: one name, one meaning beside `cards.card`.
+- The shell's texts (`ui.shell.*`, `ui.cards.*`) are in `tr.json`/`en.json` as P01's tests hold them; sw v18 caches
+  the card modules.
+
+### Consequences
+
+- Card producers beyond the memory card (route, map, event, status) are D2b's: each feature wires its own card.
+
+## 107. History and memory stay in the browser (P02, P00 D2a, 27 Sep)
+
+### Decision
+
+- Conversations are kept in this browser for 30 days from last use; at 80 turns a conversation continues in a new
+  one without deleting the old. Memory (interests, frequent places, functional needs, a person's own health
+  statement) lives only in this browser, is not linked to an account and never follows to another device. Only the
+  functional need keys a person confirmed reach the server; a health statement reaches no request, operator or
+  calendar.
+- A memory suggestion is offered on the second declaration and saved only on confirmation; forgetting keeps the
+  old conversation text and stops the suggestion for 30 days.
+- kvkk's device table names `nabiz.memory.v2` and `nabiz.memory.forgotten.v1`; the texts (`ui.memory.*`,
+  `ui.history.*`, `ui.reset.*`) are in the shared catalogues.
+
+### Consequences
+
+- 21 P02 strings (announcements, demo rows, interest and need labels) have no catalogue entry yet; the i18n test
+  lists them and the list may only shrink (D2b).
+
+## 108. Citizen navigation placement (P00 D2a, 27 Sep)
+
+### Decision
+
+- Citizen navigation placement (27 Sep): Asistan, Takvim, Hesabım; city status, journey, map and nearby under
+  Asistan > More; follow in Hesabım; easy screen in the top bar; open data moved to the operator console. No function
+  removed.
+- Every old address still opens its view (`#city-cards`, `#city-tools`, `#map-workspace`, `#explore-workspace`,
+  `#acik-veri`, `#takip`, `#profilim`, `#hafizam`, `/kolay.html`); the wave's citizen modules mount in Hesabım, a
+  More workspace or the chat, never on the home screen.
+
+### Consequences
+
+- `day_plan` (E73) and `skills` (E72) are not on the page yet: their files were outside this round's write list.
+
+## 109. Microsoft sign-in and Outlook tokens wait for a declared crypto dependency (J, P00 D2a, 27 Sep)
+
+### Decision
+
+- Outlook stays closed: no token store, no Graph client, no `NABIZ_MS_*` name in `.env.example`.
+- Keeping a Microsoft refresh token needs encryption at rest (the brief's Fernet with `NABIZ_TOKEN_KEY`). Fernet is in
+  `cryptography`, which is installed here only as another package's dependency: it is neither in `pyproject.toml` nor
+  in `nabiz.console`'s dependency set, and both files are outside this round's write list. Hand-written encryption is
+  not an option. So J (common-tenant sign-in with issuer and tenant checks, the Graph grant, the encrypted token store,
+  the Outlook connect and delete routes) moves to the start of D2b.
+
+### Consequences
+
+- MURAT ONAYI: declare `cryptography` (for example in a new extra) and its `DEPENDENCY_SETS` entry, or choose another
+  key store; then J lands with its tests (`test_provider_tokens.py`, `test_graph_grant.py`). The erasure chain's
+  `outlook_tokens` hook already fails closed when a store cannot delete.
