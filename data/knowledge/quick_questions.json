@@ -167,6 +167,26 @@
       "soru_en": null,
       "eval_id": "k-genel-05",
       "source_url": "https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142"
+    },
+    {
+      "id": "official-yardim",
+      "kategori": "sosyal-destek",
+      "kind": "official",
+      "soru_tr": "Hangi İBB yardımını alabilirim?",
+      "soru_en": "What support can I get from İBB?",
+      "arac": "official_path",
+      "kaynak": "data/official_paths.json#yardim-sosyal",
+      "source_url": null
+    },
+    {
+      "id": "official-iski-fatura",
+      "kategori": "iski-fatura",
+      "kind": "official",
+      "soru_tr": "İSKİ faturamı kontrol et",
+      "soru_en": "Check my İSKİ bill",
+      "arac": "official_path",
+      "kaynak": "data/official_paths.json#iski",
+      "source_url": null
     }
   ]
 }

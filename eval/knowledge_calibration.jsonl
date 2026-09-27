@@ -65,3 +65,15 @@
 {"id": "n-24", "group": "negatif", "question": "Elektrik kesintisi ne zaman bitecek?", "gold_urls": []}
 {"id": "n-25", "group": "negatif", "question": "Cep telefonu faturası nasıl ödenir?", "gold_urls": []}
 {"id": "n-26", "group": "negatif", "question": "Uçak bileti iptali nasıl yapılır?", "gold_urls": []}
+{"id": "y-01", "group": "yardim", "question": "Hangi İBB yardımını alabilirim?", "gold_urls": ["https://sosyalhizmetler.ibb.gov.tr/haberdetay.aspx?ID=9142"]}
+{"id": "y-02", "group": "yardim", "question": "Engelli bireyler için hangi İBB desteklerinden yararlanabilirim?", "gold_urls": ["https://sosyalhizmetler.ibb.gov.tr/mudurlukdetay.aspx?ID=9"]}
+{"id": "y-03", "group": "yardim", "question": "Yaşlılar için hangi İBB destekleri var?", "gold_urls": ["https://saglik.ibb.istanbul/yasli-hizmetleri/"]}
+{"id": "y-04", "group": "yardim", "question": "Hangi öğrenci desteklerinden yararlanabilirim?", "gold_urls": ["https://sosyalhizmetler.ibb.gov.tr/sayfadetay.aspx?ID=1028"]}
+{"id": "r-01", "group": "resmi-yol", "question": "İSKİ abonelik iptali nasıl yapılır?", "gold_urls": ["https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-iptal-islemleri/"]}
+{"id": "r-02", "group": "resmi-yol", "question": "Öğrenci kartı vizesi nasıl yapılır?", "gold_urls": ["https://www.istanbulkart.istanbul/"]}
+{"id": "r-03", "group": "resmi-yol", "question": "Kabataş Adalar vapuru saatleri", "gold_urls": ["https://sehirhatlari.istanbul/tr/seferler/ic-hatlar"]}
+{"id": "r-04", "group": "resmi-yol", "question": "153 başvurumun durumunu nasıl öğrenirim?", "gold_urls": ["https://istanbulsenin.istanbul/sikca-sorulan-sorular/"]}
+{"id": "n-27", "group": "negatif", "question": "Elektrik faturamı kontrol et", "gold_urls": []}
+{"id": "n-28", "group": "negatif", "question": "Banka hesabımı listele", "gold_urls": []}
+{"id": "n-29", "group": "negatif", "question": "Cep telefonu faturamı öde", "gold_urls": []}
+{"id": "n-30", "group": "negatif", "question": "Vergi borcumu sorgula", "gold_urls": []}
