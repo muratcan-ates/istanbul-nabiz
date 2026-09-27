@@ -307,7 +307,7 @@ const target = {{insertAdjacentHTML(_where, html) {{
 }}}};
 const main={{focus(){{focusCount+=1;}}}};
 const doc={{activeElement:{{}},head:{{append(){{}}}},
-  querySelector(selector){{if(selector==='#city-cards' && hasAnchor)return target;return null;}},
+  querySelector(selector){{if(selector==='#chat-log' && hasAnchor)return target;return null;}},
   getElementById(id){{if(id==='ziyaretci')return currentSection;if(id==='main')return main;return null;}},
   createElement(){{return {{}};}}}};
 const absent=visitor.mountVisitor(doc);

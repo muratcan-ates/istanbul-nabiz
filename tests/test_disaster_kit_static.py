@@ -162,8 +162,9 @@ def test_client_has_one_read_request_and_only_two_storage_keys() -> None:
     assert set(re.findall(r"'nabiz\.disaster\.[^']+'", source)) == {"'nabiz.disaster.v1'", "'nabiz.disaster.catalog.v1'"}
     for absent in ('type="file"', "getUserMedia", "geolocation", "setInterval", "MutationObserver", "addEventListener('scroll'"):
         assert absent not in source
-    assert "disaster_kit" not in (STATIC / "index.html").read_text(encoding="utf-8")
-    assert "disaster_kit" not in (STATIC / "sw.js").read_text(encoding="utf-8")
+    # P00 D2a (K) bound the page: loaded once, in the offline shell with its sheet.
+    assert (STATIC / "index.html").read_text(encoding="utf-8").count('src="/js/disaster_kit.js"') == 1
+    assert "'/js/disaster_kit.js', '/css/disaster_kit.css'" in (STATIC / "sw.js").read_text(encoding="utf-8")
 
 
 def test_styles_keep_print_scope_motion_and_tokens_local() -> None:

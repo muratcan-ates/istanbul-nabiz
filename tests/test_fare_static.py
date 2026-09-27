@@ -284,8 +284,9 @@ def test_static_contracts_hold_for_network_privacy_motion_and_layout() -> None:
     banned = ("hakkınız var", "yararlanırsınız", "ücretsiz binersiniz", "size en uygun")
     for phrase in banned:
         assert phrase not in js.casefold()
-    assert "fare.js" not in (STATIC / "index.html").read_text(encoding="utf-8")
-    assert "fare.js" not in (STATIC / "sw.js").read_text(encoding="utf-8")
+    # P00 D2a (K) bound the page: loaded once, in the offline shell.
+    assert (STATIC / "index.html").read_text(encoding="utf-8").count('src="/js/fare.js"') == 1
+    assert "'/js/fare.js', '/css/fare.css'" in (STATIC / "sw.js").read_text(encoding="utf-8")
     symbols = set(re.findall(r'<symbol id="i-([\w-]+)"', (STATIC / "icons.svg").read_text(encoding="utf-8")))
     assert set(re.findall(r"icon\('([\w-]+)'", js)) <= symbols
 

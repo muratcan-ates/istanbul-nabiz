@@ -64,6 +64,10 @@
 <script type="module" src="/js/pwa.js"></script>
 <script type="module" src="/js/arrival_confidence.js"></script>
 <script type="module" src="/js/journey.js"></script>
+<!-- P00 D2a (K): the wave's citizen modules; each mounts in Hesabım, Takvim, a More workspace or the chat, never
+     on the home screen (owner's navigation). day_plan.js (E73) and skills.js (E72) wait for their own lanes. -->
+<script type="module" src="/js/journey_watch.js"></script>
+<script type="module" src="/js/escort.js"></script>
 <script type="module" src="/js/nearby.js"></script>
 <script type="module" src="/js/voice.js"></script>
 <!-- E27: report by voice; the intent is read on this device and the spoken sentence is never sent. -->
@@ -76,8 +80,15 @@
 <script type="module" src="/js/open_data.js"></script>
 <script type="module" src="/js/map.js"></script>
 <script type="module" src="/js/map_layers.js"></script>
+<script type="module" src="/js/ibb_yerleri.js"></script>
 <!-- E30: libraries and museums open now, after the Yakınımda section; recorded hours, no occupancy, no map. -->
 <script type="module" src="/js/culture.js"></script>
+<script type="module" src="/js/booking.js"></script>
+<script type="module" src="/js/troubleshoot.js"></script>
+<script type="module" src="/js/recovery.js"></script>
+<script type="module" src="/js/bill.js"></script>
+<script type="module" src="/js/fare.js"></script>
+<script type="module" src="/js/disaster_kit.js"></script>
 <script type="module" src="/js/trip.js"></script>
 <!-- a11y.css and map.css are linked above (their modules skip a sheet already present); nearby.js,
      voice.js and share.js add their own sheets when they mount. Leaflet loads from /vendor on demand. -->
@@ -85,12 +96,17 @@
 <script type="module" src="/js/disclosure.js"></script>
 <!-- E06: Türkçe/English page copy; it owns the language buttons below. -->
 <script type="module" src="/js/i18n.js"></script>
+<script type="module" src="/js/visitor.js"></script>
 <script type="module" src="/js/feedback.js"></script>
 <script type="module" src="/js/report.js"></script>
+<script type="module" src="/js/report_timeline.js"></script>
 <!-- B04: the on-device 153 handoff card; it adds its own sheet. -->
 <script type="module" src="/js/handoff.js"></script>
+<script type="module" src="/js/step_voice.js"></script>
 <!-- Operatöre aktar + çeviri: the consent form and the request card that asks for the reply every 20 s. -->
 <script type="module" src="/js/request_status.js"></script>
+<script type="module" src="/js/photo_report.js"></script>
+<script type="module" src="/js/outage_watch.js"></script>
 <!-- Wave-1 citizen modules (E01, E02, E14, E16, E20, E03): each watches the chat or its own mount point. -->
 <script type="module" src="/js/emergency.js"></script>
 <script type="module" src="/js/agency.js"></script>
@@ -98,10 +114,14 @@
 <script type="module" src="/js/char_counter.js"></script>
 <script type="module" src="/js/service_status.js"></script>
 <script type="module" src="/js/personas.js"></script>
+<script type="module" src="/js/audience.js"></script>
 <!-- DECISIONS #38: the quota strip, the example account (Profilim > Hesap bağla) and Takip ettiklerim. -->
 <script type="module" src="/js/quota_strip.js"></script>
 <script type="module" src="/js/account.js"></script>
 <script type="module" src="/js/follow.js"></script>
+<script type="module" src="/js/family.js"></script>
+<script type="module" src="/js/poll.js"></script>
+<script type="module" src="/js/notices_center.js"></script>
 <script type="module" src="/js/model_strip.js"></script>
 </head>
 <body class="citizen-page">

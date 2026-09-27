@@ -99,7 +99,7 @@ function reportMarkup(view, code, actions = true) {
   return `<section class="ow-box ow-report" aria-labelledby="ow-report-title-${esc(code)}">     <h3 id="ow-report-title-${esc(code)}">#${esc(code)} · ${esc(status)}</h3>     <ul>${confirms}</ul>${note}<p class="field-hint">${view.simulated_note ? esc(t('ui.outage.simulated', 'Örnek: bu teyit İSKİ’ye iletilmez.')) : ''}</p>     ${buttons}   </section>`;
 }
 function mountCitizen(doc) {
-  const cityTools = doc.getElementById('city-tools');
+  const cityTools = doc.getElementById('hesabim');
   if (!cityTools) return null;
   const last = cityTools.querySelectorAll('details.more.tool-detail');
   const details = doc.createElement('details');

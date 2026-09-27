@@ -266,7 +266,7 @@ function directionText(value) {
 }
 
 export function mountBill(doc) {
-  const host = doc.getElementById('city-tools');
+  const host = doc.getElementById('hesabim');
   if (!host || doc.getElementById('fatura')) return;
 
   const link = doc.createElement('link');

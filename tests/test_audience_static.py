@@ -329,7 +329,8 @@ def test_mount_is_lazy_and_requests_only_the_fixed_get(tmp_path) -> None:
         }}
         class FakeDocument {{
           constructor(hasAnchor=true) {{ this.readyState='complete'; this.insertions=[]; this.links=[]; this.ids={{}}; this.section=null; this.head={{ appendChild: (node) => this.links.push(node) }};
-            if (hasAnchor) this.ids['city-cards']=Object.assign(new Element('city-cards'),{{doc:this}});
+            // P00 D2a: the section mounts in Hesabım, after "Size uygun görünüm" (was: before #city-cards).
+            if (hasAnchor) this.ids['appearance-options']=Object.assign(new Element('appearance-options'),{{doc:this}});
             this.ids['chat-form']=new Element('chat-form'); this.ids['chat-form'].requestSubmit=()=>{{this.ids['chat-form'].calls+=1;}};
                 this.ids['chat-input']=new Element('chat-input'); this.ids['profilim']=new Element('profilim');
                 this.ids['persona-open']=new Element('persona-open'); this.ids['persona-open'].click=()=>{{this.ids['persona-open'].calls+=1;}};
@@ -381,7 +382,7 @@ def test_mount_is_lazy_and_requests_only_the_fixed_get(tmp_path) -> None:
     assert value["noAnchorRequests"] == value["noChoiceRequests"] == 0
     assert value["requestCount"] == value["styles"] == 1
     assert value["url"] == "/api/audience" and value["method"] == "GET" and value["body"] is None
-    assert value["insertion"] == "beforebegin"
+    assert value["insertion"] == "afterend"
     assert value["status"] == "1 öneri gösteriliyor."
     assert value["submitted"] == 1 and value["question"] == "M2'de arıza var mı?"
     assert value["personaClicks"] == 1 and value["personaWritten"] is False

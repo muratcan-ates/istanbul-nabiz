@@ -170,8 +170,9 @@ def test_four_assets_have_no_forbidden_motion_or_colour_patterns_and_guard_dom_s
 
 
 def test_modules_do_not_enter_service_worker_shell():
+    # P00 D2a (K) bound the page: only the citizen module and its sheet are cached, never a console file.
     shell = (STATIC / "sw.js").read_text(encoding="utf-8")
-    assert "escort" not in shell.lower()
+    assert "'/js/escort.js', '/css/escort.css'" in shell and "console_escort" not in shell
 
 
 def test_form_has_no_identity_or_free_location_fields_and_g5_is_not_present(tmp_path):

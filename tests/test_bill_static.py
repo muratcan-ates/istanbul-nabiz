@@ -366,9 +366,10 @@ def test_module_requests_only_the_catalogue_and_stores_one_device_key() -> None:
     save_code = source[save_start:save_end]
     assert save_code.index("if (!consent.checked)") < save_code.index("writeBills(updated)")
     assert "localStorage" in source and "nabiz.bill.v1" in source
-    assert 'bill.js' not in (STATIC / "index.html").read_text(encoding="utf-8")
-    assert 'bill.css' not in (STATIC / "sw.js").read_text(encoding="utf-8")
-    assert 'bill.js' not in (STATIC / "sw.js").read_text(encoding="utf-8")
+    # P00 D2a (K) bound the page: the module loads once and is in the offline shell with its sheet.
+    assert (STATIC / "index.html").read_text(encoding="utf-8").count('src="/js/bill.js"') == 1
+    assert "'/js/bill.js'" in (STATIC / "sw.js").read_text(encoding="utf-8")
+    assert "'/css/bill.css'" in (STATIC / "sw.js").read_text(encoding="utf-8")
 
 
 def test_bill_module_is_valid_and_uses_existing_comparison_icons() -> None:

@@ -5,7 +5,7 @@ import { deviceId } from './identity.js';
 import { currentLang, onLang, t } from './i18n_text.js';
 import { cardMarkup } from './poll_view.js';
 
-const ANCHORS = [['#city-cards', 'beforebegin'], ['#asistan', 'afterend']];
+const ANCHORS = [['#hesabim', 'beforeend']];
 const STORAGE_KEY = 'nabiz.poll.v1';
 const STYLESHEET = '/css/poll.css';
 const REFRESH_MS = 600_000;

@@ -227,6 +227,10 @@ def test_kvkk_page_carries_honesty_lines_and_names_every_storage_key() -> None:
         "nabiz.conversations.v1", "nabiz-brief-v2", "nabiz.lang.v1", "nabiz.requests.v1",
         "nabiz.outcome-board.v1",  # P00 G2: the console's outcome board period
         "nabiz.memory.v2", "nabiz.memory.forgotten.v1",  # P00 D2a: P02's memory store and its forget marks
+        # P00 D2a (K): the wave's citizen modules the page now loads
+        "nabiz.photo-reports.v1", "nabiz.poll.v1", "nabiz.notices.seen.v1", "nabiz.audience.v1", "nabiz.ikart.v1",
+        "nabiz.erisim.v1", "nabiz.bill.v1", "nabiz.fare.v1", "nabiz.disaster.v1", "nabiz.disaster.catalog.v1",
+        "nabiz.journey-watch.v1", "nabiz.escort.v1", "nabiz.outage.v1",
     ):
         assert key in page
     assert 'id="kvkk-kisa"' in page

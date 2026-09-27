@@ -61,6 +61,16 @@ const SHELL = [
   // P00 D2a (P02): history and memory (their styles live in conversations.css, already above)
   '/js/conversation_session.js', '/js/data_reset.js', '/js/memory_card.js', '/js/memory_forget.js',
   '/js/memory_store.js', '/js/memory_ui.js',
+  // P00 D2a (K): the wave's citizen modules the page now loads, with their views and styles
+  '/js/step_voice.js', '/js/step_voice_core.js', '/css/step_voice.css', '/js/photo_report.js', '/css/photo_report.css',
+  '/js/family.js', '/js/family_view.js', '/css/family.css', '/js/booking.js', '/css/booking.css',
+  '/js/poll.js', '/js/poll_view.js', '/css/poll.css', '/js/notices_center.js', '/css/notices_center.css',
+  '/js/audience.js', '/js/audience_view.js', '/css/audience.css', '/js/visitor.js', '/js/visitor_view.js', '/css/visitor.css',
+  '/js/troubleshoot.js', '/js/troubleshoot_view.js', '/css/troubleshoot.css',
+  '/js/recovery.js', '/js/recovery_view.js', '/css/recovery.css', '/js/bill.js', '/css/bill.css', '/js/fare.js', '/css/fare.css',
+  '/js/disaster_kit.js', '/css/disaster_kit.css', '/js/journey_watch.js', '/css/journey_watch.css',
+  '/js/escort.js', '/css/escort.css', '/js/report_timeline.js', '/css/report_timeline.css',
+  '/js/outage_watch.js', '/css/outage_watch.css', '/js/ibb_yerleri.js', '/js/ibb_yerleri_view.js', '/css/ibb_yerleri.css',
 ];
 
 function ruleFor(url, method, mode) {

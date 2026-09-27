@@ -83,6 +83,18 @@
           <tr><td>Bildirimlerim: bildirim durum kimlikleri (30 gün)</td><td><code>nabiz.report-codes.v1</code></td><td>Bildirimlerim listesinde Bu cihazdan kaldır ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
           <tr><td>Operatöre ilettiğiniz taleplerin kodları (30 gün)</td><td><code>nabiz.requests.v1</code></td><td>Talep kartında Kartı bu cihazdan kaldır.</td></tr>
           <tr><td>Konsol: sonuç panosunda seçilen dönem (7 ya da 30 gün)</td><td><code>nabiz.outcome-board.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Fotoğraflı bildirimlerinizin durum kodları (30 gün)</td><td><code>nabiz.photo-reports.v1</code></td><td>Hesabım bölümünde fotoğraflı bildirim listesinden kaldırın ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>İstanbul'a Sor: son 20 oy verilen ve son 20 kez ertelenen anketin kimlikleri. Oy tercihiniz saklanmaz.</td><td><code>nabiz.poll.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Güncellemeler: gördüğünüz duyuruların kimlikleri (30 gün)</td><td><code>nabiz.notices.seen.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Size göre öneriler için seçtiğiniz yaş grubu ve ihtiyaçlar</td><td><code>nabiz.audience.v1</code></td><td>Hesabım bölümünde Size göre öneriler içinde seçimi temizleyin.</td></tr>
+          <tr><td>İstanbulkart sorun giderme: denediğiniz adımlar (isterseniz, 30 gün)</td><td><code>nabiz.ikart.v1</code></td><td>Bölümdeki Baştan başla ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Uygulamaya ya da hesaba giriş: denediğiniz adımlar (isterseniz, 30 gün)</td><td><code>nabiz.erisim.v1</code></td><td>Bölümdeki Baştan başla ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Faturamı anla: yazdığınız en çok 12 fatura satırı</td><td><code>nabiz.bill.v1</code></td><td>Faturamı anla bölümünde kaydı silin.</td></tr>
+          <tr><td>Haftalık ücret tahmini için seçtiğiniz yolculuk düzeni</td><td><code>nabiz.fare.v1</code></td><td>Tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Afet hazırlık dosyası: aile planınız ve kontrol listesi; resmî listenin bu cihazdaki kopyası</td><td><code>nabiz.disaster.v1</code>, <code>nabiz.disaster.catalog.v1</code></td><td>Hesabım bölümünde afet dosyasını silin ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
+          <tr><td>Kayıtlı yolculuklarım (hesapsız, bu cihazda)</td><td><code>nabiz.journey-watch.v1</code></td><td>Kayıtlı yolculuklarım listesinde silin.</td></tr>
+          <tr><td>Destek ve refakat talepleri: en çok 5 talep kodu ve özeti; süresi dolan silinir</td><td><code>nabiz.escort.v1</code></td><td>Talep kartında bu cihazdan kaldırın.</td></tr>
+          <tr><td>Evim: ilçe ve mahalleniz, en çok 5 kesinti teyit kodu</td><td><code>nabiz.outage.v1</code></td><td>Evimin suyu ve gazı bölümünde evi ya da talebi cihazdan unutun.</td></tr>
           <tr><td>Çevrimdışı kayıtlı şehir kartları ve çevrimdışı süre notu</td><td><code>nabiz-brief-v2</code>, <code>nabiz.pwa.offlineSince</code>, <code>nabiz.pwa.iosHintClosed</code></td><td>Profilim bölümünde Profili sil ya da tarayıcının bu siteye ait verilerini silin.</td></tr>
         </tbody>
       </table>
@@ -164,11 +176,11 @@
     <p>Çok sık soru gelirse bir dakikalık istek sınırı uygulanır. Sınır bağlantı adresine göre değil, bu tarayıcının rastgele cihaz kimliğinin ya da hesabınızın tuzlanmış özetine göre tutulur; aynı ağı paylaşan kişiler birbirini etkilemez. Otomatik kısıt kapalıdır: yoğun istek yalnız o dakika için sınırlanır. Bir kısıt ancak bir insanın incelemesiyle, kodlanmış bir gerekçeyle ve süreli olarak verilir; yalnız model cevabını ve yüklemeyi kapatır. 112, 153, itiraz, takip ve silme her zaman açıktır. Kısıta itiraz ederseniz yalnız itiraz türü ve durumu tutulur, serbest metin alınmaz; itiraz ve kısıt kaydı sunucu belleğinde tutulur ve hesabınızı silerseniz silinir.</p>
 
     <h2 id="kvkk-ses">Sesle yazma</h2>
-    <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir. Sesle bildirimde söylediğiniz cümle cihazınızda kalır; Nabız sunucusuna yalnız istasyon adı, durum ve zaman gider.</p>
+    <p>Sesle yazma tarayıcının Web Speech API özelliğini kullanır. Nabız'a ses gönderilmez ve ses kaydı tutulmaz. Tarayıcının konuşma tanıma hizmeti sesi kendi sağlayıcısına gönderebilir. Sesle bildirimde söylediğiniz cümle cihazınızda kalır; Nabız sunucusuna yalnız istasyon adı, durum ve zaman gider. Adım adım rotada sesli okuma yalnız siz istediğinizde tarayıcının kendi konuşma sentezini kullanır; Nabız'a ses gönderilmez.</p>
     <p>Sunucu tarafı ses hizmeti bugün kapalıdır. Açıldığında yalnız siz düğmeye bastığınızda çalışır: konuşmanız en çok 30 saniyelik bir ses olarak sunucu üzerinden seçilen ses sağlayıcısına (Azure Speech ya da OpenAI) gider ve düzenleyebileceğiniz bir taslak metin olarak döner; kendiliğinden gönderilmez. Sesli okumada yalnız okunacak cevap metni gider ve üretilen sesin yapay olduğu belirtilir. Ses ve metin sunucuda saklanmaz, günlüğe yazılmaz; her kullanım günlük kotanızdan ve günlük toplam ses sınırından bir hak düşer.</p>
 
     <h2 id="kvkk-toplanmayan">Toplanmayan bilgiler</h2>
-    <p>Uygulama, fotoğraflı bildirimde sizin seçip gönderdiğiniz fotoğraf dışında kamera görüntüsü toplamaz; konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur.</p>
+    <p>Uygulama, fotoğraflı bildirimde sizin seçip gönderdiğiniz fotoğraf dışında kamera görüntüsü toplamaz; konum geçmişi, ses kaydı, kişi skoru veya çerez toplamaz. Hesap bilgisi yalnız açık rızayla bağladığınız örnek hesapta ve yukarıda yazılan kadarıyla tutulur. Size göre öneriler için seçtiğiniz yaş grubu ve ihtiyaçlar sunucuya gönderilmez; bir öneri sorusuna dokunursanız yalnız o soru gider.</p>
 
     <h2 id="kvkk-silme">Bilgileri silme</h2>
     <p>Profilinizi Profilim bölümündeki Profili sil düğmesiyle, hafıza öğelerini Hafızam bölümündeki Tümünü unut düğmesiyle kaldırabilirsiniz. Erişilebilirlik panelindeki Sıfırla tercihleri başlangıç değerlerine döndürür. Geri bildirim sayaçlarını silmek için tarayıcı ayarlarından bu siteye ait verileri temizleyin.</p>
