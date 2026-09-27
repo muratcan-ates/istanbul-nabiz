@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "source_url": "https://akom.ibb.istanbul/sikca-sorulan-sorular/",
+  "title": "Sıkça Sorulan Sorular - AKOM",
+  "institution": "İBB Afet Koordinasyon Merkezi (AKOM)",
+  "fetched_at": "2026-09-27T00:39:29.139542+00:00",
+  "http_status": 200,
+  "source_updated_at": "2022-09-30T13:18:42+03:00",
+  "license": "Belirtilmemiş; resmî kamu sayfası. Yalnız kısa alıntı ve kaynak bağlantısıyla kullanılır.",
+  "user_agent": "istanbul-nabiz-ogrenci-projesi/1",
+  "requests": 2,
+  "robots": {
+    "url": "https://akom.ibb.istanbul/robots.txt",
+    "status": 200,
+    "sha256": "6b59f184451ce6e9144e4d2b31641c40a42690d660d74a8a8a356a5d9592d586",
+    "page_allowed": true
+  },
+  "body_sha256": "1d4de81b4fa0783f0b0752cf5ef426b060bf82e5069d70c418d6c41871e821cb",
+  "lines": [
+    "Sıkça Sorulan Sorular - AKOM",
+    "Skip to content",
+    "×",
+    "Sıkça Sorulan Sorular",
+    "AKOM ne zaman kurulmuştur?",
+    "12 Aralık 2000 tarihinde kurulmuştur.",
+    "* Şubat 2002 tarihinde halihazır AKOM binasına taşınmıştır.",
+    "AKOM’un görevi nedir?",
+    "Her türlü doğal afetin öncesinden bitimine kadar geçen sürede, afetin en az zararla atlatılmasını sağlamak amacıyla, İstanbul Büyükşehir Belediyesine (İBB) bağlı kurumlar arasında iş bölümü, koordinasyon, işbirliğini sağlamak ve İstanbul Valiliği’nden gelecek talimatlar doğrultusunda İstanbul Büyükşehir Belediyesinin üzerine düşen görevleri koordine etmektir.",
+    "AKOM’un şubesi var mıdır?",
+    "Hayır. İstanbul Büyükşehir Belediyesi bünyesinde kurulmuş olan Afet Koordinasyon Merkezi (AKOM) tektir ve şubesi yoktur. Bazı ilçe belediyeleri de kendi birimlerini koordine etmek için bünyelerinde benzer merkezler kurmuşlardır.",
+    "İstanbul’da afet yönetimi AKOM tarafından mı yürütülmektedir?",
+    "Afet Yönetimi merkezde, İçişleri Bakanlığına bağlı Afet ve Acil Durum Yönetim Başkanlığı (AFAD), illerde ise valiliğe bağlı İl Afet ve Acil Durum Müdürlükleri tarafından yürütülmektedir. AKOM, İstanbul Valiliği’nden gelecek talimatlar doğrultusunda İstanbul Büyükşehir Belediyesinin üzerine düşen görevleri koordine etmektedir.",
+    "Okulumuz öğrencileri ile birlikte Afet Koordinasyon Merkezinde Afetlerden Korunma Eğitimi almak istiyoruz? Ne yapmamız gerekir?",
+    "İl Milli Eğitim Müdürlüğüne eğitim sezonunun açılmasına müteakip başvuru yapılması gerekmektedir. Yapılan başvurular İl Milli Eğitim Müdürlüğü ve İstanbul Büyükşehir Belediyesi İnsan Kaynakları ve Eğitim Daire Başkanlığı Eğitim Müdürlüğü tarafından değerlendirilerek eğitim alacak okullar listesi belirlenmektedir. Belirlenen okullara okul sezonu içerisinde haftada 2 gün 50’şerli gruplar halinde AKOM’da Afetlerden Korunma Eğitimi verilmektedir.",
+    "Afet çantasında nelerin olması gerekir?",
+    "Dayanıklı, enerji veren gıdalar (bisküvi v.b.), Su, Hijyenik Eldiven, Yarabandı, Sargı Bezi, Pamuk, Kolonya, Makas, Çekiç, Düdük, Yedek pilleriyle radyo, Yedek pilleriyle fener, Çok amaçlı bıçak,",
+    "İçinde önemli telefon numaralarının, iletişime geçilecek kişilerin bilgilerinin, önemli evrakların fotokopilerinin bulunduğu su geçirmeyen bir dosya",
+    "Bozuk para, Telefon kartı, Mendil, Sürekli kullanılan özel ilaç, Yağmurluk",
+    "Not:",
+    "Yukarıda sıralanan malzemeleri kolay taşınabilecek (sırt çantası vb) bir yerde tutun.",
+    "Çantayı tüm aile fertlerinin bildiği, ulaşması kolay bir yerde tutun. Bu çantanın daha küçük bir eşini de arabanızın bagajında bulundurun.",
+    "Şişe suları 6 ayda bir değiştirerek tazeliğini koruyun, kutulanmış yiyecekleri 6 ayda bir değiştirin.",
+    "Yılda en az bir kez takımların muhteviyatını ve ailenizin gereksinimlerini gözden geçirin.",
+    "Pilleri yenileyin.",
+    "Reçeteli ilaçların saklanması konusunda doktorunuza danışın.",
+    "Bazı mahallelerde bulunan deprem konteynırları AKOM’a mı ait?",
+    "Hayır, deprem konteynırları AKOM’a ait değildir. Bu konteynırlar İstanbul Valiliği’nin İl Afet ve Acil Durum Müdürlüğü tarafından İstanbul’da Her Mahalleye Afet İstasyonu Projesi (AFİS) kapsamında kaymakamlıklarca tespit edilen noktalara konuşlandırılmıştır.",
+    "Kaza yaptım / Arabam çalındı vb. AKOM’dan trafik görüntülerini alabilir miyim?",
+    "Hayır, AKOM’dan trafik görüntü kayıtları verilmemektedir.",
+    "İstanbul’un trafik ve yol durumu ile ilgili bilgiyi AKOM’dan öğrenebilir miyiz?",
+    "İstanbul’un trafik ve yol durumu ile ilgili bilgileri İstanbul Büyükşehir Belediyesi Trafik Kontrol Merkezi web sitesi (https://uym.ibb.gov.tr) ve 44 44 154 nolu telefondan öğrenebilirsiniz.",
+    "Sokakta kalan vatandaşlara AKOM tarafından barınma imkânı sağlanıyor mu?",
+    "Sokakta kalan vatandaşlar, Meteoroloji İşleri Genel Müdürlüğü’nden gelen hava sıcaklığı verilerine göre kış aylarında soğuğa ve donma riskine karşı İstanbul Büyükşehir Belediyesi ekipleri tarafından koruma altına alınmaktadır. Sokaklarda yaşayan vatandaşlar; ambulans, zabıta ve polis ekipleri tarafından bulundukları yerlerden alınarak, onlar için hazırlanmış olan yerlerde misafir edilmektedir. Her vatandaş, önce sağlık kontrolünden geçirilmekte, banyoları yaptırılmakta, tıraş edilerek her biriyle tek tek ilgilenilmektedir.",
+    "AKOM’dan meteorolojik hava tahmin raporunu öğrenebilir miyiz? Geçmişe dönük meteorolojik verileri/raporları alabilir miyiz?",
+    "Hayır. AKOM Meteoroloji Birimi tarafından hazırlanan hava tahmin raporları tamamen İstanbul Büyükşehir Belediyesi birimlerini olumsuz hava koşullarına karşı uyararak gerekli önlemlerin önceden alınmasını sağlamak amacıyla hazırlanmaktadır. Vatandaşlar, hava tahmin raporunu ve geçmişe dönük meteorolojik verileri Meteoroloji İşleri Genel Müdürlüğünden (www.mgm.gov.tr) öğrenebilir veya temin edebilirler.",
+    "AKOM'u Twitter'da takip et!",
+    "Facebook",
+    "Twitter",
+    "Instagram",
+    "Youtube"
+  ],
+  "qa": [
+    {
+      "question": "AKOM ne zaman kurulmuştur?",
+      "answer": [
+        "12 Aralık 2000 tarihinde kurulmuştur.",
+        "* Şubat 2002 tarihinde halihazır AKOM binasına taşınmıştır."
+      ]
+    },
+    {
+      "question": "AKOM’un görevi nedir?",
+      "answer": [
+        "Her türlü doğal afetin öncesinden bitimine kadar geçen sürede, afetin en az zararla atlatılmasını sağlamak amacıyla, İstanbul Büyükşehir Belediyesine (İBB) bağlı kurumlar arasında iş bölümü, koordinasyon, işbirliğini sağlamak ve İstanbul Valiliği’nden gelecek talimatlar doğrultusunda İstanbul Büyükşehir Belediyesinin üzerine düşen görevleri koordine etmektir."
+      ]
+    },
+    {
+      "question": "AKOM’un şubesi var mıdır?",
+      "answer": [
+        "Hayır. İstanbul Büyükşehir Belediyesi bünyesinde kurulmuş olan Afet Koordinasyon Merkezi (AKOM) tektir ve şubesi yoktur. Bazı ilçe belediyeleri de kendi birimlerini koordine etmek için bünyelerinde benzer merkezler kurmuşlardır."
+      ]
+    },
+    {
+      "question": "İstanbul’da afet yönetimi AKOM tarafından mı yürütülmektedir?",
+      "answer": [
+        "Afet Yönetimi merkezde, İçişleri Bakanlığına bağlı Afet ve Acil Durum Yönetim Başkanlığı (AFAD), illerde ise valiliğe bağlı İl Afet ve Acil Durum Müdürlükleri tarafından yürütülmektedir. AKOM, İstanbul Valiliği’nden gelecek talimatlar doğrultusunda İstanbul Büyükşehir Belediyesinin üzerine düşen görevleri koordine etmektedir."
+      ]
+    },
+    {
+      "question": "Okulumuz öğrencileri ile birlikte Afet Koordinasyon Merkezinde Afetlerden Korunma Eğitimi almak istiyoruz? Ne yapmamız gerekir?",
+      "answer": [
+        "İl Milli Eğitim Müdürlüğüne eğitim sezonunun açılmasına müteakip başvuru yapılması gerekmektedir. Yapılan başvurular İl Milli Eğitim Müdürlüğü ve İstanbul Büyükşehir Belediyesi İnsan Kaynakları ve Eğitim Daire Başkanlığı Eğitim Müdürlüğü tarafından değerlendirilerek eğitim alacak okullar listesi belirlenmektedir. Belirlenen okullara okul sezonu içerisinde haftada 2 gün 50’şerli gruplar halinde AKOM’da Afetlerden Korunma Eğitimi verilmektedir."
+      ]
+    },
+    {
+      "question": "Afet çantasında nelerin olması gerekir?",
+      "answer": [
+        "Dayanıklı, enerji veren gıdalar (bisküvi v.b.), Su, Hijyenik Eldiven, Yarabandı, Sargı Bezi, Pamuk, Kolonya, Makas, Çekiç, Düdük, Yedek pilleriyle radyo, Yedek pilleriyle fener, Çok amaçlı bıçak,",
+        "İçinde önemli telefon numaralarının, iletişime geçilecek kişilerin bilgilerinin, önemli evrakların fotokopilerinin bulunduğu su geçirmeyen bir dosya",
+        "Bozuk para, Telefon kartı, Mendil, Sürekli kullanılan özel ilaç, Yağmurluk",
+        "Not:",
+        "Yukarıda sıralanan malzemeleri kolay taşınabilecek (sırt çantası vb) bir yerde tutun.",
+        "Çantayı tüm aile fertlerinin bildiği, ulaşması kolay bir yerde tutun. Bu çantanın daha küçük bir eşini de arabanızın bagajında bulundurun.",
+        "Şişe suları 6 ayda bir değiştirerek tazeliğini koruyun, kutulanmış yiyecekleri 6 ayda bir değiştirin.",
+        "Yılda en az bir kez takımların muhteviyatını ve ailenizin gereksinimlerini gözden geçirin.",
+        "Pilleri yenileyin.",
+        "Reçeteli ilaçların saklanması konusunda doktorunuza danışın."
+      ]
+    },
+    {
+      "question": "Bazı mahallelerde bulunan deprem konteynırları AKOM’a mı ait?",
+      "answer": [
+        "Hayır, deprem konteynırları AKOM’a ait değildir. Bu konteynırlar İstanbul Valiliği’nin İl Afet ve Acil Durum Müdürlüğü tarafından İstanbul’da Her Mahalleye Afet İstasyonu Projesi (AFİS) kapsamında kaymakamlıklarca tespit edilen noktalara konuşlandırılmıştır."
+      ]
+    },
+    {
+      "question": "Kaza yaptım / Arabam çalındı vb. AKOM’dan trafik görüntülerini alabilir miyim?",
+      "answer": [
+        "Hayır, AKOM’dan trafik görüntü kayıtları verilmemektedir."
+      ]
+    },
+    {
+      "question": "İstanbul’un trafik ve yol durumu ile ilgili bilgiyi AKOM’dan öğrenebilir miyiz?",
+      "answer": [
+        "İstanbul’un trafik ve yol durumu ile ilgili bilgileri İstanbul Büyükşehir Belediyesi Trafik Kontrol Merkezi web sitesi (https://uym.ibb.gov.tr) ve 44 44 154 nolu telefondan öğrenebilirsiniz."
+      ]
+    },
+    {
+      "question": "Sokakta kalan vatandaşlara AKOM tarafından barınma imkânı sağlanıyor mu?",
+      "answer": [
+        "Sokakta kalan vatandaşlar, Meteoroloji İşleri Genel Müdürlüğü’nden gelen hava sıcaklığı verilerine göre kış aylarında soğuğa ve donma riskine karşı İstanbul Büyükşehir Belediyesi ekipleri tarafından koruma altına alınmaktadır. Sokaklarda yaşayan vatandaşlar; ambulans, zabıta ve polis ekipleri tarafından bulundukları yerlerden alınarak, onlar için hazırlanmış olan yerlerde misafir edilmektedir. Her vatandaş, önce sağlık kontrolünden geçirilmekte, banyoları yaptırılmakta, tıraş edilerek her biriyle tek tek ilgilenilmektedir."
+      ]
+    },
+    {
+      "question": "AKOM’dan meteorolojik hava tahmin raporunu öğrenebilir miyiz? Geçmişe dönük meteorolojik verileri/raporları alabilir miyiz?",
+      "answer": [
+        "Hayır. AKOM Meteoroloji Birimi tarafından hazırlanan hava tahmin raporları tamamen İstanbul Büyükşehir Belediyesi birimlerini olumsuz hava koşullarına karşı uyararak gerekli önlemlerin önceden alınmasını sağlamak amacıyla hazırlanmaktadır. Vatandaşlar, hava tahmin raporunu ve geçmişe dönük meteorolojik verileri Meteoroloji İşleri Genel Müdürlüğünden (www.mgm.gov.tr) öğrenebilir veya temin edebilirler.",
+        "AKOM'u Twitter'da takip et!",
+        "Facebook",
+        "Twitter",
+        "Instagram",
+        "Youtube"
+      ]
+    }
+  ]
+}
