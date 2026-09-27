@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "checked_at": "2026-09-26",
+  "checked_against": "data/knowledge/knowledge.db, index_built_at 2026-09-26T12:47:01.780726+00:00",
+  "questions": [
+    {"id": "museums", "kind": "museums"},
+    {"id": "airport", "kind": "knowledge", "quotes": [
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "H-1 Mahmutbey Metro - İstanbul Havalimanı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "H-2 Mecidiyeköy - İstanbul Havalimanı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "H-3 Halkalı Marmaray - İstanbul Havalimanı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "H-6 Yunus Emre Mah. - İstanbul Havalimanı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "H-8 Hacıosman/Sarıyer - İstanbul Havalimanı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "SG-2 TAKSİM - SABİHA GÖKÇEN HAVAALANI hattı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "130H DENİZ HARP OKULU-SABİHA GÖKÇEN HAVAALANI hattı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "132H PENDİK YHT - SABİHA GÖKÇEN HAVAALANI hattı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "UM73 SABİHA GÖKÇEN HAVAALANI - SULTANBEYLİ NECİP FAZIL METRO", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "tr": "MR60 PENDİK/PENDİK YHT - SABİHA GÖKÇEN HAVAALANI hattı", "en": null},
+      {"source_url": "https://iett.istanbul/icerik/havalimanlarina-ulasim", "role": "page_date", "tr": "Güncelleme Tarihi : 23 Haziran 2022", "en": "Page updated: 23 June 2022"}
+    ]},
+    {"id": "emergency", "kind": "emergency"},
+    {"id": "istanbulkart", "kind": "knowledge", "quotes": [
+      {"source_url": "https://www.metro.istanbul/Home/SikcaSorulanSorular", "tr": "Metro İstanbul raylı sistem hatlarında, İstanbulkart kullanarak yolculuk edebilirsiniz. İstasyonlarda yer alan Biletmatik makinelerinden depozitosunu ödeyerek kart temin edebilir, kartlarınıza yeni yükleme yapabilirsiniz.", "en": "You can travel on Metro İstanbul's rail lines with an İstanbulkart. You can get a card from the Biletmatik machines in the stations by paying its deposit, and you can load new credit onto your cards."}
+    ]},
+    {"id": "step_free", "kind": "knowledge", "quotes": [
+      {"source_url": "https://www.metro.istanbul/icerik/eri%C5%9Filebilirlik-hizmetleri", "tr": "İstasyonların içerisinde ve girişinde %6 eğimi aşmayan rampalar bulunmaktadır. Bu sayede engelli yolcular, asansörlerin kapılarına kadar basamaksız ve eşiksiz ulaşabilmektedir. Rampa yüzeyleri kaymaz zemin malzemeden yapılmıştır.", "en": "Inside the stations and at their entrances there are ramps no steeper than 6%. This way, passengers with disabilities can reach the lift doors without steps or thresholds. The ramp surfaces are made of non-slip material."},
+      {"source_url": "https://www.metro.istanbul/icerik/eri%C5%9Filebilirlik-hizmetleri", "tr": "Metro İstanbul tramvay hatlarında da erişilebilirlik çalışmaları devam etmektedir. T1 Hattı’nda düşük tabanlı tramvay araçlarına geçiş ile birlikte tüm istasyonlar alçaltılmış ve standartlara uygun şekilde giriş bölgelerine rampalar inşa edilmiştir. Yüksek tabanlı araçlar ile işletilmekte olan T4 Hattı üzerinde de istasyonlarda rampalar bulunmaktadır. Yer altı istasyonlarında ise peron bölgesine erişim imkânı veren asansörler yer almaktadır.", "en": "Accessibility work also continues on Metro İstanbul's tram lines. With the move to low-floor trams on the T1 line, all stations were lowered and ramps meeting the standards were built at their entrances. On the T4 line, which runs high-floor vehicles, the stations also have ramps. Underground stations have lifts that give access to the platform."},
+      {"source_url": "https://sehirhatlari.istanbul/tr/bilgiler/erisilebilirlik-ve-sehir-hatlari-251", "tr": "Bu çerçevede, iskele girişinde bulunan yüzde altılık eğimi aşmayan ve yüzeyleri kaymaz zemin malzemeden yapılan rampalar sayesinde, hareket kısıtlılığı veya görme zorluğu olan bireyler, deniz araçlarının kapılarına kadar basamaksız ve eşiksiz şekilde ulaşabiliyor.", "en": "Thanks to the ramps at pier entrances, no steeper than six percent and with non-slip surfaces, people with reduced mobility or low vision can reach the doors of the vessels without steps or thresholds."}
+    ]}
+  ]
+}

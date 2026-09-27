@@ -1,0 +1,67 @@
+.skills { min-width: 0; overflow-wrap: anywhere; }
+.skills > section { display: grid; gap: var(--space-4); min-width: 0; padding-block: var(--space-4); }
+.skills-heading, .skills h3, .skills h4, .skills h5 { margin: 0; color: var(--text); }
+.skills-heading { font-size: var(--text-lg); }
+.skills-intro, .skills-disclaimer, .skills-freshness, .skills-hint, .skills-source,
+.skills-status, .skills-empty, .skills-unavailable p {
+  margin: 0; color: var(--text-muted); overflow-wrap: anywhere;
+}
+.skills-disclaimer { color: var(--text); font-weight: var(--weight-semibold); }
+.skills-freshness, .skills-reason-label, .skills-source { font-size: var(--text-sm); }
+.skills-form { display: grid; gap: var(--space-4); min-width: 0; }
+.skills-choice, .skills-field, .skills-more {
+  min-width: 0; margin: 0; padding: var(--space-3); border: 1px solid var(--border);
+  border-radius: var(--radius-card); background: var(--surface-raised);
+}
+.skills-choice legend, .skills-field label, .skills-more > summary { color: var(--text); font-weight: var(--weight-semibold); }
+.skills-options, .skills-grid, .skills-actions {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); min-width: 0;
+}
+.skills-options { padding-block-start: var(--space-2); }
+.skills-option, .skills-consent, .skills-check {
+  display: flex; align-items: flex-start; gap: var(--space-2); min-width: 0;
+  min-height: var(--tap); padding: var(--space-2); overflow-wrap: anywhere;
+}
+.skills-option > input, .skills-consent > input, .skills-check > input {
+  flex: none; width: 1.125rem; height: 1.125rem; margin-block-start: .2rem; accent-color: var(--primary);
+}
+.skills-option small { color: var(--text-muted); }
+.skills-field { display: grid; gap: var(--space-2); }
+.skills-field input, .skills-field select {
+  box-sizing: border-box; width: 100%; min-height: var(--tap); padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-control);
+  background: var(--surface-raised); color: var(--text); font: inherit;
+}
+.skills-more[open] > :not(summary) { margin-block-start: var(--space-3); }
+.skills-consent { align-items: center; color: var(--text); }
+.skills-actions { align-items: center; }
+.skills-card, .skills-bio, .skills-unavailable {
+  box-sizing: border-box; flex: 1 1 17rem; min-width: 0; padding: var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+  background: var(--surface-raised); overflow-wrap: anywhere;
+}
+.skills-card > :not(:first-child), .skills-bio > :not(:first-child) { margin-block-start: var(--space-2); }
+.skills-reasons, .skills-unavailable ul {
+  display: grid; gap: var(--space-2); margin: var(--space-2) 0 0; padding-inline-start: var(--space-5);
+}
+.skills-reasons li { display: grid; gap: var(--space-1); }
+.skills-bio { border-inline-start: .25rem solid var(--accent-strong); }
+.skills-bio a, .skills-card a, .skills-unavailable a {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--tap);
+  color: var(--link); overflow-wrap: anywhere;
+}
+.skills .icon { width: 1em; height: 1em; }
+.skills-list, .skills-results > section { display: grid; gap: var(--space-3); min-width: 0; }
+.skills-check { align-items: flex-start; }
+.skills-card blockquote {
+  margin: var(--space-3) 0; padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--border-strong); overflow-wrap: anywhere;
+}
+.skills-card blockquote footer { margin-block-start: var(--space-2); color: var(--text-muted); font-size: var(--text-sm); }
+.skills button:focus-visible, .skills a:focus-visible, .skills input:focus-visible,
+.skills select:focus-visible, .skills summary:focus-visible {
+  outline: 3px solid var(--focus-ring); outline-offset: 2px;
+}
+@media (min-width: 48rem) {
+  .skills-options .skills-option { flex: 1 1 15rem; }
+}

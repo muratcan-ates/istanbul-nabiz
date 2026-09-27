@@ -2,7 +2,7 @@ import { esc } from './format.js';
 import { icon } from './icons.js';
 
 const AI_NOTICE = 'Ben İstanbul şehir bilgi asistanıyım ve yapay zekâ kullanıyorum. Resmî karar veren bir görevli değilim.';
-const PRIVACY_NOTICE = 'Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesapsız kullanımda sunucuda kişisel veri saklanmaz; operatöre ilettiğiniz talepler ve fotoğraflı bildirimler maskelenerek 30 gün tutulur. Sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.';
+const PRIVACY_NOTICE = 'Profiliniz telefonunuzda ya da bilgisayarınızda kalır, sunucuya gitmez. Ses kaydı tutulmaz. Hesapsız kullanımda sunucuda kişisel veri saklanmaz; operatöre ilettiğiniz talepler, fotoğraflı bildirimler ve aldığınız örnek kütüphane randevuları 30 gün tutulur. Sorunuz loglanmaz. Yurt dışındaki modele kişisel veriniz gönderilmez; yalnız yazdığınız soru gider.';
 const PII_WARNING = 'Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın.';
 
 function privacyBandMarkup() {

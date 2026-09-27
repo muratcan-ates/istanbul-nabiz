@@ -50,6 +50,8 @@ from nabiz.console.accounts_api import account_routes
 from nabiz.console.agency_api import agency_routes
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
+from nabiz.console.audience_api import audience_routes
+from nabiz.console.booking_api import booking_routes
 from nabiz.console.brief import Freshness, build_brief, split_csv
 from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.cards import CARD_STALE_DEFAULT_S, env_seconds
@@ -57,6 +59,7 @@ from nabiz.console.chat import ChatRequest, ChatService
 from nabiz.console.chronic_api import chronic_routes
 from nabiz.console.compare_api import compare_routes
 from nabiz.console.culture_api import culture_routes
+from nabiz.console.culture_events_api import culture_events_routes
 from nabiz.console.day_api import day_routes
 from nabiz.console.drill_api import drill_routes
 from nabiz.console.envfile import load_env_file
@@ -76,6 +79,7 @@ from nabiz.console.map_layers_api import map_layers_routes
 from nabiz.console.model_api import model_routes
 from nabiz.console.nearby_api import nearby_router
 from nabiz.console.notice_age import notice_routes
+from nabiz.console.notices_center_api import notices_center_routes
 from nabiz.console.open_data_api import open_data_routes
 from nabiz.console.operator import operator_routes, port_problem
 from nabiz.console.organs_api import organs_routes
@@ -97,7 +101,9 @@ from nabiz.console.requests_api import request_routes
 from nabiz.console.route_steps_api import route_steps_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
+from nabiz.console.skills_api import skills_routes
 from nabiz.console.stop_card import stop_card_router
+from nabiz.console.visitor_api import visitor_routes
 
 log = logging.getLogger("nabiz.console")
 
@@ -347,6 +353,8 @@ PRODUCT_ROUTERS = (
     # E57: recurring disruptions from the local archive, operator only; a suggestion, never an assignment.
     chronic_routes,
     outcome_routes,
+    # E55: updates and add-to-calendar; in page only, no Web Push, nothing stored on the server.
+    notices_center_routes,
     # E66: report timeline; resolved only when the citizen confirms.
     timeline_routes,
     history_routes,
@@ -357,6 +365,8 @@ PRODUCT_ROUTERS = (
     scenario_routes,
     # E21: quick-question chips; a knowledge chip only with its own page as evidence (NABIZ_QUICK_KNOWLEDGE=1).
     quick_routes,
+    # E56: suggestions by age group and need; the choice stays on the device, knowledge chips only with evidence.
+    audience_routes,
     open_data_routes,
     how_routes,
     # E50: recorded step-by-step route cards; voice only on request, never street navigation.
@@ -366,6 +376,14 @@ PRODUCT_ROUTERS = (
     ibb_yerleri_routes,
     # E30: İBB libraries and museums open now by their recorded hours, for a district the visitor picks.
     culture_routes,
+    # E73: day planner over the captured kultur.istanbul events; the server keeps nothing.
+    culture_events_routes,
+    # E53: library seat booking, an example not connected to İBB; hashed holder, 30 days, deleted on cancel.
+    booking_routes,
+    # E58: tourist mode: /api/visitor, five visitor questions, each only while its source is on this server.
+    visitor_routes,
+    # E72: course discovery over the captured İSMEK catalogue; choices are answered once and forgotten.
+    skills_routes,
     # E68: weekly fare estimate, a sample from quoted tariff rows; the pattern is neither stored nor logged.
     fare_routes,
     agency_routes,
