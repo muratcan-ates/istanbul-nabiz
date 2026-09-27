@@ -526,6 +526,10 @@ RAW_HTTP_ALLOWLIST = {
     ),
     "scripts/capture_fixtures.py": "one-off fixture capture, run by hand; spaces gateway calls >=7 s, caps İETT at 3 SOAP calls",
     "scripts/probe_day0.py": "one-off Day-0 reachability probe, run by hand once per environment, not on any request path",
+    "scripts/capture_ibb_places.py::fetch": (
+        "E79's one-off capture of four data.ibb.gov.tr portal files, run by hand; only that host, never /api/, "
+        "robots.txt Crawl-Delay 10 s between requests; no request path calls it"
+    ),
 }
 
 #: Direct calls inside ``src/ibb_mcp/`` that go to the configured *model* endpoint, never to İBB,
