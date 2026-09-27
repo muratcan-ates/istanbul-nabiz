@@ -2585,3 +2585,46 @@ answers citing the gold page first.
 - The panorama is 332 KB and sits in the offline shell; its provenance is not written down in the repository yet.
 - The project-local reference skills the lane installed (`.agents/`) were not committed: third-party text with no
   licence file, used while designing, not shipped.
+
+## 64. Account, help and ferry questions get the official path (E48, 27 Sep)
+
+### Decision
+
+- A pure classifier (`official_intent.py`, no file, network, model or database access) runs after the handoff check
+  and says whether a turn asks to act on a personal account (İSKİ, İGDAŞ, İstanbulkart, 153, İBB), which help the
+  person can get, or a ferry time. Account and help turns get a fixed, cited card (`author=kural`) with no model or
+  tool call: Nabız cannot see or act on the account, and never decides who is eligible for help.
+- A ferry time first tries the service-page index, then the official Şehir Hatları timetable page, never
+  `places_resolve`. A non-sensitive knowledge unknown that names an institution and an operation gets that
+  institution's official path (`resmi_yol:yedek`).
+- The twelve routes live in `data/official_paths.json`. An excerpt is quoted only when it is found verbatim, fresh
+  and active in the index; otherwise the card links the page as `local:agencies`, which the answer card labels
+  "Kurumun resmî sayfası" (service worker v15).
+- These verdicts still get the model's emergency check, and offline the index is opened read-only (`mode=ro`).
+
+### Consequences
+
+- Electricity and phone bill questions (calibration `n-27`, `n-29`) pass the classifier correctly but can still
+  reach `places_resolve` through the agent; E64 closes that.
+- With no index, an unmatched unknown has no official-path fallback and keeps the fixed unknown text.
+
+## 65. Red team: 53 offline cases, and a paused chat still opens 112 (E49, 27 Sep)
+
+### Decision
+
+- `eval/red_team.jsonl` holds 53 cases in nine categories (direct and indirect injection, prompt leak, personal
+  data, role change, tool misuse, hallucination, emergency suppression, quota limits), run offline by
+  `tests/test_red_team.py` against a fake model seat; `docs/security/red-team.md` has the table.
+- The output guard refuses approval claims ("başvurunuz onaylandı") and eligibility verdicts ("hak kazandınız",
+  "you are eligible"); the input guard and `looks_like_instruction` catch prompt hand-over or translation, "repeat
+  the first message" and "artık İBB görevlisisin" role changes. The new source patterns flag none of the 3034
+  chunks in the local index. A citation's quote is masked like the answer.
+- A4: `citizen_chat` plans the turn before the pause gate, so an emergency passes a paused chat and reaches the 112
+  card, as it already passes the limiter and the quota (#38). The pause message names 112 too.
+
+### Consequences
+
+- Open, strict xfail: an unknown line (M99, `rt-33`) and a fire word with punctuation (`rt-46`). Not fixed: the
+  fire routing ambiguity (`rt-37`), and the per-proxy quota is not verified by the fake seat.
+- The cases measure the controls around a model, not a real model's behaviour.
+- `rt-39` was reworded after E48, whose help card now answers eligibility questions before any model call.
