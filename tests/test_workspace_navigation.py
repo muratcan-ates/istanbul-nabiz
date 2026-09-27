@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 
@@ -364,3 +365,64 @@ const key = event('keydown', {json.dumps(key)}); s.input.dispatchEvent(key);
 console.log(JSON.stringify({{submits: s.submissions(), prevented: key.defaultPrevented}}));
 """)
     assert values == {"submits": expected_submits, "prevented": expected_prevented}
+
+
+# P00 D2a: the owner's placement. Three entries (Assistant, Calendar, My account); the four city tools under
+# More; Follow inside My account; open data in the console; the easy screen in the top bar. Every old address
+# still opens its destination.
+OWNER_PLACEMENT = {
+    "city": ("#city-cards", "more"), "travel": ("#city-tools", "more"), "map": ("#map-workspace", "more"),
+    "nearby": ("#explore-workspace", "more"), "data": ("#acik-veri", "operator"), "follow": ("#takip", "account"),
+    "easy": ("/kolay.html", "topbar"),
+}
+
+
+def test_the_seven_placement_lines_are_the_owners_and_run_at_load() -> None:
+    source = (STATIC / "js" / "workspace_nav.js").read_text(encoding="utf-8")
+    table = source[source.index("export const LEGACY_PLACEMENT = ["):source.index("];", source.index("LEGACY_PLACEMENT"))]
+    rows = re.findall(r"\{ id: '(\w+)', href: '([^']+)', i18n: '[^']+', placement: '(\w+)' \}", table)
+    assert table.count("placement:") == 7
+    assert {name: (href, placement) for name, href, placement in rows} == OWNER_PLACEMENT
+    mount = source[source.index("export function mountWorkspace("):]
+    assert mount.index("applyLegacyPlacement();") < mount.index("form.before(placeholder);")
+    home = (STATIC / "js" / "home.js").read_text(encoding="utf-8")
+    assert "mountWorkspace({ form, input });" in home
+
+
+def test_every_placed_address_exists_on_the_page() -> None:
+    page = (STATIC / "index.html").read_text(encoding="utf-8")
+    for address in [href for href, _ in OWNER_PLACEMENT.values()] + ["#profilim", "#hafizam"]:
+        if address.startswith("#"):
+            assert page.count(f'id="{address[1:]}"') == 1, address
+        else:
+            assert (STATIC / address.lstrip("/")).is_file(), address
+    account = page[page.index('id="hesabim"'):]
+    assert all(f'id="{anchor}"' in account for anchor in ("profilim", "takip", "hafizam"))
+
+
+def test_owner_placement_hides_moved_rows_and_keeps_every_destination(tmp_path) -> None:
+    values = run_workspace(tmp_path, """
+const s = setup(); workspace.mountWorkspace(s);
+const rows = Object.fromEntries(s.links.filter(link => link.getAttribute('data-legacy')).map(link => [
+  link.getAttribute('data-legacy'), {parent: link.parentElement.parentElement.id, hidden: link.parentElement.hidden,
+    moved: link.getAttribute('data-moved-to')}]));
+const reach = {};
+for (const hash of ['#city-cards', '#city-tools', '#map-workspace', '#explore-workspace', '#acik-veri', '#takip',
+  '#profilim', '#hafizam']) {
+  location.hash = hash; window.dispatchEvent(event('hashchange')); reach[hash] = s.body.dataset.view;
+}
+console.log(JSON.stringify({rows, reach}));
+""")
+    assert values["rows"] == {
+        "city": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "travel": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "map": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "nearby": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "data": {"parent": "legacy-nav", "hidden": True, "moved": "console"},
+        "follow": {"parent": "legacy-nav", "hidden": True, "moved": None},
+        "easy": {"parent": "legacy-topbar", "hidden": False, "moved": None},
+    }
+    assert values["reach"] == {
+        "#city-cards": "city", "#city-tools": "travel", "#map-workspace": "map", "#explore-workspace": "nearby",
+        "#acik-veri": "data", "#takip": "account", "#profilim": "account", "#hafizam": "account",
+    }
