@@ -315,5 +315,10 @@ def test_the_device_store_reuses_the_request_pattern() -> None:
     styles = REPO_ROOT / "src" / "nabiz" / "console" / "static" / "css" / "report.css"
     assert ".report-outcomes[hidden] { display: none; }" in styles.read_text(encoding="utf-8")
     scripts = REPO_ROOT / "src" / "nabiz" / "console" / "static" / "js"
-    assert not any("report_status" in path.name or "outcome" in path.name for path in scripts.iterdir())
+    # The citizen side reuses request_status.js: no second status or outcome module. Operator files
+    # (console_*, kept out of the citizen cache by sw.js) are outside this guard, e.g. E75's console_outcomes.js.
+    assert not any(
+        ("report_status" in path.name or "outcome" in path.name) and not path.name.startswith("console_")
+        for path in scripts.iterdir()
+    )
     assert len(status_script.read_text(encoding="utf-8").splitlines()) <= 300
