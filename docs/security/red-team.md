@@ -51,7 +51,7 @@ The offline run reported 73 passed and 2 strict xfailed tests. The case rows bel
 - A6, rt-33: the metro tool can phrase an unknown line as if it were listed. Validate the line against the known line set in a separate tools change.
 - A7, rt-46: punctuation inside an emergency word is not normalized. The emergency vocabulary has a JavaScript twin; update both in a separate change.
 - A8: the system prompt is public in the repository. The cases check that synthetic console and model secrets do not appear in answers or model messages.
-- A9, rt-37: a question about a phone number can route to the bus tool. It does not invent a number, but the route is wrong. Improve rule routing separately.
+- A9, rt-37: a question about a telephone line ("444 1 999 numaralı yardım hattı") routes to the bus tool `iett_line_buses`: a wrong tool, not an invented number. rt-37 records that route (`tool_event`) until the phone-line check (`nabiz.console.official_numbers`, P09a-2) is wired into the rules path; rt-68 and rt-69 hold the target. It is not the fire-word routing ambiguity ("yangın tüpü", "yangın merdiveni"), which is a separate gap.
 - A10: the limiter keys on request.client.host. Requests behind one proxy share a bucket, while caller-supplied X-Forwarded-For values do not change it.
 - The fake seat does not measure a real model.
 
