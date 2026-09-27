@@ -46,8 +46,10 @@ from nabiz.console.access import (
     is_operator_path,
     login_page,
 )
-from nabiz.console.accounts_api import account_routes, current_account
+from nabiz.console.accounts_api import account_routes, current_account, holder_for
 from nabiz.console.agency_api import agency_routes
+from nabiz.console.appeal_api import appeal_routes
+from nabiz.console.appeals import AppealBook
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
 from nabiz.console.audience_api import audience_routes
@@ -105,6 +107,7 @@ from nabiz.console.report_outcome_api import outcome_routes
 from nabiz.console.report_timeline_api import timeline_routes
 from nabiz.console.report_triage import triage_routes
 from nabiz.console.requests_api import request_routes
+from nabiz.console.restriction import RestrictionBook
 from nabiz.console.route_steps_api import route_steps_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
@@ -248,13 +251,21 @@ async def citizen_chat(request: Request, body: ChatRequest) -> Response:
         return paused
     service: ChatService = request.app.state.chat
     limiter: TurnLimiter = request.app.state.chat_limiter
-    if not turn.emergency and not limiter.allow(request.client.host if request.client else "unknown"):
+    person = _person_key(request) or (request.client.host if request.client else "unknown")
+    if not turn.emergency and not limiter.allow(person):
         return port_problem(429, "too_many_turns", "Çok sık soru geldi. Bir dakika sonra yeniden dene.")
     return StreamingResponse(
         turn.events(service, body),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+def _person_key(request: Request) -> str | None:
+    """P08: the trusted, opaque key a limit or a restriction is kept under: the account's or the device's quota
+    pseudonym. Never an address: people behind one connection stay independent, so no device id means no key."""
+    key = holder_for(request).key
+    return None if key.startswith("adres:") else key
 
 
 def _plan_owner(request: Request) -> str | None:
@@ -437,6 +448,9 @@ PRODUCT_ROUTERS = (
     kill_switch_routes,
     stop_card_router,
     quota_routes,
+    # P08: restriction status and appeals; a restriction closes only the model and uploads, never 112, an appeal,
+    # a follow or a deletion; automatic restriction is off unless NABIZ_AUTO_RESTRICTION=1.
+    appeal_routes,
     # P04: speech to an editable draft and answer text to audio; off until NABIZ_SPEECH_* are set, each call held on
     # the person's quota and the shared daily speech ceiling, no audio stored or logged.
     speech_router,
@@ -492,6 +506,7 @@ def build_console_app(
     state.quota = PersistentQuotaBook.from_env()
     state.sessions = SessionStore.from_env()
     state.plan_principal, state.plan_tokens = _plan_owner, None
+    state.appeal_book, state.restriction_subject = AppealBook(RestrictionBook()), _person_key
     state.fresh = Freshness(
         offline=state.settings.offline,
         card_stale_after_s=env_seconds("NABIZ_CARD_STALE_S", CARD_STALE_DEFAULT_S),

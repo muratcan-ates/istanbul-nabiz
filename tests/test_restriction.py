@@ -16,7 +16,8 @@ class Clock:
         return self.now
 
 
-def test_shared_ip_has_independent_sessions_and_essential_actions_stay_open() -> None:
+def test_shared_ip_has_independent_sessions_and_essential_actions_stay_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NABIZ_AUTO_RESTRICTION", "1")  # P00 D2a: the automatic path, switched on for this test
     clock = Clock()
     book = RestrictionBook(clock=clock)
     for _ in range(REQUESTS_PER_WINDOW):
@@ -54,3 +55,16 @@ def test_complaint_and_repeated_subject_have_no_content_penalty() -> None:
         book.check("ip:1", "model")
     with pytest.raises(ValueError, match="kodlanmış"):
         book.restrict("session-one", reason="Serbest metin ve kişi bilgisi", hours=24, human=True)
+
+
+def test_automatic_restriction_is_off_by_the_owners_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+    """P00 D2a: without NABIZ_AUTO_RESTRICTION=1 a burst is only rate limited, never restricted."""
+    monkeypatch.delenv("NABIZ_AUTO_RESTRICTION", raising=False)
+    clock = Clock()
+    book = RestrictionBook(clock=clock)
+    for _ in range(REQUESTS_PER_WINDOW):
+        assert book.check("session-one", "model").allowed
+    codes = {book.check("session-one", "model").code for _ in range(10)}
+    assert codes == {"rate_limited"} and book.current("session-one") is None
+    clock.now += dt.timedelta(seconds=61)
+    assert book.check("session-one", "model").allowed

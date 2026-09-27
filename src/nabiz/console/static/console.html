@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/css/console.css">
 <link rel="stylesheet" href="/css/console_receipt.css">
 <link rel="stylesheet" href="/css/console_day.css">
+<link rel="stylesheet" href="/css/console_appeals.css">
 <link rel="stylesheet" href="/css/console_health.css">
 <link rel="stylesheet" href="/css/console_organs.css">
 <link rel="stylesheet" href="/css/console_report_triage.css">
@@ -47,6 +48,8 @@
 <!-- Wave-1 panels (E17-E20): each fills its own section; the placeholders below fix their order. -->
 <script type="module" src="/js/console_health.js"></script>
 <script type="module" src="/js/console_day.js"></script>
+<!-- P08 (P00 D2a): the appeal queue fills #appeals, right after the day's decisions. -->
+<script type="module" src="/js/console_appeals.js"></script>
 <script type="module" src="/js/console_organs.js"></script>
 <script type="module" src="/js/console_kill.js"></script>
 <!-- E29: priority and agency context on a citizen report card; E28: the report map fills #report-map. -->
@@ -159,6 +162,7 @@
     </section>
 
     <section id="day" class="day" aria-labelledby="day-title"><h2 id="day-title">Günün kararları</h2></section>
+    <section id="appeals" class="appeals" aria-label="Kısıt itirazları"></section>
 
     <details class="more system-more" id="system-more">
       <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span>Sistem durumu</span><span id="system-summary" class="section-note">Durum okunuyor</span></summary>

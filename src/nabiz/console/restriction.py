@@ -8,6 +8,7 @@ provider is for offline tests; production wiring must supply durable identity an
 from __future__ import annotations
 
 import datetime as dt
+import os
 import threading
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -108,7 +109,9 @@ class RestrictionBook:
             denials = self._denials[key]
             self._trim(denials, now)
             denials.append(now)
-            if len(denials) < BURST_DENIALS:
+            # The owner's decision (P00 D2a): no automatic restriction unless NABIZ_AUTO_RESTRICTION=1; a burst is
+            # only rate limited, and a person, never the machine, restricts longer (24 hours stays the automatic cap).
+            if len(denials) < BURST_DENIALS or os.environ.get("NABIZ_AUTO_RESTRICTION", "0") != "1":
                 return GateResult(False, "rate_limited")
             active = Restriction(key, AUTO_REASON, now + dt.timedelta(hours=AUTO_HOURS), "automatic")
             self._restrictions[key] = active

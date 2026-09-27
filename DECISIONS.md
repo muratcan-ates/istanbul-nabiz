@@ -3159,3 +3159,25 @@ answers citing the gold page first.
 ### Consequences
 
 - Deleting an account must delete its plans: the erasure chain's `calendar_plans` hook (H).
+
+## 102. Restriction and appeals: keyed by the person, automatic restriction off (P08, P00 D2a, 27 Sep)
+
+### Decision
+
+- `appeal_routes` (`/api/restriction`, `/api/appeals`, `/api/console/appeals`) follows `quota_routes`.
+  `state.appeal_book` is an `AppealBook` over a `RestrictionBook`; `state.restriction_subject` is `_person_key`:
+  the account's or the device's quota pseudonym, never an address, so a visitor with no device id has no key
+  (401 "İtiraz için oturum gerekli") and people behind one connection stay independent. `build_console_app` takes
+  no new parameter.
+- The chat's per-minute limiter counts by `_person_key` (the address only when there is no key, as before).
+- A turn's model rung also asks the restriction book (`TurnPlan.model_gate`); a restricted or rate limited person gets
+  the rules, and an emergency is never checked.
+- The owner's decision: automatic restriction is off. `NABIZ_AUTO_RESTRICTION=1` is the single condition that lets a
+  burst become an automatic restriction, fixed at 24 hours; otherwise a burst is only rate limited. A longer
+  restriction is a person's, with a coded reason.
+- The console shows the appeal queue in `#appeals`, right after the day's decisions. kvkk `#kvkk-kisit` says what is
+  kept.
+
+### Consequences
+
+- The books are in memory; their SQLite persistence is the data-root work (I). Account erasure purges appeals (H).
