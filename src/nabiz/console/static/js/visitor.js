@@ -5,7 +5,7 @@ import { currentLang, onLang, t } from './i18n_text.js';
 import { esc } from './format.js';
 import { FALLBACK, cardPreview, sectionMarkup, venuesMarkup } from './visitor_view.js';
 
-export const ANCHORS = Object.freeze([['#city-cards', 'beforebegin'], ['#asistan', 'afterend']]);
+export const ANCHORS = Object.freeze([['#chat-log', 'afterend']]);
 export const STYLESHEET = '/css/visitor.css';
 export const SECTION_ID = 'ziyaretci';
 

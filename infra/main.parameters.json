@@ -49,6 +49,21 @@
     },
     "dailyLogCapGb": {
       "value": "${NABIZ_DAILY_LOG_CAP_GB=0.16}"
+    },
+    "deployWebApp": {
+      "value": "${DEPLOY_WEB_APP=false}"
+    },
+    "webContainerImage": {
+      "value": "${WEB_CONTAINER_IMAGE=}"
+    },
+    "webStateStorageKey": {
+      "value": "${NABIZ_WEB_STATE_KEY=}"
+    },
+    "operatorToken": {
+      "value": "${NABIZ_WEB_OPERATOR_TOKEN=}"
+    },
+    "webBudgetAmountUsd": {
+      "value": "${NABIZ_WEB_BUDGET_USD=25}"
     }
   }
 }

@@ -335,7 +335,7 @@ console.log(JSON.stringify(result));
     assert values == {
         "missing": True,
         "calls": 0,
-        "anchors": [["#city-tools", "beforeend"], ["#hesabim", "beforebegin"]],
+        "anchors": [["#hesabim", "beforeend"]],  # P00 D2a (K): Hesabım, the owner's navigation
         "stylesheet": "/css/troubleshoot.css",
         "section": "kart-sorun",
     }
@@ -382,7 +382,7 @@ globalThis.document={{head:{{append:()=>{{}}}},activeElement:null,defaultView:wi
   createElement:()=>({{}}),
   querySelector(selector){{
     if(selector==='#kart-sorun')return root.innerHTML?root:null;
-    if(selector==='#city-tools')return anchor;
+    if(selector==='#hesabim')return anchor;
     return null;
   }}}};
 const app=await import({module_url});
@@ -415,7 +415,7 @@ const reloadDoc={{head:{{append:()=>{{}}}},activeElement:null,defaultView:window
   createElement:()=>({{}}),
   querySelector(selector){{
     if(selector==='#kart-sorun')return reloadRoot.innerHTML?reloadRoot:null;
-    if(selector==='#city-tools')return reloadAnchor;
+    if(selector==='#hesabim')return reloadAnchor;
     return null;
   }}}};
 app.mountTroubleshoot(reloadDoc,storage);await new Promise(resolve=>setTimeout(resolve,0));
@@ -461,7 +461,7 @@ const root={{open:false,innerHTML:'',handlers:{{}},
   querySelector:s=>s==='.status-line'?status:s==='#ikart-q'?heading:s==='#ikart-remember'?checkbox:null}};
 const anchor={{insertAdjacentHTML:(position,html)=>root.innerHTML=html}};
 globalThis.document={{head:{{append:()=>{{}}}},defaultView:window,createElement:()=>({{}}),
-  querySelector:s=>s==='#kart-sorun'?(root.innerHTML?root:null):s==='#city-tools'?anchor:null}};
+  querySelector:s=>s==='#kart-sorun'?(root.innerHTML?root:null):s==='#hesabim'?anchor:null}};
 const app=await import({module_url});
 app.mountTroubleshoot(document,null);
 await new Promise(resolve=>setTimeout(resolve,0));

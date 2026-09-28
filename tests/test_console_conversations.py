@@ -28,7 +28,7 @@ def test_conversation_store_exports_the_required_api() -> None:
 
 def test_conversation_record_has_the_documented_fields() -> None:
     text = source(STORE)
-    assert "{ id: makeId(), title: 'Yeni sohbet', createdAt: now, updatedAt: now, turns: [] }" in text
+    assert "schema: 2" in text and "scoped: []" in text and "links: []" in text and "trimmed: 0" in text
     assert "role," in text and "content:" in text and "at:" in text
 
 
@@ -40,12 +40,14 @@ def test_store_uses_indexeddb_then_localstorage_then_memory() -> None:
     assert "storageMode = 'memory'" in text
 
 
-def test_turn_content_and_conversation_length_are_bounded() -> None:
+def test_turn_content_is_bounded_and_full_conversations_keep_all_turns() -> None:
     text = source(STORE)
     assert "const MAX_CONTENT_LENGTH = 4000" in text
-    assert "const MAX_TURNS = 80" in text
+    assert "MAX_TURNS = 80" in text
     assert "slice(0, MAX_CONTENT_LENGTH)" in text
-    assert "slice(-MAX_TURNS)" in text
+    assert "previous.full || previous.turns.length >= MAX_TURNS" in text
+    assert "full: turns.length >= MAX_TURNS" in text
+    assert "slice(-MAX_TURNS)" not in text
 
 
 def test_sensitive_text_is_replaced_before_storage() -> None:
@@ -53,7 +55,8 @@ def test_sensitive_text_is_replaced_before_storage() -> None:
     assert "turn.sensitive === true" in text
     assert "SENSITIVE_TEXT.test(detectionText)" in text
     assert "[acil yönlendirme]" in text
-    assert "privateContent ? REDACTED_TEXT : content" in text
+    assert "SENSITIVE_REDACTED_TEXT" in text
+    assert "redacted = emergency ? 'emergency' : 'sensitive'" in text
 
 
 def test_emergency_responses_are_replaced_before_storage() -> None:
@@ -66,15 +69,15 @@ def test_emergency_responses_are_replaced_before_storage() -> None:
 def test_title_uses_the_first_user_question_without_a_model_call() -> None:
     text = source(STORE)
     assert "savedTurn.role === 'user'" in text
-    assert "savedTurn.content.slice(0, 48)" in text
+    assert "!savedTurn.redacted" in text and "savedTurn.content.slice(0, 48)" in text
     assert "fetch(" not in text and "model" not in text.lower()
 
 
-def test_conversations_expire_after_thirty_days_from_creation() -> None:
+def test_conversations_expire_after_thirty_days_from_last_use() -> None:
     text = source(STORE)
     assert "const RETENTION_DAYS = 30" in text
     assert "async function purgeOlderThan(days = RETENTION_DAYS" in text
-    assert "timestamp(record.createdAt) >= cutoff" in text
+    assert "timestamp(record.updatedAt) >= cutoff" in text
     assert "purgeOlderThan(30)" in source(UI)
 
 
@@ -82,32 +85,45 @@ def test_compaction_note_uses_the_history_limit_and_required_copy() -> None:
     text = source(STORE)
     assert "count <= HISTORY_TURNS * 2" in text
     assert "Önceki mesajlar kısaltılarak gönderiliyor; yalnız son ${kept} soru hatırlanıyor." in text
-    assert "compactionNote(conversation.turns.length, HISTORY_TURNS)" in source(UI)
+    assert "conversation.full" in source(UI)
+    assert "convoText('full_hint')" in source(UI)
+    assert "conversation.trimmed > 0" in source(UI)  # Legacy rows still disclose old truncation.
 
 
 def test_panel_has_the_required_empty_and_privacy_copy() -> None:
     text = source(UI)
-    assert "Henüz sohbet yok. Sorduğunuz her şey yalnız bu cihazda saklanır." in text
-    assert "Sohbetleriniz yalnız bu cihazda, 30 gün saklanır. Sunucuya kaydedilmez." in text
+    assert "Henüz sohbet yok. Yeni sohbet başlatarak soru sorabilirsiniz." in text
+    assert "Sohbetleriniz yalnız bu tarayıcıda, son kullanımdan sonra 30 gün saklanır. Sunucuya kaydedilmez." in text
     assert "Bu tarayıcı geçmişi saklamıyor." in text
+    assert "Bağlı {count} takvim, bildirim ya da işlem kaydı silinmez" in text
+    assert "{count} bağlı takvim, bildirim ya da işlem kaydı kaldı." in text
     assert "\u2014" not in text and "\u2013" not in text
 
 
 def test_panel_exposes_new_delete_and_delete_all_actions() -> None:
     text = source(UI)
-    assert "function mountConversations({ root, onOpen = () => {}, onNew = () => {} })" in text
+    assert "function mountConversations({ root, onOpen = () => {}, onNew = () => {}, onDelete = removeWithScoped" in text
     assert "root.classList.add('convo-root')" in text
-    for label in ("Yeni sohbet", "Hepsini sil", "Sil", "Bu sohbet bu cihazdan silinsin mi?"):
+    for label in ("Yeni sohbet", "Geçmiş", "Tüm sohbetleri sil", "Sohbeti sil"):
         assert label in text
-    assert "Tüm sohbetler bu cihazdan silinsin mi?" in text
+    assert "Bu sohbetin mesajları ve kartları bu tarayıcıdan silinir." in text
+    assert "Tüm sohbetlerin mesajları ve kartları bu tarayıcıdan silinir." in text
+    assert "<dialog" in text
+
+
+def test_full_conversation_submit_preflight_is_wired() -> None:
+    session = source(STATIC / "js" / "conversation_session.js")
+    citizen = source(STATIC / "js" / "citizen.js")
+    assert "form.addEventListener('submit'" in session and "}, true);" in session
+    assert "session?.bindFullSubmit($('#chat-form'), $('#chat-input'))" in citizen
 
 
 def test_panel_supports_keyboard_deletion_live_updates_and_focus() -> None:
     text = source(UI)
     assert "aria-live=\"polite\"" in text
     assert "event.key !== 'Delete'" in text
-    assert "announce('deleted')" in text and "statusElement.textContent = convoText(key)" in text
-    assert "buttons[Math.min(index, buttons.length - 1)]" in text
+    assert "announce(parts.join(' '))" in text and "statusLine.textContent = message" in text
+    assert "first.focus()" in text
     assert "aria-expanded" in text and "panel.hidden = !panel.hidden" in text
 
 
@@ -134,7 +150,9 @@ def test_component_styles_use_only_prefixed_classes_and_tokens() -> None:
     assert selectors
     for selector_group in selectors:
         for selector in selector_group.split(","):
-            assert ".convo-" in selector, selector
+            # 27 Eyl: Hafızam, the memory card and the data reset share this stylesheet (no memory.css).
+            prefixes = (".convo-", ".memory-", ".data-reset-", "#hafizam", "#veri-sil")
+            assert any(prefix in selector for prefix in prefixes), selector
     assert not re.search(r"#[\da-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\s*\(|\b(?:black|white|red|blue)\b", text)
     assert re.search(r"var\(--[\w-]+\)", text)
 
@@ -145,6 +163,7 @@ def test_component_styles_fit_small_screens_and_respect_reduced_motion() -> None
     assert "min-width: 0" in text and "overflow-wrap: anywhere" in text
     assert "@media (prefers-reduced-motion: reduce)" in text
     assert "animation: none !important" in text and "transition: none !important" in text
+    assert "@media (min-width: 1024px)" in text and ".convo-panel[hidden] { display: grid; }" in text
 
 
 def test_store_contains_no_network_or_server_persistence_calls() -> None:
@@ -163,20 +182,25 @@ import {
 await clearAll();
 const convo = await newConversation();
 const sensitive = await saveTurn(convo.id, { role: 'user', content: 'İlaç dozunu öğrenmek istiyorum.' });
-assert.equal(sensitive.turns[0].content, '[acil yönlendirme]');
-assert.equal(sensitive.title, '[acil yönlendirme]');
+assert.equal(sensitive.turns[0].content, '[hassas bilgi saklanmadı]');
+assert.equal(sensitive.turns[0].redacted, 'sensitive');
+assert.equal(sensitive.title, 'Yeni sohbet');
 await saveTurn(convo.id, { role: 'assistant', content: 'Bu acil bir durum olabilir. 112 numarasını arayın.' });
 let saved = await load(convo.id);
 assert.equal(saved.turns[1].content, '[acil yönlendirme]');
+assert.equal(saved.turns[1].redacted, 'emergency');
 await saveTurn(convo.id, { role: 'user', content: 'S'.repeat(5000) });
 saved = await load(convo.id);
 assert.equal(saved.turns[2].content.length, 4000);
-assert.equal(saved.title.length, 18);
+assert.equal(saved.title.length, 48);
 for (let index = 0; index < 82; index += 1) {
-  await saveTurn(convo.id, { role: 'assistant', content: `yanıt ${index}` });
+  const result = await saveTurn(convo.id, { role: 'assistant', content: `yanıt ${index}` });
+  if (index >= 77) assert.equal(result, null);
 }
 saved = await load(convo.id);
 assert.equal(saved.turns.length, 80);
+assert.equal(saved.trimmed, 0);
+assert.equal(saved.full, true);
 assert.match(compactionNote(13, 6), /yalnız son 6 soru hatırlanıyor/);
 assert.equal(compactionNote(12, 6), '');
 assert.equal((await list())[0].id, convo.id);
@@ -209,8 +233,17 @@ import {clearAll, list, newConversation, saveTurn} from './src/nabiz/console/sta
 import {setCatalogs} from './src/nabiz/console/static/js/i18n_text.js';
 const catalogs = Object.fromEntries(['tr', 'en'].map(lang => [lang,
   JSON.parse(readFileSync(`src/nabiz/console/static/i18n/${lang}.json`, 'utf8'))]));
-const confirmations = [], events = {}, opened = [], created = [];
-const doc = {activeElement: null, defaultView: {confirm: text => { confirmations.push(text); return true; }}};
+Object.assign(catalogs.en, {
+  'ui.history.title': 'My conversations', 'ui.history.new': 'New conversation',
+  'ui.history.toggle': 'History', 'ui.history.clear': 'Delete all conversations',
+  'ui.history.delete': 'Delete conversation', 'ui.history.delete_label': 'Delete conversation: {title}',
+  'ui.history.expires': 'Deleted on {date}', 'ui.history.deleted': 'Conversation deleted.',
+  'ui.history.cleared': 'All conversations deleted.', 'ui.history.confirm': 'Yes, delete conversation',
+  'ui.history.confirm_all': 'Yes, delete conversations',
+  'ui.history.full_hint': 'A new chat is recommended',
+});
+const events = {}, opened = [], created = [];
+const doc = {activeElement: null};
 class Element {
   constructor(tag) {
     this.tagName = tag; this.ownerDocument = doc; this.children = []; this.parentElement = null;
@@ -246,6 +279,8 @@ class Element {
   focus() { doc.activeElement = this; }
   addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); }
   async emit(type, target) { for (const listener of this.listeners[type] || []) await listener({type, target}); }
+  showModal() { this.open = true; }
+  close() { this.open = false; for (const listener of this.listeners.close || []) listener(); }
   set innerHTML(html) {
     this.replaceChildren(); const stack = [this]; let cursor = 0;
     for (const match of html.matchAll(/<(\/?)(\w+)([^>]*)>/g)) {
@@ -273,9 +308,11 @@ const userTitle = await newConversation();
 await saveTurn(userTitle.id, {role: 'user', content: 'Sohbetlerim'});
 const userDefaultWords = await newConversation();
 await saveTurn(userDefaultWords.id, {role: 'user', content: 'Yeni sohbet'});
+const full = await newConversation();
+for (let i=0; i<80; i++) await saveTurn(full.id, {role:'assistant', content:`Yanıt ${i}`});
 language('tr');
 const root = new Element('aside');
-const ui = mountConversations({root, onOpen: convo => opened.push(convo.id), onNew: convo => created.push(convo.id)});
+const ui = mountConversations({root, onOpen: convo => opened.push(convo.id), onNew: () => created.push(true)});
 await ui.ready;
 const row = id => root.querySelectorAll('.convo-item').find(item => item.dataset.id === id);
 const panel = root.querySelector('.convo-panel'), toggle = root.querySelector('.convo-toggle');
@@ -284,13 +321,15 @@ const originalRows = [...root.querySelector('.convo-list').children];
 const userOpen = row(userTitle.id).querySelector('.convo-open'); userOpen.focus();
 const stored = JSON.stringify(await list());
 language('en');
-assert.equal(toggle.textContent, 'My conversations');
+assert.equal(toggle.textContent, 'History');
 assert.equal(root.getAttribute('aria-label'), 'My conversations');
 assert.equal(root.querySelector('.convo-new').textContent, 'New conversation');
 assert.equal(row(blank.id).querySelector('.convo-title').textContent, 'New conversation');
 assert.equal(row(userTitle.id).querySelector('.convo-title').textContent, 'Sohbetlerim');
 assert.equal(row(userDefaultWords.id).querySelector('.convo-title').textContent, 'Yeni sohbet');
 assert.equal(row(userTitle.id).querySelector('.convo-delete').getAttribute('aria-label'), 'Delete conversation: Sohbetlerim');
+assert.equal(row(full.id).querySelector('.convo-full-hint').textContent, 'A new chat is recommended');
+assert.equal(row(full.id).querySelector('.convo-row-new').textContent, 'New conversation');
 assert.equal(panel.hidden, false); assert.equal(toggle.getAttribute('aria-expanded'), 'true');
 assert.equal(doc.activeElement, userOpen);
 assert.ok(originalRows.every((item, index) => root.querySelector('.convo-list').children[index] === item));
@@ -300,23 +339,29 @@ const dateOptions = {day: '2-digit', month: 'short', hour: '2-digit', minute: '2
 assert.equal(date.textContent, new DateFormatter('en-GB', dateOptions).format(new Date(date.dateTime)));
 await root.emit('click', userOpen); assert.deepEqual(opened, [userTitle.id]);
 language('tr');
-assert.equal(toggle.textContent, 'Sohbetlerim');
+assert.equal(toggle.textContent, 'Geçmiş');
 assert.equal(row(blank.id).querySelector('.convo-title').textContent, 'Yeni sohbet');
 assert.equal(row(userTitle.id).querySelector('.convo-title').textContent, 'Sohbetlerim');
 assert.equal(date.textContent, new DateFormatter('tr-TR', dateOptions).format(new Date(date.dateTime)));
 assert.ok(locales.includes('en-GB') && locales.includes('tr-TR'));
 language('en');
+await root.emit('click', row(full.id).querySelector('.convo-row-new'));
+assert.equal(created.length, 1);
 await root.emit('click', row(userDefaultWords.id).querySelector('.convo-delete'));
-assert.equal(confirmations.at(-1), 'Delete this conversation from this device?');
-assert.equal(root.querySelector('.convo-status').textContent, 'Conversation deleted');
+const deleteDialog = root.querySelector('.convo-dialog');
+assert.equal(deleteDialog.open, true);
+assert.match(deleteDialog.textContent, /messages and cards|mesajları ve kartları/);
+await deleteDialog.querySelector('.convo-confirm').emit('click');
+assert.equal(root.querySelector('.convo-status').textContent, 'Conversation deleted.');
 assert.equal((await list()).some(convo => convo.id === userDefaultWords.id), false);
-language('tr'); assert.equal(root.querySelector('.convo-status').textContent, 'Sohbet silindi');
+language('tr'); assert.equal(toggle.textContent, 'Geçmiş');
 await root.emit('click', root.querySelector('.convo-new'));
-assert.equal(created.length, 1); assert.equal(root.querySelector('.convo-status').textContent, '');
+assert.equal(created.length, 2); assert.equal(root.querySelector('.convo-status').textContent, '');
 language('en');
 await root.emit('click', root.querySelector('.convo-clear'));
-assert.equal(confirmations.at(-1), 'Delete all conversations from this device?');
-assert.equal(root.querySelector('.convo-status').textContent, 'All conversations deleted');
+assert.equal(deleteDialog.open, true);
+await deleteDialog.querySelector('.convo-confirm').emit('click');
+assert.equal(root.querySelector('.convo-status').textContent, 'All conversations deleted.');
 assert.deepEqual(await list(), []);
 assert.equal(doc.activeElement, root.querySelector('.convo-new'));
 """

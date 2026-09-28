@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 import re
 
+from test_chat_cards_static import CATALOG as CARDS_CATALOG
+from test_memory_ui_static import CATALOG as MEMORY_CATALOG
+from test_sohbet_kabugu import CATALOG as SHELL_CATALOG
 from test_static_a11y import STATIC, node_json
 
 MODULES = (
@@ -15,7 +18,40 @@ MODULES = (
     "notices_center.js", "audience.js", "audience_view.js", "booking.js", "visitor.js", "visitor_view.js",
     "family.js", "family_view.js", "troubleshoot.js", "troubleshoot_view.js", "recovery.js", "recovery_view.js", "bill.js",
     "disaster_kit.js",
+    # P00 D2a (K): E69 picks its quote by id now, so its Turkish lives only in t() fallbacks
+    "outage_watch.js", "console_outage_watch.js",
+    # P00 D2a (K): E65, E67, E77 and E79 write literal t() calls now (their tables became closures)
+    "journey_watch.js", "console_incidents.js", "console_scenario.js", "ibb_yerleri.js", "ibb_yerleri_view.js",
 )
+# P00 D2a: the chat shell (P01) and history and memory (P02) look their keys up through tables
+# (``t(`ui.memory.${key}`, COPY[key])``), so the literal-call scan above cannot see them. Their catalogues
+# live in their own tests; here the shared files must carry those exact pairs, and every Turkish literal
+# the modules can show must be a catalogue value, so English has a translation for it.
+LANE_MODULES = (
+    "chat_cards.js", "chat_card_actions.js", "chat_card_map.js", "chat_scroll.js", "home.js", "workspace_nav.js",
+    "conversation_session.js", "data_reset.js", "memory_card.js", "memory_store.js", "memory_ui.js",
+)
+LANE_CATALOGS = (SHELL_CATALOG, CARDS_CATALOG, MEMORY_CATALOG)
+# Today's P02 text with no catalogue entry yet (D2b): announcements, demo rows, interest and need labels
+# and two developer errors. The set may only shrink.
+LANE_UNTRANSLATED = {
+    "Tüm sohbetler silindi. Yeni sohbet başladı.", "Önceki sohbet bulunamadı. Mesaj yeni bir sohbete kaydedildi.",
+    "Yeni sohbet başladı.", "Yeni sohbet açılamadı. Lütfen yeniden deneyin.", "Sohbet bulunamadı. Yeni sohbet başladı.",
+    "Hesabım bölümü bulunamadı.", "Hafızam bölümü bulunamadı.", "Hafıza temizlendi.", "Kayıt silindi.",
+    "Kültür ve sanat", "Müze", "Kütüphane", "Doğa", "Çocuk etkinlikleri",
+    "Yavaş yürüyorum", "Yavaş yürüyüş", "Adımsız erişim", "Adımsız erişim (asansör, rampa)", "Bebek arabası",
+    "Uzun yürümek istemiyorum", "Merdivensiz ulaşım tercih ediyorum",
+}
+# home.js keeps its quick topics and examples as Turkish and English side by side (P01); both languages are in
+# the module, so they never needed the catalogue. Seen once the scan stopped hiding code after a line comment.
+LANE_OWN_PAIRS = {
+    "Ulaşım", "İstanbul ulaşımı için resmî bilgi nerede?", "İstanbulkart", "İstanbulkart işlemleri için resmî bilgi nerede?",
+    "İSKİ/Fatura", "İSKİ ve fatura işlemleri için nereye başvurabilirim?", "Sosyal destek başvuruları için resmî bilgi nerede?",
+    "İstanbul etkinliklerini nereden öğrenebilirim?", "İBB’ye bir sorunu nasıl bildirebilirim?",
+    "Where can I find official information about İstanbulkart services?", "İSKİ / Bills",
+    "Where can I get help with İSKİ services and bills?", "How can I report a problem to İBB?",
+    "How can I get from Kadıköy to Levent without stairs?",
+}
 JS_DIR = STATIC / "js"
 I18N = STATIC / "i18n"
 UI_CALL = re.compile(r"t\(\s*(['\"])(ui\.[^'\"]+)\1\s*,\s*(['\"])((?:\\.|[^\\])*?)\3", re.S)
@@ -43,12 +79,22 @@ def ui_calls(source: str) -> dict[str, str]:
     return {match.group(2): js_fallback(match.group(4)) for match in UI_CALL.finditer(source)}
 
 
+def strip_comments(source: str) -> str:
+    """Block comments across lines, then whole-line ``//`` comments one line at a time. (One pattern with
+    ``re.S`` let a line comment's ``.*`` run to the end of the file and hid the rest of a module; P00 D2a.)"""
+    return re.sub(r"^\s*//.*$", "", re.sub(r"/\*.*?\*/", "", source, flags=re.S), flags=re.M)
+
+
 def blank_regex_literals(source: str) -> str:
     return REGEX_LITERAL.sub(lambda m: m.group(1) + "/" + " " * len(m.group(2)) + "/" + m.group(3), source)
 
 
 def surface_sources() -> dict[str, str]:
     return {name: (JS_DIR / name).read_text(encoding="utf-8") for name in MODULES}
+
+
+def lane_pairs(language: str) -> dict[str, str]:
+    return {key: value for lane in LANE_CATALOGS for key, value in lane[language].items()}
 
 
 def skip_quoted(value: str, index: int) -> int:
@@ -154,10 +200,33 @@ def test_every_ui_key_carries_its_modules_turkish() -> None:
     tr = catalog("tr")
     sources = surface_sources()
     calls = {key: value for source in sources.values() for key, value in ui_calls(source).items()}
+    lane = lane_pairs("tr")
     keys = {key for key in tr if key.startswith("ui.")}
-    assert keys == set(calls)
+    assert keys == set(calls) | set(lane)
     for key in keys:
-        assert tr[key] == calls[key], key
+        assert tr[key] == calls.get(key, lane.get(key)), key
+
+
+def test_lane_catalogues_are_in_the_shared_files_and_cover_their_modules() -> None:
+    for language in ("tr", "en"):
+        shared = catalog(language)
+        assert all(shared.get(key) == value for key, value in lane_pairs(language).items()), language
+    tr, en = catalog("tr"), catalog("en")
+    shown = set(lane_pairs("tr").values())
+    left = set()
+    for name in LANE_MODULES:
+        source = (JS_DIR / name).read_text(encoding="utf-8")
+        keys = {key for _, key in UI_KEY.findall(source)}
+        assert keys <= set(tr) and keys <= set(en), name
+        clean = list(blank_regex_literals(strip_comments(source)))
+        for start, end, chunks in template_literals("".join(clean)):
+            assert not any(TURKISH_CHARS.search(chunk) for chunk in chunks), name
+            clean[start:end] = [" "] * (end - start)
+        for match in re.finditer(r"'((?:\\.|[^'\\])*)'|\"((?:\\.|[^\"\\])*)\"", "".join(clean), re.S):
+            value = js_fallback(next(part for part in match.groups() if part is not None))
+            if TURKISH_CHARS.search(value) and value not in shown:
+                left.add(value)
+    assert left <= LANE_UNTRANSLATED | LANE_OWN_PAIRS, sorted(left - LANE_UNTRANSLATED - LANE_OWN_PAIRS)
 
 
 def test_every_t_call_has_both_catalog_entries() -> None:
@@ -177,9 +246,11 @@ def test_new_surfaces_have_no_bare_turkish() -> None:
     categories = {
         "Bilgi ve İletişim Teknolojileri", "Enerji", "Ekonomi", "Güvenlik", "Mobilite", "Çevre", "İnsan", "Yönetişim", "Yaşam",
     }
-    allowlist = categories | {"Türkçe"}
+    # E77's sample routes are station names the operator can run, data rather than copy (P00 D2a).
+    sample_routes = {"Zeytinburnu > Bağcılar", "Bostancı > Kartal"}
+    allowlist = categories | sample_routes | {"Türkçe"}
     for name, source in surface_sources().items():
-        clean = blank_regex_literals(re.sub(r"/\*.*?\*/|^\s*//.*$", "", source, flags=re.S | re.M))
+        clean = blank_regex_literals(strip_comments(source))
         fallback_spans = [match.span(4) for match in UI_CALL.finditer(clean)]
         literal_source = list(clean)
         for start_template, end_template, chunks in template_literals(clean):

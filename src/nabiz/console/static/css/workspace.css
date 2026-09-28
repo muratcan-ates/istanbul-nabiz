@@ -3,10 +3,8 @@
 .citizen-page main { padding-top: 0; gap: 0; min-height: calc(100dvh - 96px); }
 .citizen-page .topbar-brand { color: var(--text); font-weight: 600; letter-spacing: -.04em; }
 .citizen-page .topbar-nav { background: var(--surface-raised); }
-.citizen-page .topbar-nav > a { color: var(--text-muted); font-size: 1rem; font-weight: 500; }
-.citizen-page .topbar-nav > a[aria-current] { color: var(--link); background: var(--primary-subtle); }
-.citizen-page .topbar-nav > a:nth-child(5) { margin-top: 0; }
-.citizen-page .topbar-nav > a[href="#profilim"] { margin-top: 20px; }
+.citizen-page .topbar-nav a { color: var(--text-muted); font-size: 1rem; font-weight: 500; }
+.citizen-page .topbar-nav a[aria-current="page"] { color: var(--link); background: var(--primary-subtle); }
 .citizen-page .hero { min-height: calc(100dvh - 112px); align-content: center; padding: 64px 32px 88px; border-radius: 0; background: transparent; gap: 16px; overflow: visible; }
 .hero::before { inset: 36% 0 0; background-position: center bottom; background-size: cover; opacity: .34; mask-image: linear-gradient(transparent, var(--text) 32%, var(--text) 78%, transparent); }
 .hero::after { background: linear-gradient(180deg, var(--surface) 8%, color-mix(in srgb, var(--surface) 96%, transparent) 32%, color-mix(in srgb, var(--surface) 35%, transparent) 80%, var(--surface)); }
@@ -40,13 +38,27 @@
 .citizen-page.has-conversation .hero { min-height: 0; padding: 32px 24px 20px; align-content: start; }
 .has-conversation .hero::before, .has-conversation .hero::after,
 .has-conversation .hero-sub, .has-conversation .hero #quick-cards, .has-conversation .hero #quick-more,
+.has-conversation .hero #capability-examples,
 .has-conversation .hero .eyebrow { display: none; }
 .has-conversation .hero h1 { font-size: 1.5rem; text-align: left; max-width: 48rem; }
 .has-conversation .hero > .band { max-width: 48rem; text-align: left; }
 .has-conversation .hero .band .tag { display: inline; margin: 0; padding: 0; }
 .has-conversation .chat { padding: 16px 12px 32px; gap: 32px; }
 .has-conversation .chat-log { gap: 32px; }
-.has-conversation .chat > .composer { position: relative; margin-top: 12px; }
+.has-conversation .chat > .composer { margin-top: 12px; }
+.has-conversation #chat-form { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: var(--z-sticky); align-self: end; }
+.has-conversation #asistan { scroll-padding-bottom: calc(var(--chat-composer-height, 12rem) + 24px); }
+.has-conversation #asistan { min-height: 100dvh; align-content: stretch; }
+.citizen-page.has-conversation main { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.has-conversation #chat-log { padding-bottom: calc(var(--chat-composer-height, 12rem) + 12px); }
+.has-conversation #ask-pill { display: none !important; }
+.citizen-page .composer.glass { background: var(--nd-glass); backdrop-filter: blur(20px) saturate(1.8); }
+#chat-new-reply { position: absolute; right: 0; bottom: calc(100% + 8px); min-height: 44px; background: var(--surface-raised); }
+@supports not (backdrop-filter: blur(1px)) { .citizen-page .composer.glass { background: var(--surface-raised); } }
+@media (prefers-reduced-transparency: reduce) { .citizen-page .composer.glass { background: var(--surface-raised); backdrop-filter: none; } }
+@media (prefers-contrast: more) { .citizen-page .composer.glass { background: var(--surface-raised); backdrop-filter: none; border-color: var(--border-strong); } }
+:root[data-contrast="more"] .citizen-page .composer.glass { background: var(--surface-raised); backdrop-filter: none; border-color: var(--border-strong); }
+@media (forced-colors: active) { .citizen-page .composer.glass { background: var(--surface-raised); backdrop-filter: none; border-color: CanvasText; } }
 .has-conversation .composer .chat-row > textarea { min-height: 56px; }
 .has-conversation .chat-msg.is-notice:not(.chat-compaction) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 .has-conversation .hero-options { justify-content: flex-start; width: min(100%, 48rem); }
@@ -62,15 +74,12 @@
 #city-cards .card { background: var(--surface-raised); border-color: var(--border); border-radius: 20px; }
 #city-cards .card:nth-child(3n + 2) { background: var(--surface-raised); }
 .citizen-page #hesabim { border-top: 0; padding: 0 24px; }
-.citizen-page #ask-pill { display: none; }
 @media (min-width: 1100px) {
   .citizen-page .topbar-nav { padding-top: 22px; }
-  .citizen-page .topbar-nav > a { min-height: 44px; }
-}
-@media (max-width: 1099px) {
-  .citizen-page .topbar-nav > a[href="#profilim"] { margin-top: 0; }
+  .citizen-page .topbar-nav a { min-height: 44px; }
 }
 @media (max-width: 767px) {
+  .citizen-page.has-conversation .topbar { position: static; }
   .citizen-page main { min-height: calc(100dvh - 130px); }
   .citizen-page .hero { min-height: calc(100dvh - 150px); padding: 42px 10px 36px; gap: 14px; }
   .hero h1 { font-size: 2.25rem; }
@@ -82,7 +91,6 @@
   .hero .chips { justify-content: center; gap: 7px; }
   .hero .chip, .citizen-page .quick-chip { font-size: 0.8125rem; padding: 8px 12px; }
   .hero-options { gap: 14px; }
-  .citizen-page .chat:not(:has(.is-user, .is-assistant)) #convo-root { justify-self: center; margin-block: 8px 24px; }
   .has-conversation .chat { padding: 8px 0 20px; }
   .has-conversation .chat > .composer { margin-top: 8px; }
   .citizen-page.has-conversation .hero { padding: 26px 0 16px; }

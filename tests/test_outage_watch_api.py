@@ -60,6 +60,8 @@ def test_info_is_sourced_and_history_matches_only_the_selected_area(tmp_path) ->
     assert len(body["districts"]) == 39
     assert any(quote["id"] == "alo_185" and quote["text"] == "Su Kesintisi Öğrenme" for quote in body["official"]["quotes"])
     assert all("igdas" not in quote.get("source_url", "").lower() for quote in body["official"]["quotes"])
+    gas = next(line for line in body["gas"]["lines"] if line["id"] == "gas_emergency")
+    assert [quote["id"] for quote in gas["quotes"]] == ["gas_187_title", "gas_187_service"]  # P00 D2a: by id
     assert body["history"]["source_records"] == 6410
     history = client.get("/api/outage-watch/history", params={"district": "Kadıköy", "neighbourhood": "caferaga"}).json()
     assert history["area"]["count"] == 28

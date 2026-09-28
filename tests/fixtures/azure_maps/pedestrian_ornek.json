@@ -1,0 +1,34 @@
+{
+  "ornek": true,
+  "note": "Elle yazilmis ornek yanit; gercek Azure Maps kaydi degildir.",
+  "routes": [
+    {
+      "legs": [
+        {
+          "points": [
+            {"latitude": 40.90000, "longitude": 29.19000},
+            {"latitude": 40.90030, "longitude": 29.19000},
+            {"latitude": 40.90030, "longitude": 29.19040},
+            {"latitude": 40.90060, "longitude": 29.19040},
+            {"latitude": 40.90060, "longitude": 29.19080},
+            {"latitude": 40.90090, "longitude": 29.19080},
+            {"latitude": 40.90090, "longitude": 29.19110},
+            {"latitude": 40.90120, "longitude": 29.19110}
+          ]
+        }
+      ],
+      "guidance": {
+        "instructions": [
+          {"maneuverType": "Depart", "pointIndex": 0},
+          {"maneuverType": "TurnRight", "pointIndex": 1},
+          {"maneuverType": "TurnLeft", "pointIndex": 2},
+          {"maneuverType": "Straight", "pointIndex": 3},
+          {"maneuverType": "TurnRight", "pointIndex": 4},
+          {"maneuverType": "TurnLeft", "pointIndex": 5},
+          {"maneuverType": "TurnRight", "pointIndex": 6},
+          {"maneuverType": "Arrive", "pointIndex": 7}
+        ]
+      }
+    }
+  ]
+}

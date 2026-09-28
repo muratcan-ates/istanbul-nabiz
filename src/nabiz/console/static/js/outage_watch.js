@@ -73,7 +73,7 @@ function officialMarkup(info, history) {
 }
 function gasMarkup(info) {
   const emergency = (info.gas && info.gas.lines || []).find((line) => line.id === 'gas_emergency');
-  const quote = emergency && (emergency.quotes || []).find((item) => item.text === '187 Doğal Gaz Acil Hattı');
+  const quote = emergency && (emergency.quotes || []).find((item) => item.id === 'gas_187_title');
   const source = quote ? `<div class="ow-quote"><blockquote lang="tr">${esc(quote.text)}</blockquote>     <a class="ow-source" href="${esc(quote.source_url)}" target="_blank" rel="noopener">${esc(t('ui.outage.gas_source', 'İBB Faaliyet Raporu 2025'))}</a>     <p class="ow-recorded">${esc(t('ui.outage.gas_recorded', 'kayıtlı · {date} · ibb.istanbul', { date: dateOnly(emergency.captured_at) }))}</p></div>` : '';
   return `<section class="ow-box" aria-labelledby="ow-gas-title"><h3 id="ow-gas-title">${esc(t('ui.outage.gas_title', 'Doğal gaz'))}</h3>     <p>${esc(t('ui.outage.gas_no_source', "Doğal gaz kesintisi için Nabız’da kaynak yok."))}</p>     <p><a class="ow-source" href="tel:153">${esc(t('ui.outage.call_153', '153’ü arayın'))}</a></p>     <p class="is-emergency">${esc(t('ui.outage.gas_emergency_prefix', 'Gaz kokusu alıyorsanız bu acildir:'))}       <a href="tel:112">${esc(t('ui.outage.call_112', '112’yi arayın'))}</a> ${esc(t('ui.outage.or', 've'))}       <a href="tel:187">${esc(t('ui.outage.gas_187', 'İGDAŞ 187 Doğal Gaz Acil Hattı'))}</a></p>${source}</section>`;
 }
@@ -99,7 +99,7 @@ function reportMarkup(view, code, actions = true) {
   return `<section class="ow-box ow-report" aria-labelledby="ow-report-title-${esc(code)}">     <h3 id="ow-report-title-${esc(code)}">#${esc(code)} · ${esc(status)}</h3>     <ul>${confirms}</ul>${note}<p class="field-hint">${view.simulated_note ? esc(t('ui.outage.simulated', 'Örnek: bu teyit İSKİ’ye iletilmez.')) : ''}</p>     ${buttons}   </section>`;
 }
 function mountCitizen(doc) {
-  const cityTools = doc.getElementById('city-tools');
+  const cityTools = doc.getElementById('hesabim');
   if (!cityTools) return null;
   const last = cityTools.querySelectorAll('details.more.tool-detail');
   const details = doc.createElement('details');

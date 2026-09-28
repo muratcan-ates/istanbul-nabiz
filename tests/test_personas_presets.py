@@ -122,6 +122,10 @@ def test_persona_name_never_reaches_a_request(tmp_path) -> None:
     for path in (STATIC / "js").glob("*.js"):
         if path.name != "personas.js":
             text = path.read_text(encoding="utf-8")
+            if path.name == "data_reset.js":
+                # P02 "Tüm Nabız verimi sil" names the key only to remove it (optional appearance group).
+                text = text.replace("'nabiz.persona.v1', ", "", 1)
+                assert "api.js" not in text.split("async function deleteExampleAccount", 1)[0]
             assert "nabiz.persona.v1" not in text and "data-persona" not in text
     values = node_json(
         tmp_path,

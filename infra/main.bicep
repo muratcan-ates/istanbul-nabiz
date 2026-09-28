@@ -138,6 +138,24 @@ param collectorSchedules object = {
   airQuality: '0 15 * * * *'
 }
 
+@description('Deploy the citizen and simulated-operator web app (modules/webapp.bicep, P10a). Off by default and the owner\'s decision to turn on: its storage, transactions and app can incur charges. On, it also needs deployContainerApp (it joins that environment) and webContainerImage; without webStateStorageKey only the state storage account, its file share and the budget alerts are created, never the app.')
+param deployWebApp bool = false
+
+@description('The reviewed web image built from infra/web/Dockerfile, preferably an immutable digest. Empty: the web module is skipped. No placeholder is used.')
+param webContainerImage string = ''
+
+@secure()
+@description('Key of the web state storage account, read by the operator after the first provision (the template never reads a key). Empty: no mount and no web app.')
+param webStateStorageKey string = ''
+
+@secure()
+@description('The simulated operator\'s sign-in token for the web app\'s console. Empty keeps the public console locked.')
+param operatorToken string = ''
+
+@minValue(21)
+@description('Monthly cost budget for the resource group, in USD, with alerts at 5 and 20 (so it must be above 20); an alert does not stop spending.')
+param webBudgetAmountUsd int = 25
+
 // ---------------------------------------------------------------------------------------
 // Naming
 // ---------------------------------------------------------------------------------------
@@ -150,6 +168,8 @@ var resourceToken = toLower(uniqueString(subscription().id, environmentName, loc
 // azd deployed. Deliberately no placeholder fallback here — see the header.
 var collectorImage = !empty(mcpContainerImage) ? mcpContainerImage : mcpDeployedImage
 var deployJobs = deployContainerApp && deployCollectorJobs && !empty(collectorImage)
+// The web app only with its switch, an environment to join and a reviewed image (P10a).
+var deployWeb = deployWebApp && deployContainerApp && !empty(webContainerImage)
 
 var tags = {
   'azd-env-name': environmentName
@@ -280,6 +300,25 @@ module maps 'modules/maps.bicep' = if (deployMaps) {
   }
 }
 
+// Closed preparation (P10a, P00 D2a): off unless deployWebApp, an image and the environment are all there.
+// Paid model calls stay closed (the module's ceilings default to 0) and the model values are not passed.
+module webapp 'modules/webapp.bicep' = if (deployWeb) {
+  name: 'webapp'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+    environmentName: containerapps.outputs.environmentName
+    containerImage: webContainerImage
+    registryName: deployContainerRegistry ? containerapps.outputs.registryName : ''
+    registryLoginServer: deployContainerRegistry ? containerapps.outputs.registryLoginServer : ''
+    stateStorageKey: webStateStorageKey
+    operatorToken: operatorToken
+    budgetAmountUsd: webBudgetAmountUsd
+  }
+}
+
 // ---------------------------------------------------------------------------------------
 // Outputs — everything azd writes into .azure/<env>/.env
 // ---------------------------------------------------------------------------------------
@@ -298,6 +337,10 @@ output SERVICE_MCP_URI string = deployContainerApp ? containerapps.outputs.uri :
 // The optional Function collector; empty in the default (jobs) deployment.
 output SERVICE_COLLECTOR_NAME string = deployCollectorFunction ? functions.outputs.functionAppName : ''
 output SERVICE_COLLECTOR_URI string = deployCollectorFunction ? functions.outputs.uri : ''
+// The web app (P10a); empty until it is switched on with an image and its state key.
+output SERVICE_WEB_NAME string = deployWeb ? webapp.outputs.webName : ''
+output SERVICE_WEB_URI string = deployWeb ? webapp.outputs.webUri : ''
+output NABIZ_WEB_STATE_STORAGE_ACCOUNT string = deployWeb ? webapp.outputs.stateStorageAccountName : ''
 
 // Whether the collector jobs exist yet. `false` after the very first provision is expected:
 // they need an image, which exists after `azd deploy mcp` (the postprovision hook says so).

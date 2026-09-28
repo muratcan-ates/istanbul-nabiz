@@ -144,7 +144,7 @@ function boardMarkup(data, previous = null, canSave = true, nextSaveAt = null, l
     + `<div class="ob-groups">${groups}</div>`
     + `<details class="ob-how"><summary>${TEXT.how}</summary><ul>${GROUP_METHODS.map((line) => `<li>${esc(line)}</li>`).join('')}`
     + `<li>${esc(TEXT.minRule(data?.min_n || 10))}</li></ul></details>`
-    + `<button type="button" class="btn" data-ob-save${disabled}>${TEXT.save}</button>${cooldown}`
+    + `<button type="button" class="btn btn-primary" data-ob-save${disabled}>${TEXT.save}</button>${cooldown}`
     + `<p class="ob-status" role="status" aria-live="polite"></p></section>`;
 }
 

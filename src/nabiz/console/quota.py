@@ -11,16 +11,19 @@ emergency (112) or a request for a person (153) is never counted and never refus
 decides that before it counts (:mod:`nabiz.console.quota_api`).
 
 **What is kept.** Counters keyed by a salted SHA-256 of the device id, of the address (IPv6 by its
-/64) or of the account id, in this process's memory only, for one Istanbul day. The salt is new
-on every start, so a key cannot be joined across restarts or with any other record. Nothing here
-is logged or written to disk. A restart gives everyone a fresh day: the quota is a courtesy limit,
-the spend ceiling (:mod:`nabiz.console.budget`) is the hard one.
+/64) or of the account id, for one Istanbul day. :class:`QuotaBook` keeps them in this process's
+memory with a salt new on every start; the product app uses P13's
+:class:`~nabiz.console.quota_store.PersistentQuotaBook` (P00 D2a), the same counters in a SQLite file
+with one stored salt, so a restart or a second replica no longer hands out a fresh day; days older
+than two are purged at start. Nothing here is logged. The quota is a courtesy limit, the spend
+ceiling (:mod:`nabiz.console.budget`) is the hard one.
 
 **How model calls are counted per person.** :class:`MeteredGuard` wraps the app's one
 :class:`~nabiz.console.budget.SpendGuard`. A turn sets its :class:`Meter` in a context variable;
-the guard then refuses a reservation the person's remaining calls cannot hold, and adds the calls
-the turn really made to that person's count. With no meter set (tests, the Arena) it only
-delegates.
+a reservation first claims the person's calls (``reserve_calls``, atomic in the persistent book),
+the calls the turn really made are kept, the rest is refunded on release (``refund_calls``), and
+whatever a cut-off turn still holds is refunded when the turn ends. With no meter set (tests, the
+Arena) it only delegates.
 """
 
 from __future__ import annotations
@@ -181,6 +184,32 @@ class QuotaBook:
         with self._lock:
             return self._left(holder)[1]
 
+    def reserve_calls(self, holder: Holder, calls: int) -> bool:
+        """Claim ``calls`` model calls when they fit today; ``False`` claims nothing."""
+        if calls <= 0:
+            return False
+        with self._lock:
+            if self._left(holder)[1] < calls:
+                return False
+            self._add(holder, 1, calls)
+            return True
+
+    def erase_account(self, account_id: str) -> int:
+        """Forget today's counts of a deleted account (the persistent book forgets every day's)."""
+        with self._lock:
+            return 1 if self._counts.pop(self.pseudonym("hesap", account_id), None) is not None else 0
+
+    def purge_old_days(self, *, keep_days: int = 2) -> int:
+        """The persistent book's start-up purge; in memory only today is ever kept, so nothing to do."""
+        return 0
+
+    def refund_calls(self, holder: Holder, calls: int) -> None:
+        """Give back an unused claim, never below zero."""
+        with self._lock:
+            for key in {holder.key, holder.address} - {None}:
+                row = self._row(str(key))
+                row[1] -= min(max(0, int(calls)), row[1])
+
     def spend_calls(self, holder: Holder, calls: int) -> None:
         with self._lock:
             self._add(holder, 1, calls)
@@ -215,12 +244,29 @@ class Meter:
     book: QuotaBook
     holder: Holder
     model_open: bool
+    held: int = 0  # claimed in the book, not yet made or refunded
 
     def room(self, calls: int) -> bool:
         return self.model_open and self.book.calls_left(self.holder) >= calls
 
+    def reserve(self, calls: int) -> bool:
+        if not self.model_open or not self.book.reserve_calls(self.holder, calls):
+            return False
+        self.held += calls
+        return True
+
     def spent(self, calls: int) -> None:
-        self.book.spend_calls(self.holder, calls)
+        """Calls made: taken from the claim first; beyond it (a release before the record) counted anew."""
+        taken = min(max(0, calls), self.held)
+        self.held -= taken
+        if calls > taken:
+            self.book.spend_calls(self.holder, calls - taken)
+
+    def refund(self, calls: int) -> None:
+        given = min(max(0, calls), self.held)
+        self.held -= given
+        if given:
+            self.book.refund_calls(self.holder, given)
 
 
 CURRENT_METER: contextvars.ContextVar[Meter | None] = contextvars.ContextVar("nabiz_quota_meter", default=None)
@@ -241,12 +287,20 @@ class MeteredGuard:
 
     def reserve(self, provider: str, calls: int) -> bool:
         meter = CURRENT_METER.get()
-        if meter is not None and not meter.room(calls):
+        if meter is None:
+            return self.inner.reserve(provider, calls)
+        if not meter.reserve(calls):
             return False
-        return self.inner.reserve(provider, calls)
+        if self.inner.reserve(provider, calls):
+            return True
+        meter.refund(calls)
+        return False
 
     def release(self, provider: str, calls: int) -> None:
         self.inner.release(provider, calls)
+        meter = CURRENT_METER.get()
+        if meter is not None:
+            meter.refund(calls)
 
     def record(self, provider: str, usage: Mapping[str, Any], calls: int) -> None:
         self.inner.record(provider, usage, calls)

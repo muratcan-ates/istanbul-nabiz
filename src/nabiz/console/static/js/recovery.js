@@ -4,7 +4,7 @@ import { get, MOCK } from './api.js';
 import { currentLang, onLang, t } from './i18n_text.js';
 import { FALLBACK_CALL, STORAGE_KEY, back, choose, emptyState, parseStored, sectionMarkup, stepMarkup, trailMarkup } from './recovery_view.js';
 
-const ANCHORS = [['#city-tools', 'beforeend'], ['#hesabim', 'beforebegin']], STYLESHEET = '/css/recovery.css', SECTION_ID = 'erisim-kurtar';
+const ANCHORS = [['#hesabim', 'beforeend']], STYLESHEET = '/css/recovery.css', SECTION_ID = 'erisim-kurtar';
 let flowsPromise = null;
 const ACTION_TEXT = {
   back: () => t('ui.erisim.back', 'Geri'),

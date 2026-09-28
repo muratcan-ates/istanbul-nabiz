@@ -144,7 +144,8 @@ def _info_payload() -> dict[str, Any]:
             evidence = (data.get("evidence") or {}).get(evidence_id, {})
             quote_source = source_by_id.get(evidence.get("source_id") or line.get("source_id"), {})
             if evidence.get("text") and _source_url(quote_source.get("url")):
-                line["quotes"].append({"text": evidence["text"], "source_url": quote_source["url"]})
+                # The id lets the page pick a quote without comparing Turkish text (P00 D2a, E69 i18n).
+                line["quotes"].append({"id": evidence_id, "text": evidence["text"], "source_url": quote_source["url"]})
     history = dict(data.get("history") or {})
     history["source_url"] = history.get("source_url") if _source_url(history.get("source_url")) else None
     history["dataset"] = history.get("dataset") if _source_url(history.get("dataset")) else None

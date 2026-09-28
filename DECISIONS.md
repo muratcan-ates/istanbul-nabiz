@@ -3088,3 +3088,222 @@ answers citing the gold page first.
 ### Consequences
 
 - The AKOM page is dated 2022-09-30; if it changes, `data/reference/disaster_kit/akom_sss.json` is captured again.
+
+## 98. Street walking route: mounted, off until its Azure Maps key is set (P03, P00 D2a, 27 Sep)
+
+### Decision
+
+- `street_route_router` (`POST /api/route/street`) is in `PRODUCT_ROUTERS` right after E50's `route_steps_routes`.
+  Without `NABIZ_AZURE_MAPS_KEY`, or with `NABIZ_OFFLINE=1`, it answers `provider_status: "kapalı"` with no street
+  path and calls nothing; no sample geometry is ever presented as a real street.
+- It runs only on the citizen's explicit consent. Coordinates are request-scoped: never stored, never logged. The
+  request log writes the route template; httpx's own URL line is filtered in the provider and `main()` sets the httpx
+  logger to WARNING.
+- Setting the key is MURAT ONAYI: Azure Maps bills per request.
+
+### Consequences
+
+- `.env.example` names `NABIZ_AZURE_MAPS_KEY`; the page does not call the route yet (D2b).
+
+## 99. Quota and sign-in sessions on disk, calls claimed before the model runs (P13, P00 D2a, 27 Sep)
+
+### Decision
+
+- The product app counts the day's questions and model calls in P13's `PersistentQuotaBook` (`NABIZ_QUOTA_DB`,
+  default `data/accounts/quota.sqlite`) and keeps sign-in flows and sessions in `SessionStore` (`NABIZ_SESSIONS_DB`,
+  default `data/accounts/sessions.sqlite`). A restart or a second replica no longer hands out a fresh day. The file
+  holds salted pseudonyms and two numbers per day; its salt never leaves it. Days older than two and expired flows and
+  sessions are purged at every start.
+- A chat turn claims its model calls atomically (`reserve_calls`) before the provider is reserved, keeps the calls it
+  made and refunds the rest on release (`refund_calls`); a turn cut off mid-way refunds what it still holds when its
+  stream closes (`TurnPlan.events`). An emergency is still neither counted nor metered.
+- Tests: every test gets its own quota and session files (`tests/conftest.py`), so nothing is written under `data/`.
+- kvkk and `docs/privacy.md` now say the counts are on disk for two days, not in memory until restart.
+
+### Consequences
+
+- The sign-in routes that use `SessionStore` come with the identity work (J or D2b); today only the store and its
+  purge are wired. Account erasure of the quota and session rows is the erasure chain's (H).
+
+## 100. Server-side speech: mounted, off until its keys are set, every call bonded to two quotas (P04, P00 D2a, 27 Sep)
+
+### Decision
+
+- `speech_router` (`POST /api/speech/transcribe`, `POST /api/speech/synthesize`) is in `PRODUCT_ROUTERS` after
+  `quota_routes`. Off, offline, without a key or with `NABIZ_SPEECH_DAILY_CALLS=0` both answer 503 "kapalı" and the
+  page keeps typing. A transcript is an editable draft, never sent on its own; synthetic audio is marked as such.
+- Each call claims one model call on the person's quota and one on the shared `global:speech` holder (limit
+  `NABIZ_SPEECH_DAILY_CALLS`), both in the app's quota book, so the ceiling holds across restarts and replicas; a call
+  the provider does not complete refunds both. The process-local `_DailyLimit` is removed: nothing used it any more.
+- No audio or text is stored or logged. kvkk `#kvkk-ses` says so. Switching it on is MURAT ONAYI (per-use billing).
+
+### Consequences
+
+- `voice_provider.js` is in the shell next to `voice.js` (sw v18); the page offers server speech only when the route
+  is open (D2b).
+
+## 101. Server calendar: mounted for accounts only, Outlook closed (P06, P00 D2a, 27 Sep)
+
+### Decision
+
+- `plans_routes` (`/api/plans`) follows `account_routes`. `state.plan_principal` is `_plan_owner`: the signed-in
+  account's id, otherwise nothing, so a visitor gets 503 "Takvim bağlantısı kapalı" and their plans stay on the device
+  (the owner's decision: the server calendar is for accounts only).
+- Every write needs consent; a plan marked sensitive is refused. The file is `NABIZ_PLAN_DB_PATH`
+  (default `data/nexus/plans.sqlite3`, gitignored).
+- Outlook stays closed: `state.plan_tokens` is `None` and no `plan_graph_client` is set, so "Outlook'a ekle" answers
+  `outlook_failed` "Outlook bağlantısı kapalı" and nothing reaches Microsoft. No `NABIZ_MS_*` name is listed in
+  `.env.example`; opening Outlook is the Microsoft work (J) and MURAT ONAYI.
+- kvkk `#kvkk-takvim` and `docs/privacy.md` §10 name the stored fields and their retention.
+
+### Consequences
+
+- Deleting an account must delete its plans: the erasure chain's `calendar_plans` hook (H).
+
+## 102. Restriction and appeals: keyed by the person, automatic restriction off (P08, P00 D2a, 27 Sep)
+
+### Decision
+
+- `appeal_routes` (`/api/restriction`, `/api/appeals`, `/api/console/appeals`) follows `quota_routes`.
+  `state.appeal_book` is an `AppealBook` over a `RestrictionBook`; `state.restriction_subject` is `_person_key`:
+  the account's or the device's quota pseudonym, never an address, so a visitor with no device id has no key
+  (401 "İtiraz için oturum gerekli") and people behind one connection stay independent. `build_console_app` takes
+  no new parameter.
+- The chat's per-minute limiter counts by `_person_key` (the address only when there is no key, as before).
+- A turn's model rung also asks the restriction book (`TurnPlan.model_gate`); a restricted or rate limited person gets
+  the rules, and an emergency is never checked.
+- The owner's decision: automatic restriction is off. `NABIZ_AUTO_RESTRICTION=1` is the single condition that lets a
+  burst become an automatic restriction, fixed at 24 hours; otherwise a burst is only rate limited. A longer
+  restriction is a person's, with a coded reason.
+- The console shows the appeal queue in `#appeals`, right after the day's decisions. kvkk `#kvkk-kisit` says what is
+  kept.
+
+### Consequences
+
+- The books are in memory; their SQLite persistence is the data-root work (I). Account erasure purges appeals (H).
+
+## 103. Web app: a closed preparation in main.bicep (P10a, P00 D2a, 27 Sep)
+
+### Decision
+
+- `infra/main.bicep` calls `modules/webapp.bicep` only when `deployWebApp` is true, the MCP Container App environment
+  is deployed and `webContainerImage` names a reviewed image; `deployWebApp` defaults to false in the template and in
+  `main.parameters.json` (`DEPLOY_WEB_APP=false`), so a provision today creates nothing new.
+- The storage key and the console token reach the module as `@secure()` parameters (`NABIZ_WEB_STATE_KEY`,
+  `NABIZ_WEB_OPERATOR_TOKEN` in the local azd environment); the template reads no key. Without the key only the state
+  storage, its share and the budget alerts are created, never the app. No model value is passed: paid model calls stay
+  closed. One replica.
+- `docs/deploy.md` has a "Web app (closed preparation)" section before Troubleshooting. Switching it on, and every
+  `azd` step, is MURAT ONAYI.
+
+### Consequences
+
+- The app's data root on the share (`/var/lib/nabiz`) and the env names the module sets are the data-root work (I).
+
+## 104. Account erasure is one chain over every store, or a 503 (H, P00 D2a, 27 Sep)
+
+### Decision
+
+- `DELETE /api/account` runs `erasure_chain` (`src/nabiz/console/account_links.py`) over the stores in the owner's
+  order: calendar plans, Outlook tokens, appeals, bookings, saved journeys, photo reports, account memory, citizen
+  requests, e-mail outbox, family links, quota, sessions, and the account row last (`REQUIRED_HOOKS`). An unknown hook
+  name is a `ValueError`.
+- A hook that fails stops the chain: the route answers 503 `erasure_incomplete` (no-store) and the account stays, so
+  the person can retry and is never told everything went when it did not.
+- Photo reports and citizen requests are keyed by a code on the device, and memory lives in the browser: the account
+  holds nothing there, and their hooks say so with 0. The Outlook token hook fails the chain if a token store cannot
+  delete (today there is no store: 0).
+- New erase methods: `PlanStore.erase_owner` and `QuotaBook.erase_account` (in memory, like the persistent book's);
+  the family hook uses the store's own `leave` (an owner's leaving dissolves the group) and `cancel_request`. The
+  answer adds the counts per store; kvkk's deletion paragraph names the stores.
+
+### Consequences
+
+- A store added later joins `REQUIRED_HOOKS` and `account_links.py` in the same change, or the chain refuses to run.
+
+## 105. One data root, and P08's books kept across restarts (I, P00 D2a, 27 Sep)
+
+### Decision
+
+- `src/nabiz/console/data_root.py`: `store_path(variable, name)` gives a store its own variable when set (relative to
+  the repository, as before), else `name` under `NABIZ_DATA_ROOT` (default `<repo>/data`). The accounts, quota,
+  sessions, plans and appeals stores use it.
+- P08's `RestrictionBook` and `AppealBook` take a `path`: restrictions and appeals are written through to SQLite
+  (`NABIZ_APPEALS_DB`, default `accounts/appeals.sqlite` under the root), so a restart neither lifts a restriction nor
+  loses an appeal or its decision. Request windows stay in memory.
+- `infra/modules/webapp.bicep` sets `NABIZ_DATA_ROOT=/var/lib/nabiz` and every writable store's own variable to a file
+  on the share; a test fails when a store variable the console reads is neither on the share nor listed as shipped
+  read-only data.
+- kvkk: restrictions and appeals are on disk; an appeal has no separate retention yet and goes with the account.
+
+### Consequences
+
+- Appeal retention (a purge after a decision) is D2b's; until then kvkk says there is none.
+
+## 106. Chat shell and ChatCard v1 in the product (P01, P00 D2a, 27 Sep)
+
+### Decision
+
+- The citizen page is one conversation surface with one composer (P01). The chat `final` carries `cards`: each passes
+  `chat_cards.validate_card` (a v0 producer card through `from_v0`), at most six, and an emergency final carries none.
+- A ChatCard action is published as `nabiz:card-action`; a card with an action nobody handles says so and saves
+  nothing. The share action sends only the card's title and one https source (`share.js`); a memory card draws no
+  action row (its own card asks).
+- The builder is `chat_cards.make_card(type_, title, **fields)`: one name, one meaning beside `cards.card`.
+- The shell's texts (`ui.shell.*`, `ui.cards.*`) are in `tr.json`/`en.json` as P01's tests hold them; sw v18 caches
+  the card modules.
+
+### Consequences
+
+- Card producers beyond the memory card (route, map, event, status) are D2b's: each feature wires its own card.
+
+## 107. History and memory stay in the browser (P02, P00 D2a, 27 Sep)
+
+### Decision
+
+- Conversations are kept in this browser for 30 days from last use; at 80 turns a conversation continues in a new
+  one without deleting the old. Memory (interests, frequent places, functional needs, a person's own health
+  statement) lives only in this browser, is not linked to an account and never follows to another device. Only the
+  functional need keys a person confirmed reach the server; a health statement reaches no request, operator or
+  calendar.
+- A memory suggestion is offered on the second declaration and saved only on confirmation; forgetting keeps the
+  old conversation text and stops the suggestion for 30 days.
+- kvkk's device table names `nabiz.memory.v2` and `nabiz.memory.forgotten.v1`; the texts (`ui.memory.*`,
+  `ui.history.*`, `ui.reset.*`) are in the shared catalogues.
+
+### Consequences
+
+- 21 P02 strings (announcements, demo rows, interest and need labels) have no catalogue entry yet; the i18n test
+  lists them and the list may only shrink (D2b).
+
+## 108. Citizen navigation placement (P00 D2a, 27 Sep)
+
+### Decision
+
+- Citizen navigation placement (27 Sep): Asistan, Takvim, Hesabım; city status, journey, map and nearby under
+  Asistan > More; follow in Hesabım; easy screen in the top bar; open data moved to the operator console. No function
+  removed.
+- Every old address still opens its view (`#city-cards`, `#city-tools`, `#map-workspace`, `#explore-workspace`,
+  `#acik-veri`, `#takip`, `#profilim`, `#hafizam`, `/kolay.html`); the wave's citizen modules mount in Hesabım, a
+  More workspace or the chat, never on the home screen.
+
+### Consequences
+
+- `day_plan` (E73) and `skills` (E72) are not on the page yet: their files were outside this round's write list.
+
+## 109. Microsoft sign-in and Outlook tokens wait for a declared crypto dependency (J, P00 D2a, 27 Sep)
+
+### Decision
+
+- Outlook stays closed: no token store, no Graph client, no `NABIZ_MS_*` name in `.env.example`.
+- Keeping a Microsoft refresh token needs encryption at rest (the brief's Fernet with `NABIZ_TOKEN_KEY`). Fernet is in
+  `cryptography`, which is installed here only as another package's dependency: it is neither in `pyproject.toml` nor
+  in `nabiz.console`'s dependency set, and both files are outside this round's write list. Hand-written encryption is
+  not an option. So J (common-tenant sign-in with issuer and tenant checks, the Graph grant, the encrypted token store,
+  the Outlook connect and delete routes) moves to the start of D2b.
+
+### Consequences
+
+- MURAT ONAYI: declare `cryptography` (for example in a new extra) and its `DEPENDENCY_SETS` entry, or choose another
+  key store; then J lands with its tests (`test_provider_tokens.py`, `test_graph_grant.py`). The erasure chain's
+  `outlook_tokens` hook already fails closed when a store cannot delete.

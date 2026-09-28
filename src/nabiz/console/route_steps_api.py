@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import JSONResponse
 
 from nabiz.console.journey_api import accessible_journey_route
@@ -13,11 +13,14 @@ from nabiz.console.route_steps import route_view
 
 log = logging.getLogger(__name__)
 route_steps_routes = APIRouter()
+# A route names where a person is going: no browser or proxy keeps a copy (P00 D2a, K).
+NO_STORE = {"Cache-Control": "no-store"}
 
 
 @route_steps_routes.get("/api/route/steps")
 async def route_steps_endpoint(
     request: Request,
+    response: Response,
     from_place: str = Query(..., alias="from", min_length=1, max_length=120),
     to: str = Query(..., min_length=1, max_length=120),
     needs: str = Query("step_free"),
@@ -31,7 +34,10 @@ async def route_steps_endpoint(
         return JSONResponse(
             status_code=503,
             content={"error": "route_unavailable", "message": "Rota adımları şu anda alınamadı."},
+            headers=NO_STORE,
         )
     if not isinstance(result, dict):
+        result.headers.update(NO_STORE)
         return result
+    response.headers.update(NO_STORE)
     return route_view(result, lang)

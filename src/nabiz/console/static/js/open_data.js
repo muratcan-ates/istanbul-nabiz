@@ -3,7 +3,8 @@
  * every result names its publisher, formats and last update, links to the dataset's page on
  * data.ibb.gov.tr, and says how old the catalogue copy is. Without a copy the server's own sentence
  * is shown as it is. The stylesheet loads with the section, like the service-status band. Labels follow
- * the page language (i18n_text.js); dataset titles and summaries are İBB's data and stay Turkish. */
+ * the page language (i18n_text.js); dataset titles and summaries are İBB's data and stay Turkish.
+ * Mounts, by the form's ids: #open-data-mount in the console's "Bilgi ve planlama" (P00 D2a), then #acik-veri. */
 
 import { get } from './api.js';
 import { currentLang, onLang, t } from './i18n_text.js';
