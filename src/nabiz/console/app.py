@@ -344,12 +344,14 @@ async def _invalid_request(request: Request, exc: Exception) -> Response:
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from ibb_mcp.telemetry import setup_telemetry
+    from nabiz.console.gtfs_warm import start_gtfs_warm
 
     setup_telemetry("nabiz-console")
     state = app.state
     owned = state.nabiz is None
     if owned:
         state.nabiz = Nabiz(SourceContext.create(settings=state.settings))
+    start_gtfs_warm(state.nabiz)  # in the background: the first arrival question finds the GTFS tables loaded
     # The chat's guard also meters each person's daily model calls (DECISIONS #38); /healthz reads the plain one.
     state.chat = ChatService(state.nabiz, state.chat_config, MeteredGuard(state.guard), offline=state.settings.offline)
     # P13: quota days older than two and expired sign-in flows and sessions leave the disk at every start.

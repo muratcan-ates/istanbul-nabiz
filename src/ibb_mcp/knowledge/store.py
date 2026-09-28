@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import pathlib
 import sqlite3
 import struct
@@ -12,6 +13,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from ibb_mcp.text import normalize_tr
+
+log = logging.getLogger(__name__)
+
+#: The join from a chunk to its quotes, on every search. Without it SQLite builds a throwaway automatic
+#: index over all quotes per query (EXPLAIN QUERY PLAN: "AUTOMATIC COVERING INDEX (chunk_id=?)").
+QUOTE_CHUNK_INDEX = "quotes_chunk_id"
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +88,7 @@ class KnowledgeStore:
                 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                 """
             )
+            _ensure_quote_index(db)
             try:
                 db.execute(
                     "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts "
@@ -287,6 +295,19 @@ class KnowledgeStore:
                 "INSERT OR REPLACE INTO embeddings_cache VALUES (?, ?)",
                 (key, json.dumps(list(vector))),
             )
+
+
+def _ensure_quote_index(db: sqlite3.Connection) -> None:
+    """Add the quotes(chunk_id) index, to an index file built before it existed too.
+
+    Only a writable open or an ingest gets here: the read-only stores open with ``mode=ro`` and never run
+    ``_init_db``. It is an optimisation, so it never blocks an open: a file that is read-only on disk, or
+    one another writer holds, keeps working without it, as before, and the next writable open adds it.
+    """
+    try:
+        db.execute(f"CREATE INDEX IF NOT EXISTS {QUOTE_CHUNK_INDEX} ON quotes(chunk_id)")
+    except sqlite3.OperationalError as exc:
+        log.debug("quotes(chunk_id) index not added: %s", exc)
 
 
 def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
