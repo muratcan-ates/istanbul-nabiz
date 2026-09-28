@@ -123,6 +123,10 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "ibb_mcp.eta",
             "ibb_mcp.eta_profile",
             "ibb_mcp.gtfs",
+            # the GTFS split (ENGINEERING §13, MOD-7): gtfs stays the entry point, these hold the parsing
+            "ibb_mcp.gtfs_index",
+            "ibb_mcp.gtfs_sequences",
+            "ibb_mcp.gtfs_timetables",
             "ibb_mcp.lines",
             "ibb_mcp.metro_graph",
             "ibb_mcp.occupancy",
