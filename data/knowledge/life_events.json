@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "checked_at": "2026-09-26",
+  "index": "data/knowledge/knowledge.db",
+  "plans": [
+    {
+      "id": "tasinma",
+      "title": "İstanbul'a taşındım",
+      "title_en": "I moved to Istanbul",
+      "steps": [
+        {
+          "id": "su",
+          "title": "Su aboneliği",
+          "title_en": "Water subscription",
+          "agency": "iski",
+          "kind": "choice",
+          "choices": [
+            {"id": "iptal", "label": "İstanbul'daki eski evimdeki aboneliği kapatacağım", "label_en": "I want to close the subscription at my former home in Istanbul", "source": 0},
+            {"id": "yenileme", "label": "Bu evdeki önceki abonelik kapatılmış (iptal edilmiş)", "label_en": "The previous subscription at this home has been closed", "source": 1},
+            {"id": "yeni", "label": "Bu binada hiç su aboneliği yok (yeni bina)", "label_en": "This building has no water subscription", "source": 2},
+            {"id": "bilmiyorum", "label": "Önceki oturanın aboneliği hâlâ açık ya da bilmiyorum", "label_en": "The previous resident's subscription may still be open, or I do not know", "source": null}
+          ],
+          "sources": [
+            {
+              "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/abonelik-iptal-islemleri/",
+              "quotes": [
+                "Su aboneliği bulunan bir konut ya da iş yerindeki aboneliğin taşınma vb. sebeplerle kapatılması işlemidir.",
+                "Abonelik iptal işlemi; E-DEVLET, İSKİ E-ŞUBE ve MOBİL İSKİ' den veya İSKİ Şube Müdürlüklerinden yapılabilmektedir."
+              ],
+              "documents": [
+                "İşlem yaptıran gerçek kişilerden; T.C. Kimlik Numarasını taşıyan kimlik kartı veya nüfus cüzdanı, resmi dairelerce verilen soğuk damgalı kimlik kartı",
+                "Tüzel kişiler için yetki belgesi ve kaşe.",
+                "Vekil tarafından yapılan işlemlerde noter onaylı vekâletnamenin aslı."
+              ]
+            },
+            {
+              "url": "https://iski.istanbul/abone-hizmetleri/abone-rehberi/yenileme-abonelik-islemleri/",
+              "quotes": [
+                "Şahsen veya mesafeli sözleşme hükümleri çerçevesinde; sözleşmesi iptal durumunda olan birimlere yeni abonelik talebinde bulunulması halinde ise yenileme işlemi tesis edilir."
+              ],
+              "documents": [
+                "Mal sahibi veya kiracı olduğunu belgelemesi veya yazılı beyan etmesi.",
+                "Sayaca ait eski bir fatura veya sayaç seri numarası.",
+                "Sayacın güncel işareti (m3)"
+              ]
+            },
+            {
+              "url": "https://grafikgoster.iski.gov.tr/abone-hizmetleri/abone-rehberi/yeni-abonelik-islemleri/",
+              "quotes": [
+                "Binanın Yapım Tarihi 01.07.2022 'den sonra ise; Yapı Kullanım İzin Belgesi (İskân)"
+              ],
+              "documents": [
+                "Binanın Yapım Tarihi 01.07.2022 'den sonra ise; Yapı Kullanım İzin Belgesi (İskân)",
+                "Tüzel kişiler için yetki belgesi ve kaşe."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "dogalgaz",
+          "title": "Doğal gaz",
+          "title_en": "Natural gas",
+          "agency": "igdas",
+          "kind": "link",
+          "sources": []
+        },
+        {
+          "id": "istanbulkart",
+          "title": "İstanbulkart",
+          "title_en": "Istanbulkart",
+          "agency": "istanbulkart",
+          "kind": "task",
+          "sources": [
+            {
+              "url": "https://www.istanbulkart.istanbul/",
+              "quotes": ["Ulaşım ve alışverişlerinde tek kart!"],
+              "documents": []
+            },
+            {
+              "url": "https://www.metro.istanbul/icerik/seyahatkartlari",
+              "quotes": [],
+              "documents": []
+            }
+          ]
+        },
+        {
+          "id": "sosyal-nokta",
+          "title": "Yakınınızdaki sosyal hizmet noktası",
+          "title_en": "A social service point near you",
+          "agency": "ibb",
+          "kind": "points",
+          "sources": [
+            {
+              "url": "https://sosyalhizmetler.ibb.gov.tr/iletisimnoktalari.aspx",
+              "quotes": ["Sosyal Hizmet Noktaları"],
+              "documents": []
+            }
+          ]
+        },
+        {
+          "id": "ilce",
+          "title": "İlçe belediyeniz",
+          "title_en": "Your district municipality",
+          "agency": "district_office",
+          "kind": "link",
+          "sources": []
+        },
+        {
+          "id": "153",
+          "title": "153 Çözüm Merkezi",
+          "title_en": "153 Solution Center",
+          "agency": "cozum_153",
+          "kind": "link",
+          "sources": []
+        }
+      ]
+    }
+  ]
+}
