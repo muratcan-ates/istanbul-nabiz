@@ -121,8 +121,16 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "domain",
         (
             "ibb_mcp.eta",
+            # the ETA split (ENGINEERING §13): context <- live / schedule <- eta, all one layer
+            "ibb_mcp.eta_context",
+            "ibb_mcp.eta_live",
+            "ibb_mcp.eta_schedule",
             "ibb_mcp.eta_profile",
             "ibb_mcp.gtfs",
+            # the GTFS split (ENGINEERING §13, MOD-7): gtfs stays the entry point, these hold the parsing
+            "ibb_mcp.gtfs_index",
+            "ibb_mcp.gtfs_sequences",
+            "ibb_mcp.gtfs_timetables",
             "ibb_mcp.lines",
             "ibb_mcp.metro_graph",
             "ibb_mcp.occupancy",

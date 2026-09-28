@@ -7,237 +7,77 @@ verified against live data on 2026-09-08:
 * ``yakinDurakKodu`` -> ``stops.stop_code``   (31/31 matched for line 500T)
 * ``guzergahkodu``   -> ``routes.route_code`` (2/2 matched)
 
-Note the first: it is ``stop_code``, **not** ``stop_id``. Those are different number
-spaces in the İBB export, and joining on ``stop_id`` matches nothing at all — the worst
-kind of bug here, because the ETA tool would quietly answer "no buses".
+This module is the public entry point (``from ibb_mcp.gtfs import ...`` keeps working) and
+owns what crosses the process boundary: the on-disk caches of the built tables and the
+download of the CSVs. The parsing lives one level down, split by responsibility
+(ENGINEERING §13, MOD-7):
 
-The export needs repair before use: a ``;`` separator and a UTF-8 BOM; coordinates
-written with thousands separators (``410.191.700.005.564`` means ``41.0191700005564``,
-see :func:`models.repair_coordinate`); and mojibaked text in ``routes.csv``
-(see :func:`_fix_mojibake`).
+* :mod:`ibb_mcp.gtfs_index` — ``stops.csv`` and ``routes.csv``, the repaired text, the
+  spatial grid and the process-wide :func:`get_index`;
+* :mod:`ibb_mcp.gtfs_sequences` — one ordered stop list per route variant;
+* :mod:`ibb_mcp.gtfs_timetables` — terminal times per trip and the service calendar.
 """
 
 from __future__ import annotations
 
-import csv
-import datetime as dt
 import gzip
 import json
 import logging
-import math
 import pathlib
-import threading
-from collections.abc import Iterator, Sequence
-from dataclasses import asdict, dataclass, field
-from typing import Any
+from collections.abc import Sequence
+from dataclasses import asdict
 
-from ibb_mcp.config import Settings, display_path
-from ibb_mcp.models import Route, Stop, demojibake, haversine_km, repair_coordinate, utcnow
+from ibb_mcp.config import Settings
+from ibb_mcp.gtfs_index import (
+    GRID_DEG,
+    ROUTES_FILE,
+    STOPS_FILE,
+    GtfsIndex,
+    clean_field,
+    get_index,
+    reset_index_cache,
+)
+from ibb_mcp.gtfs_sequences import EXCEL_ROW_LIMIT, RouteStopSequence, build_stop_sequences, stop_times_path
+from ibb_mcp.gtfs_timetables import ScheduledTrip, build_route_timetables, load_service_days
 from ibb_mcp.text import normalize_tr
+
+__all__ = [
+    "DEFAULT_GTFS_RESOURCES",
+    "EXCEL_ROW_LIMIT",
+    "GRID_DEG",
+    "ROUTES_FILE",
+    "SEQUENCE_CACHE_NAME",
+    "STOPS_FILE",
+    "TIMETABLE_CACHE_NAME",
+    "GtfsIndex",
+    "RouteStopSequence",
+    "ScheduledTrip",
+    "build_route_timetables",
+    "build_stop_sequences",
+    "clean_field",
+    "download_gtfs",
+    "ensure_gtfs",
+    "get_index",
+    "load_route_timetables",
+    "load_service_days",
+    "load_stop_sequences",
+    "normalize_tr",
+    "reset_index_cache",
+    "save_route_timetables",
+    "save_stop_sequences",
+    "stop_times_path",
+]
 
 log = logging.getLogger(__name__)
 
-#: Spatial grid cell size. 0.01° is ~1.11 km of latitude and ~0.84 km of longitude at
-#: İstanbul's 41°N: a 1 km query touches a handful of cells, and 15k stops fill ~1900.
-GRID_DEG = 0.01
-_KM_PER_DEG_LAT = 111.32
-
-STOPS_FILE = "stops.csv"
-ROUTES_FILE = "routes.csv"
 #: stop_times.csv is 26 MB and trips.csv 5.8 MB; neither is needed for the live join, so
 #: neither is downloaded by default. See :func:`load_stop_sequences`.
 DEFAULT_GTFS_RESOURCES: tuple[str, ...] = ("stops", "routes")
-
-
-# --------------------------------------------------------------------------------------
-# text
-# --------------------------------------------------------------------------------------
-# Name matching folds through ibb_mcp.text.normalize_tr, the one Turkish fold the gazetteer
-# and the agent use too; it is imported here (and stays importable as
-# ``ibb_mcp.gtfs.normalize_tr``) because the stop and route indexes are keyed by it.
-_MOJIBAKE_MARKERS = ("Ã", "Å", "Ä", "Ð", "Þ")
-
-
-def _fix_mojibake(text: str) -> str:
-    """Undo the double-encoding in ``routes.csv``, including the bytes cp1252 cannot hold.
-
-    ``models.demojibake`` re-encodes as cp1252 and recovers ``KADIKÃ–Y`` -> ``KADIKÖY``.
-    But the exporter also emitted raw latin-1 bytes: ``Ş`` (UTF-8 ``C5 9E``) comes back as
-    ``Å`` + U+009E, which cp1252 cannot encode at all — so that path bails out and 500T's
-    name stays broken. Encoding each character as latin-1 when it fits in one byte and as
-    cp1252 otherwise repairs both halves.
-    """
-    fixed = demojibake(text) or text
-    if not any(marker in fixed for marker in _MOJIBAKE_MARKERS):
-        return fixed
-    raw = bytearray()
-    try:
-        for char in fixed:
-            code = ord(char)
-            raw.extend(bytes((code,)) if code < 0x100 else char.encode("cp1252"))
-        return raw.decode("utf-8")
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        return fixed  # Not mojibake after all; leave the text exactly as İBB sent it.
-
-
-def _clean(value: str | None) -> str | None:
-    """Repair and strip; empty becomes ``None`` so the optional model fields stay honest."""
-    return (_fix_mojibake(value) if value else "").strip() or None
-
-
-# --------------------------------------------------------------------------------------
-# stop sequences (not available yet)
-# --------------------------------------------------------------------------------------
-@dataclass(frozen=True)
-class RouteStopSequence:
-    """The ordered stops of one route variant: ``route_code`` plus its stop_code list."""
-
-    route_code: str
-    stop_codes: tuple[str, ...] = ()
-
-    def position_of(self, stop_code: str) -> int | None:
-        try:
-            return self.stop_codes.index(stop_code)
-        except ValueError:
-            return None
-
-    def stops_between(self, from_code: str, to_code: str) -> int | None:
-        """Stops still to pass, or ``None`` when either stop is not ahead on this route."""
-        start, end = self.position_of(from_code), self.position_of(to_code)
-        if start is None or end is None or end < start:
-            return None
-        return end - start
-
-    def __len__(self) -> int:
-        return len(self.stop_codes)
-
-
-@dataclass(frozen=True)
-class ScheduledTrip:
-    """A GTFS trip summarized by its terminal times and route metadata."""
-
-    trip_id: str
-    route_code: str
-    service_id: str
-    headsign: str
-    departure_time: str
-    arrival_time: str
-    stop_count: int
-
 
 #: Where the built sequence index is cached. Building it parses a 150 MB file, which is
 #: fine once at deploy time but not on every cold start of a scale-to-zero container.
 SEQUENCE_CACHE_NAME = "route_sequences.json.gz"
 TIMETABLE_CACHE_NAME = "route_timetables.json.gz"
-
-#: Excel's worksheet limit, and the reason ``stop_times.csv`` cannot be trusted.
-EXCEL_ROW_LIMIT = 1_048_575
-
-
-def _stop_times_path(gtfs_dir: pathlib.Path) -> pathlib.Path | None:
-    """Pick the usable ``stop_times`` file, preferring the complete one.
-
-    İBB publishes this table twice and the two disagree badly:
-
-    * ``stop_times.csv`` (26 MB, ``;`` separated) stops at exactly 1,048,575 data rows —
-      Excel's worksheet limit. It was clearly exported through a spreadsheet and silently
-      truncated, so it holds only 18,934 of 135,625 trips (14%). Line 500T has **zero**
-      rows in it, which is how this was noticed: every arrival estimate silently fell back
-      to straight-line distance.
-    * The ZIP resource unpacks to ``stop_times.txt`` (150 MB, comma separated, standard
-      GTFS) with 6,155,693 rows and full coverage.
-
-    So the ``.txt`` wins whenever it is present, and the truncated ``.csv`` is used only as
-    a last resort with a loud warning.
-    """
-    full = gtfs_dir / "stop_times.txt"
-    if full.exists():
-        return full
-    truncated = gtfs_dir / "stop_times.csv"
-    if truncated.exists():
-        log.warning(
-            "only the truncated %s is present (Excel-limited to %d rows, ~14%% of trips); "
-            "download the ZIP resource for stop_times.txt to get complete stop sequences",
-            truncated.name,
-            EXCEL_ROW_LIMIT,
-        )
-        return truncated
-    return None
-
-
-def build_stop_sequences(settings: Settings, *, index: GtfsIndex | None = None) -> dict[str, RouteStopSequence]:  # noqa: C901 - debt, ratcheted in scripts/architecture_baseline.json
-    """Join ``stop_times.csv`` to ``trips.csv`` and produce one stop order per route variant.
-
-    Verified schema (2026-09-08, both files ``;`` separated with a UTF-8 BOM):
-
-    * ``trips.csv``      -> ``trip_id;route_id;service_id;trip_headsign;direction_id``
-    * ``stop_times.csv`` -> ``trip_id;stop_id;stop_sequence;arrival_time;departure_time;timepoint``
-
-    A route runs many trips that mostly repeat the same stop order, so the longest trip
-    per ``route_code`` is kept as that route's canonical sequence. Stop ids are translated
-    to ``stop_code`` because that is the key live vehicle telemetry reports.
-
-    Returns an empty dict when the optional files are absent; the ETA engine then falls
-    back to straight-line distance and says so in ``BusArrival.method``.
-    """
-    gtfs_dir = pathlib.Path(settings.gtfs_dir)
-    trips_path = gtfs_dir / "trips.csv"
-    times_path = _stop_times_path(gtfs_dir)
-    if not (trips_path.exists() and times_path is not None):
-        log.info("stop sequences unavailable: trips.csv or a stop_times file is missing under %s", gtfs_dir)
-        return {}
-
-    index = index or get_index(settings)
-    route_code_by_id: dict[str, str] = {
-        route.route_id: route.route_code for route in index.routes if route.route_code
-    }
-    stop_code_by_id: dict[str, str] = {
-        stop.stop_id: stop.stop_code for stop in index.stops if stop.stop_id and stop.stop_code
-    }
-
-    # trip_id -> route_code, keeping only trips whose route we can name.
-    trip_route: dict[str, str] = {}
-    with trips_path.open(encoding="utf-8-sig", newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=";"):
-            code = route_code_by_id.get((row.get("route_id") or "").strip())
-            if code:
-                trip_route[(row.get("trip_id") or "").strip()] = code
-
-    # Collect (sequence, stop_code) per trip. One pass, no sorting of the whole file.
-    per_trip: dict[str, list[tuple[int, str]]] = {}
-    delimiter = "," if times_path.suffix == ".txt" else ";"
-    with times_path.open(encoding="utf-8-sig", newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=delimiter):
-            trip_id = (row.get("trip_id") or "").strip()
-            if trip_id not in trip_route:
-                continue
-            stop_code = stop_code_by_id.get((row.get("stop_id") or "").strip())
-            if not stop_code:
-                continue
-            try:
-                order = int(row.get("stop_sequence") or 0)
-            except ValueError:
-                continue
-            per_trip.setdefault(trip_id, []).append((order, stop_code))
-
-    # Longest trip wins per route variant; ties keep the first seen for determinism.
-    best: dict[str, list[tuple[int, str]]] = {}
-    for trip_id, entries in per_trip.items():
-        code = trip_route[trip_id]
-        if len(entries) > len(best.get(code, ())):
-            best[code] = entries
-
-    sequences: dict[str, RouteStopSequence] = {}
-    for code, entries in best.items():
-        ordered = [stop_code for _, stop_code in sorted(entries, key=lambda item: item[0])]
-        deduped: list[str] = []
-        for stop_code in ordered:  # a loop route can repeat a stop; keep the first visit
-            if not deduped or deduped[-1] != stop_code:
-                deduped.append(stop_code)
-        sequences[code] = RouteStopSequence(route_code=code, stop_codes=tuple(deduped))
-
-    log.info("built %d route stop sequences from %d trips", len(sequences), len(per_trip))
-    return sequences
 
 
 def _cache_path(settings: Settings) -> pathlib.Path:
@@ -281,101 +121,6 @@ def load_stop_sequences(settings: Settings) -> dict[str, RouteStopSequence]:
     return sequences
 
 
-def _route_trip_metadata(trips_path: pathlib.Path, index: GtfsIndex) -> dict[str, tuple[str, str, str]]:
-    """Join each named trip to its route, service id and headsign."""
-    route_code_by_id = {route.route_id: route.route_code for route in index.routes if route.route_code}
-    trip_metadata: dict[str, tuple[str, str, str]] = {}
-    with trips_path.open(encoding="utf-8-sig", newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=";"):
-            trip_id = (row.get("trip_id") or "").strip()
-            route_code = route_code_by_id.get((row.get("route_id") or "").strip())
-            if trip_id and route_code:
-                trip_metadata[trip_id] = (
-                    route_code,
-                    (row.get("service_id") or "").strip(),
-                    _clean(row.get("trip_headsign")) or "",
-                )
-    return trip_metadata
-
-
-def _route_trip_times(
-    times_path: pathlib.Path,
-    trip_metadata: dict[str, tuple[str, str, str]],
-) -> dict[str, dict[str, Any]]:
-    """Stream stop times once and retain each trip's first and last populated arrival."""
-    # Keep only five values per trip while streaming the large stop_times file once.
-    per_trip: dict[str, dict[str, Any]] = {}
-    delimiter = "," if times_path.suffix == ".txt" else ";"
-    with times_path.open(encoding="utf-8-sig", newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=delimiter):
-            trip_id = (row.get("trip_id") or "").strip()
-            if trip_id not in trip_metadata:
-                continue
-            details = per_trip.setdefault(
-                trip_id,
-                {"stop_count": 0, "first_sequence": None, "departure_time": None,
-                 "last_sequence": None, "arrival_time": None},
-            )
-            details["stop_count"] += 1
-            try:
-                sequence = int(row.get("stop_sequence") or "")
-            except ValueError:
-                continue
-            arrival_time = (row.get("arrival_time") or "").strip()
-            if not arrival_time:
-                continue
-            first_sequence = details["first_sequence"]
-            if first_sequence is None or sequence < first_sequence:
-                details["first_sequence"] = sequence
-                details["departure_time"] = arrival_time
-            last_sequence = details["last_sequence"]
-            if last_sequence is None or sequence > last_sequence:
-                details["last_sequence"] = sequence
-                details["arrival_time"] = arrival_time
-    return per_trip
-
-
-def build_route_timetables(settings: Settings, *, index: GtfsIndex | None = None) -> dict[str, tuple[ScheduledTrip, ...]]:
-    """Read route departures from the first and last timed rows of each GTFS trip.
-
-    İBB's ``stop_times.txt`` contains a time only at the first and last stops. These
-    summaries therefore support departures from route termini; no intermediate stop time
-    can be inferred from the file.
-    """
-    gtfs_dir = pathlib.Path(settings.gtfs_dir)
-    trips_path = gtfs_dir / "trips.csv"
-    times_path = _stop_times_path(gtfs_dir)
-    if not trips_path.exists() or times_path is None:
-        log.info("route timetables unavailable: trips.csv or a stop_times file is missing under %s", gtfs_dir)
-        return {}
-
-    index = index or get_index(settings)
-    trip_metadata = _route_trip_metadata(trips_path, index)
-    per_trip = _route_trip_times(times_path, trip_metadata)
-    by_route: dict[str, list[ScheduledTrip]] = {}
-    for trip_id, details in per_trip.items():
-        metadata = trip_metadata[trip_id]
-        if not details["departure_time"] or not details["arrival_time"]:
-            continue
-        trip = ScheduledTrip(
-            trip_id=trip_id,
-            route_code=metadata[0],
-            service_id=metadata[1],
-            headsign=metadata[2],
-            departure_time=details["departure_time"],
-            arrival_time=details["arrival_time"],
-            stop_count=details["stop_count"],
-        )
-        by_route.setdefault(trip.route_code, []).append(trip)
-
-    result = {
-        code: tuple(sorted(trips, key=lambda trip: (trip.departure_time, trip.trip_id)))
-        for code, trips in by_route.items()
-    }
-    log.info("built route timetables for %d routes from %d trips", len(result), sum(map(len, result.values())))
-    return result
-
-
 def _timetable_cache_path(settings: Settings) -> pathlib.Path:
     return pathlib.Path(settings.gtfs_dir) / TIMETABLE_CACHE_NAME
 
@@ -411,341 +156,6 @@ def load_route_timetables(settings: Settings) -> dict[str, tuple[ScheduledTrip, 
         except OSError as exc:  # a read-only container filesystem must not be fatal
             log.info("could not cache route timetables: %r", exc)
     return timetables
-
-
-def load_service_days(settings: Settings) -> dict[str, frozenset[str]]:
-    """Read GTFS ``calendar.csv`` and map service ids to I/C/P day types."""
-    path = pathlib.Path(settings.gtfs_dir) / "calendar.csv"
-    if not path.exists():
-        log.info("GTFS service calendar unavailable: %s is missing", path.name)
-        return {}
-
-    rows: list[dict[str, str]] | None = None
-    for delimiter in (";", ","):
-        with path.open(encoding="utf-8-sig", newline="") as fh:
-            reader = csv.DictReader(fh, delimiter=delimiter)
-            headers = [name.strip() for name in (reader.fieldnames or [])]
-            if "service_id" not in headers:
-                continue
-            reader.fieldnames = headers
-            rows = [{(key or "").strip(): (value or "").strip() for key, value in row.items()} for row in reader]
-            break
-    if rows is None:
-        log.info("GTFS service calendar has no service_id column")
-        return {}
-
-    result: dict[str, frozenset[str]] = {}
-    weekdays = ("monday", "tuesday", "wednesday", "thursday", "friday")
-    for row in rows:
-        service_id = row.get("service_id", "")
-        if not service_id:
-            continue
-        active: set[str] = set()
-        if any(row.get(day) == "1" for day in weekdays):
-            active.add("I")
-        if row.get("saturday") == "1":
-            active.add("C")
-        if row.get("sunday") == "1":
-            active.add("P")
-        result[service_id] = frozenset(active)
-    return result
-
-
-# --------------------------------------------------------------------------------------
-# index
-# --------------------------------------------------------------------------------------
-@dataclass
-class GtfsIndex:
-    """In-memory GTFS index. Build it once per process through :func:`get_index`."""
-
-    gtfs_dir: pathlib.Path
-    stops: list[Stop] = field(default_factory=list)
-    routes: list[Route] = field(default_factory=list)
-    loaded_at: dt.datetime = field(default_factory=utcnow)
-    dropped_stops: int = 0
-    dropped_routes: int = 0
-
-    by_stop_code: dict[str, Stop] = field(init=False, default_factory=dict, repr=False)
-    by_stop_id: dict[str, Stop] = field(init=False, default_factory=dict, repr=False)
-    by_route_code: dict[str, Route] = field(init=False, default_factory=dict, repr=False)
-    by_short_name: dict[str, list[Route]] = field(init=False, default_factory=dict, repr=False)
-    #: How many distinct routes serve a stop; a search tie-breaker only. Empty until stop
-    #: sequences exist, and an empty dict degrades gracefully to "shortest name wins".
-    stop_route_counts: dict[str, int] = field(init=False, default_factory=dict, repr=False)
-    #: How many route variants :meth:`attach_stop_sequences` was given. Counted separately
-    #: from ``stop_route_counts`` (which is keyed by *stop*), so ``stats()`` cannot report
-    #: 15 000 "stop sequences" when it was handed 9 000 routes.
-    stop_sequence_count: int = field(init=False, default=0, repr=False)
-    _grid: dict[tuple[int, int], list[Stop]] = field(init=False, default_factory=dict, repr=False)
-    _search_rows: list[tuple[str, frozenset[str], Stop]] = field(
-        init=False, default_factory=list, repr=False
-    )
-
-    @classmethod
-    def load(cls, settings: Settings) -> GtfsIndex:
-        """Read ``stops.csv`` and ``routes.csv`` from ``settings.gtfs_dir``."""
-        directory = pathlib.Path(settings.gtfs_dir)
-        missing = [name for name in (STOPS_FILE, ROUTES_FILE) if not (directory / name).exists()]
-        if missing:
-            raise FileNotFoundError(
-                f"GTFS reference files missing from {directory}: {', '.join(missing)}. "
-                "Run ibb_mcp.gtfs.download_gtfs(settings) to fetch them."
-            )
-        stops, dropped_stops = _read_stops(directory / STOPS_FILE)
-        routes, dropped_routes = _read_routes(directory / ROUTES_FILE)
-        index = cls(directory, stops, routes, dropped_stops=dropped_stops, dropped_routes=dropped_routes)
-        index._build()
-        log.info("GTFS loaded from %s: %d stops (%d dropped), %d routes (%d dropped)",
-                 display_path(directory), len(stops), dropped_stops, len(routes), dropped_routes)
-        return index
-
-    def _build(self) -> None:
-        for stop in self.stops:
-            if stop.stop_code:
-                # setdefault, not assignment: stop_code is unique in the real file, and if
-                # a future export duplicates one, the first row should stay authoritative.
-                self.by_stop_code.setdefault(stop.stop_code, stop)
-            if stop.stop_id:
-                self.by_stop_id[stop.stop_id] = stop
-            key = normalize_tr(stop.name)
-            self._search_rows.append((key, frozenset(key.split()), stop))
-            if stop.lat is not None and stop.lon is not None:
-                self._grid.setdefault(_cell(stop.lat, stop.lon), []).append(stop)
-        for route in self.routes:
-            if route.route_code:
-                self.by_route_code.setdefault(route.route_code.upper(), route)
-            if short := normalize_tr(route.short_name):
-                self.by_short_name.setdefault(short, []).append(route)
-
-    def attach_stop_sequences(self, sequences: dict[str, RouteStopSequence]) -> None:
-        """Feed in route stop orders once they exist, to sharpen search ranking.
-
-        A stop served by twelve lines is nearly always the one the user meant. Until
-        :func:`load_stop_sequences` can produce sequences, there is no honest way to know
-        that, so this stays unused rather than being approximated.
-        """
-        counts: dict[str, int] = {}
-        for sequence in sequences.values():
-            for code in set(sequence.stop_codes):
-                counts[code] = counts.get(code, 0) + 1
-        self.stop_route_counts = counts
-        self.stop_sequence_count = len(sequences)
-
-    @property
-    def is_loaded(self) -> bool:
-        return bool(self.by_stop_code) and bool(self.by_route_code)
-
-    def lookup_stop(self, stop_code: str) -> Stop | None:
-        """Resolve a live bus's ``yakinDurakKodu``. Codes are opaque strings, not ints."""
-        return self.by_stop_code.get(str(stop_code).strip()) if stop_code else None
-
-    def lookup_stop_id(self, stop_id: str) -> Stop | None:
-        """Resolve a GTFS ``stop_id`` — the key ``stop_times.csv`` will use, not the live one."""
-        return self.by_stop_id.get(str(stop_id).strip()) if stop_id else None
-
-    def search_stops(self, query: str, limit: int = 10) -> list[Stop]:
-        """Rank stops: exact name, then prefix, then substring, then all-tokens-present.
-
-        A query that is itself a stop code short-circuits to that stop. Within a tier the
-        86 stops that carry no ``stop_code`` sort last: they are real places and worth
-        showing, but they cannot join to a live bus, and ``iett_next_arrivals`` takes the
-        first hit as its ETA target. Then route count when known
-        (:meth:`attach_stop_sequences`), then the shorter name, so "KADIKÖY" outranks
-        "KADIKÖY İSKELE YOLU" for the query "kadıköy".
-        """
-        needle = normalize_tr(query)
-        if not needle:
-            return []
-        tokens = frozenset(needle.split())
-        by_code = self.lookup_stop(str(query).strip())
-        scored: list[tuple[tuple[int, int, int, int, str, str], Stop]] = []
-        for name_key, name_tokens, stop in self._search_rows:
-            if not name_key or stop is by_code:
-                continue
-            if name_key == needle:
-                tier = 0
-            elif name_key.startswith(needle):
-                tier = 1
-            elif needle in name_key:
-                tier = 2
-            elif tokens <= name_tokens:
-                tier = 3  # same words, different order: "iskele kadikoy"
-            else:
-                continue
-            popularity = -self.stop_route_counts.get(stop.stop_code, 0)
-            unjoinable = 0 if stop.stop_code else 1
-            scored.append(
-                ((tier, unjoinable, popularity, len(name_key), name_key, stop.stop_code), stop)
-            )
-        scored.sort(key=lambda item: item[0])
-        ordered = [stop for _, stop in scored]
-        if by_code is not None:
-            ordered.insert(0, by_code)
-        return ordered[:limit]
-
-    def nearest_stops(self, lat: float, lon: float, limit: int = 5, max_km: float = 1.0) -> list[Stop]:
-        """Nearest stops within ``max_km``, each returned with ``distance_km`` filled in."""
-        if lat is None or lon is None:
-            return []
-        scored = [
-            (haversine_km(lat, lon, stop.lat, stop.lon), stop)  # type: ignore[arg-type]
-            for stop in self._candidates(lat, lon, max_km)
-        ]
-        scored = [pair for pair in scored if pair[0] <= max_km]
-        scored.sort(key=lambda item: (item[0], item[1].stop_code))
-        return [stop.model_copy(update={"distance_km": round(km, 3)}) for km, stop in scored[:limit]]
-
-    def _candidates(self, lat: float, lon: float, max_km: float) -> Iterator[Stop]:
-        """Stops in every grid cell that could hold a point within ``max_km``."""
-        lat_cells = math.ceil(max_km / (_KM_PER_DEG_LAT * GRID_DEG)) + 1
-        km_per_deg_lon = max(_KM_PER_DEG_LAT * math.cos(math.radians(lat)), 1e-6)
-        lon_cells = math.ceil(max_km / (km_per_deg_lon * GRID_DEG)) + 1
-        base_y, base_x = _cell(lat, lon)
-        for dy in range(-lat_cells, lat_cells + 1):
-            for dx in range(-lon_cells, lon_cells + 1):
-                yield from self._grid.get((base_y + dy, base_x + dx), ())
-
-    def routes_for_short_name(self, short_name: str) -> list[Route]:
-        """All variants of a line: ``"500T"`` returns its 27 direction/deviation rows."""
-        return list(self.by_short_name.get(normalize_tr(short_name), ()))
-
-    def route_by_code(self, route_code: str) -> Route | None:
-        """Resolve a live bus's ``guzergahkodu`` (e.g. ``500T_G_D0``).
-
-        The retry covers the mirror image of the CSV's defect: the index holds repaired
-        codes, so a caller that hands over a *mojibaked* code (a future feed regression, a
-        value copied out of the raw CSV) still resolves instead of silently missing.
-        """
-        if not route_code:
-            return None
-        key = str(route_code).strip().upper()
-        hit = self.by_route_code.get(key)
-        if hit is None:
-            repaired = _fix_mojibake(key)
-            if repaired != key:
-                hit = self.by_route_code.get(repaired)
-        return hit
-
-    def line_codes(self) -> list[str]:
-        """Distinct line short names, for validating tool input and suggesting corrections."""
-        return sorted({route.short_name for route in self.routes if route.short_name})
-
-    def source_vintage(self) -> str | None:
-        """When ``stops.csv`` was last written — the closest honest proxy for its vintage.
-
-        ``loaded_at`` is only when *this process* parsed the file, and it resets on every
-        restart; quoting it as freshness would make a months-old snapshot look minutes old.
-        """
-        path = self.gtfs_dir / STOPS_FILE
-        try:
-            return dt.datetime.fromtimestamp(path.stat().st_mtime, tz=dt.UTC).isoformat()
-        except OSError:
-            return None
-
-    def stats(self) -> dict[str, Any]:
-        """Diagnostics for the freshness/health tool and for the loader's own smoke test."""
-        return {
-            "loaded": self.is_loaded, "gtfs_dir": str(self.gtfs_dir),
-            "loaded_at": self.loaded_at.isoformat(),
-            "source_vintage": self.source_vintage(),
-            "stops": len(self.stops), "stops_with_code": len(self.by_stop_code),
-            "stops_without_code": sum(1 for stop in self.stops if not stop.stop_code),
-            "stops_dropped": self.dropped_stops, "grid_cells": len(self._grid),
-            "routes": len(self.routes), "routes_with_code": len(self.by_route_code),
-            "routes_dropped": self.dropped_routes,
-            "line_short_names": len(self.by_short_name),
-            "stop_sequences": self.stop_sequence_count,
-            "stops_with_route_counts": len(self.stop_route_counts),
-        }
-
-
-def _cell(lat: float, lon: float) -> tuple[int, int]:
-    return int(math.floor(lat / GRID_DEG)), int(math.floor(lon / GRID_DEG))
-
-
-def _read_stops(path: pathlib.Path) -> tuple[list[Stop], int]:
-    """Parse ``stops.csv``, returning the stops plus how many rows were unusable.
-
-    86 rows have an empty ``stop_code``: kept, because they are still searchable and
-    locatable, but absent from the live-join index (``stats()["stops_without_code"]``).
-    """
-    stops: list[Stop] = []
-    dropped = 0
-    with path.open(encoding="utf-8-sig", newline="") as handle:
-        for row in csv.DictReader(handle, delimiter=";"):
-            lat = repair_coordinate(row.get("stop_lat"), "lat")
-            lon = repair_coordinate(row.get("stop_lon"), "lon")
-            if lat is None or lon is None:
-                # 4 of 15390 rows have a shifted column or scientific notation. A stop we
-                # cannot place is worse than no stop: it would poison "nearest".
-                dropped += 1
-                continue
-            stops.append(Stop(
-                stop_code=(row.get("stop_code") or "").strip(),
-                stop_id=(row.get("stop_id") or "").strip() or None,
-                name=_clean(row.get("stop_name")),
-                description=_clean(row.get("stop_desc")),
-                lat=lat,
-                lon=lon,
-            ))
-    return stops, dropped
-
-
-def _read_routes(path: pathlib.Path) -> tuple[list[Route], int]:
-    """Parse ``routes.csv``. Every text column is repaired, ``route_short_name`` included."""
-    routes: list[Route] = []
-    dropped = 0
-    with path.open(encoding="utf-8-sig", newline="") as handle:
-        for row in csv.DictReader(handle, delimiter=";"):
-            route_id = (row.get("route_id") or "").strip()
-            if not route_id:
-                dropped += 1
-                continue
-            routes.append(Route(
-                route_id=route_id,
-                # route_code is mojibaked too, in 529 of 9264 rows: the CSV holds
-                # "11Ã‡B_D_D0" while the live feed sends a clean UTF-8 "11ÇB_D_D0".
-                # Repairing it here is what makes the guzergahkodu join work for the
-                # lines whose short name carries a Turkish letter (11ÇB, 133Ş, ...).
-                route_code=_clean(row.get("route_code")),
-                short_name=_clean(row.get("route_short_name")),
-                long_name=_clean(row.get("route_long_name")),
-                description=_clean(row.get("route_desc")),
-            ))
-    return routes, dropped
-
-
-# --------------------------------------------------------------------------------------
-# module-level accessor
-# --------------------------------------------------------------------------------------
-_INDEX: GtfsIndex | None = None
-_INDEX_KEY: str | None = None
-_INDEX_LOCK = threading.Lock()
-
-
-def get_index(settings: Settings | None = None) -> GtfsIndex:
-    """Return the process-wide index, loading it on first use.
-
-    Parsing 15k stops takes under a second — pure waste per request in a long-lived
-    server. The lock keeps two concurrent first calls from both paying it, and a different
-    ``gtfs_dir`` rebuilds rather than silently serving another directory's data.
-    """
-    global _INDEX, _INDEX_KEY
-    active = settings or Settings.from_env()
-    key = str(pathlib.Path(active.gtfs_dir).resolve())
-    with _INDEX_LOCK:
-        if _INDEX is None or key != _INDEX_KEY:
-            _INDEX = GtfsIndex.load(active)
-            _INDEX_KEY = key
-        return _INDEX
-
-
-def reset_index_cache() -> None:
-    """Drop the memoised index. For tests and after a fresh download."""
-    global _INDEX, _INDEX_KEY
-    with _INDEX_LOCK:
-        _INDEX = None
-        _INDEX_KEY = None
 
 
 def ensure_gtfs(settings: Settings) -> bool:
