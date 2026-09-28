@@ -1,6 +1,8 @@
 # İstanbul Nabız
 
-**An unofficial MCP server and city agent over İstanbul's live open data**: parking, buses, metro, traffic and air quality, with a source URL and a timestamp attached to every number.
+**An unofficial city assistant for İstanbul, built on İBB's open data**: ask in plain Turkish or English,
+get a short answer with its source and time, and hand a problem to the right office. Underneath it is an
+MCP server (`ibb-mcp`, 18 tools) that any agent, VS Code Copilot included, can call.
 
 [![CI](https://github.com/muratcan-ates/istanbul-nabiz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/muratcan-ates/istanbul-nabiz/actions/workflows/ci.yml)
 [![licence](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
@@ -15,29 +17,38 @@
 > licensed under the İBB Open Data Licence (CC BY 4.0): <https://data.ibb.gov.tr/license>.
 > Full attribution, personal-data handling and rate-limit policy: **[NOTICE.md](NOTICE.md)**.
 
+**Herkes için, her zaman, her yerde.** Accessibility is the product, not a feature: step-free routes, an
+easy-read screen, answers read aloud, and a 112 card that opens in the visitors' languages, with or without a model.
+
 ---
 
 ## What it does
 
 İBB publishes many open datasets, 41 of them as APIs ([enumerated 13 Sep](docs/events_research.md)), behind
-separate SOAP and REST endpoints. There is a Mobiett app, an İSPARK app, a CepHava app and a Metro İstanbul
-app, but no single conversational surface, no open integration layer, and no history to answer *"how full
-is it **usually** at this hour?"*.
+separate SOAP and REST endpoints and separate apps. Nabız puts one conversation in front of them, keeps the
+history İBB does not, and never invents a number.
 
-Nabız turns those live endpoints into **one MCP server** (`ibb-mcp`, 18 tools) that any agent can call,
-and ships a web page and a city agent as its first clients. Six journeys drive the design; each has six
-eval scenarios in `eval/journeys.jsonl`:
+**Three stories the demo walks through:**
 
-| # | Who | The question | Tool chain | What the answer contains |
-|---|---|---|---|---|
-| **J1** | Driver | *"I'm reaching Taksim in 20 minutes. Which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` | up to 5 car parks, live free spaces, tariff text as published, straight-line distance, "usually X% full at this hour" when the history supports it, update stamp |
-| **J2** | Bus passenger | *"When does the 500T reach 4. Levent?"* | `iett_stops_search` → `iett_next_arrivals` | nearest vehicles, how many stops away, estimated minutes, how the estimate was derived, last position time, planned departure |
-| **J3** | Metro passenger / accessibility | *"Any disruption on M4? Is there a lift at Kartal?"* | `metro_status` → `metro_station_info` | live disruption notices, lift / escalator / baby room / WC / prayer room per station |
-| **J4** | Runner, parent | *"When is the air good enough for a run in Beşiktaş today?"* | `air_quality_now` → `air_quality_forecast` | current AQI and dominant pollutant, hourly PM10 outlook, best window, health note |
-| **J5** | Commuter | *"Taksim to Kadıköy right now: car or metro? Do the 500Ts bunch at noon? Anything I should know about M4?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` | a mode comparison (never directions) with every assumption stated, measured headway history over a stated window, stateless alerts, today's traffic against its usual level |
-| **J6** | Step-free traveller | *"Can I use the lift at Kartal right now? Which lifts are out on M2?"* | `metro_equipment_status` | lifts, escalators and moving walkways Metro İstanbul records as unusable, each with İBB's own type and recorded date; a station's lift state, never called "working", at most "no fault in İBB's record" |
+| # | A citizen says | What Nabız does |
+|---|---|---|
+| 1 | *"How do I get from Kadıköy to Levent without stairs?"* (typed or spoken) | resolves the places and checks the lifts and escalators Metro İstanbul records as out of service; step-by-step directions need the model or the walking-route key, and without them the answer says what it could check. Answers are read aloud on request |
+| 2 | *"What's on this weekend that suits me?"* | remembers only what the person chose to keep (in the browser), suggests events from Kültür AŞ's calendar, and puts a plan on the **Takvim** tab's week grid or into a calendar file |
+| 3 | A photo of a broken ramp | strips the photo's metadata, masks health details and identity numbers, routes it to a simulated operator desk, and gives the citizen one tracking code to see the outcome; "resolved" only when the citizen confirms |
 
-**Three things make this more than an API wrapper:**
+**What a citizen sees** (`/`, the product app): a chat with three places, **Asistan**, **Takvim** and
+**Hesabım**; history and memory kept in the browser (30 days from last use; "forget" means forget); a
+week-and-hour calendar; English beside Turkish; *Kolay ekran* (easy read), text-to-speech and voice input;
+an official-path card that says which office owns a problem (İSKİ, İGDAŞ, Metro İstanbul, the district)
+and never files anything on the person's behalf. More views sit behind "Daha fazla": city status, journeys,
+the map, what is near me, tourist mode, İstanbulkart and bill helpers, a household outage watch, a disaster
+preparedness file and more (DECISIONS #79 to #97).
+
+**What an operator sees** (`/console`, simulated): a decision desk that starts with today's counts, then
+notifications, citizen requests, system status and planning. Behind it runs **NEXUS**, a small decision
+core: signals, rules, an evidence "Arena" with three seats, human approval and a hash-chained ledger.
+
+**Three things make this more than a chatbot:**
 
 1. **It protects the upstream.** The İETT service documents a hard limit of 100 requests/hour and the İBB
    gateway starts 503-ing *every* service after roughly fifteen rapid calls. One shared rate-limited client
@@ -48,32 +59,43 @@ eval scenarios in `eval/journeys.jsonl`:
    occupancy, vehicle positions and its own arrival predictions, which is what makes "usually at this
    hour", line regularity and a *measured* ETA error possible at all.
 3. **It never invents a number.** Every tool returns a `ToolResult` carrying provenance (source URL,
-   observation time, whether the read was stale). When upstream fails the answer says how old the data is
-   instead of guessing, an input that could not be read is reported as unknown rather than as good news,
-   and the agent's faithfulness check rejects any number in an answer that is not in a tool result.
+   observation time, whether the read was stale). Recorded data is labelled as recorded, never as live; an
+   input that could not be read is reported as unknown rather than as good news; the agent's faithfulness
+   check rejects any number in an answer that is not in a tool result, and hotline numbers are checked
+   against the official list.
 
-## Project status (26 September 2026, commit `4471693`)
+**Safety and privacy by construction:** a 112 card that opens from rules alone, even with the model off or
+the chat paused; health statements masked before the queue, the log and the model (DECISIONS #65 and the
+P09a-2 notes); no user location server-side; account erasure as one chain over every store (DECISIONS
+#104); a red-team set in `eval/red_team.jsonl` and `eval/red_team_extra.jsonl` run in every test pass.
 
-Nothing is deployed yet. This table describes the working tree the README is committed with; the
-day-by-day plan to delivery is [docs/SPRINT.md](docs/SPRINT.md), the live status table PLAN.md §0.
+The MCP tools behind it, one journey each in `eval/journeys.jsonl`:
+
+| # | Who | The question | Tool chain |
+|---|---|---|---|
+| **J1** | Driver | *"I'm reaching Taksim in 20 minutes. Which car park will have space, and what does it cost?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` |
+| **J2** | Bus passenger | *"When does the 500T reach 4. Levent?"* | `iett_stops_search` → `iett_next_arrivals` |
+| **J3** | Metro passenger | *"Any disruption on M4? Is there a lift at Kartal?"* | `metro_status` → `metro_station_info` |
+| **J4** | Runner, parent | *"When is the air good enough for a run in Beşiktaş today?"* | `air_quality_now` → `air_quality_forecast` |
+| **J5** | Commuter | *"Taksim to Kadıköy right now: car or metro?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` |
+| **J6** | Step-free traveller | *"Which lifts are out on M2?"* | `metro_equipment_status` |
+
+## Project status (28 September 2026, `main` at `c568f84`)
+
+Everything below runs on a laptop; nothing is deployed yet. The day-by-day plan is
+[docs/SPRINT.md](docs/SPRINT.md) and every design choice is in [DECISIONS.md](DECISIONS.md) (110 entries).
 
 | Layer | State | Where |
 |---|---|---|
-| İBB client, cache, models, GTFS repair, ETA engine | **working**; arrivals serve the untuned 120 s/stop since 23 Sep, the estimator with the better held-out score ([DECISIONS #18](DECISIONS.md)) | `src/ibb_mcp/{http,cache,models,gtfs,eta}.py`, `src/ibb_mcp/eta_profile.py` |
-| 18 MCP tools behind one façade, plus the `ibb://attribution` resource | **working**: offline tests, and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
-| İBB Open Data catalogue: `ibb_datasets_search`, the page's "İBB Açık Veri" section (`GET /api/datasets`), a catalogue mode for the knowledge index | **working offline** on a synthetic catalogue; the real one is written by the owner's `make capture-catalog` (at most 3 calls to `data.ibb.gov.tr`, [DECISIONS #41](DECISIONS.md)); until then every answer says there is no copy | `src/ibb_mcp/catalog.py`, `scripts/capture_ibb_catalog.py`, `src/nabiz/console/open_data_api.py` |
-| MCP over streamable HTTP | **working locally**: stateless, per-caller budget, optional API key, closed CORS, `/healthz`; not deployed | `src/ibb_mcp/server.py`, `tests/test_server_security.py` |
-| Derived tables | **committed, thin**: built on 13 Sep from the laptop's lake; see Results for what each supports | `data/reference/` |
-| Collector | **today:** the owner's laptop, under a supervisor; its lake holds watched-line snapshots on 4 of the 15 days from 8 to 22 Sep (DECISIONS #10). **Target:** five scheduled Container Apps Jobs, written and tested offline, not deployed | `scripts/collect_forever.py`, `src/nabiz/collector/job.py`, `infra/modules/collectorjobs.bicep` |
-| Web UI | **working locally**: every card shows the data's age; Content-Security-Policy; the alert check travels in a POST body; native ES modules since 23 Sep. A redesign is approved and specified, not built yet ([below](#the-web-page-and-its-design)) | `src/nabiz/web/`, [docs/design/](docs/design/DESIGN.md) |
-| Alerts | **working**: stateless engine behind the MCP tool and the web route; the page can check and reset a subscription but has no editor to create one yet | `src/ibb_mcp/alerts/`, [docs/privacy.md](docs/privacy.md) |
-| City agent | **working without a model** (keyword routing and templated answers); the model path has never been evaluated on a real model | `src/nabiz/agent/` |
-| Infrastructure | **written, never deployed**: Bicep + `azd`, one `Dockerfile` for server and jobs (never built) | `infra/`, `azure.yaml`, `Dockerfile`, [docs/deploy.md](docs/deploy.md) |
-| CI | **green on `main` since 23 Sep** (`1599c40`, then `d59b5a8`; last run `76fda61` on 25 Sep, success, re-checked 26 Sep in the GitHub Actions run list), after 13 red runs from 8 to 22 Sep, 10 of them because three tests read the gitignored GTFS export ([docs/ENGINEERING.md](docs/ENGINEERING.md) §1). Lint, tests, the MCP smoke test, guardrails, the architecture fences, the web budget and the authorship gate; `make ci-local` runs the same list on a clean copy. `main` is not protected yet | `.github/workflows/ci.yml` |
-| Tests | **2965 passed**, 0 failed, 3 skipped, 3 xfailed of 2971 collected, offline, sprint mode (DECISIONS #29), on 26 Sep, on the owner's machine after the cloud PRs were merged (DECISIONS #32) | `tests/` · `eval/results/numbers.md` |
-| Eval harness | **72 scenarios** (J1–J12) in `eval/journeys.jsonl`: 60 run offline in deterministic mode, 60/60 passed, 12 agent-only skipped; 100 knowledge questions validated, retrieval not measured offline | `eval/` · `eval/results/numbers.md` |
-| Product app | citizen page `/` and simulated operator console `/console` on :8090, **working locally**, not deployed | `src/nabiz/console/`, `make console` |
-| NEXUS decision library | signals, TOML missions, reflexes, escalation, Arena, approval, hash-chained ledger, rule drafts; **working in tests** | `src/nexus_core/`, `tests/test_nexus_core_*.py` |
+| Citizen app: chat shell, answer cards, history and memory, calendar, accessibility, English | **working locally** (`make console`, `/`) | `src/nabiz/console/static/`, DECISIONS #106 to #108 |
+| Operator console and NEXUS decision core | **working locally**, simulated operator (`/console`) | `src/nabiz/console/`, `src/nexus_core/` |
+| 18 MCP tools behind one façade, plus `ibb://attribution` | **working**: offline tests and a real MCP client over stdio (`tests/test_mcp_integration.py`) | `src/ibb_mcp/tools.py`, `src/ibb_mcp/server.py` |
+| İBB client, cache, GTFS repair, ETA engine | **working**; arrivals use the untuned 120 s/stop, the estimator with the better held-out score (DECISIONS #18) | `src/ibb_mcp/` |
+| City agent | **working without a model** (rules and templates, clearly labelled); the model path (Azure OpenAI or any `/chat/completions`) is wired and has **not yet been measured on a real model** | `src/nabiz/agent/`, `scripts/model_acceptance.py` |
+| Keyed services: Azure Maps walking route, Azure Speech, Microsoft sign-in and Outlook | **mounted, off** until their keys are set; the page says "not connected" instead of pretending (DECISIONS #98, #100, #109) | `src/nabiz/console/` |
+| Collector | the owner's laptop today; five scheduled Container Apps Jobs written and tested offline, not deployed | `scripts/collect_forever.py`, `infra/modules/collectorjobs.bicep` |
+| Infrastructure | **written, never deployed**: Bicep + `azd`, one `Dockerfile` | `infra/`, `azure.yaml`, [docs/deploy.md](docs/deploy.md) |
+| Tests and eval | see *Sayılar* below; every number is in `eval/results/numbers.md` | `tests/`, `eval/` |
 
 ## Sayılar
 
@@ -84,8 +106,8 @@ bir sayı sunumda söylenmez.
 |---|---|---|
 | Otobüs varış tahmininin ortalama mutlak hatası (ölçüldü; henüz iyi değil) | **12,94 dk** (n = 1.351) | `eval/results/eta.md` · `make eta` · 8–22 Eyl verisi |
 | Modelsiz ajan cevaplarında kaynağıyla eşleşen sayı (şablon cevap, model yok) | **126/126** | `eval/results/20260908T082619Z-agent-offline.md` · 8 Eyl |
-| MCP aracı | **18** | `eval/results/numbers.md` · `scripts/demo_numbers.py --write` · 26 Eyl |
-| Test | **3.075 geçti** (3.080 toplandı) | same |
+| MCP aracı | **18** | `eval/results/numbers.md` · `scripts/demo_numbers.py --write` · 28 Eyl |
+| Test | **5.255 geçti** (5.285 toplandı) | same |
 | Eval senaryosu | **66/66** geçti (78 senaryo; 12 tanesi yalnız ajan modunda, atlandı) | same |
 | Bilgi soru seti | 100 soru, şema doğrulandı; isabet ölçülmedi | same |
 
@@ -252,7 +274,7 @@ to `~`; no subscription or tenant id is recorded).
 ./.venv/bin/python scripts/probe_day0.py --azure       # NETWORK: + the az subscription checks
 ```
 
-**Run the MCP server.** `ibb-mcp` is the console script declared in `pyproject.toml`; it registers the 16
+**Run the MCP server.** `ibb-mcp` is the console script declared in `pyproject.toml`; it registers the 18
 tools below and an `ibb://attribution` resource.
 
 ```bash
@@ -291,6 +313,8 @@ signal, never live data. The console answers only on this machine unless `NABIZ_
 | `plan_journey(origin, destination \| lat+lon pairs)` | drive, metro, one bus line and walking compared, with every assumption; not navigation |
 | `line_reliability(line_code, hour)` | measured headway and bunching for a line and hour, over a stated window |
 | `check_alerts(subscription)` | a client-held alert subscription evaluated once, stored nowhere |
+| `ibb_datasets_search(query, category, limit)` | datasets in İBB's open data catalogue, from a recorded copy |
+| `ibb_services_search(query, limit)` | quoted passages from İBB's own service pages, from the local knowledge index |
 
 The same tools are callable directly from Python, which is how the contract tests drive them:
 
@@ -316,28 +340,23 @@ the same provenance.
 **→ [docs/mcp-usage.md](docs/mcp-usage.md)**: copy-pasteable stdio and HTTP configuration, the full tool
 reference with parameters and return shapes, the failure kinds, and a note on sharing the rate budget.
 
-## The web page and its design
+## The citizen page and its design
 
-The page is the MCP server's first client: type a question or tap an example, and the answer comes from
-İBB's endpoints with the age of every number beside it. Its redesign, **"Nabız çizgisi"**, is approved and
-written down in **[docs/design/DESIGN.md](docs/design/DESIGN.md)**:
+The product app's citizen page (`make console`, then `/`) is a chat first: the composer is the hero, one
+primary action ("Sor"), and every answer card has the same anatomy: a short answer, one source line with
+its date, and at most one row of actions (copy, listen, call 153, the official page). Its design language,
+**Nabız Dili**, is written down in [docs/design/DESIGN.md](docs/design/DESIGN.md) and DECISIONS #58 to #63:
 
-- **One living element.** A pen line drawn from the last 24 hours of İBB's city traffic index, computed only
-  from real readings. It breathes only while the data is current; older data draws grey, with its date.
-- **Colour from measurement.** Base hue 260, the centre of İBB's and İETT's web blues in OKLCH; one
-  analogous cyan accent that means "now" and nothing else; warm hues only for warnings and polluted air.
-  178 palette pairs and 76 added pairs pass WCAG AA contrast in both themes.
-- **Type and icons.** Atkinson Hyperlegible Next, drawn to keep codes such as `M1A` and Turkish `İ ı` apart
-  (it has no `₺`, `µ` or subscript glyphs; Source Sans 3 has all of them, so the choice is open again:
-  DESIGN.md §4), and Tabler Icons: open licences, self-hosted, nothing hand-drawn.
-- **Honesty rules.** Never look like an official İBB product; "resmî değildir" at every width; every number
-  with its age; no invented point in any drawing.
+- **Tokens from Fluent 2**, an İznik-blue palette checked for WCAG AA in light and dark, one icon family.
+- **Honest labels.** "Resmî İBB hizmeti değildir" at every width; recorded data says *kayıtlı* and its time,
+  never *canlı*; a service that needs a key says it is not connected.
+- **Motion that respects the reader.** Transform and opacity only, off under reduced motion; the gate in
+  `scripts/check_web_budget.py` holds every stylesheet to it.
+- **Measured weight.** The citizen page is in the web budget since 28 Sep (DECISIONS #110); today it is over
+  its budget and recorded as a target that may only shrink, by lazy-loading the views hidden at load.
 
-Steps 0 to 2 of its plan are in the tree: the before measurements, the budget gate, and the old `app.js`
-split into ES modules, plus the fixes a review asked for on the same day (the data-age strip and status
-now show how old the data is, not when it was last read; readable greys; keyboard focus kept on "Sor";
-Turkish names on the map). The page still has its old look, so it is not pictured here until the visual
-steps land; the gate already lists every finding each of them has to remove.
+The older standalone page (`make web`, `src/nabiz/web/`) is the MCP server's first client and keeps its own
+budget.
 
 ## How this repository is built
 
@@ -357,7 +376,7 @@ One person, several coding agents working in parallel lanes, and rules that keep
   by which file, and how to report a vulnerability privately.
 - **[docs/privacy.md](docs/privacy.md)**: why no location is stored server-side, and the tests that hold it.
 - **[docs/SPRINT.md](docs/SPRINT.md)** · **[PLAN.md](PLAN.md)** · **[DECISIONS.md](DECISIONS.md)**: the
-  plan to delivery, the original plan with its dated status, and 19 architecture decisions.
+  plan to delivery, the original plan with its dated status, and 110 decisions with their reasons.
 
 ## Limitations
 
@@ -394,6 +413,10 @@ Stated plainly, because a public-data project that hides these is not trustworth
 | | |
 |---|---|
 | **Deploy** | the MCP server and the collector jobs on Azure Container Apps ([docs/deploy.md](docs/deploy.md), [docs/SPRINT.md](docs/SPRINT.md) D3) |
+| **Measure the model path** | Azure OpenAI on the same acceptance set (`scripts/model_acceptance.py --real`), then open the model answers by default |
+| **Turn on the keyed services** | Azure Maps walking routes, Azure Speech, Microsoft sign-in with Outlook, each already mounted behind its key |
+| **Eight languages** | German, Russian, French, Spanish, Arabic and Persian catalogues are staged on `bulut/p14-sekiz-dil`, waiting for the post-D2a keys |
+| **A lighter citizen page** | lazy-load the views hidden at load and merge stylesheets, until the page meets its budget |
 | **A better ETA model** | one that accounts for stop spacing, measured held out before it is served |
 | **Publish `ibb-mcp` to PyPI** | one `uvx ibb-mcp` away from any MCP client, once the release name is decided |
 | **Specialised agents** | a transit agent, a parking agent and an environment agent behind a router, instead of one prompt holding fourteen tools |
@@ -408,9 +431,10 @@ Stated plainly, because a public-data project that hides these is not trustworth
 
 ## Türkçe
 
-**İstanbul Nabız**, İBB'nin kayıt istemeyen canlı açık verisini (İSPARK doluluk, İETT otobüs konumları,
-Metro arıza durumu, trafik indeksi, hava kalitesi) **18 araçlı tek bir MCP sunucusuna** dönüştürür; bir web
-sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının yanında kaynağı ve zaman damgası vardır.
+**İstanbul Nabız**, İBB'nin açık verisi üzerine kurulmuş, resmî olmayan bir şehir asistanıdır. Soruyu
+Türkçe ya da İngilizce yazarsınız (ya da söylersiniz); kısa bir cevap, kaynağı ve saatiyle gelir. Bir sorun
+varsa doğru kurumu gösterir, sizin yerinize başvuru yapmaz. Altında her ajanın (VS Code Copilot dahil)
+çağırabileceği **18 araçlı bir MCP sunucusu** (`ibb-mcp`) vardır.
 
 > **Bu resmî bir İBB hizmeti değildir.** Bağımsız bir öğrenci projesidir; İBB, İETT, İSPARK veya Metro
 > İstanbul ile bağlantılı, onlar tarafından desteklenen ya da onaylanan bir çalışma değildir. Ayrıntı:
@@ -418,42 +442,44 @@ sayfası ve bir şehir ajanı bu sunucunun ilk müşterileridir. Her sayının y
 >
 > Kamu sektörü bilgilerini içerir: İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0).
 
-**Beş kullanıcı yolculuğu**
+**Herkes için, her zaman, her yerde.** Erişilebilirlik bir özellik değil, ürünün kendisi: merdivensiz
+rota, *Kolay ekran*, sesli okuma ve sesle soru, model kapalıyken bile ziyaretçi dillerinde açılan 112 kartı.
 
-| # | Kullanıcı | Soru | Araç zinciri |
-|---|---|---|---|
-| J1 | Sürücü | *"Taksim'e 20 dakikaya varıyorum, hangi otoparkta yer olur, ücreti ne?"* | `places_resolve` → `ispark_find_parking` → `ispark_typical_occupancy` |
-| J2 | Yolcu | *"500T 4. Levent'e ne zaman gelir?"* | `iett_stops_search` → `iett_next_arrivals` |
-| J3 | Metro yolcusu | *"M4'te arıza var mı? Kartal'da asansör var mı?"* | `metro_status` → `metro_station_info` |
-| J4 | Koşucu, ebeveyn | *"Beşiktaş'ta bugün koşu için hava ne zaman uygun?"* | `air_quality_now` → `air_quality_forecast` |
-| J5 | İşe giden | *"Taksim'den Kadıköy'e şu an arabayla mı metroyla mı? 500T öğlen kümeleniyor mu?"* | `plan_journey`, `line_reliability`, `check_alerts`, `traffic_index` |
-| J6 | Adımsız yolculuk | *"Kartal'da asansörü şu an kullanabilir miyim? M2'de hangi asansörler kullanılamıyor?"* | `metro_equipment_status` |
+**Gösterimdeki üç hikâye**
 
-**Neden bir API sarmalayıcısından fazlası**
+| # | Vatandaş | Nabız |
+|---|---|---|
+| 1 | *"Kadıköy'den Levent'e merdivensiz nasıl giderim?"* (yazarak ya da sesle) | yerleri çözer, Metro İstanbul'un kullanılamaz diye kaydettiği asansör ve yürüyen merdivenlere bakar; adım adım tarif için model ya da yürüyüş rotası anahtarı gerekir, yoksa neye bakabildiğini söyler. İsterse sesli okur |
+| 2 | *"Bu hafta sonu bana uygun ne var?"* | yalnız kişinin saklamayı seçtiğini hatırlar (tarayıcıda), Kültür AŞ takviminden öneri yapar, planı **Takvim** sekmesindeki haftalık saat ızgarasına ya da takvim dosyasına koyar |
+| 3 | Kırık rampanın fotoğrafı | fotoğrafın üst verisini siler, sağlık bilgisini ve kimlik numarasını gizler, örnek operatör masasına yönlendirir, vatandaşa tek bir takip kodu verir; "çözüldü" yalnız vatandaş onaylayınca |
+
+**Vatandaş ekranı:** Asistan, Takvim, Hesabım; sohbet geçmişi ve hafıza tarayıcıda (son kullanımdan sonra 30
+gün); İngilizce; Kolay ekran, sesli okuma ve sesle soru; hangi kurumun işi olduğunu söyleyen resmî yol kartı.
+"Daha fazla" altında şehir durumu, yolculuk, harita, yakınımda, turist modu, İstanbulkart ve fatura
+yardımcıları, hane kesinti takibi, afet hazırlık dosyası ve fazlası.
+**Operatör ekranı** (`/console`, örnek): günün sayılarıyla açılan karar masası; arkasında sinyal, kural,
+kanıt "Arena"sı, insan onayı ve zincirli defterden oluşan **NEXUS** karar çekirdeği.
+
+**Neden bir sohbet botundan fazlası**
 
 - **Servisleri korur.** İETT servisi saatte 100 istekle sınırlı; İBB ağ geçidi yaklaşık 15 hızlı çağrıdan
-  sonra bütün servislere 503 döndürüyor. Tek istemci + tek uçuşlu (single-flight) TTL önbellek sayesinde
-  eşzamanlı N kullanıcı en fazla bir yukarı akış isteği üretir; HTTP üzerinden her çağırana ayrıca araç
-  fiyatına göre bir bütçe düşer.
-- **İBB'nin tutmadığı tarihçeyi tutar.** İBB yalnızca anlık durumu yayımlıyor; bir toplayıcı otopark
-  doluluğunu, araç konumlarını ve kendi varış tahminlerini arşivliyor. "Bu saatte genelde ne kadar dolu?",
-  hat düzenliliği ve **ölçülmüş** varış tahmini hatası ancak böyle mümkün.
-- **Sayı uydurmaz.** Her araç sonucu kaynak URL'si, gözlem zamanı ve verinin bayat olup olmadığını taşır.
-  Okunamayan bir kaynak "sorun yok" diye değil "bilinmiyor" diye söylenir; ajanın sadakat kontrolü araç
-  çıktısında bulunmayan hiçbir sayıyı kabul etmez.
+  sonra bütün servislere 503 döndürüyor. Tek istemci + tek uçuşlu TTL önbellek sayesinde eşzamanlı N
+  kullanıcı en fazla bir yukarı akış isteği üretir.
+- **İBB'nin tutmadığı tarihçeyi tutar.** "Bu saatte genelde ne kadar dolu?", hat düzenliliği ve **ölçülmüş**
+  varış tahmini hatası ancak böyle mümkün.
+- **Sayı uydurmaz.** Her araç sonucu kaynak URL'si ve gözlem zamanı taşır; kayıtlı veriye "canlı" denmez;
+  ajanın sadakat kontrolü araç çıktısında olmayan sayıyı kabul etmez; acil numaralar resmî listeyle
+  karşılaştırılır.
+- **Gizlilik baştan:** konum sunucuda tutulmaz; sağlık ifadeleri kuyruğa, günlüğe ve modele gitmeden
+  gizlenir; hesap silme bütün depolarda tek zincirdir.
 
-**Durum (26 Eylül 2026):** hiçbir şey deploy edilmedi. Çalışan: İBB istemcisi, önbellek, modeller, GTFS
-onarımı, varış tahmini motoru, 18 araç ve **MCP sunucusu** (stdio gerçek bir MCP istemcisiyle doğrulandı; HTTP yerelde
-durumsuz, çağıran başına bütçeli, `/healthz`'li), web sayfası, durumsuz uyarı motoru, modelsiz çalışan ajan.
-Toplayıcı bugün sahibinin dizüstünde çalışıyor; hedef, çevrimdışı test edilmiş beş zamanlanmış Container Apps
-Job'u (DECISIONS #10). `main`'deki CI 8–22 Eylül arasında 13 koşunun 13'ünde kırmızıydı; 23 Eylül'den beri
-yeşil. Testler: 2.965 geçti, 0 kaldı (2.971 toplandı; çevrimdışı, sprint modu); eval:
-72 senaryodan 60 tanesi koştu, 60 tanesi geçti; 100 bilgi sorusu doğrulandı
-(`eval/results/numbers.md`). Web sayfasının yeni tasarımı ("Nabız çizgisi") onaylandı ve [docs/design/DESIGN.md](docs/design/DESIGN.md)
-dosyasında yazılı; henüz uygulanmadı. Günlük plan [docs/SPRINT.md](docs/SPRINT.md), kurallar
-[AGENTS.md](AGENTS.md), mühendislik [docs/ENGINEERING.md](docs/ENGINEERING.md), tehdit modeli
-[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), kararlar [DECISIONS.md](DECISIONS.md), kurulum
-[docs/mcp-usage.md](docs/mcp-usage.md).
+**Durum (28 Eylül 2026, `main` = `c568f84`):** her şey dizüstünde çalışıyor, hiçbir şey deploy edilmedi.
+Vatandaş uygulaması, operatör konsolu, 18 MCP aracı ve modelsiz ajan çalışıyor; gerçek model yolu bağlı ama
+henüz gerçek bir modelle ölçülmedi. Azure Maps, Azure Speech ve Microsoft girişi anahtar gelene kadar kapalı
+ve ekranda "bağlı değil" yazar. Test ve eval sayıları yukarıdaki *Sayılar* tablosunda, kaynağı
+`eval/results/numbers.md`. Günlük plan [docs/SPRINT.md](docs/SPRINT.md), kurallar [AGENTS.md](AGENTS.md),
+mühendislik [docs/ENGINEERING.md](docs/ENGINEERING.md), tehdit modeli [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md),
+kararlar [DECISIONS.md](DECISIONS.md), MCP kurulumu [docs/mcp-usage.md](docs/mcp-usage.md).
 
 **Sonuçlar** yukarıdaki *Results* tablosundadır ve her sayı `eval/results/` ya da `data/reference/`
 altındaki bir dosyadan kopyalanır. Otobüs varış tahmininin ölçülmüş hatası **12,94 dk** (1.351 tahmin,
