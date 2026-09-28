@@ -57,3 +57,78 @@ The adaptation takes the layout idea, not source lines. On 2026-09-27 the lines 
 (`@media (prefers-reduced-motion: reduce) {`, `@media (min-width: 1024px) {`, `event.preventDefault();` and a
 `border: 1px solid var(--border)` surface rule); DOU-Synapse styles with Tailwind utility classes, which this
 page does not use.
+
+## P26 phase A: contextual suggestions, citations and event feedback
+
+The 2026-09-28 phase A extends the `eb51c42` baseline using the same DOU-Synapse revision above.
+The inspected reference patterns are `course-nav.tsx`, `transcript-parts.tsx`, `source-card.tsx`,
+`campus-motion.tsx`, `globals.css`, and the source-context page. Their navigation feedback, reading
+hierarchy and exact-quotation structure are adapted to native DOM and Nabız tokens. No Synapse colour,
+React, Tailwind, GSAP, additional stylesheet, external font or dependency is introduced.
+
+[context_chips.js](../../src/nabiz/console/static/js/context_chips.js) offers at most three controls from
+the latest assistant turn. It waits for deferred card controls, clears detached/history turns, and
+leaves existing consent handlers in charge. Following a topic fills the draft without submitting it.
+The route offer receives focus; the map and calendar suggestions invoke the original card button.
+The calendar button still requires its separate confirmation before publishing an action.
+
+[citation_card.js](../../src/nabiz/console/static/js/citation_card.js) builds one inert element tree for
+DOM `textContent` rendering and the existing escaped-string answer renderer. Quotations remain exact
+server strings, source links require HTTPS, and quoted passages already shown above are linked rather
+than duplicated. The first two citations remain open; additional sources use native `details`.
+Unique answer-local fragment IDs connect E63 sentence support, quotations and source cards. Missing
+support and conflicting evidence retain explicit text, with neutral or amber styling. Emergency
+payloads bypass the citation renderer for every mode. Existing refusal wording is unchanged.
+
+Freshness formatting reuses Nabız's existing helpers. This section supersedes the earlier paragraph's
+blanket amber/critical-red styling: recorded badges are neutral, noncritical source errors are amber,
+and old page evidence retains its confirmation notice. Freshness badges retain the design language's
+one-pixel boundary; ordinary type badges are borderless. The inherited current-data label and single
+fresh-dot beat remain governed by the existing contract rather than being applied to recorded pages.
+
+Navigation, message, card and disclosure feedback stays in the citizen stylesheets. Event markers
+are removed on animation completion or after 400 ms. Saved conversations do not receive message/card
+entry markers. New rules animate only transform/opacity, inside both the system preference media
+query and the explicit reduced-motion/simple-mode guard. The measured composer height reserves
+keyboard focus space. The conversation rail uses a container query to keep the delete control below
+narrow titles; this does not modify the P02 stylesheet or storage code.
+
+### Phase A copy check
+
+The added static-file lines, including the two new modules, were compared against all 15 supplied
+CSS/TS/TSX/JS reference copies, line by line and as six-word lexical shingles. Exact matches are only
+language scaffolding (`}`, `});`, `return true;`, `return;`, `return null;`, `try {`, `} catch {`)
+and the standard `@supports (animation-timeline: scroll())` declaration. The matching six-word sequences
+are generic border/colour declarations, opacity/translate entry syntax, and the standard scroll
+timeline/range declaration. Inspection found no distinctive copied source lines. Existing attribution
+headers remain; new files take structural ideas only and need no additional copied-code NOTICE entry.
+
+### Precedence decisions
+
+The card contract and NABIZ-DILI take priority over the brief, its supplement and general skills.
+The brief's explicit entry markers take precedence over the supplement's CSS-only entry suggestion.
+The supplement's animated background colour becomes an immediate hover colour and a guarded transform.
+Reduced motion remains fully still; the Apple skill's optional fade and spring libraries are not used.
+The T06 borderless badge suggestion applies to type labels, while freshness badges retain the higher
+priority one-pixel boundary. Irreversible deletion retains its design-language danger outline.
+The existing fixed refusal copy and current-data wording are preserved by their locked contracts;
+new suggestion and recorded-source copy does not introduce them.
+
+### User reference refinement
+
+The later Microsoft/Copilot reference sets compact work-surface proportions, while the supplied
+İBB screenshots retain the civic blue palette, light surfaces and quiet Istanbul photograph.
+The existing self-hosted Nabız Sans face is restored only on the citizen page, with regular body
+text and semibold headings. This follows the existing K5 font decision without adding a font asset.
+Hero text is 28–36 px, ordinary headings 19–22 px and body text 16 px at the normal text setting;
+the user's larger-text preference still scales all of them. The user's compactness request replaces
+the earlier oversized hero spacing, without reducing disclosure text or 44 px touch targets.
+
+The five supplied UX rules map to available-only contextual suggestions, one primary ask action,
+quiet secondary actions and native disclosures for optional detail and additional sources.
+Existing legacy quick suggestions still submit immediately; changing their owner files is recorded
+in the handoff. Zero-minimum grid tracks keep source answers within the phone viewport; the citizen
+agency-card override allows its official link to wrap at enlarged text sizes without clipping it.
+
+The return link reuses the existing Asistan/Assistant navigation label and shared translation key;
+this follows the user’s one-intent/one-label rule and avoids a second name for the same destination.
