@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import pathlib
+import sqlite3
 
 import pytest
 from conftest import offline_settings
@@ -169,3 +170,27 @@ def test_every_endpoint_response_is_no_store(timeline_client) -> None:
     responses += [client.get(report_path("bad")), client.post(report_path(code) + "/respond", json={"action": "fixed"})]
     responses.append(client.post(report_path(code) + "/respond", json={"action": "unknown"}))
     assert all(item.headers.get("cache-control") == "no-store" for item in responses)
+
+
+def test_operator_step_and_its_ledger_seal_land_together_or_not_at_all(timeline_client, monkeypatch) -> None:
+    client, engine, clock = timeline_client
+    code = create_report(client, engine, clock)
+    url = f"/api/console/report-timeline/{code}/advance"
+    assert client.post(url, json={"to": "reviewing"}).status_code == 200
+
+    def broken(*_args, **_kwargs):
+        raise sqlite3.OperationalError("disk I/O error")
+
+    monkeypatch.setattr(engine.ledger, "append", broken)
+    failed = client.post(url, json={"to": "resolution_reported", "note": "Bakım tamamlandı."})
+    assert failed.status_code == 503 and failed.json()["error"] == "ledger_failed"
+    assert failed.headers["cache-control"] == "no-store"
+    row = client.app.state.report_timeline.get(code)
+    assert row["stage"] == "reviewing" and [event["stage"] for event in row["data"]["history"]] == ["recorded", "reviewing"]
+    monkeypatch.undo()
+    sealed = client.post(url, json={"to": "resolution_reported", "note": "Bakım tamamlandı."})
+    assert sealed.status_code == 200 and sealed.json()["stage"] == "resolution_reported"
+    entry = engine.ledger.entries()[-1]
+    assert entry.kind == "report_timeline_advanced" and entry.id == sealed.json()["ledger_entry_id"]
+    assert entry.detail["from"] == "reviewing" and entry.detail["to"] == "resolution_reported"
+    assert "Bakım" not in json.dumps(entry.detail, ensure_ascii=False)

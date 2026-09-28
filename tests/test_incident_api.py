@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
@@ -180,6 +181,31 @@ def test_priority_override_is_persistent_and_private(tmp_path: pathlib.Path, mon
     assert engine.verify().ok
     assert "Sanayi Mahallesi" not in caplog.text
     assert "İnsan önceliği yeniden değerlendirdi" not in caplog.text
+
+
+def test_priority_and_split_leave_no_change_when_the_ledger_fails(tmp_path: pathlib.Path, monkeypatch) -> None:
+    clock, engine, app, headers, _before = _seed_api(tmp_path, monkeypatch)
+
+    def broken(*_args, **_kwargs):
+        raise sqlite3.OperationalError("disk I/O error")
+
+    with TestClient(app, base_url="http://127.0.0.1:8090") as client:
+        sanayi = next(item for item in client.get("/api/console/incidents", headers=headers).json()["items"]
+                      if item["title_station"] == "Sanayi Mahallesi")
+        detail = client.get(f"/api/console/incidents/{sanayi['id']}", headers=headers).json()
+        monkeypatch.setattr(engine.ledger, "append", broken)
+        priority = client.post(f"/api/console/incidents/{sanayi['id']}/priority", headers=headers,
+                               json={"level": "high" if detail["priority"]["level"] != "high" else "normal",
+                                     "reason": "İnsan önceliği yeniden değerlendirdi"})
+        split = client.post(f"/api/console/incidents/{sanayi['id']}/split", headers=headers,
+                            json={"ref": detail["members"]["reports"][0]["ref"], "reason": "Kartlar farklı gözlem içeriyor"})
+        for failed in (priority, split):
+            assert failed.status_code == 503 and failed.json()["error"] == "store_failed"
+            assert "deftere işlendi" not in failed.json()["message"]
+        after = client.get(f"/api/console/incidents/{sanayi['id']}", headers=headers).json()
+        assert after["priority"]["by"] == "suggestion" and after["priority_history"] == [] and after["actions"] == []
+    store = IncidentStore(tmp_path / "incidents.db", clock=clock)
+    assert store.overrides() == {} and store.actions() == []
 
 
 def test_store_rejects_personal_data_and_expires_rows(tmp_path: pathlib.Path) -> None:

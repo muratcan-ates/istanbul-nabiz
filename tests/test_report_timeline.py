@@ -130,3 +130,32 @@ def test_referral_uses_only_the_agency_catalogue(tmp_path: pathlib.Path) -> None
     agency = next(item for item in source["agencies"] if item["id"] == "metro")
     assert view["agency"]["name"] == agency["name"]
     assert view["agency"]["url"] == agency["url"]
+
+
+def test_a_photo_step_shows_in_history_without_moving_the_stage(tmp_path: pathlib.Path) -> None:
+    clock = Clock()
+    store = make_store(tmp_path, clock)
+    row = start(store, clock)
+    row["data"]["history"].append({"by": "citizen", "step": "photo_added", "photo_ref": "photo:0123456789ab",
+                                   "at": clock().isoformat()})
+    row["data"]["photo_refs"] = ["photo:0123456789ab"]
+    view = timeline_view(row, "waiting", clock(), load_agencies())
+    assert view["stage"] == "recorded" and view["has_photo"] is True and view["photo_refs"] == ["photo:0123456789ab"]
+    assert [step["stage"] for step in view["steps"] if step["reached"]] == ["recorded"]
+    assert view["history"][-1]["step"] == "photo_added"
+
+
+def test_a_failed_seal_rolls_the_step_back(tmp_path: pathlib.Path) -> None:
+    clock = Clock()
+    store = make_store(tmp_path, clock)
+    start(store, clock)
+
+    def broken(before: str, row: dict) -> int:
+        assert before == "recorded" and row["stage"] == "reviewing"
+        raise OSError("ledger unavailable")
+
+    with pytest.raises(OSError):
+        store.apply("K7M2QX9P", "operator", "reviewing", seal=broken)
+    assert store.get("K7M2QX9P")["stage"] == "recorded"
+    sealed = store.apply("K7M2QX9P", "operator", "reviewing", seal=lambda before, row: 7)
+    assert sealed["stage"] == "reviewing" and sealed["ledger_entry_id"] == 7
