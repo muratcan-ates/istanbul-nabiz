@@ -121,6 +121,10 @@ LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "domain",
         (
             "ibb_mcp.eta",
+            # the ETA split (ENGINEERING §13): context <- live / schedule <- eta, all one layer
+            "ibb_mcp.eta_context",
+            "ibb_mcp.eta_live",
+            "ibb_mcp.eta_schedule",
             "ibb_mcp.eta_profile",
             "ibb_mcp.gtfs",
             "ibb_mcp.lines",
