@@ -1,8 +1,8 @@
-/* v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
+/* v19: the Takvim tab's calendar view (calendar_view.js/.css); v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
    E5x-E7x back ends; v16: the home screen's category pills;
    v15: E48's official-path source label in provenance.js; v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v18';
+const VERSION = 'v19';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -64,7 +64,7 @@ const SHELL = [
   // P00 D2a (K): the wave's citizen modules the page now loads, with their views and styles
   '/js/step_voice.js', '/js/step_voice_core.js', '/css/step_voice.css', '/js/photo_report.js', '/css/photo_report.css',
   '/js/family.js', '/js/family_view.js', '/css/family.css', '/js/booking.js', '/css/booking.css',
-  '/js/poll.js', '/js/poll_view.js', '/css/poll.css', '/js/notices_center.js', '/css/notices_center.css',
+  '/js/poll.js', '/js/poll_view.js', '/css/poll.css', '/js/notices_center.js', '/css/notices_center.css', '/js/calendar_view.js', '/css/calendar_view.css',
   '/js/audience.js', '/js/audience_view.js', '/css/audience.css', '/js/visitor.js', '/js/visitor_view.js', '/css/visitor.css',
   '/js/troubleshoot.js', '/js/troubleshoot_view.js', '/css/troubleshoot.css',
   '/js/recovery.js', '/js/recovery_view.js', '/css/recovery.css', '/js/bill.js', '/css/bill.css', '/js/fare.js', '/css/fare.css',

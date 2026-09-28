@@ -1,0 +1,85 @@
+/* Takvim tab: week strip + hour grid (calendar_view.js). Tokens only; the accent is the primary blue, never the
+   meaning colours. Motion: none needed; the grid redraws in place. */
+.cal { display: grid; gap: var(--space-3); min-width: 0; }
+.cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.cal-nav, .cal-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.cal-label { margin: 0 0 0 var(--space-2); font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -.01em; text-transform: none; }
+.cal-icon, .cal-today, .cal-seg { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-raised); color: var(--text); font: inherit; cursor: pointer; }
+.cal-icon { padding: 0; font-size: var(--text-lg); line-height: 1; }
+.cal-segs { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-sunken); }
+.cal-seg { min-height: calc(var(--tap) - 6px); border: 0; background: transparent; }
+.cal-seg[aria-pressed="true"] { background: var(--surface-raised); box-shadow: var(--shadow-1); font-weight: var(--weight-semibold); }
+.cal-add { min-height: var(--tap); }
+
+.cal-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-1); }
+.cal-strip-day { display: grid; justify-items: center; gap: 2px; min-height: 64px; padding: var(--space-2) 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.cal-strip-name { color: var(--text-muted); font-size: var(--text-xs); text-transform: capitalize; }
+.cal-strip-num { display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--radius-round); font-size: var(--text-md); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.cal-strip-day.is-today .cal-strip-num { color: var(--link); }
+.cal-strip-day[aria-pressed="true"] .cal-strip-num { background: var(--primary); color: var(--on-primary); }
+.cal-strip-dot { width: 5px; height: 5px; border-radius: var(--radius-round); background: transparent; }
+.cal-strip-dot.is-busy { background: var(--text-muted); }
+.cal-strip-day:hover { background: var(--surface-sunken); }
+
+.cal-grid { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-raised); }
+.cal-head, .cal-allday, .cal-body { display: grid; grid-template-columns: 56px repeat(var(--cal-cols, 1), minmax(0, 1fr)); }
+.cal-head { border-bottom: 1px solid var(--border); }
+.cal-head-day { padding: var(--space-2); border-left: 1px solid var(--border); color: var(--text-muted); font-size: var(--text-sm); text-align: center; text-transform: capitalize; }
+.cal-head-day.is-today { color: var(--link); font-weight: var(--weight-semibold); }
+.cal-allday { border-bottom: 1px solid var(--border); background: var(--surface-sunken); }
+.cal-allday-label { padding: var(--space-2) var(--space-1); color: var(--text-muted); font-size: var(--text-xs); text-align: end; }
+.cal-allday-cell { display: grid; gap: 2px; padding: 2px; border-left: 1px solid var(--border); }
+.cal-empty { margin: 0; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: var(--text-sm); }
+.cal-scroll { height: min(62vh, 640px); overflow-y: auto; overscroll-behavior: contain; }
+.cal-body { position: relative; }
+.cal-ruler { display: grid; grid-auto-rows: var(--cal-hour); }
+.cal-hour { position: relative; border-top: 1px solid var(--border); }
+.cal-hour:first-child { border-top: 0; }
+.cal-hour span { position: absolute; top: -.65em; right: var(--space-2); padding: 0 2px; background: var(--surface-raised); color: var(--text-muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.cal-hour:first-child span { top: 2px; }
+.cal-col { position: relative; min-height: calc(var(--cal-hour) * 24); border-left: 1px solid var(--border); }
+.cal-body { background-image: repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent var(--cal-hour));
+  background-position: 56px 0; background-repeat: repeat-y; background-size: calc(100% - 56px) var(--cal-hour); }
+.cal-block { position: absolute; display: flex; min-width: 0; }
+.cal-event { display: grid; align-content: start; gap: 1px; width: 100%; min-width: 0; min-height: 24px; padding: 3px var(--space-2); overflow: hidden;
+  border: 0; border-left: 3px solid var(--primary); border-radius: 6px; background: var(--primary-subtle); color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.cal-event:hover { background: var(--primary-subtle-hover); }
+.cal-event-title { overflow: hidden; font-size: var(--text-sm); font-weight: var(--weight-semibold); line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.cal-event-meta { overflow: hidden; color: var(--text-muted); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.cal-origin-dayplan { border-left-color: var(--accent); background: var(--accent-subtle); }
+.cal-allday-cell .cal-event { min-height: 28px; }
+.cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--primary); pointer-events: none; }
+.cal-now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: var(--radius-round); background: var(--primary); }
+
+.cal-detail, .cal-form { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--border-strong); border-radius: var(--radius-surface); background: var(--surface-raised); box-shadow: var(--shadow-2); }
+.cal-detail h3 { margin: 0; font-size: var(--text-lg); }
+.cal-detail p { margin: 0; }
+.cal-note { color: var(--text-muted); font-size: var(--text-sm); }
+.cal-detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+.cal-ask { flex-basis: 100%; font-weight: var(--weight-semibold); }
+.cal-form label { display: grid; gap: var(--space-1); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.cal-form input { min-height: var(--tap); padding: 0 var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--text); font: inherit; font-weight: var(--weight-regular); }
+.cal-form-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--space-2); }
+.cal-error { min-height: 1em; margin: 0; color: var(--warn); font-size: var(--text-sm); }
+.cal-error:empty { display: none; }
+.cal-foot { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.cal-status { margin: 0; min-height: 0; font-size: var(--text-sm); }
+.cal-status:empty { display: none; }
+
+.cal :is(button, a, input):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+#takvim:has(.cal) > p:not([id]) { display: none; }
+
+@media (max-width: 520px) {
+  .cal-label { flex-basis: 100%; margin: var(--space-1) 0 0; }
+  .cal-form-row { grid-template-columns: 1fr 1fr; }
+  .cal-form-row label:first-child { grid-column: 1 / -1; }
+  .cal-head, .cal-allday, .cal-body { grid-template-columns: 44px repeat(var(--cal-cols, 1), minmax(0, 1fr)); }
+  .cal-body { background-position: 44px 0; background-size: calc(100% - 44px) var(--cal-hour); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cal-event, .cal-strip-day, .cal-seg { transition: background-color var(--dur-press, 100ms) ease; }
+}
+@media (forced-colors: active) {
+  .cal-event, .cal-grid, .cal-detail, .cal-form { border: 1px solid CanvasText; }
+  .cal-now, .cal-now::before { background: Highlight; }
+}
