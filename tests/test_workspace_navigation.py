@@ -48,6 +48,7 @@ class Node {
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
   append(...nodes) { nodes.forEach(node => { node.remove(); node.parentElement = this; this.children.push(node); }); }
   appendChild(node) { this.append(node); return node; }
+  prepend(node) { node.remove(); node.parentElement = this; this.children.unshift(node); }
   remove() {
     if (this.contains(globalThis.document?.activeElement)) document.activeElement = document.body;
     if (this.parentElement) this.parentElement.children.splice(this.parentElement.children.indexOf(this), 1);
@@ -89,6 +90,7 @@ function setup(hash = '') {
   doc.documentElement = {lang: 'tr'};
   doc.getElementById = id => doc.querySelector(`#${id}`);
   doc.createComment = () => new Node('comment');
+  doc.createElement = tag => new Node(tag);
   globalThis.document = doc; globalThis.window = new Node('window');
   globalThis.location = new URL('https://nabiz.test/?mock=1&lang=en'); location.hash = hash;
   window.location = location;

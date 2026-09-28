@@ -1,6 +1,7 @@
 /* Native workspace and composer, adapted from DOU-Synapse ChatDraft (MIT).
  * Attribution and source revision: docs/design/synapse-adaptation.md. */
 import { onLang, t } from './i18n_text.js';
+import { markEntry, mountTranscript } from './transcript.js';
 
 // Placement changes where a link appears; its destination always remains addressable.
 // The operator area owns open data after integration, while this address stays available.
@@ -63,6 +64,9 @@ function labelPrimaryNavigation(language) {
     const name = link.querySelector('span');
     if (name && key) name.textContent = t(key, language === 'en' ? en : tr);
   }
+  for (const back of document.querySelectorAll('.workspace-back')) {
+    back.textContent = t('ui.shell.nav_assistant', language === 'en' ? 'Assistant' : 'Asistan');
+  }
   const follow = document.querySelector('[data-legacy="follow"] span');
   if (follow) follow.textContent = t('ui.shell.nav_follow', language === 'en' ? 'Follow' : 'Takip');
   const other = document.querySelector('.nav-secondary');
@@ -114,6 +118,15 @@ export function mountWorkspace({ form, input }) {
   const main = document.getElementById('main'), hero = document.getElementById('home-screen');
   const chat = document.getElementById('asistan'), log = document.getElementById('chat-log');
   if (!main || !hero || !chat || !log) return;
+  const doc = document;
+  mountTranscript(log, doc);
+  import('./context_chips.js').then((m) => m.mountContextChips(form, doc)).catch(() => {});
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(([entry]) => {
+      const height = entry.borderBoxSize?.[0]?.blockSize || form.getBoundingClientRect().height;
+      if (height > 0) doc.documentElement.style.setProperty('--chat-composer-height', `${Math.ceil(height)}px`);
+    }).observe(form);
+  }
   applyLegacyPlacement();
   labelPrimaryNavigation(document.documentElement.lang);
   onLang(labelPrimaryNavigation);
@@ -123,6 +136,7 @@ export function mountWorkspace({ form, input }) {
   const bottom = form.querySelector('.composer-bottom');
   if (bottom && submit) bottom.append(submit);
   const show = (name, destination = null) => {
+    const changed = document.body.dataset.view !== name;
     document.body.dataset.view = name;
     for (const [view, ids] of Object.entries(VIEWS)) {
       for (const id of ids) {
@@ -130,6 +144,15 @@ export function mountWorkspace({ form, input }) {
         if (!node) continue;
         node.hidden = view !== name;
         if (node.matches('details') && view === name) node.open = true;
+        if (view === name && ['city', 'travel', 'map', 'nearby'].includes(name) && !node.querySelector('.workspace-back')) {
+          const back = doc.createElement('a');
+          back.classList.add('btn'); back.classList.add('btn-quiet'); back.classList.add('workspace-back');
+          back.setAttribute('href', '#asistan');
+          back.textContent = t('ui.shell.nav_assistant', doc.documentElement.lang === 'en' ? 'Assistant' : 'Asistan');
+          const summary = node.matches('details') && node.querySelector('summary');
+          if (summary) summary.after(back); else node.prepend(back);
+        }
+        if (changed && view === name && id !== 'home-screen') markEntry(node);
       }
     }
     const tools = main.querySelector('.workspace');
@@ -157,6 +180,11 @@ export function mountWorkspace({ form, input }) {
       try {
         const id = decodeURIComponent(link.getAttribute('href').slice(1));
         reveal(id);
+        if (link.closest('.nav-primary') && ['takvim', 'hesabim'].includes(id)) {
+          const title = doc.getElementById(id === 'takvim' ? 'takvim-title' : 'you-title');
+          title?.setAttribute('tabindex', '-1');
+          title?.focus({ preventScroll: true });
+        }
         if (link.closest('#assistant-more')) {
           const target = targetForId(id);
           if (target) {

@@ -16,6 +16,19 @@
 }
 @media (pointer: coarse) { .chip { min-height: var(--tap); } }
 
+/* Context suggestions share the composer's surface; they add no floating layer. */
+.context-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block-end: var(--space-3); min-width: 0; }
+.context-chips[hidden] { display: none; }
+.context-chip { min-height: 36px; max-width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-control); background: var(--primary-subtle); color: var(--on-primary-subtle); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.context-chip:hover { background: var(--surface-sunken); color: var(--text); }
+.context-chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (pointer: coarse) { .context-chip { min-height: var(--tap); } }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .context-chip { background: var(--surface-raised); color: var(--text); border-color: var(--border-strong); }
+}
+:root[data-contrast="more"] .context-chip { background: var(--surface-raised); color: var(--text); border-color: var(--border-strong); }
+@media (forced-colors: active) { .context-chip { background: ButtonFace; color: ButtonText; border-color: ButtonText; } }
+
 /* A card: one surface, the kind icon in the gutter, a title, one metric or status, the stamp in the foot. */
 .cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
 @media (min-width: 640px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
