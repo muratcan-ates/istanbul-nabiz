@@ -217,6 +217,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = if (hasStateKey) {
               { name: 'NABIZ_SESSIONS_DB', value: '/var/lib/nabiz/accounts/sessions.sqlite' }
               { name: 'NABIZ_APPEALS_DB', value: '/var/lib/nabiz/accounts/appeals.sqlite' }
               { name: 'NABIZ_PLAN_DB_PATH', value: '/var/lib/nabiz/nexus/plans.sqlite3' }
+              { name: 'NABIZ_CASE_FILES_DB_PATH', value: '/var/lib/nabiz/accounts/case_files.sqlite' }
               { name: 'NABIZ_JOURNEY_WATCH_DB_PATH', value: '/var/lib/nabiz/accounts/journey_watch.sqlite' }
               { name: 'NABIZ_BOOKING_DB_PATH', value: '/var/lib/nabiz/accounts/bookings.sqlite' }
               { name: 'NABIZ_ESCORT_DB_PATH', value: '/var/lib/nabiz/nexus/escort.sqlite' }

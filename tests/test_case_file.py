@@ -203,11 +203,12 @@ def test_progress_and_due_reminders_skip_completed_steps(tmp_path) -> None:
     file, key = store.create(("device", ""), "tasinma", True)
     owner = ("device", token_hash(key))
     plan = json.loads(PLAN_PATH.read_text(encoding="utf-8"))["plans"][0]
-    store.set_step(owner, file["id"], "dogalgaz", remind_on="2026-09-27")
-    store.set_step(owner, file["id"], "su", done=True, remind_on="2026-09-27")
+    today = dt.date.today().isoformat()  # the store accepts reminders from today on, so a fixed date ages out
+    store.set_step(owner, file["id"], "dogalgaz", remind_on=today)
+    store.set_step(owner, file["id"], "su", done=True, remind_on=today)
     saved = store.files(owner)[0]
     assert progress(saved, plan) == {"done": 1, "total": 6}
-    assert due_reminders(saved, plan, dt.date(2026, 9, 27)) == [
-        {"step_id": "dogalgaz", "title": "Doğal gaz", "remind_on": "2026-09-27"}
+    assert due_reminders(saved, plan, dt.date.today()) == [
+        {"step_id": "dogalgaz", "title": "Doğal gaz", "remind_on": today}
     ]
     store.close()
