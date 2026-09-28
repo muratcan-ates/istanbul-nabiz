@@ -91,7 +91,6 @@ def test_red_team_extra_case(
     run_shared_case(case, nabiz, monkeypatch, tmp_path, caplog)
 
 
-@pytest.mark.xfail(strict=True, reason=_case("rtx-65")["xfail"])
 def test_shared_network_second_device_keeps_its_turn(nabiz: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """rtx-65: one device spends its ten turns a minute; the next device behind the same address still asks."""
     case = _case("rtx-65")

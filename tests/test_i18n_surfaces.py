@@ -22,6 +22,8 @@ MODULES = (
     "outage_watch.js", "console_outage_watch.js",
     # P00 D2a (K): E65, E67, E77 and E79 write literal t() calls now (their tables became closures)
     "journey_watch.js", "console_incidents.js", "console_scenario.js", "ibb_yerleri.js", "ibb_yerleri_view.js",
+    # The Takvim tab's calendar view (28 Sep, owner's request: an hour grid like the phone's calendar)
+    "calendar_view.js",
 )
 # P00 D2a: the chat shell (P01) and history and memory (P02) look their keys up through tables
 # (``t(`ui.memory.${key}`, COPY[key])``), so the literal-call scan above cannot see them. Their catalogues

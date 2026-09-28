@@ -127,13 +127,6 @@ def test_a_model_outage_keeps_the_original_text_and_says_there_is_no_translation
     assert item["original"] == GERMAN
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Criterion 3: the request mask (pii_guard) hides identity numbers, phones and e-mail, not a health "
-        "condition; 'Diyabetim var' reaches the operator's queue as written."
-    ),
-)
 def test_a_health_detail_the_operator_does_not_need_is_not_passed_on(client: TestClient) -> None:
     text = "Diyabetim var ve tekerlekli sandalye kullanıyorum, Kadıköy kütüphanesine rampa var mı?"
     created = client.post("/api/requests", json={"text": text, "lang": "tr", "consent": True})

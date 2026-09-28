@@ -1,11 +1,11 @@
 /* The citizen page (index.html): hero, the assistant, the arrival and alternative cards, profile, memory. */
 
 /* Quiet civic shell: colour separates surfaces; borders do not frame every control. */
-.citizen-page { background: var(--surface-raised); }
+.citizen-page { --font-sans: "Nabız Sans", "Nabız Sans Fallback", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--surface-raised); }
 .citizen-page .topbar { background: var(--surface-raised); }
-.citizen-page .topbar-inner { max-width: none; min-height: 76px; padding-inline: 28px; gap: 16px; }
-.citizen-page .topbar-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--link); letter-spacing: -.025em; font-size: 1.4375rem; }
-.citizen-page .topbar-role { border: 0; background: transparent; font-size: 0.75rem; padding: 0; }
+.citizen-page .topbar-inner { max-width: none; min-height: var(--topbar-h); padding-inline: var(--space-5); gap: var(--space-3); }
+.citizen-page .topbar-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--link); letter-spacing: -.01em; font-size: var(--text-xl); }
+.citizen-page .topbar-role { border: 0; background: transparent; font-size: var(--text-sm); padding: 0; }
 .citizen-page .topbar-actions > .btn, .citizen-page .i18n-switch .btn { border: 0; background: transparent; font-weight: 500; }
 .citizen-page .i18n-switch .btn[aria-pressed="true"] { background: var(--primary-subtle); color: var(--link); }
 .citizen-page .topbar-nav { align-items: stretch; }
@@ -28,20 +28,20 @@
 .citizen-page .topbar-links a:hover { background: var(--surface-sunken); }
 .citizen-page .topbar-links a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .citizen-page .topbar-links .icon { width: 18px; height: 18px; }
-.citizen-page main { max-width: 1240px; gap: 36px; padding-top: 20px; }
+.citizen-page main { max-width: 1240px; gap: var(--space-5); padding-top: var(--space-4); }
 .citizen-page main [id] { scroll-margin-top: 96px; }
 .hero { position: relative; isolation: isolate; display: grid; justify-items: center; gap: 12px; margin: 0; padding: 38px 28px 24px; border-radius: 24px; background: var(--surface); overflow: hidden; }
 .hero::before { content: ""; position: absolute; z-index: -2; inset: 0; background: url('/images/istanbul-panorama.jpg') center bottom / cover no-repeat; opacity: .24; }
 .hero::after { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--surface-raised) 76%, transparent), color-mix(in srgb, var(--surface-raised) 35%, transparent) 65%, var(--surface-raised)); pointer-events: none; }
 .hero > * { width: min(100%, 46rem); margin-inline: auto; }
 .hero .eyebrow { text-align: center; color: var(--accent-strong); letter-spacing: .08em; font-size: 0.8125rem; font-weight: 600; }
-.hero h1 { max-width: 20ch; text-align: center; color: var(--link); font-size: clamp(2.35rem, 1.2rem + 3.5vw, 3.8rem); line-height: 1.08; letter-spacing: -.045em; font-weight: 600; }
+.hero h1 { max-width: 20ch; text-align: center; color: var(--link); font-size: clamp(2.35rem, 1.2rem + 3.5vw, 3.8rem); line-height: 1.08; letter-spacing: -.02em; font-weight: 600; }
 .hero-sub { max-width: 42rem; text-align: center; color: var(--text-muted); font-size: 1.1875rem; line-height: 1.5; margin-bottom: 14px; }
 .hero-em { color: var(--link); }
 .composer { position: relative; display: grid; gap: 4px; padding: 18px 20px 10px; border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--surface-raised)); border-radius: 20px; background: var(--surface-raised); box-shadow: 0 12px 36px -18px color-mix(in srgb, var(--primary) 28%, transparent); backdrop-filter: none; }
 .composer > label { color: var(--text-muted); font-size: 0.8125rem; font-weight: 500; }
 .composer::after { content: ""; position: absolute; inset: -4px; border-radius: 24px; box-shadow: 0 0 0 3px var(--nd-glow); opacity: 0; pointer-events: none; }
-.composer:focus-within { border-color: var(--accent); }
+.composer:focus-within { border-color: var(--focus-ring); }
 .composer:focus-within::after { opacity: 1; }
 .composer .chat-row > :is(input, textarea) { min-height: 58px; padding-inline: 0; border: 0; background: transparent; font-size: 1.3125rem; box-shadow: none; }
 .composer .chat-row > :is(input, textarea):focus { outline: none; }
@@ -57,7 +57,7 @@
 .hero .chip { border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); background: var(--surface-raised); border-radius: 12px; min-height: 42px; padding-inline: 16px; font-weight: 500; }
 #capability-examples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
 #capability-examples li { min-width: 0; }
-.chip-example { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--nd-line); border-radius: var(--nd-radius-control); background: var(--surface-raised); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.chip-example { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--nd-line-strong); border-radius: var(--nd-radius-control); background: var(--surface-raised); color: var(--text); text-align: start; font: inherit; cursor: pointer; }
 .chip-example .icon { flex: none; width: 20px; height: 20px; color: var(--link); }
 .chip-example:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .composer-more, .quick-more { width: min(100%, 46rem); }
@@ -67,34 +67,41 @@
 .hero > .band p { max-width: none; }
 .hero .band .tag { margin: 8px auto 0; display: table; border: 0; padding: 3px 10px; font-size: 0.75rem; }
 #city-cards > .section-head { align-items: center; justify-content: flex-start; gap: 10px 16px; }
-#city-cards #cards-title { font-size: 1.625rem; font-weight: 600; letter-spacing: -.025em; margin-right: auto; }
+#city-cards #cards-title { font-size: var(--text-xl); font-weight: 600; letter-spacing: -.01em; margin-inline-end: auto; }
 #city-cards .cards { gap: 16px; }
-#city-cards .card { border-color: color-mix(in srgb, var(--border) 65%, transparent); border-radius: 18px; padding: 22px; box-shadow: none; background: linear-gradient(145deg, var(--primary-subtle), var(--surface-raised) 60%); }
+#city-cards .card { border-color: color-mix(in srgb, var(--border) 65%, transparent); border-radius: var(--nd-radius-surface); padding: var(--space-4); box-shadow: none; background: linear-gradient(145deg, var(--primary-subtle), var(--surface-raised) 60%); }
 #city-cards .card:nth-child(3n + 2) { background: linear-gradient(145deg, var(--accent-subtle), var(--surface-raised) 60%); }
 #city-cards .card-kind { color: var(--link); }
-#city-cards .card-title { font-size: 1.0625rem; }
-#city-cards .card-value { font-size: 2.25rem; font-weight: 600; letter-spacing: -.03em; }
+#city-cards .card-title { font-size: var(--text-md); }
+#city-cards .card-value { font-size: var(--text-2xl); font-weight: 600; letter-spacing: -.02em; }
 #city-cards .card-foot { border-top: 1px solid var(--border); padding-top: 12px; font-size: 0.75rem; gap: 6px; }
 #city-cards .card .btn, #city-cards .card .share-btn { border-color: var(--border); background: transparent; font-size: 0.8125rem; }
 #city-cards .card.is-warning { border-color: color-mix(in srgb, var(--warn) 24%, var(--border)); }
 .work-group { border: 1px solid var(--border); border-radius: 18px; background: var(--surface-raised); padding-inline: 22px; }
-.work-group > summary { min-height: 104px; gap: 18px; color: var(--text); }
-.work-group > summary > span:last-of-type:not(.work-icon) { display: grid; gap: 5px; flex: 1; }
+.work-group > summary { min-height: 56px; gap: var(--space-3); color: var(--text); }
+.work-group > summary > span:last-of-type:not(.work-icon) { display: grid; gap: var(--space-1); min-width: 0; flex: 1; }
 .work-group > summary strong { font-size: 1.375rem; font-weight: 600; letter-spacing: -.02em; }
-.work-group > summary small { color: var(--text-muted); font-size: 0.9375rem; font-weight: 400; }
-.work-icon { display: grid; place-items: center; width: 50px; height: 50px; flex: none; border-radius: 15px; color: var(--link); background: var(--primary-subtle); }
-#map-workspace .work-icon { color: var(--accent-strong); background: var(--accent-subtle); }
-#explore-workspace .work-icon { color: var(--ok); background: var(--ok-wash); }
-.work-group > :not(summary) { padding-block: 20px; border-top: 1px solid var(--border); }
-#map-space, #city-tools { display: grid; gap: 24px; }
+.work-group > summary small { color: var(--text-muted); font-size: var(--text-md); font-weight: 400; }
+.work-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--nd-radius-control); color: var(--link); background: var(--primary-subtle); }
+#map-workspace .work-icon { color: var(--link); background: var(--primary-subtle); }
+#explore-workspace .work-icon { color: var(--link); background: var(--primary-subtle); }
+.work-group > :not(summary) { padding-block: var(--space-4); border-top: 1px solid var(--border); }
+#map-space, #city-tools { display: grid; gap: var(--space-4); }
 #hesabim { padding-top: 24px; border-top: 1px solid var(--border); }
-#hesabim > h2 { font-size: 1.625rem; letter-spacing: -.025em; }
-#takvim { width: min(100%, var(--nd-measure-chat)); margin-inline: auto; padding: 24px 0; }
+#hesabim > h2 { font-size: var(--text-xl); letter-spacing: -.01em; }
+#takvim { width: min(100%, var(--nd-measure-chat)); margin-inline: auto; padding: var(--space-4) 0; }
 #takvim h2 { font-size: var(--text-xl); }
-#takvim-empty { margin-top: 20px; padding: 20px; border: 1px solid var(--nd-line); border-radius: var(--nd-radius-surface); background: var(--surface-raised); }
+#takvim-empty { margin-top: var(--space-4); padding: var(--space-4); border: 1px solid var(--nd-line); border-radius: var(--nd-radius-surface); background: var(--surface-raised); }
 .citizen-page #asistan { width: min(100%, 70rem); align-items: start; }
 .assistant-head { min-width: 0; }
 .assistant-head #convo-root { width: 100%; }
+/* Keep conversation titles readable in the narrow assistant rail. */
+.citizen-page #convo-root { container-type: inline-size; }
+.citizen-page .convo-title { overflow-wrap: normal; word-break: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+@container (max-width: 22rem) {
+  .citizen-page .convo-item { grid-template-columns: minmax(0, 1fr); }
+  .citizen-page .convo-delete { justify-self: start; min-height: var(--tap); }
+}
 .assistant-head #assistant-more { width: 100%; margin-top: 8px; }
 .assistant-layout > .chat-log, .assistant-layout > #chat-form { min-width: 0; width: 100%; }
 @media (min-width: 1024px) {
@@ -110,10 +117,10 @@
 #appearance-options .persona-list { flex-wrap: wrap; }
 .citizen-page footer { max-width: 1240px; }
 @media (min-width: 1100px) {
-  .citizen-page .topbar-nav { position: fixed; left: 0; top: 76px; bottom: 0; width: 204px; flex-direction: column; gap: 16px; padding: 22px 12px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface); }
+  .citizen-page .topbar-nav { position: fixed; inset-inline-start: 0; top: var(--topbar-h); bottom: 0; width: 204px; flex-direction: column; gap: var(--space-3); padding: var(--space-3); overflow-y: auto; border-inline-end: 1px solid var(--border); background: var(--surface); }
   .citizen-page .topbar-nav ul { flex-direction: column; }
   .citizen-page .nav-secondary { padding-top: 14px; border-top: 1px solid var(--nd-line); }
-  .citizen-page main, .citizen-page footer { width: calc(100% - 244px); margin-left: max(224px, calc((100% - 1240px + 204px) / 2)); margin-right: 20px; }
+  .citizen-page main, .citizen-page footer { width: calc(100% - 244px); margin-inline-start: max(224px, calc((100% - 1240px + 204px) / 2)); margin-inline-end: 20px; }
 }
 @media (max-width: 1099px) {
   .citizen-page main [id] { scroll-margin-top: 148px; }
@@ -130,16 +137,16 @@
   .citizen-page .topbar-inner { display: flex; flex-wrap: wrap; min-height: 0; padding: 12px 16px 0; gap: 4px 8px; }
   .citizen-page .topbar-brand { font-size: 1.25rem; }
   .citizen-page .topbar-brand img { width: 27px; height: 27px; }
-  .citizen-page .topbar-actions { display: flex; gap: 0; }
+  .citizen-page .topbar-actions { display: flex; flex-wrap: wrap; min-width: 0; max-width: 100%; gap: 0; }
   .citizen-page .topbar-actions > #a11y-toggle { font-size: 0.8125rem; min-height: 44px; padding: 0 5px; }
   .citizen-page .topbar-links a { font-size: 0.8125rem; padding: 0 5px; }
   .citizen-page .topbar-links .icon { display: none; }
   .citizen-page .i18n-switch { gap: 0; }
-  .citizen-page .i18n-switch .btn { min-height: 32px; padding: 0 5px; font-size: 0.75rem; }
-  .citizen-page .topbar-role { width: 100%; min-height: 22px; font-size: 0.6875rem; }
+  .citizen-page .i18n-switch .btn { min-height: var(--tap); padding: 0 var(--space-2); font-size: var(--text-sm); }
+  .citizen-page .topbar-role { width: 100%; min-height: var(--tap); font-size: var(--text-sm); }
   .citizen-page .topbar-nav { gap: 0; }
-  .citizen-page main { padding-inline: 16px; padding-top: 10px; gap: 28px; }
-  .hero { border-radius: 18px; padding: 34px 16px 20px; margin-inline: -6px; gap: 14px; }
+  .citizen-page main { padding-inline: var(--space-4); padding-top: var(--space-2); gap: var(--space-4); }
+  .hero { border-radius: var(--nd-radius-surface); padding: var(--space-5) var(--space-4) var(--space-4); margin-inline: 0; gap: var(--space-3); }
   .hero::before { background-position: 43% bottom; opacity: .2; }
   .hero h1 { font-size: 2.4375rem; }
   .hero-sub { font-size: 1.0625rem; margin-bottom: 4px; }
@@ -150,13 +157,13 @@
   .hero .chips { justify-content: flex-start; }
   .hero .chip { padding-inline: 12px; min-height: 38px; }
   #capability-examples { grid-template-columns: 1fr; }
-  #city-cards #cards-title { font-size: 1.5rem; }
-  #city-cards .card { padding: 18px; }
+  #city-cards #cards-title { font-size: var(--text-xl); }
+  #city-cards .card { padding: var(--space-4); }
   .work-group { padding-inline: 16px; }
-  .work-group > summary { min-height: 104px; gap: 12px; }
+  .work-group > summary { min-height: 56px; gap: var(--space-3); }
   .work-group > summary strong { font-size: 1.25rem; }
-  .work-group > summary small { font-size: 0.875rem; }
-  .work-icon { width: 42px; height: 42px; }
+  .work-group > summary small { font-size: var(--text-md); }
+  .work-icon { width: 36px; height: 36px; }
 }
 :root[data-theme="dark"] .hero::before { opacity: .13; }
 :root[data-contrast="more"] .hero, :root[data-contrast="more"] #city-cards .card { background: var(--surface); }
@@ -184,7 +191,7 @@
 .chat-msg.is-refused { border-color: var(--warn); }
 .chat-who { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-.chat-text:empty::before { content: "Yanıt yazılıyor"; color: var(--text-subtle); }
+.citizen-page .chat-msg[aria-busy="true"] > .chat-text:empty::before { content: "Yanıt yazılıyor"; color: var(--text-subtle); }
 .chat-tool { --icon-size: var(--icon-size-sm); display: flex; align-items: center; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-sm); }
 .chat-tool.is-running .icon { color: var(--accent-strong); }
 .chat-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); color: var(--text-subtle); font-size: var(--text-sm); }
@@ -195,7 +202,6 @@
 .chat-row > .btn { min-height: 48px; }
 .chat-hint { color: var(--text-subtle); font-size: var(--text-sm); }
 .chat-hint a { white-space: nowrap; }
-@media (prefers-reduced-motion: no-preference) { .chat-msg { animation: card-enter var(--dur-ui) var(--ease-out) both; } }
 
 /* Disclosures retain their labelled sections and all form controls in the document. */
 .tool-detail, .account-detail { min-width: 0; border-block-end: 1px solid var(--nd-line); }
@@ -204,30 +210,29 @@
 .tool-detail > section, .account-detail > section { min-width: 0; }
 .a11y-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
-.ask-pill { position: fixed; z-index: var(--z-sticky); left: 0; right: 0; bottom: calc(16px + env(safe-area-inset-bottom)); width: max-content; min-height: 44px; margin-inline: auto; border-radius: var(--fluent-radius-circular); }
+.ask-pill { position: fixed; z-index: var(--z-sticky); inset-inline-start: 0; inset-inline-end: 0; bottom: calc(16px + env(safe-area-inset-bottom)); width: max-content; min-height: 44px; margin-inline: auto; border-radius: var(--fluent-radius-circular); }
 :root.emergency-open .ask-pill { display: none !important; }
 :root[data-persona-call="on"] .ask-pill { display: none !important; }
 #chat-submit[aria-disabled="true"] { border-color: var(--nd-accent); background: var(--nd-accent); color: var(--nd-accent-ink); cursor: progress; }
 #chat-submit[aria-disabled="true"] > .icon { display: none; }
 #chat-submit[aria-disabled="true"]::after { content: ""; position: static; inset: auto; display: inline-block; flex: none; width: 1rem; height: 1rem; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: var(--fluent-radius-circular); box-shadow: none; opacity: 1; }
 
-@media (prefers-reduced-transparency: reduce) { .composer::before { display: none; } }
-@media (prefers-contrast: more) { .hero { background: var(--surface); } .composer::before, .composer::after { display: none; } }
-@media (forced-colors: active) { .composer, .tool-detail, .account-detail { border-color: CanvasText; } .hero { background: Canvas; } .composer::before, .composer::after { display: none; } }
+@media (prefers-contrast: more) { .hero { background: var(--surface); } .composer::after { display: none; } }
+@media (forced-colors: active) { .composer, .tool-detail, .account-detail { border-color: CanvasText; } .hero { background: Canvas; } .composer::after { display: none; } }
 @media (min-width: 641px) { .ask-pill { display: none !important; } }
 /* The ask pill floats over the page on phones; the page ends with room for it so the last line is never under it. */
 @media (max-width: 640px) { main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); } }
 @media (prefers-reduced-motion: no-preference) {
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .composer::after { transition: opacity var(--nd-dur-state) var(--nd-ease-state); }
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .eyebrow,
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > h1,
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .hero-sub,
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .composer { animation: nd-rise var(--nd-dur-enter) var(--nd-ease-enter) both; }
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > h1 { animation-delay: 40ms; }
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .hero-sub { animation-delay: 80ms; }
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .hero > .composer { animation-delay: 120ms; }
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) #chat-submit[aria-disabled="true"]::after { animation: spin 800ms linear infinite; }
-  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .ask-pill:not([hidden]) { animation: nd-pill-in var(--nd-dur-state) var(--nd-ease-enter) both; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .composer::after { transition: opacity var(--nd-dur-state) var(--nd-ease-state); }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > .eyebrow,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > h1,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > .hero-sub,
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > .composer { animation: nd-rise var(--nd-dur-enter) var(--nd-ease-enter) both; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > h1 { animation-delay: 40ms; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > .hero-sub { animation-delay: 80ms; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .hero > .composer { animation-delay: 120ms; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page #chat-submit[aria-disabled="true"]::after { animation: spin 800ms linear infinite; }
+  :where(:root:not([data-motion="reduce"]):not([data-simple="on"])) .citizen-page .ask-pill:not([hidden]) { animation: nd-pill-in var(--nd-dur-state) var(--nd-ease-enter) both; }
 }
 @keyframes nd-rise { from { opacity: 0; transform: translateY(6px); } }
 @keyframes nd-pill-in { from { opacity: 0; transform: translateY(8px); } }
@@ -258,13 +263,12 @@
 @media (forced-colors: active) { .chat, .chat-msg, .place, .memory-item, .consent { border: 1px solid CanvasText; } }
 
 /* Native disclosure affordances remain visible even where the base reset hides markers. */
-.work-group > summary::after { content: "+"; font-size: 1.5rem; font-weight: 400; color: var(--text-subtle); margin-left: auto; }
+.work-group > summary::after { content: "+"; font-size: 1.5rem; font-weight: 400; color: var(--text-subtle); margin-inline-start: auto; }
 .work-group[open] > summary::after { content: "−"; }
-.composer-voice > summary::after, .saved-stops > summary::after { content: "+"; padding-left: 10px; }
+.composer-voice > summary::after, .saved-stops > summary::after { content: "+"; padding-inline-start: 10px; }
 .composer-voice[open] > summary::after, .saved-stops[open] > summary::after { content: "−"; }
 .saved-stops { font-size: 0.875rem; }
 .citizen-page .quick-chip { border-color: var(--border); border-radius: 12px; padding: 10px 14px; }
-.citizen-page .btn-danger { border-color: var(--border); color: var(--text-muted); }
 :root[data-contrast="more"] .citizen-page .btn { border-color: var(--border-strong); }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
   .hero::before, .hero::after { display: none; }
@@ -276,4 +280,23 @@
 .hero-options { display: flex; justify-content: center; align-items: start; flex-wrap: wrap; gap: 0 28px; }
 .hero-options > details { width: auto; margin: 0; }
 .hero-options > details[open] { width: 100%; }
-.hero .hero-options > details > summary { min-height: 36px; }
+.hero .hero-options > details > summary { min-height: var(--tap); }
+
+.citizen-page .chip-example:hover { background: var(--surface-sunken); }
+.citizen-page .chat-who.assistant-signature { position: static; width: auto; height: auto; margin: 0; clip-path: none; overflow: visible; color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; }
+:root:lang(en) .citizen-page .chat-msg[aria-busy="true"] > .chat-text:empty::before { content: "Writing the answer"; }
+:root:lang(en) .citizen-page .places-list:empty::after { content: "No saved places yet."; }
+:root[data-motion="reduce"]:has(.citizen-page), :root[data-simple="on"]:has(.citizen-page) { scroll-behavior: auto; }
+
+/* Optional P26 refinements: consistent controls and honest empty/error states. */
+.citizen-page .nav-primary .icon { display: none; }
+.citizen-page #quick-cards { min-height: var(--tap); }
+.citizen-page .chat-msg[aria-busy="true"] > .chat-text { color: var(--text-muted); }
+.citizen-page .chat-map-dialog::backdrop { background: color-mix(in srgb, var(--neutral-1000) 40%, transparent); }
+.citizen-page .chat-card[data-card-status="ready"] > .chat-card-status { display: none; }
+.citizen-page #takvim-empty { background: var(--surface-sunken); border: 0; }
+.citizen-page #takvim:has(#takvim-empty:not([hidden])) > p:not([id]) { display: none; }
+.citizen-page .chat-msg.is-error > .chat-text { padding: var(--space-3) var(--space-4); border-inline-start: 3px solid var(--warn); border-radius: var(--nd-radius-control); background: var(--warn-wash); }
+.citizen-page .composer .field-error { color: var(--warn); }
+.citizen-page .ask-pill { border-color: var(--nd-accent); background: var(--nd-accent); color: var(--nd-accent-ink); }
+.citizen-page .ask-pill:hover { background: var(--nd-accent-hover); color: var(--nd-accent-ink); }

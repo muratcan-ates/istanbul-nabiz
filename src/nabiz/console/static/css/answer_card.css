@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   justify-items: stretch;
-  gap: var(--space-6);
+  gap: var(--space-4);
   min-width: 0;
   max-width: 100%;
   padding: 0;
@@ -14,11 +14,11 @@
   box-shadow: none;
   text-align: start;
   overflow-wrap: anywhere;
-  font-size: 1.0625rem;
-  line-height: 1.65;
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
 }
 
-.answer-card > section { gap: var(--space-3); }
+.answer-card > section { gap: var(--space-2); }
 
 .answer-card h3 {
   margin: 0;
@@ -47,14 +47,14 @@
 }
 
 .answer-short p {
-  max-width: 70ch;
-  font-size: 1.0625rem;
-  line-height: 1.65;
+  max-width: 65ch;
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
   white-space: pre-line;
   text-wrap: pretty;
 }
 
-.ac-fixed { max-width: 70ch; font-size: 1.0625rem; line-height: 1.65; }
+.ac-fixed { max-width: 65ch; font-size: var(--text-md); line-height: var(--leading-body); }
 
 .ac-quote {
   min-width: 0;
@@ -67,7 +67,7 @@
   margin: 0;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--nd-radius-surface);
   background: var(--surface-raised);
   overflow: hidden;
 }
@@ -82,10 +82,10 @@
   font-weight: var(--weight-semibold);
   line-height: 1.5;
 }
-.ac-quote .quote { margin: 0; padding: var(--space-4); }
+.ac-quote .quote { margin: 0; padding: var(--space-3) var(--space-4); }
 .ac-quote .quote + .quote { border-block-start: 1px solid var(--border); }
-.ac-quote .quote-text { max-width: 70ch; padding: 0; border: 0; color: var(--text); font-size: var(--text-md); line-height: 1.65; }
-.ac-quote .quote-src { margin-block-start: var(--space-3); color: var(--text-muted); font-size: var(--text-sm); line-height: 1.6; }
+.ac-quote .quote-text { max-width: 65ch; padding: 0; border: 0; color: var(--text); font-size: var(--text-md); line-height: var(--leading-body); }
+.ac-quote .quote-src { margin-block-start: var(--space-2); color: var(--text-muted); font-size: var(--text-sm); line-height: 1.6; }
 .ac-quote .quote-src a { color: var(--link); text-underline-offset: 3px; }
 .ac-sources { padding: 0; border: 0; }
 
@@ -103,20 +103,20 @@
 .ac-source,
 .ac-sources > .cites > .cite {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--nd-radius-surface);
   background: var(--surface);
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 
 .ac-sources > .cites > .cite { display: flex; align-items: center; }
-.ac-source-line { min-width: 0; color: var(--text-muted); font-size: var(--text-sm); line-height: 1.65; }
+.ac-source-line { min-width: 0; color: var(--text-muted); font-size: var(--text-sm); line-height: var(--leading-body); }
 
 .ac-source-line a {
   color: var(--link);
@@ -133,8 +133,8 @@
   padding: var(--space-1) var(--space-2);
   color: var(--text-muted);
   background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  border: 0;
+  border-radius: var(--nd-radius-control);
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
   line-height: 1.35;
@@ -147,7 +147,7 @@
   border-color: transparent;
 }
 
-.ac-kind.is-recorded { color: var(--warn); background: var(--warn-wash); border-color: transparent; }
+.ac-kind.is-recorded { color: var(--text-muted); background: var(--surface-raised); border-color: var(--nd-line-strong); }
 .ac-kind.is-unverified { color: var(--text-muted); border-style: dashed; }
 .ac-stale {
   grid-column: 1 / -1;
@@ -162,7 +162,7 @@
   font-size: var(--text-sm);
   line-height: 1.6;
 }
-.ac-sources .callout-error { color: var(--bad); background: var(--bad-wash); border-color: var(--bad); }
+.ac-sources .callout-error { color: var(--warn); background: var(--warn-wash); border-color: var(--warn); }
 
 .ac-actions {
   display: flex;
@@ -206,9 +206,9 @@
   grid-template-columns: 3ch minmax(0, 1fr);
   gap: var(--space-3);
   counter-increment: ac-step;
-  max-width: 70ch;
-  font-size: 1.0625rem;
-  line-height: 1.65;
+  max-width: 65ch;
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
 }
 
 .ac-steps-list > li::before {
@@ -250,7 +250,7 @@
 .chat-final details[id$="-how"] > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 @media (max-width: 480px) {
-  .answer-card { gap: var(--space-5); }
+  .answer-card { gap: var(--space-4); }
   .answer-short p, .ac-fixed, .ac-steps-list > li { font-size: var(--text-md); }
   .ac-source { grid-template-columns: minmax(0, 1fr); justify-items: start; }
   .ac-source, .ac-sources > .cites > .cite { padding: var(--space-3); }
@@ -279,3 +279,51 @@
   }
   .ac-stale { border-inline-start-color: CanvasText; }
 }
+
+/* P26: section hierarchy, a single source frame, and quiet actions. */
+.ac-short > h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ac-steps > h3, .ac-sources > h3 { font-size: var(--text-lg); color: var(--text); }
+.ac-source { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.citation-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); justify-items: start; min-width: 0; width: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--nd-line); border-radius: var(--nd-radius-surface); background: var(--surface); }
+.citation-heading { display: flex; align-items: start; gap: var(--space-2); min-width: 0; }
+.citation-heading > div { min-width: 0; }
+.citation-heading .icon { flex-shrink: 0; color: var(--text-muted); }
+.citation-heading h4 { margin: var(--space-1) 0 0; color: var(--text); font-size: var(--text-md); line-height: var(--leading-snug); font-weight: var(--weight-semibold); }
+.citation-card .quote-exact { margin: 0; padding: 0; border: 0; max-width: 65ch; color: var(--text); font-size: var(--text-md); line-height: var(--leading-body); white-space: pre-wrap; }
+.citation-date { margin: 0; font-size: var(--text-sm); }
+.citation-open, .citation-quote-link, .ac-sentence-source { min-height: var(--tap); display: inline-flex; align-items: center; color: var(--link); }
+.citation-open { min-width: 0; max-width: 100%; white-space: normal; text-align: start; }
+.citation-card > :not(.citation-open):not(.citation-quote-link) { grid-column: 1 / -1; }
+.citation-open, .citation-quote-link { font-size: var(--text-sm); line-height: var(--leading-body); }
+.citation-quote-link { grid-column: 1; }
+.citation-open { grid-column: 2; }
+.citation-card:focus-visible, .ac-details > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ac-details > summary { min-height: var(--tap); padding-block: var(--space-2); color: var(--link); cursor: pointer; font-size: var(--text-md); }
+.ac-details[open] > summary { margin-block-end: var(--space-3); }
+.ac-no-source { padding: var(--space-1) var(--space-2); border: 1px dashed var(--nd-line-strong); border-radius: var(--nd-radius-control); font-size: var(--text-sm); color: var(--text-muted); }
+.ac-sentence-source { min-width: var(--tap); justify-content: center; font-size: var(--text-sm); }
+@media (hover: hover) { .citation-card:hover { border-color: var(--nd-line-strong); } }
+@media (min-width: 481px) { .ac-actions .btn { white-space: nowrap; } }
+@media (max-width: 480px) { .citation-card { padding: var(--space-3); } }
+@media (prefers-contrast: more) { .citation-card { border-color: var(--border-strong); } }
+:root[data-contrast="more"] .citation-card { border-color: var(--border-strong); }
+@media (forced-colors: active) { .citation-card, .ac-no-source { border-color: CanvasText; } }
+
+/* NABIZ-DILI 9.6 keeps a semantic outline on freshness badges. */
+.citation-card .ac-kind.fresh { border: 1px solid var(--nd-line-strong); }
+.citation-card .ac-kind.fresh.is-unverified { border-style: dashed; }
+@media (forced-colors: active) { .citation-card .ac-kind.fresh { border-color: CanvasText; } }
+
+/* Essentials first; one native disclosure keeps supporting evidence reachable. */
+.ac-details { min-width: 0; }
+.ac-details > summary { width: fit-content; font-size: var(--text-sm); font-weight: var(--weight-regular); }
+.ac-details-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); min-width: 0; }
+.ac-details .chat-foot { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.ac-how .cites { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
+.ac-how .cite { min-width: 0; padding: 0; border: 0; background: transparent; font-size: var(--text-sm); overflow-wrap: anywhere; }
+.ac-primary-answer { min-width: 0; }
+.ac-primary-answer .quote-box { border: 0; background: transparent; overflow: visible; }
+.ac-primary-answer .quote { padding: 0; }
+.ac-primary-answer .quote + .quote { margin-block-start: var(--space-3); border: 0; }
+.ac-primary-answer .quote-title { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ac-primary-answer .quote-src { display: none; }

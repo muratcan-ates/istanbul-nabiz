@@ -290,7 +290,8 @@ so before the previous answer goes inert, focus inside it moves to `#results` (`
 
 ## 11. Rules and budgets, enforced
 
-`scripts/check_web_budget.py` holds 13 checks (`make web-budget`, CI step "Web budget"; each shown red on a
+`scripts/check_web_budget.py` holds 14 checks: 13 on this page and `citizen-page`, the byte budget of the product
+app's citizen page (DECISIONS #110; `make web-budget`, CI step "Web budget"; each shown red on a
 broken copy in `tests/test_check_web_budget.py`). Findings the page still had when the gate landed are listed
 as targets with the step that removes them; a count may not grow past its target, and one that is met but
 still listed fails the build. Nothing compares the table with the committed one, so raising an entry is a

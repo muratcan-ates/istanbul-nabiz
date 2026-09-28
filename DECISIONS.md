@@ -3307,3 +3307,36 @@ answers citing the gold page first.
 - MURAT ONAYI: declare `cryptography` (for example in a new extra) and its `DEPENDENCY_SETS` entry, or choose another
   key store; then J lands with its tests (`test_provider_tokens.py`, `test_graph_grant.py`). The erasure chain's
   `outlook_tokens` hook already fails closed when a store cannot delete.
+
+## 110. The citizen page the demo opens is measured; lazy loading brings it down after the demo (28 Sep)
+
+### Context
+
+`make web-budget` measured `src/nabiz/web/static` only. The product app's citizen page
+(`src/nabiz/console/static/index.html`, `make console`), the page shown on 29 Sep, had no gate. On this tree a
+first visit to it fetches 16 stylesheets and 95 modules: 388,793 B gzip in all, 352,759 B of it JS, against the
+40,000 B total, 25,000 B JS and 4 stylesheets the web page is held to
+(`scripts/check_web_budget.py --report --only citizen-page`).
+
+### Decision
+
+- `scripts/check_web_budget.py` gains a 14th check, `citizen-page`: the same byte budgets and stylesheet cap, over
+  what the page's first visit fetches (the HTML, its `<link rel=stylesheet>` files and the static import closure of
+  its scripts and modulepreloads; an `import()` loads when its view opens and is not counted). The 13 checks of
+  `src/nabiz/web/static` are unchanged. A checkout without the page skips the check.
+- Its overage on this tree is recorded as targets (`TARGETS_BY_CHECK["citizen-page"]`): html 8,971, css 74,373,
+  js 1,037,371 and total 1,120,715 bytes over budget (the raw overage is the larger one each time) and 12
+  stylesheets over the cap. They may shrink, never grow. In sprint mode the check is suspended like `payload`
+  (DECISIONS #26): growth prints WARN. Without the flag, growth past a target FAILs; `--strict` fails on the targets.
+- The targets are a floor recorded, not a budget met (Salı sonrası tembel yükleme ile düşürülecek): after the demo
+  the views hidden at load (escort, bill, photo report, fare, outage watch, disaster kit, booking and the rest) are
+  imported when their view opens, as `js/map.js` already loads Leaflet, and the stylesheets are merged. Each step
+  lowers or deletes its entries.
+
+### Consequences
+
+- A lane that adds modules to the citizen page sees WARN in sprint mode. `tests/test_check_web_budget.py` pins the
+  default verdict on this checkout, so the merge that makes the page larger raises the entries in the open, with the
+  new numbers and the reason, or the suite fails: the same paperwork #26 leaves to the Integrator for `payload`.
+- Whether lazy loading alone reaches the 25,000 B JS budget is not measured; the page's budget after the sprint is
+  the owner's to set.

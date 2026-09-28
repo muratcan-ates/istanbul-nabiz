@@ -1,14 +1,13 @@
 import { quoteBox } from './transcript.js';
-import { esc, has, int, num, shortAge } from './format.js';
+import { esc, has } from './format.js';
+import { currentLang, t } from './i18n_text.js';
+import { citationMarkup, citationText, kindTag, isStale, institutionLabel as citationInstitutionLabel, dayDate, STALE_DAYS, freshnessMode } from './citation_card.js';
 import { icon } from './icons.js';
-import { AUTHOR_TR, ageText, howPanel, modeOf, sourceLabel, sourceLink } from './provenance.js';
+import { AUTHOR_TR, howPanel, sourceLink } from './provenance.js';
 
 const REFUSAL_TEXT = "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak. Acil bir durumdaysan 112'yi ara.";
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
-const STALE_DAYS = 365;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const beatenPayloads = new WeakSet();
-const INSTITUTIONS = {
+const INSTITUTIONS = Object.freeze({
   IBB: 'İBB',
   IBB_OPEN_DATA: 'İBB Açık Veri Portalı',
   IETT: 'İETT',
@@ -17,28 +16,12 @@ const INSTITUTIONS = {
   ISPARK: 'İSPARK',
   METRO_ISTANBUL: 'Metro İstanbul',
   SEHIR_HATLARI: 'Şehir Hatları',
-};
+});
 
-function institutionLabel(code, url) {
-  if (has(code) && code !== 'DIGER') return INSTITUTIONS[code] || String(code);
-  try {
-    return new URL(url).hostname || 'Kurum belirtilmemiş';
-  } catch {
-    return 'Kurum belirtilmemiş';
-  }
-}
+function institutionLabel(code, url) { return citationInstitutionLabel(code, url, INSTITUTIONS); }
 
-function dayDate(iso) {
-  const timestamp = Date.parse(iso || '');
-  if (!Number.isFinite(timestamp)) return null;
-  try {
-    return new Intl.DateTimeFormat('tr-TR', {
-      timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric',
-    }).format(timestamp);
-  } catch {
-    return null;
-  }
-}
+const beatenPayloads = new WeakSet();
+let citationSequence = 0;
 
 function sourceLine(citation, { inQuoteBox = false } = {}) {
   if (!citation || typeof citation !== 'object') return '<p class="ac-source-line">Kurum belirtilmemiş</p>';
@@ -49,7 +32,7 @@ function sourceLine(citation, { inQuoteBox = false } = {}) {
       return `<p class="ac-source-line">${institution}${updated ? ` · son güncelleme: ${esc(updated)}` : ''}</p>`;
     }
     const title = citation.title || 'Kaynak sayfası';
-    const href = citation.url && /^https?:\/\//i.test(citation.url) ? citation.url : null;
+    const href = citation.url && /^https:\/\//i.test(citation.url) ? citation.url : null;
     const titleText = href
       ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(title)}</a>`
       : esc(title);
@@ -62,48 +45,9 @@ function sourceLine(citation, { inQuoteBox = false } = {}) {
   return `<p class="ac-source-line">${sourceLink(citation)}</p>`;
 }
 
-function freshnessMode(citation) {
-  const mode = modeOf(citation);
-  return mode === 'unknown' && citation && citation.mode === 'old' ? 'old' : mode;
-}
-
-function kindTag(citation, { beat = false } = {}) {
-  if (citation && citation.source === 'local:knowledge') {
-    return '<span class="ac-kind is-page">Resmî sayfadan alıntı</span>';
-  }
-  const mode = freshnessMode(citation);
-  let label = 'Veri yaşı bilinmiyor';
-  if (mode === 'live') label = `Canlı veri · ${shortAge(citation.age_s)}`;
-  if (mode === 'old') label = `Ölçüm · ${ageText(citation)}`;
-  if (mode === 'recorded') label = `Kayıtlı veri · ${ageText(citation)}`;
-  if (mode === 'schedule') label = 'Tarifeye göre';
-  const state = mode === 'live' ? 'current' : ['recorded', 'old', 'schedule'].includes(mode) ? 'recorded' : 'unverified';
-  const dot = mode === 'live' ? '<span class="fresh-dot" aria-hidden="true"></span>' : '';
-  const beatClass = beat && mode === 'live' ? ' is-beat' : '';
-  return `<span class="ac-kind fresh is-${state}${beatClass}">${dot}${esc(label)}</span>`;
-}
-
-function isStale(citation, now = Date.now()) {
-  if (!citation || citation.source !== 'local:knowledge') return false;
-  const updated = Date.parse(citation.source_updated_at || '');
-  const current = now instanceof Date ? now.getTime() : Number(now);
-  return Number.isFinite(updated) && Number.isFinite(current) && current - updated > STALE_DAYS * DAY_MS;
-}
-
-function staleNotice(citation, now) {
-  return isStale(citation, now)
-    ? '<p class="ac-stale callout callout-warn">Eski olabilir, 153 ile teyit edin</p>'
-    : '';
-}
-
-function sourceItem(citation, now, { beat = false } = {}) {
-  return `<li class="ac-source">${sourceLine(citation, { inQuoteBox: Boolean(citation.quote) })}`
-    + `${kindTag(citation, { beat })}${staleNotice(citation, now)}</li>`;
-}
-
 function actionRow(citations) {
   const page = citations.find((item) => item.source === 'local:knowledge'
-    && typeof item.url === 'string' && /^https?:\/\//i.test(item.url));
+    && typeof item.url === 'string' && /^https:\/\//i.test(item.url));
   const official = page
     ? `<a class="btn btn-quiet ac-official" href="${esc(page.url)}" target="_blank" rel="noopener noreferrer">Resmî kaynağı aç${icon('external-link')}</a>`
     : '';
@@ -119,59 +63,84 @@ function fixedCard(mode, how, turnId) {
     + `</section><p class="chat-foot"><span>cevabı yazan: <b>kural</b></span></p>${howPanel(how, turnId || mode)}`;
 }
 
-function renderAnswerCard(data, { turnId = '', now = Date.now() } = {}) {
+function sentenceMarkup(answer, map, citations, answerId, lang) {
+  if (!map || !Array.isArray(map.sentences) || !map.sentences.length) return `<p data-er-target>${esc(answer)}</p>`;
+  const sentences = map.sentences.filter((sentence) => sentence && typeof sentence.text === 'string');
+  if (!sentences.length) return `<p data-er-target>${esc(answer)}</p>`;
+  const rows = sentences.map((sentence) => {
+    const index = sentence.status === 'supported' ? sentence.support?.[0]?.citation : null;
+    let suffix = '';
+    if (Number.isSafeInteger(index) && index >= 0 && index < citations.length) {
+      suffix = ` <a class="ac-sentence-source" href="#ac-cite-${answerId}-${index + 1}" aria-label="${esc(citationText('source', lang, { number: index + 1 }))}">[${index + 1}]</a>`;
+    } else if (sentence.status === 'no_source') {
+      suffix = ` <span class="ac-no-source">${esc(map.labels?.no_source || citationText('no_source', lang))}</span>`;
+    }
+    return `<p data-er-target>${esc(sentence.text)}${suffix}</p>`;
+  });
+  if (Array.isArray(map.conflicts) && map.conflicts.length) {
+    rows.push(`<p class="ac-conflict ac-stale">${esc(map.labels?.conflict || citationText('conflict', lang))}</p>`);
+  }
+  return rows.join('');
+}
+
+function renderAnswerCard(data, { turnId = '', now = Date.now(), lang = currentLang() } = {}) {
   const payload = data && typeof data === 'object' ? data : {};
   const mode = payload.mode || (payload.refused ? 'refused' : 'answer');
-  if (mode === 'redirect' && payload.emergency === true) return '';
+  if (payload.emergency === true) return '';
   if (!['answer', 'quote_only', 'refused', 'unknown'].includes(mode)) return '';
   if (mode === 'refused' || mode === 'unknown') return fixedCard(mode, payload.how, turnId);
 
   const citations = Array.isArray(payload.citations) ? payload.citations.filter(Boolean) : [];
-  const quoted = citations.filter((item) => typeof item.quote === 'string' && item.quote.trim());
+  const answerId = ++citationSequence;
+  const quoted = citations.flatMap((item, index) => typeof item.quote === 'string' && item.quote.trim()
+    ? [{ ...item, quote_anchor: `ac-quote-${answerId}-${index + 1}`, citation_anchor: `ac-cite-${answerId}-${index + 1}`,
+      citation_label: citationText('quote_source', lang) }] : []);
   if (mode === 'quote_only' && quoted.length === 0) return fixedCard('refused', payload.how, turnId);
 
   const answer = payload.answer_text ?? payload.answer ?? '';
-  const showShort = mode === 'answer' && (quoted.length === 0 || payload.author !== 'kural');
+  const map = payload.how?.citation_map;
+  const hasAnswer = String(answer).trim() || (Array.isArray(map?.sentences)
+    && map.sentences.some((sentence) => typeof sentence?.text === 'string' && sentence.text.trim()));
+  const showShort = mode === 'answer' && hasAnswer && (quoted.length === 0 || payload.author !== 'kural');
   const steps = mode === 'answer' && Array.isArray(payload.steps) ? payload.steps : [];
+  if (!showShort && !quoted.length && !steps.length) return fixedCard('unknown', payload.how, turnId);
   const cardType = mode === 'quote_only' ? 'quote' : 'answer';
   const beatLive = !beatenPayloads.has(payload) && citations.some((item) => freshnessMode(item) === 'live');
   if (beatLive) beatenPayloads.add(payload);
   let html = `<section class="answer-card" data-card="${cardType}"${beatLive ? ' data-beaten="true"' : ''} aria-label="Kaynaklı cevap">`;
-  if (showShort) {
-    html += '<section class="answer-short ac-short"><h3 class="eyebrow">Kısa cevap</h3>'
-      + `<p data-er-target>${esc(answer)}</p></section>`;
+  const quotes = quoted.length ? `<div class="ac-quote" data-er-skip>${quoteBox(quoted)
+    .replaceAll('class="quote-text"', 'class="quote-text quote-exact"')}</div>` : '';
+  const stepList = steps.length ? '<section class="ac-steps"><h3 class="eyebrow">Nasıl yapılır</h3>'
+    + `<ol class="ac-steps-list">${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>` : '';
+  if (showShort) html += '<section class="answer-short ac-short"><h3 class="eyebrow">Kısa cevap</h3>'
+    + `${sentenceMarkup(answer, map, citations, answerId, lang)}</section>`;
+  else html += `<div class="ac-primary-answer">${quotes || stepList}</div>`;
+  if (citations.some((item) => isStale(item, now))) html += `<p class="ac-stale">${esc(citationText('stale', lang))}</p>`;
+  if (!showShort && Array.isArray(map?.conflicts) && map.conflicts.length) {
+    html += `<p class="ac-conflict ac-stale">${esc(map.labels?.conflict || citationText('conflict', lang))}</p>`;
   }
-  if (quoted.length) {
-    const box = quoteBox(quoted).replaceAll('class="quote-text"', 'class="quote-text quote-exact"');
-    html += `<div class="ac-quote" data-er-skip>${box}</div>`;
-  }
-  if (steps.length) {
-    html += '<section class="ac-steps"><h3 class="eyebrow">Nasıl yapılır</h3>'
-      + `<ol class="ac-steps-list">${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>`;
-  }
+  const fallback = lang === 'en' ? 'Details' : 'Ayrıntılar';
+  const label = lang === currentLang() ? t('ui.answer.details', fallback) : fallback;
+  html += `<details class="ac-details"><summary>${esc(label)}</summary><div class="ac-details-content">`;
+  if (showShort) html += quotes;
+  if (showShort || quoted.length) html += stepList;
   html += '<section class="ac-sources"><h3 class="eyebrow">Kaynak</h3>';
   let beatUsed = false;
   if (citations.length) {
-    const items = citations.map((item) => {
+    const items = citations.map((item, index) => {
       const beat = beatLive && !beatUsed && freshnessMode(item) === 'live';
       if (beat) beatUsed = true;
-      return sourceItem(item, now, { beat });
+      const quoteTarget = quoted.find((quote) => quote.citation_anchor === `ac-cite-${answerId}-${index + 1}`)?.quote_anchor;
+      return `<li class="ac-source">${citationMarkup(item, { index, now, lang, beat, answerId, quoteTarget, institutions: INSTITUTIONS })}</li>`;
     });
     html += `<ul class="ac-source-list">${items.join('')}</ul>`;
   } else html += '<p>Kaynak yok.</p>';
-  html += `</section>${actionRow(citations)}</section>`;
-
-  const first = citations[0];
+  html += `</section>${actionRow(citations)}`;
   const author = AUTHOR_TR[payload.author] || payload.author || 'bilinmiyor';
-  const source = first ? sourceLabel(first.institution || first.source) : 'kaynak yok';
-  const age = first ? ageText(first) : 'veri yaşı bilinmiyor';
-  const how = payload.how;
-  const calls = how && Number.isFinite(Number(how.tool_calls)) ? int(how.tool_calls) : '0';
-  const elapsed = how && has(how.elapsed_s) ? num(how.elapsed_s, 1) : 'bilinmiyor';
-  html += `<p class="chat-foot"><span>${esc(source)} · ${esc(age)} · cevabı yazan: <b>${esc(AUTHOR_TR[payload.author] || author)}</b>`
-    + ` · ${esc(calls)} araç çağrısı · ${esc(elapsed)} sn</span></p>`;
-  html += howPanel(how, turnId || 'answer');
-  html += `<div class="feedback-slot" data-turn-id="${esc(turnId)}"></div>`;
+  html += `<p class="chat-foot"><span>cevabı yazan: <b>${esc(author)}</b></span></p>`;
+  html += howPanel(payload.how, turnId || 'answer').replace('<details', '<section class="ac-how"')
+    .replace('<summary>', '<h3 class="eyebrow">').replace('</summary>', '</h3>').replace('</details>', '</section>');
+  html += `</div></details></section><div class="feedback-slot" data-turn-id="${esc(turnId)}"></div>`;
   return html;
 }
 
