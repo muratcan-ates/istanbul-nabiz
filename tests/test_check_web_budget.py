@@ -103,7 +103,8 @@ def test_the_page_in_this_checkout_passes_the_gate(capsys: pytest.CaptureFixture
 
 def test_a_clean_copy_passes_and_strict_mode_fails_on_the_recorded_targets(repo: pathlib.Path) -> None:
     assert failed(repo) == set()
-    with_targets = {key.split(":", 1)[0] for key in budget.TARGETS}
+    # This copy holds the web page only; the citizen page's targets have their own tests below.
+    with_targets = {key.split(":", 1)[0] for key in budget.TARGETS} - {budget.CITIZEN_CHECK}
     assert {name for name, r in results(repo, strict=True).items() if r.status == budget.FAIL} == with_targets
 
 
@@ -327,6 +328,65 @@ def test_each_check_turns_red_on_the_breakage_it_guards(
 
 def test_every_check_has_a_breakage_that_turns_it_red() -> None:
     assert set(BREAKAGES) == set(budget.CHECK_NAMES)
+
+
+# --------------------------------------------------------------------------------------
+# the product app's citizen page (DECISIONS #110): measured, its overage a target
+# --------------------------------------------------------------------------------------
+@pytest.fixture
+def citizen(repo: pathlib.Path) -> pathlib.Path:
+    """The web page's copy plus a copy of the product app's citizen page."""
+    shutil.copytree(REPO_ROOT / budget.CITIZEN_STATIC, repo / budget.CITIZEN_STATIC)
+    return repo
+
+
+def add_module(root: pathlib.Path, name: str, text: str) -> None:
+    """A new module the citizen page loads with its own <script type=module>."""
+    static = root / budget.CITIZEN_STATIC
+    (static / "js" / name).write_text(text, encoding="utf-8")
+    index = static / "index.html"
+    page = index.read_text(encoding="utf-8")
+    assert "</body>" in page, "the test no longer matches the citizen page"
+    index.write_text(page.replace("</body>", f'<script type="module" src="/js/{name}"></script>\n</body>'), encoding="utf-8")
+
+
+def test_the_citizen_page_in_this_checkout_is_measured_within_its_targets() -> None:
+    result = results(REPO_ROOT)[budget.CITIZEN_CHECK]
+    assert result.status in {budget.PASS, budget.TARGET}, result.lines
+    assert "src/nabiz/console/static/index.html" in result.summary
+
+
+def test_a_checkout_without_the_citizen_page_skips_it(repo: pathlib.Path) -> None:
+    assert budget.CITIZEN_CHECK not in results(repo)
+
+
+def test_the_citizen_page_counts_what_its_first_visit_fetches(citizen: pathlib.Path) -> None:
+    static = (citizen / budget.CITIZEN_STATIC).resolve()
+    stylesheets, scripts = budget.first_visit(static)
+    (static / "css" / "zz-unlinked.css").write_text(".zz-x { margin: 0; }\n", encoding="utf-8")
+    (static / "js" / "zz-static.js").write_text("export const s = 1;\n", encoding="utf-8")
+    (static / "js" / "zz-lazy.js").write_text("export const l = 1;\n", encoding="utf-8")
+    entry = "import { s } from './zz-static.js';\nexport const later = () => import('./zz-lazy.js');\n"
+    add_module(citizen, "zz-entry.js", entry)
+    after_stylesheets, after_scripts = budget.first_visit(static)
+    assert after_stylesheets == stylesheets  # a stylesheet no <link> names is not fetched
+    # the entry and its static import are; the import() loads when its view opens
+    assert {p.name for p in after_scripts} - {p.name for p in scripts} == {"zz-entry.js", "zz-static.js"}
+
+
+def test_a_citizen_page_that_grows_fails_by_default_and_warns_in_sprint_mode(
+    citizen: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    add_module(citizen, "zz-vendor-ish.js", f"// {random_text(20_000)}\n")
+    only = [budget.CITIZEN_CHECK, "payload"]
+    before = results(citizen, only=only)
+    result = before[budget.CITIZEN_CHECK]
+    assert result.status == budget.FAIL
+    assert any(status == budget.FAIL and "grew past its target" in line for status, line in result.lines)
+    assert before["payload"].status == budget.TARGET  # the web page's own measurement is untouched
+    monkeypatch.setenv(budget.SPRINT_MODE_ENV, "1")
+    assert results(citizen, only=only)[budget.CITIZEN_CHECK].status == budget.WARN
+    assert results(citizen, only=only, strict=True)[budget.CITIZEN_CHECK].status == budget.FAIL
 
 
 # --------------------------------------------------------------------------------------

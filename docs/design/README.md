@@ -70,7 +70,8 @@ and 88 pixels, Pillow's `ImageChops.difference`). Each later step replaces these
 
 ## The budget gate and its targets
 
-`scripts/check_web_budget.py` runs 13 checks (its docstring gives each one's reason). The page did
+`scripts/check_web_budget.py` runs 14 checks, 13 on this page and `citizen-page` on the product app's
+citizen page (DECISIONS #110); its docstring gives each one's reason. The page did
 not pass all of them on the day they landed, so the findings it had are listed in `TARGETS_BY_CHECK`,
 each with the §18 step that removes it and, for a count, the count it may not exceed:
 

@@ -48,6 +48,12 @@ an edit and what a phone downloads. The rules are the frontend half of the desig
                      entities (&mdash; written into innerHTML is a dash on screen), CSS content. The
                      charter's attribution line is the one allowlisted string (owner decision 1).
                      Server-generated text is tests/test_answer_text.py's half of the rule.
+    citizen-page     The product app's citizen page (src/nabiz/console/static/index.html, ``make console``),
+                     the page the demo opens, which the checks above never read. Bytes as its first visit
+                     fetches them: the HTML, its <link rel=stylesheet> files and the static import closure
+                     of its scripts and modulepreloads (an import() loads later and is not counted),
+                     against the same byte budgets and the same 4 stylesheets. Skipped in a checkout
+                     without that page. Its overage on 2026-09-28 is a target (DECISIONS #110).
 
 Targets. Findings the page had when these gates landed are listed in TARGETS_BY_CHECK, each with the step of
 the design spec's plan (section 18) that removes it and, where it is a count, the count it may not
@@ -62,11 +68,11 @@ Modes::
     .venv/bin/python scripts/check_web_budget.py --strict   # targets fail too: the enforcing mode
     .venv/bin/python scripts/check_web_budget.py --report   # print everything, always exit 0
     .venv/bin/python scripts/check_web_budget.py --only dashes,icons
-    NABIZ_SPRINT_MODE=1 .venv/bin/python scripts/check_web_budget.py   # payload's failures are WARN
+    NABIZ_SPRINT_MODE=1 .venv/bin/python scripts/check_web_budget.py   # the byte budgets' failures are WARN
 
 Stdlib only, no network. Exit 1 on any FAIL (never with --report). In sprint mode (DECISIONS #26, lane
-branches until 2026-10-01) the ``payload`` check, the byte budget and its targets, reports its failures
-as WARN and does not fail the run; every other check is a fence and fails as before. ``--strict``
+branches until 2026-10-01) the ``payload`` and ``citizen-page`` checks, the byte budgets and their targets,
+report their failures as WARN and do not fail the run; every other check is a fence and fails as before. ``--strict``
 ignores the variable, and so does the integration merge, which runs without it.
 """
 
@@ -88,11 +94,14 @@ from html.parser import HTMLParser
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 STATIC = pathlib.Path("src/nabiz/web/static")
+#: The product app's citizen page, read by the ``citizen-page`` check alone (DECISIONS #110).
+CITIZEN_STATIC = pathlib.Path("src/nabiz/console/static")
+CITIZEN_CHECK = "citizen-page"
 PASS, FAIL, WARN, TARGET = "PASS", "FAIL", "WARN", "TARGET"
-#: DECISIONS #26: set to "1" on a lane branch (``make lane-gates``) until 2026-10-01, the byte budget's
+#: DECISIONS #26: set to "1" on a lane branch (``make lane-gates``) until 2026-10-01, the byte budgets'
 #: failures print as WARN and do not fail the run. Every other check is a fence and fails as before.
 SPRINT_MODE_ENV = "NABIZ_SPRINT_MODE"
-SUSPENDED_IN_SPRINT = frozenset({"payload"})
+SUSPENDED_IN_SPRINT = frozenset({"payload", CITIZEN_CHECK})
 
 #: (raw bytes, gzip -9 bytes) per asset type, first party only.
 BUDGETS = {"html": (20_000, 6_000), "css": (40_000, 10_000), "js": (80_000, 25_000), "total": (140_000, 40_000)}
@@ -216,6 +225,7 @@ class Target:
 
 STEP7 = "step 7: answers"
 STEP8 = "step 8: map"
+LAZY_VIEWS = "after the 29 Sep demo: views hidden at load imported when opened, fewer stylesheets"
 
 #: Measured on the tree these gates landed on (2026-09-23, after the ES module split); steps are the
 #: design spec's section 18. Grouped by check; each step deletes the entries it meets, and a met
@@ -254,6 +264,18 @@ TARGETS_BY_CHECK: dict[str, dict[str, Target]] = {
     "payload": {
         "js": Target("owner: JS gzip budget for native modules", 37_259),
         "total": Target(f"owner: the JS budget above, measured after {STEP7}", 38_524),
+    },
+    # Added 2026-09-28 (DECISIONS #110), measured on this tree: the product app's citizen page, the one the demo
+    # opens, had no gate. HTML 7,839 B, CSS 28,195 B in 16 files, JS 352,759 B in 95 modules, total 388,793 B
+    # gzip. Its overage is recorded as it is, so it may shrink and never grow; each count is the larger overage,
+    # the raw one. Lazy loading the views hidden at load (escort, bill, photo report, fare and the rest) and
+    # merging stylesheets bring it down after the demo, and each step lowers or deletes these entries.
+    CITIZEN_CHECK: {
+        "html": Target(LAZY_VIEWS, 8_971),
+        "css": Target(LAZY_VIEWS, 74_373),
+        "js": Target(LAZY_VIEWS, 1_037_371),
+        "total": Target(LAZY_VIEWS, 1_120_715),
+        "stylesheets": Target(LAZY_VIEWS, 12),
     },
 }
 TARGETS: dict[str, Target] = {
@@ -548,14 +570,18 @@ def check_payload(page: Page) -> CheckResult:
             totals[kind][0] += len(data)
             totals[kind][1] += gz(data)
     totals["total"] = [sum(v[0] for v in totals.values()), sum(v[1] for v in totals.values())]
+    summary = ", ".join(f"{k} {raw / 1000:.1f}/{packed / 1000:.1f} KB" for k, (raw, packed) in totals.items() if raw)
+    return CheckResult("payload", summary + " (raw/gzip)", over_budget("payload", totals))
+
+
+def over_budget(check: str, totals: dict[str, list[int]]) -> list[Finding]:
+    """One finding per type over BUDGETS; ``totals`` maps a type to [raw, gzip] bytes."""
     # The count is the bytes over budget, so a recorded overrun may shrink but never grow.
-    findings = [
-        Finding(f"payload:{kind}", f"{kind}: {raw:,} B raw / {packed:,} B gzip, budget {limit[0]:,} / {limit[1]:,}", over)
+    return [
+        Finding(f"{check}:{kind}", f"{kind}: {raw:,} B raw / {packed:,} B gzip, budget {limit[0]:,} / {limit[1]:,}", over)
         for kind, (raw, packed) in totals.items()
         if (limit := BUDGETS.get(kind)) and (over := max(raw - limit[0], packed - limit[1])) > 0
     ]
-    summary = ", ".join(f"{k} {raw / 1000:.1f}/{packed / 1000:.1f} KB" for k, (raw, packed) in totals.items() if raw)
-    return CheckResult("payload", summary + " (raw/gzip)", findings)
 
 
 def check_render_blocking(page: Page) -> CheckResult:
@@ -833,18 +859,22 @@ def check_file_size(page: Page) -> CheckResult:
     return CheckResult("file-size", caps, findings)
 
 
+#: Groups 1 and 2 are static imports, fetched with the module; group 3 is an import() that loads later.
+IMPORT_SPECIFIER = re.compile(
+    r"""^\s*(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]"""  # import x from '...', export ... from '...'
+    r"""|^\s*import\s*['"]([^'"]+)['"]"""  # import '...' for its side effects
+    r"""|\bimport\(\s*['"]([^'"]+)['"]\s*\)""",  # import('...'), the lazy map loader
+    re.M,
+)
+
+
 def import_graph(page: Page) -> tuple[dict[str, set[str]], list[Finding]]:
     """Resolve every static and dynamic import; flag bare and unresolvable specifiers."""
     graph: dict[str, set[str]] = {}
     findings = []
-    pattern = (
-        r"""^\s*(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]"""  # import x from '...', export ... from '...'
-        r"""|^\s*import\s*['"]([^'"]+)['"]"""  # import '...' for its side effects
-        r"""|\bimport\(\s*['"]([^'"]+)['"]\s*\)"""  # import('...'), the lazy map loader
-    )
     for path, script in page.scripts.items():
         graph[path] = set()
-        for match in re.finditer(pattern, script.bare, flags=re.M):
+        for match in IMPORT_SPECIFIER.finditer(script.bare):
             spec = next(group for group in match.groups() if group)
             if not spec.startswith(("./", "../", "/")):
                 message = f"{path} imports {spec!r}: a bare specifier needs npm or a build step"
@@ -1054,6 +1084,59 @@ def check_dashes(page: Page) -> CheckResult:
     return CheckResult("dashes", f"{sum(counts.values())} dash(es) in visible text, 1 allowlisted string", findings)
 
 
+def page_file(static: pathlib.Path, url: str | None, base: pathlib.Path | None = None) -> pathlib.Path | None:
+    """A same-origin URL as a file under ``static`` (relative to ``base``), or None: external, missing or outside."""
+    if not url or is_external(url) or url.startswith("data:"):
+        return None
+    spec = urllib.parse.urlsplit(url).path
+    path = ((static if spec.startswith("/") or base is None else base) / spec.lstrip("/")).resolve()
+    return path if path.is_file() and path.is_relative_to(static) else None
+
+
+def first_visit(static: pathlib.Path) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
+    """The stylesheets and scripts a first visit to ``static/index.html`` fetches, each once.
+
+    Scripts are the page's <script src> and modulepreload entries and everything they import statically;
+    an import() is left out, because it loads when its view opens.
+    """
+    doc = Document()
+    doc.feed((static / "index.html").read_text(encoding="utf-8"))
+    links = doc.tags("link")
+    sheets = [page_file(static, a.get("href")) for a in links if a.get("rel") == "stylesheet"]
+    entries = [a.get("src") for a in doc.tags("script")] + [a.get("href") for a in links if a.get("rel") == "modulepreload"]
+    queue = [path for url in entries if (path := page_file(static, url))]
+    scripts: dict[pathlib.Path, None] = {}
+    while queue:
+        path = queue.pop(0)
+        if path in scripts:
+            continue
+        scripts[path] = None
+        bare = "".join(JsLexer(path.read_text(encoding="utf-8")).run().bare)
+        for match in IMPORT_SPECIFIER.finditer(bare):
+            if target := page_file(static, match.group(1) or match.group(2), path.parent):
+                queue.append(target)
+    return list(dict.fromkeys(sheet for sheet in sheets if sheet)), list(scripts)
+
+
+def check_citizen_page(repo: pathlib.Path) -> CheckResult:
+    """The product app's citizen page against BUDGETS and the stylesheet cap, as its first visit fetches it."""
+    static = (repo / CITIZEN_STATIC).resolve()
+    stylesheets, scripts = first_visit(static)
+    totals: dict[str, list[int]] = {}
+    for kind, paths in (("html", [static / "index.html"]), ("css", stylesheets), ("js", scripts)):
+        data = [path.read_bytes() for path in paths]
+        totals[kind] = [sum(len(d) for d in data), sum(gz(d) for d in data)]
+    totals["total"] = [sum(v[0] for v in totals.values()), sum(v[1] for v in totals.values())]
+    findings = over_budget(CITIZEN_CHECK, totals)
+    if len(stylesheets) > MAX_FIRST_PARTY_STYLESHEETS:
+        message = f"{len(stylesheets)} first-party stylesheets (max {MAX_FIRST_PARTY_STYLESHEETS})"
+        findings.append(Finding(f"{CITIZEN_CHECK}:stylesheets", message, len(stylesheets) - MAX_FIRST_PARTY_STYLESHEETS))
+    sizes = ", ".join(f"{k} {raw / 1000:.1f}/{packed / 1000:.1f} KB" for k, (raw, packed) in totals.items())
+    counts = f"{len(stylesheets)} stylesheet(s), {len(scripts)} module(s)"
+    summary = f"{CITIZEN_STATIC.as_posix()}/index.html: {counts}; {sizes} (raw/gzip)"
+    return CheckResult(CITIZEN_CHECK, summary, findings)
+
+
 CHECKS: tuple[Callable[[Page], CheckResult], ...] = (
     check_payload, check_render_blocking, check_third_party, check_fonts, check_motion, check_tokens,
     check_file_size, check_js_modules, check_css_prefix, check_listeners, check_icons, check_contract_ids,
@@ -1100,25 +1183,28 @@ def run_checks(repo: pathlib.Path, only: list[str] | None = None, strict: bool =
     targets = TARGETS if targets is None else targets
     # --strict is the enforcing mode: it ignores the variable.
     sprint = (sprint_mode() if sprint is None else sprint) and not strict
-    return [
+    results = [
         judge(fn(page), targets, strict, sprint) for fn, name in zip(CHECKS, CHECK_NAMES, strict=True) if not only or name in only
     ]
+    if (not only or CITIZEN_CHECK in only) and (repo / CITIZEN_STATIC / "index.html").is_file():
+        results.append(judge(check_citizen_page(repo), targets, strict, sprint))
+    return results
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="check_web_budget", description="Budgets and fences for the web UI.")
     parser.add_argument("--repo", type=pathlib.Path, default=ROOT, help="repository root (default: this checkout)")
-    parser.add_argument("--only", help=f"comma-separated subset of: {', '.join(CHECK_NAMES)}")
+    parser.add_argument("--only", help=f"comma-separated subset of: {', '.join((*CHECK_NAMES, CITIZEN_CHECK))}")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--strict", action="store_true", help="recorded targets fail too (the enforcing mode)")
     mode.add_argument("--report", action="store_true", help="print everything and always exit 0 (baselines)")
     args = parser.parse_args(argv)
     only = [name.strip() for name in args.only.split(",")] if args.only else None
-    if only and (unknown := sorted(set(only) - set(CHECK_NAMES))):
+    if only and (unknown := sorted(set(only) - {*CHECK_NAMES, CITIZEN_CHECK})):
         parser.error(f"unknown check(s): {', '.join(unknown)}")
 
     results = run_checks(args.repo.resolve(), only, strict=args.strict)
-    width = max(len(r.name) for r in results)
+    width = max((len(r.name) for r in results), default=0)
     for r in results:
         print(f"{r.name.ljust(width)}  {r.status:6}  {r.summary}")
         for status, line in r.lines:
