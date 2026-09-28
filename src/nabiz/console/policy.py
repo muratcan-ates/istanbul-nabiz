@@ -197,6 +197,9 @@ def _asks_about_rent(words: Sequence[str]) -> bool:
 
 def refuses(question: str) -> bool:
     """Is this a rights, fare, fine or health question (R-06)?"""
+    if (rest := emergency_lang.ordinary_question(question)) is not None:
+        # A stated condition next to an everyday question: the question is judged, not the person (KARAR 5).
+        return refuses(rest)
     text = normalize_tr(question)
     words = text.split()
     if _asks_about_rent(words):
@@ -226,6 +229,11 @@ def refuses_in_context(question: str, earlier_user_messages: Sequence[str]) -> b
 
 
 def _turkish_emergency(message: str) -> bool:
+    # "Y.a.n.g.ı.n var" is read as written and joined (A7): joining only ever adds a card.
+    return any(_turkish_reading(reading) for reading in emergency_lang.emergency_readings(message))
+
+
+def _turkish_reading(message: str) -> bool:
     text = normalize_tr(message)
     if any(word.startswith(EMERGENCY_TERMS["acil"]) for word in text.split()):
         return True
@@ -238,8 +246,11 @@ def _turkish_emergency(message: str) -> bool:
 
 def emergency_intent(message: str) -> bool:
     """Is this an emergency? Decided before any model, tool or refusal is reached: the Turkish rules,
-    then the other card languages' rules. Both are fixed words; no model is ever waited for."""
-    return _turkish_emergency(message) or emergency_lang.rule_match(message) is not None
+    then the other card languages' rules. Both are fixed words; no model is ever waited for. A stated
+    condition with nothing acute ("Kalp hastasıyım, M4'te asansör var mı?") is set aside first; with an
+    acute sign ("Diyabetim var, bayılacak gibiyim") it opens the card on its own (KARAR 5)."""
+    text = emergency_lang.without_calm_condition(message)
+    return _turkish_emergency(text) or emergency_lang.rule_match(text) is not None or emergency_lang.acute_with_condition(message)
 
 
 def emergency_card(message: str) -> dict[str, str | None]:

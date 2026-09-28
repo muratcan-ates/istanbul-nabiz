@@ -147,6 +147,31 @@ def test_member_collectors_and_auto_incident_gates() -> None:
     )
 
 
+def test_a_linked_photo_joins_its_report_even_at_another_place() -> None:
+    reports = report_members([report("s1"), report("s2", "Üsküdar")], {}, NOW, 168)
+    photos = photo_members([
+        {"code": "SYNTHETIC3", "place": {"kind": "district", "name": "Şişli"}, "linked_signal_id": "s1",
+         "linked_report_code": "ABCDEFGH"},
+        {"code": "SYNTHETIC4", "place": {"kind": "station", "name": "Kartal"}, "linked_signal_id": "s2",
+         "linked_report_code": "BCDEFGHJ"},
+        {"code": "SYNTHETIC5", "place": {"kind": "station", "name": "Kartal"}},
+        {"code": "SYNTHETIC6", "place": {"kind": "district", "name": "Şişli"}},
+    ])
+    by_code = {member["photo_code"]: member for member in photos}
+    assert set(by_code) == {"SYNTHETIC3", "SYNTHETIC4", "SYNTHETIC5"}
+    assert [by_code[code]["linked_ref"] for code in ("SYNTHETIC3", "SYNTHETIC4", "SYNTHETIC5")] == [
+        "report:s1", "report:s2", None]
+    grouped = {item["station_key"]: item for item in auto_incidents(reports, photos, [])}
+    assert [m["report_code"] for m in grouped["sanayimahallesi"]["members"]["photo"]] == ["ABCDEFGH"]
+    uskudar = next(item for key, item in grouped.items() if key != "sanayimahallesi" and item["members"]["report"])
+    assert [m["linked_ref"] for m in uskudar["members"]["photo"]] == ["report:s2"]
+    assert uskudar["stations"] == ["Kartal", "Üsküdar"] and len(grouped) == 3
+    lone = auto_incidents([], [by_code["SYNTHETIC5"]], [])
+    assert len(lone) == 1 and lone[0]["members"]["photo"][0]["linked_ref"] is None
+    # A linked photo whose report left the window falls back to its own station, never a new identity.
+    assert len(auto_incidents([], [by_code["SYNTHETIC3"]], [])) == 0
+
+
 def test_report_priority_base_stays_consistent_with_its_decision_card() -> None:
     state = SignalState.model_validate(
         {

@@ -18,7 +18,9 @@ import unicodedata
 from dataclasses import dataclass
 
 from nabiz.console.emergency_text import CARD_LANGS
-from nabiz.console.emergency_vocab import VOCAB, Vocab
+from nabiz.console.emergency_vocab import ACUTE_SIGNS, MEDICAL_ADVICE, SERVICE_CUES, TURKISH_MASKS, VOCAB, Vocab
+from nabiz.console.health_mask import HEALTH_LABEL, HEALTH_LABEL_OTHER, health_spans
+from nabiz.console.pii_guard import fold_keep_length
 
 #: Arabic and Persian spell the same letters two ways; the Turkish dotless i; "!" kept as a token.
 _LETTER_FORMS = str.maketrans({"ة": "ه", "ى": "ي", "ی": "ي", "ک": "ك", "ـ": None, "‌": " ", "‍": None, "ı": "i", "!": " ! "})
@@ -30,6 +32,8 @@ _POLITE = frozenset(
      "ласка", "لطفا", "من", "فضلك", "لو", "سمحت")
 )  # fmt: skip
 #: Who a card falls back to when the model names a language the card does not speak.
+#: The line an answer carries below it when the question stated a condition (KARAR 5).
+CHRONIC_NOTE = "Acil bir durumda 112'yi arayın."
 _NEAREST_CARD = {"az": "tr", "tk": "tr", "uz": "ru", "kk": "ru", "ky": "ru", "tg": "ru", "be": "ru"}
 
 
@@ -137,7 +141,15 @@ def _fires(text: str, rules: _Rules) -> tuple[bool, bool]:
 
 
 def rule_match(message: str) -> RuleHit | None:
-    """The card languages whose emergency rules fire on ``message``, or ``None`` when none does."""
+    """The card languages whose emergency rules fire on ``message`` as written or with its spelled-out words
+    joined ("П.О.Ж.А.Р", :func:`unsplit`), or ``None`` when none does."""
+    for reading in emergency_readings(message):
+        if (hit := _rule_match(reading)) is not None:
+            return hit
+    return None
+
+
+def _rule_match(message: str) -> RuleHit | None:
     text = _MASKS.sub(" | ", fold_for_emergency(message))
     langs, gas = set(), False
     for lang, rules in _RULES.items():
@@ -205,17 +217,58 @@ def _latin(text: str) -> str | None:
     return best if scores[best] > 0 else None
 
 
-def guess_language(message: str) -> str | None:
-    """A two-letter guess at the message's language, or ``None`` when its letters say nothing."""
-    text = unicodedata.normalize("NFC", message).lower()
-    script = _script(text)
+#: A follow-up this short ("Peki Kartal'da?", "Und morgen?") has too few words for the function-word vote.
+_SHORT_WORDS, _SHORT_CHARS = 4, 24
+#: Strong Turkish in a short follow-up: a case ending after an apostrophe ("Kartal'da", "Üsküdar'a",
+#: "Kadıköy'den"), a letter only Turkish uses, or a question particle standing alone ("Yarın da mı?").
+_TURKISH_SUFFIX = re.compile(r"[^\W\d_]['’](?:[dt][ae]n?|y?[ae]|n?[ıiuü]n|y?[ıiuü]|[dt][ae]ki|l[ae]r\w*)(?![^\W\d_])")
+_TURKISH_PARTICLE = re.compile(r"(?<![^\W\d_])m[ıiuü](?:s[ıiuü]n|y[ıiuü]m)?(?![^\W\d_])")
+_TURKISH_ONLY = "ğış"
+#: Function words of other languages that are Turkish words too: "Peki Kartal da?" is not Portuguese.
+_TURKISH_TOO = frozenset(("da", "de", "ya", "a", "e", "o", "en", "ne", "mi", "mu", "ki", "bu", "ve"))
+
+
+def _short(text: str) -> bool:
+    return len(text.split()) <= _SHORT_WORDS or len(text.strip()) <= _SHORT_CHARS
+
+
+def _strong_turkish(text: str) -> bool:
+    lowered = text.replace("I", "ı").replace("İ", "i").lower()
+    return bool(
+        _TURKISH_SUFFIX.search(lowered) or _TURKISH_PARTICLE.search(lowered) or any(ch in lowered for ch in _TURKISH_ONLY)
+    )
+
+
+def _weak_latin(text: str, lang: str) -> bool:
+    """A short Latin guess resting only on words Turkish writes too ("da", "de", "ya") and no letter of its own."""
+    words = fold_for_emergency(text).split()
+    backed = any(word in _WORD_SETS.get(lang, ()) and word not in _TURKISH_TOO for word in words)
+    return not backed and _marked(text, _LATIN_LETTERS) != lang
+
+
+def guess_language(message: str, previous: str | None = None) -> str | None:
+    """A two-letter guess at the message's language, or ``None`` when its letters say nothing.
+
+    A short follow-up in Latin letters is judged apart (Görev 0-b): strong Turkish is Turkish, and a weak
+    guess ("Peki Kartal'da?" once read as Portuguese for its "da") gives way to ``previous``, the
+    conversation's language, or else Turkish, so no model is asked about it. "Und morgen?" and "And in
+    Kartal?" keep German and English: each has a function word of its own.
+    """
+    text = unicodedata.normalize("NFC", message)
+    lowered = text.lower()
+    script = _script(lowered)
     if script == "ar":
-        return _marked(text, _ARABIC_SCRIPT) or "ar"
+        return _marked(lowered, _ARABIC_SCRIPT) or "ar"
     if script == "ru":
-        return _marked(text, _CYRILLIC) or "ru"
-    if script == "latin":
-        return _latin(text)
-    return script
+        return _marked(lowered, _CYRILLIC) or "ru"
+    if script != "latin":
+        return script
+    if _short(text) and _strong_turkish(text):
+        return "tr"
+    guessed = _latin(lowered)
+    if _short(text) and (guessed is None or _weak_latin(lowered, guessed)):
+        return previous or "tr"
+    return guessed
 
 
 def card_lang_for(code: str | None) -> str:
@@ -232,3 +285,108 @@ def pick_card_lang(message: str, langs: frozenset[str]) -> str:
     if guessed in langs:
         return guessed
     return next(lang for lang in CARD_LANGS if lang in langs)
+
+
+# -- a stated condition next to an everyday question (KARAR 5) --------------------------------------------
+# "Kalp hastasıyım, M4'te asansör var mı?" states a chronic condition and asks about a lift: the Turkish
+# rules' "kalp" must not take the question away. An acute sign in the same message ("göğsüm çok ağrıyor",
+# "bayılacak gibiyim") keeps every rule as it was, and with a stated condition opens the 112 card on its
+# own. The health phrases are the request mask's (nabiz.console.health_mask), so one list says what a
+# condition is.
+
+
+def _stems(entries: tuple[str, ...]) -> re.Pattern[str]:
+    """Word-start matches over :func:`~nabiz.console.pii_guard.fold_keep_length` text; ``!`` ends a whole word."""
+    parts = (re.escape(fold_keep_length(entry.rstrip("!"))) + (r"(?!\w)" if entry.endswith("!") else "") for entry in entries)
+    return re.compile(r"(?<!\w)(?:" + "|".join(parts) + ")")
+
+
+_ACUTE_RE = _stems(ACUTE_SIGNS)
+_MEDICAL_ADVICE_RE = _stems(MEDICAL_ADVICE)
+_SERVICE_RE = _stems(SERVICE_CUES)
+_TURKISH_MASK_RE = _stems(TURKISH_MASKS)
+
+
+#: The input guard (text_guard.check_input) has already put a label where the statement was; the label is
+#: a stated condition too, so the rules below read "[sağlık bilgisi gizlendi], bayılacak gibiyim" as before.
+_CONDITION_LABEL_RE = re.compile("|".join(re.escape(fold_keep_length(label)) for label in (HEALTH_LABEL, HEALTH_LABEL_OTHER)))
+
+
+def _condition_spans(message: str) -> list[tuple[int, int]]:
+    """A stated condition, as written or already masked."""
+    labels = [match.span() for match in _CONDITION_LABEL_RE.finditer(fold_keep_length(message))]
+    return health_spans(message) + labels
+
+
+def acute_signal(message: str) -> bool:
+    """Does the message carry an acute sign: pain, breath, consciousness, bleeding, a fall, a plea?"""
+    return _ACUTE_RE.search(fold_keep_length(message)) is not None
+
+
+def _blank(text: str, spans: list[tuple[int, int]]) -> str:
+    for start, end in spans:
+        text = text[:start] + " " * (end - start) + text[end:]
+    return text
+
+
+def without_calm_condition(message: str) -> str:
+    """The text the emergency rules read: a stated condition and a Turkish fire-equipment phrase blanked,
+    when nothing in the message is acute.
+
+    "Kalp hastasıyım, M4'te asansör var mı?" has no "kalp" left to fire on and "Yangın tüpü nereden alınır?"
+    no "yangın", while "Kalp hastasıyım, göğsüm ağrıyor" comes back unchanged. Blanking keeps every offset.
+    """
+    if acute_signal(message):
+        return message
+    masks = [match.span() for match in _TURKISH_MASK_RE.finditer(fold_keep_length(message))]
+    return _blank(message, _condition_spans(message) + masks)
+
+
+def acute_with_condition(message: str) -> bool:
+    """A stated condition with an acute sign ("Diyabetim var, bayılacak gibiyim"): the 112 card opens."""
+    return bool(_condition_spans(message)) and acute_signal(message)
+
+
+def ordinary_question(message: str) -> str | None:
+    """The question without its stated condition, when it states one, asks about travel or a service, asks
+    no medical advice and carries no acute sign; else ``None``. R-06 reads the rest: "Diyaliz hastasıyım,
+    Kartal'a nasıl giderim?" is a route question; "Diyabetim var, hangi ilacı kullanmalıyım?" and "Kalp
+    hastasıyım, bugün yürüyebilir miyim?" stay refused."""
+    spans = _condition_spans(message)
+    if not spans or acute_signal(message):
+        return None
+    rest = _blank(message, spans)
+    folded = fold_keep_length(rest)
+    if _MEDICAL_ADVICE_RE.search(folded) or not _SERVICE_RE.search(folded):
+        return None
+    return rest
+
+
+def chronic_note(message: str) -> str | None:
+    """:data:`CHRONIC_NOTE` below an answer to a question that stated a condition, else ``None``."""
+    return CHRONIC_NOTE if _condition_spans(message) else None
+
+
+# -- an emergency word spelled out or split (A7, rt-46) -------------------------------------------------------
+# "Y.a.n.g.ı.n var", "y a n g ı n", "YAN-GIN", "İ-M-D-A-T": the letters are there, the word is not. The
+# rules read the message twice, as written and with these runs joined, and an emergency in either counts,
+# so joining can only add a card, never take one away. "Y.K.S." joins to "YKS" and "A.Ş." stays as it is:
+# neither is an emergency word. The page's rules (static/js/voice_intent.js) need the same step.
+
+#: Three or more single letters, each followed by a dot, a hyphen, a space, an underscore or a middle dot.
+_SPELLED = re.compile(r"(?<!\w)[^\W\d_](?:[.\-\s_·*•]+[^\W\d_](?!\w)){2,}")
+#: Parts of one word split by hyphens or dots: "YAN-GIN", "yan-gın", "am.bu.lans".
+_SPLIT = re.compile(r"(?<!\w)[^\W\d_]{2,}(?:[-.·][^\W\d_]{2,})+(?!\w)")
+_JOINERS = re.compile(r"[.\-\s_·*•]+")
+
+
+def unsplit(message: str) -> str:
+    """The message with spelled-out and split words joined; the message itself when there are none."""
+    joined = _SPELLED.sub(lambda match: _JOINERS.sub("", match.group()), message)
+    return _SPLIT.sub(lambda match: _JOINERS.sub("", match.group()), joined)
+
+
+def emergency_readings(message: str) -> tuple[str, ...]:
+    """The readings the emergency rules check: as written, and joined when that differs."""
+    joined = unsplit(message)
+    return (message,) if joined == message else (message, joined)

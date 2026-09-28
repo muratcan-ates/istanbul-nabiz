@@ -191,6 +191,28 @@ def test_read_timeline_is_read_only_and_discards_identifiers_and_notes(tmp_path:
     assert before == after
 
 
+def test_a_timeline_with_a_linked_photo_counts_as_one_report(tmp_path: pathlib.Path) -> None:
+    from nabiz.console.photo_reports import NewPhotoReport, PhotoReportStore
+    from nabiz.console.report_link import link_photo
+    from nabiz.console.report_timeline import TimelineStore
+
+    clock = Clock()
+    timeline = TimelineStore(tmp_path / "report_timeline.db", clock=clock)
+    timeline.ensure("ABCDEFGH", "sig-1", "Kartal", "not_working", clock())
+    photos = PhotoReportStore(tmp_path / "photos.db")
+    photo = photos.create(NewPhotoReport("lift", {"kind": "station", "name": "Kartal"}, "", 0, (), "tr", {}, b"x", "jpeg"))
+    link_photo(photo["code"], "ABCDEFGH", "sig-1", photos_db=photos.path, timeline_db=timeline.path, now=clock())
+    for step in ("reviewing", "resolution_reported"):
+        timeline.apply("ABCDEFGH", "operator", step, to=step, text="Bakım tamamlandı.")
+    timeline.apply("ABCDEFGH", "citizen", "fixed")
+    rows = read_timeline(timeline.path, now=clock())
+    assert rows is not None and len(rows) == 1 and rows[0]["has_photo"] is True
+    assert all("stage" in item for item in rows[0]["history"])
+    metrics, counts = timeline_metrics(rows, clock(), 30)
+    assert (metrics[0]["numerator"], metrics[0]["denominator"]) == (1, 1)
+    assert counts["reports"] == 1 and counts["with_photo"] == 1
+
+
 def test_read_timeline_does_not_create_a_missing_file(tmp_path: pathlib.Path) -> None:
     path = tmp_path / "missing.db"
     assert read_timeline(path) is None

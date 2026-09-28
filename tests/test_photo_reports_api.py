@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import pathlib
+import sqlite3
 from types import SimpleNamespace
 from typing import Any
 
@@ -165,6 +166,32 @@ def test_status_requires_reason_and_rejects_unavailable_transition(api: TestClie
         json={"status": "reviewed", "reason": "Yeniden aç."},
     )
     assert invalid.status_code == 409 and invalid.json()["error"] == "transition_not_allowed"
+
+
+@pytest.mark.parametrize("target", ["reviewed", "closed"])
+def test_status_and_ledger_change_together_or_not_at_all(
+    api: TestClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, target: str,
+) -> None:
+    code = api.post("/api/photo-reports", json=payload()).json()["code"]
+    desk = api.app.state.photo_desk
+
+    def broken(*_args: Any, **_kwargs: Any) -> None:
+        raise sqlite3.OperationalError("disk I/O error")
+
+    monkeypatch.setattr(desk.ledger, "append", broken)
+    caplog.set_level("INFO")
+    failed = api.post(f"/api/console/photo-reports/{code}/status", headers=OPERATOR_HEADERS,
+                      json={"status": target, "reason": "Saha ekibine iletildi."})
+    assert failed.status_code == 503 and failed.json()["error"] == "ledger_failed"
+    assert failed.headers["cache-control"] == "no-store"
+    row = desk.store.get(code)
+    assert row["status"] == "new" and len(row["history"]) == 1 and desk.store.photo(code) is not None
+    assert code not in "\n".join(r.getMessage() for r in caplog.records if r.name.startswith("nabiz"))
+    monkeypatch.undo()
+    sealed = api.post(f"/api/console/photo-reports/{code}/status", headers=OPERATOR_HEADERS,
+                      json={"status": target, "reason": "Saha ekibine iletildi."})
+    assert sealed.status_code == 200 and desk.store.get(code)["status"] == target
+    assert desk.ledger.entries()[-1].kind == "photo_report_status"
 
 
 def test_citizen_withdrawal_removes_row_and_seals_only_the_code(api: TestClient, tmp_path: pathlib.Path) -> None:

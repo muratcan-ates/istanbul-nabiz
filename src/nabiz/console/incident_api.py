@@ -19,6 +19,7 @@ from nabiz.console.incident import (
 from nabiz.console.incident_store import AlreadyUndone, IncidentStore, clean_reason, incidents_path
 from nabiz.console.operator import port_problem
 from nabiz.console.report_api import report_engine, support_counts
+from nabiz.console.report_outcome_api import report_code
 from nabiz.console.report_triage import TRIAGE_NOTE, report_agency
 from nexus_core import NexusEngine
 from nexus_core.decisions import Operator
@@ -150,10 +151,13 @@ def _detail(
 ) -> dict[str, Any]:
     source = incident["members"]
     members = {
-        "reports": [dict(value) for value in source["report"]],
+        "reports": [{**value, "report_code": report_code(value["signal_id"])} for value in source["report"]],
         "photos": [dict(value) for value in source["photo"]],
         "equipment": [dict(value) for value in source["equipment"]],
     }
+    # P07: the citizen-facing code once per incident; a linked photo carries the same code, not a new one.
+    codes = [item["report_code"] for item in members["reports"]]
+    codes += [code for item in members["photos"] if (code := item.get("report_code")) and code not in codes]
     for photo in members["photos"]:
         if photos_available and photo.get("has_photo"):
             photo["photo_url"] = f"/api/console/photo-reports/{photo['photo_code']}/photo"
@@ -166,6 +170,7 @@ def _detail(
         "suggestion": incident["suggestion"],
         "priority": incident["priority"],
         "members": members,
+        "report_codes": codes,
         "photos_available": photos_available,
         "record_note": None if members["equipment"] else "no_record",
         "priority_history": store.priority_history(incident["id"]),
@@ -274,7 +279,7 @@ async def incident_split(incident_id: str, body: _SplitBody, request: Request) -
         return port_problem(400, "invalid_action", str(error))
     except Exception as error:
         log.warning("incident write failed (%s)", type(error).__name__)
-        return port_problem(503, "store_failed", "Ayrım deftere işlendi ancak olay tablosuna kaydedilemedi; yeniden deneyin.")
+        return port_problem(503, "store_failed", "Ayrım kaydedilemedi, değişiklik uygulanmadı; yeniden deneyin.")
     return {
         "incident_id": incident_id,
         "new_incident_id": f"inc-a{row['id']}",
@@ -314,7 +319,7 @@ async def incident_merge(incident_id: str, body: _MergeBody, request: Request) -
     except Exception as error:
         log.warning("incident write failed (%s)", type(error).__name__)
         return port_problem(
-            503, "store_failed", "Birleştirme deftere işlendi ancak olay tablosuna kaydedilemedi; yeniden deneyin."
+            503, "store_failed", "Birleştirme kaydedilemedi, değişiklik uygulanmadı; yeniden deneyin."
         )
     return {"incident_id": body.target, "action_id": row["id"], "ledger_entry_id": row["ledger_entry"], "ledger_changed": True}
 
@@ -337,7 +342,7 @@ async def incident_undo(action_id: int, body: _UndoBody, request: Request) -> An
         return _bad_reason(body.reason)
     except Exception as error:
         log.warning("incident write failed (%s)", type(error).__name__)
-        return port_problem(503, "store_failed", "Geri alma deftere işlendi ancak olay tablosuna kaydedilemedi; yeniden deneyin.")
+        return port_problem(503, "store_failed", "Geri alma kaydedilemedi, değişiklik uygulanmadı; yeniden deneyin.")
     return {"action_id": row["id"], "ledger_entry_id": row["undo_ledger_entry"], "ledger_changed": True}
 
 
@@ -396,5 +401,5 @@ def _write_priority(incident_id: str, body: _PriorityBody, incident: dict, store
         return None, port_problem(
             503,
             "store_failed",
-            "Öncelik deftere işlendi ancak olay tablosuna kaydedilemedi; yeniden deneyin.",
+            "Öncelik kaydedilemedi, değişiklik uygulanmadı; yeniden deneyin.",
         )

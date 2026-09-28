@@ -35,6 +35,10 @@ log = logging.getLogger("nabiz.console.emergency_model")
 
 #: Switch: "0", "false", "no" or "off" keeps the model out of the emergency check.
 EMERGENCY_MODEL_ENV = "NABIZ_EMERGENCY_MODEL"
+#: KARAR 1 option, off by default: a comma list of the product languages ("tr,en") whose messages the rules
+#: did not catch may also get the model's second opinion. The rules still run first and alone decide their
+#: own card; the model can only add a "yes", never take one back. Provider-free: the configured rung asks.
+EMERGENCY_MODEL_LANGS_ENV = "NABIZ_EMERGENCY_MODEL_LANGS"
 #: The whole call, connection included. An emergency card that waits longer than this is not worth it.
 TIMEOUT_S = 1.5
 #: ``how.rule_id`` of a card the model opened; the rules' card keeps ``None``.
@@ -56,6 +60,12 @@ CLASSIFIER_PROMPT = (
 def model_enabled(env: Mapping[str, str] | None = None) -> bool:
     env = os.environ if env is None else env
     return (env.get(EMERGENCY_MODEL_ENV) or "").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def opened_langs(env: Mapping[str, str] | None = None) -> frozenset[str]:
+    """The product languages :data:`EMERGENCY_MODEL_LANGS_ENV` opens to the model; empty by default."""
+    env = os.environ if env is None else env
+    return frozenset(code.strip().lower() for code in (env.get(EMERGENCY_MODEL_LANGS_ENV) or "").split(",")) & {"tr", "en"}
 
 
 def read_verdict(content: Any) -> dict[str, Any] | None:
@@ -83,7 +93,7 @@ async def model_emergency(
     """``{"lang", "hazard"}`` for the card when the model says this is an emergency; ``None`` otherwise,
     including every case where the model was not asked or did not answer in time."""
     guessed = guess_language(message)
-    if guessed in {None, "tr", "en"} or not model_enabled(env):
+    if guessed is None or guessed in {"tr", "en"} - opened_langs(env) or not model_enabled(env):
         return None
     rung = llm.pick_rung(config, guard.allows)
     if rung is None or not guard.reserve(rung.provider, 1):

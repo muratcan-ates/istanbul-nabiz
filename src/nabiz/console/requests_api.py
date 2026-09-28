@@ -52,6 +52,7 @@ from nabiz.console.citizen_requests import (
     per_hour,
 )
 from nabiz.console.emergency import classify
+from nabiz.console.health_mask import mask_request
 from nabiz.console.operator import port_problem
 from nabiz.console.pii_guard import mask_labels
 from nabiz.console.ports import OPERATOR
@@ -200,7 +201,7 @@ async def _new_request(desk: RequestDesk, text: str, chosen: str | None) -> NewR
     """Mask, translate the masked text, categorise; ``None`` when the translation reads as an emergency."""
     verdict = text_guard.check_input(text)
     guard = verdict.reason if verdict.reason in {"injection", "hidden_text"} else None
-    masked, count, kinds = mask_labels(text)
+    masked, count, kinds = mask_request(text)
     translation, lang, source = await request_to_turkish(desk.translator, masked, chosen, guarded=guard is not None)
     if translation.status == "model" and request_is_emergency(translation.text):
         return None

@@ -411,3 +411,89 @@ def test_no_dash_or_eta_in_emergency_assets() -> None:
         assert "\u2014" not in source
         assert "\u2013" not in source
         assert not re.search(r"\bETA\b", source)
+
+
+# ---- KARAR 5: a stated condition next to an everyday question (Görev 0-c) ---------------------------------
+# Safety direction: when in doubt the card opens. A missed emergency costs more than a false alarm, so an
+# acute sign anywhere in the message keeps the rules as they were, and with a stated condition opens the
+# card by itself; only a condition with nothing acute next to it is set aside.
+from nabiz.console import emergency_lang  # noqa: E402
+
+CHRONIC_QUESTIONS = (
+    "Kalp hastasıyım, M4'te asansör var mı?",
+    "Diyaliz hastasıyım, Kadıköy'den Kartal'a nasıl giderim?",
+    "Şeker hastasıyım, Üsküdar'a hangi otobüs gider?",
+    "I have a heart condition, is there a lift at Kadıköy?",
+)
+ACUTE_WITH_CONDITION = (
+    "Kalp hastasıyım, göğsüm çok ağrıyor",
+    "Diyabetim var, bayılacak gibiyim",
+    "Annem nefes alamıyor",
+    "Kalp hastası babam yere yığıldı",
+    "I have diabetes and I feel faint",
+    "I have a heart condition and my chest hurts",
+    "Ich bin Diabetiker und bin gestürzt",
+    "У меня диабет, мне очень плохо",
+    "أنا مريض بالسكري ولا أستطيع التنفس",
+)
+
+
+@pytest.mark.parametrize("message", CHRONIC_QUESTIONS)
+def test_a_stated_condition_with_an_everyday_question_is_answered_not_redirected(message: str) -> None:
+    assert not policy.emergency_intent(message)
+    assert not policy.refuses(message), "the question is judged, not the person"
+    assert emergency_lang.chronic_note(message) == "Acil bir durumda 112'yi arayın."
+
+
+@pytest.mark.parametrize("message", ACUTE_WITH_CONDITION)
+def test_an_acute_sign_still_opens_the_card(message: str) -> None:
+    assert policy.emergency_intent(message)
+
+
+def test_medical_advice_after_a_condition_stays_refused() -> None:
+    assert policy.refuses("Diyabetim var, hangi ilacı kullanmalıyım?")
+    assert policy.refuses("Kalp hastasıyım, ilacımı ne zaman almalıyım?")
+    assert policy.refuses("hastasıyım"), "a bare statement is refused as before"
+
+
+def test_without_a_condition_the_rules_are_as_they_were() -> None:
+    assert policy.emergency_intent("Kalp krizi geçiriyor")
+    assert policy.emergency_intent("Yangın var")
+    assert emergency_lang.without_calm_condition("M4'te asansör var mı?") == "M4'te asansör var mı?"
+    assert emergency_lang.chronic_note("M4'te asansör var mı?") is None
+
+
+def test_the_chat_answers_the_question_on_the_rules_path() -> None:
+    """The rules path runs the same tool it runs without the statement; no 112 card, no refusal."""
+    import httpx
+    from conftest import offline_settings, refuse_network
+    from fastapi.testclient import TestClient
+    from test_console_chat import ask
+
+    from ibb_mcp.cache import TTLCache
+    from ibb_mcp.http import PoliteClient
+    from ibb_mcp.sources.base import SourceContext
+    from ibb_mcp.tools import Nabiz
+    from nabiz.agent import llm
+    from nabiz.console.app import build_console_app
+    from nabiz.console.budget import BudgetConfig, SpendGuard
+
+    context = SourceContext.create(
+        client=PoliteClient(transport=httpx.MockTransport(refuse_network)), cache=TTLCache(), settings=offline_settings()
+    )
+    app = build_console_app(nabiz=Nabiz(context), llm_config=llm.LlmConfig(), guard=SpendGuard(BudgetConfig(state_path=None)))
+    with TestClient(app) as client:
+        stream, final = ask(client, "Kalp hastasıyım, M4'te asansör var mı?")
+        _, plain = ask(client, "M4'te asansör var mı?")
+    assert final["emergency"] is False and final["refused"] is False and final["mode"] == "answer"
+    assert [data["name"] for kind, data in stream if kind == "tool"][:1] == ["metro_status"]
+    assert final["answer"] == plain["answer"]
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Kalp hastasıyım bugün yürüyebilir miyim?", "I have asthma; is it safe for me to go outside today?",
+     "Hava kirliliği astımıma dokunur mu?"],
+)  # fmt: skip
+def test_health_advice_after_a_condition_is_refused_without_a_travel_question(message: str) -> None:
+    assert policy.refuses(message)
