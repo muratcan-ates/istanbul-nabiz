@@ -7,6 +7,7 @@ import sqlite3
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import pytest
 from conftest import REPO_ROOT
 from test_console_chat import CLOUD, FakeModel, ask, client_for, events, nabiz, reply
 from test_knowledge_store import seed_page
@@ -161,6 +162,7 @@ def test_intent_regression_corpus_and_ten_self_review_questions() -> None:
     assert chat_pipeline.early_verdict("İstanbulkart bakiyem ne kadar?", []) == "sensitive"
 
 
+@pytest.mark.skipif(not KNOWLEDGE.is_file(), reason="the knowledge index is built locally and not committed (CI has none)")
 def test_official_path_data_is_cited_safe_and_grounded() -> None:
     paths = _catalog()
     assert len(paths) >= 12
