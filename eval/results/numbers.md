@@ -1,15 +1,15 @@
 # Numbers sheet
 
-Measured 2026-09-26T10:17:01Z · working tree over commit `b93744e` · Python 3.12.13 · NABIZ_SPRINT_MODE=1 (DECISIONS #29) · `NABIZ_OFFLINE=1 .venv/bin/python scripts/demo_numbers.py --write`
+Measured 2026-09-28T14:02:40Z · working tree over commit `e5ab212` · Python 3.12.13 · NABIZ_SPRINT_MODE=1 (DECISIONS #29) · `NABIZ_OFFLINE=1 .venv/bin/python scripts/demo_numbers.py --write`
 
 | Number | Value | Command |
 |---|---|---|
 | MCP tools | 18 | build_server().list_tools(), offline |
-| Tests collected | 3080 | pytest --collect-only -q |
-| Tests passed | 3075 | pytest -q (NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 NABIZ_SPRINT_MODE=1) |
+| Tests collected | 5285 | pytest --collect-only -q |
+| Tests passed | 5255 | pytest -q (NABIZ_OFFLINE=1 NABIZ_LLM_NO_PROBE=1 NABIZ_SPRINT_MODE=1) |
 | Tests failed | 0 | same |
 | Tests skipped | 2 | same |
-| Tests xfailed | 3 | same |
+| Tests xfailed | 28 | same |
 | Eval scenarios in eval/journeys.jsonl | 78 | eval/run_eval.py --offline |
 | Eval scenarios run (deterministic, offline) | 66 | same |
 | Eval scenarios skipped (agent-only) | 12 | same |
