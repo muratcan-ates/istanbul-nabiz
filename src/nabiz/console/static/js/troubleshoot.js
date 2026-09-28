@@ -6,7 +6,7 @@ import {
   STORAGE_KEY, back, choose, emptyState, parseStored, sectionMarkup,
 } from './troubleshoot_view.js';
 
-const ANCHORS = [['#city-tools', 'beforeend'], ['#hesabim', 'beforebegin']];
+const ANCHORS = [['#hesabim', 'beforeend']];
 const STYLESHEET = '/css/troubleshoot.css';
 const SECTION_ID = 'kart-sorun';
 const FLOW_URL = '/api/istanbulkart/flows';

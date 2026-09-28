@@ -274,12 +274,15 @@ def test_owned_module_keys_are_absent_from_files_owned_by_other_lanes() -> None:
     for relative in (
         "src/nabiz/console/static/js/map.js",
         "src/nabiz/console/static/js/map_layers.js",
-        "src/nabiz/console/static/index.html",
-        "src/nabiz/console/static/sw.js",
         "src/nabiz/console/static/js/home.js",
     ):
         source = (REPO_ROOT / relative).read_text(encoding="utf-8")
         assert "ibb_yerleri" not in source and "ibb-places" not in source
+    # P00 D2a (K) bound the page: one script line and the shell's three files, and nothing else of E79.
+    page = (REPO_ROOT / "src/nabiz/console/static/index.html").read_text(encoding="utf-8")
+    assert page.count("ibb_yerleri") == 1 and page.count('src="/js/ibb_yerleri.js"') == 1 and "ibb-places" not in page
+    shell = (REPO_ROOT / "src/nabiz/console/static/sw.js").read_text(encoding="utf-8")
+    assert "'/js/ibb_yerleri.js', '/js/ibb_yerleri_view.js', '/css/ibb_yerleri.css'" in shell and "ibb-places" not in shell
     # P00 G3 wired the back end: app.py now names the router, and nothing else of E79.
     app = (REPO_ROOT / "src/nabiz/console/app.py").read_text(encoding="utf-8")
     assert "from nabiz.console.ibb_yerleri_api import ibb_yerleri_routes" in app and "ibb-places" not in app

@@ -5,14 +5,15 @@ import { t, onLang } from './i18n_text.js';
 
 const PATH = '/api/console/scenario';
 const STYLESHEET = '/css/console_scenario.css';
+// Literal t() calls (P00 D2a): the page's catalogue check reads each key beside its Turkish.
 const ASSUMPTIONS = {
-  hypothetical: ['ui.scn.assume.hypothetical', 'Kapanış bir varsayımdır; İBB kaydına eklenmez ve kimseye bildirilmez.'],
-  endpoints_only: ['ui.scn.assume.endpoints', 'Asansör yalnız binilen, inilen ve aktarma yapılan istasyonlarda sayılır; trenle geçilen istasyon etkilenmez.'],
-  same_record: ['ui.scn.assume.record', 'Önce ve senaryo hesabı aynı İBB kaydıyla yapılır.'],
-  not_traffic: ['ui.scn.assume.traffic', 'Sayılar güzergâh ve kayıt sayısıdır; yolcu, kalabalık ya da talep tahmini değildir.'],
-  model_times: ['ui.scn.assume.times', 'Ek süreler istasyon mesafesi modelinden gelir; tarife içermez.'],
-  saved_scope: ['ui.scn.assume.saved', 'Yalnız hesabıyla ve rızasıyla sunucuda kaydedilmiş yolculuklar sayılır; cihazdaki kayıtlar görünmez.'],
-  small_hidden: ['ui.scn.assume.small', '3’ten az kayıt içeren sayılar gizlenir.'],
+  hypothetical: () => t('ui.scn.assume.hypothetical', 'Kapanış bir varsayımdır; İBB kaydına eklenmez ve kimseye bildirilmez.'),
+  endpoints_only: () => t('ui.scn.assume.endpoints', 'Asansör yalnız binilen, inilen ve aktarma yapılan istasyonlarda sayılır; trenle geçilen istasyon etkilenmez.'),
+  same_record: () => t('ui.scn.assume.record', 'Önce ve senaryo hesabı aynı İBB kaydıyla yapılır.'),
+  not_traffic: () => t('ui.scn.assume.traffic', 'Sayılar güzergâh ve kayıt sayısıdır; yolcu, kalabalık ya da talep tahmini değildir.'),
+  model_times: () => t('ui.scn.assume.times', 'Ek süreler istasyon mesafesi modelinden gelir; tarife içermez.'),
+  saved_scope: () => t('ui.scn.assume.saved', 'Yalnız hesabıyla ve rızasıyla sunucuda kaydedilmiş yolculuklar sayılır; cihazdaki kayıtlar görünmez.'),
+  small_hidden: () => t('ui.scn.assume.small', '3’ten az kayıt içeren sayılar gizlenir.'),
 };
 
 function parseRoutes(text) {
@@ -33,15 +34,15 @@ function summaryLine(result) {
 
 function rowModel(route) {
   const labels = {
-    blocked: ['ui.scn.effect.blocked', 'Adımsız yol kalmaz', 'warn'],
-    detour: ['ui.scn.effect.detour', 'Alternatifle sürer', 'accent'],
-    not_affected: ['ui.scn.effect.none', 'Etkilenmiyor', 'quiet'],
-    already_unavailable: ['ui.scn.effect.before', 'Senaryodan önce de yok', 'quiet'],
-    unverified: ['ui.scn.effect.unknown', 'Doğrulanamadı', 'quiet'],
-    invalid: ['ui.scn.effect.invalid', 'Geçersiz güzergâh', 'quiet'],
+    blocked: [() => t('ui.scn.effect.blocked', 'Adımsız yol kalmaz'), 'warn'],
+    detour: [() => t('ui.scn.effect.detour', 'Alternatifle sürer'), 'accent'],
+    not_affected: [() => t('ui.scn.effect.none', 'Etkilenmiyor'), 'quiet'],
+    already_unavailable: [() => t('ui.scn.effect.before', 'Senaryodan önce de yok'), 'quiet'],
+    unverified: [() => t('ui.scn.effect.unknown', 'Doğrulanamadı'), 'quiet'],
+    invalid: [() => t('ui.scn.effect.invalid', 'Geçersiz güzergâh'), 'quiet'],
   };
-  const [key, fallback, tone] = labels[route?.effect] || labels.unverified;
-  let after = t(key, fallback);
+  const [effect, tone] = labels[route?.effect] || labels.unverified;
+  let after = effect();
   if (route?.effect === 'detour' && route.after?.alternative?.station) {
     after = t('ui.scn.after.detour', '{station} üzerinden', { station: route.after.alternative.station });
     if (Number.isFinite(route.added_minutes)) after += `, ${t('ui.scn.after.minutes', 'yaklaşık {minutes} dk ek', { minutes: route.added_minutes })}`;
@@ -52,7 +53,7 @@ function rowModel(route) {
     label: route?.label || `${route?.from || ''} > ${route?.to || ''}`,
     before: route?.before?.available ? t('ui.scn.before.available', 'adımsız yol var')
       : route?.effect === 'already_unavailable' ? t('ui.scn.before.unavailable', 'adımsız yol yok') : t('ui.scn.before.unknown', 'doğrulanamadı'),
-    after, effectText: t(key, fallback), tone, sample: Boolean(route?.sample),
+    after, effectText: effect(), tone, sample: Boolean(route?.sample),
   };
 }
 
@@ -67,7 +68,7 @@ function savedLine(saved) {
 }
 
 function assumptionLines(keys) {
-  return (keys || []).filter((key) => ASSUMPTIONS[key]).map((key) => t(...ASSUMPTIONS[key]));
+  return (keys || []).filter((key) => ASSUMPTIONS[key]).map((key) => ASSUMPTIONS[key]());
 }
 
 function addStylesheet(doc) {

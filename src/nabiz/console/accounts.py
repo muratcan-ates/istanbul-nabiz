@@ -24,7 +24,6 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
-import os
 import pathlib
 import re
 import secrets
@@ -35,10 +34,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
-from ibb_mcp.config import REPO_ROOT
 from ibb_mcp.models import ISTANBUL_TZ, utcnow
+from nabiz.console.data_root import store_path
 
-DEFAULT_DB = "data/accounts/accounts.sqlite"
 #: An account nobody used for this long is deleted with its follows (KVKK: kept no longer than needed).
 INACTIVE_DAYS = 365
 #: Followed topics per account; a visitor without one keeps up to three on the device.
@@ -109,8 +107,8 @@ def token_hash(token: str) -> str:
 
 
 def db_path_from_env() -> pathlib.Path:
-    path = pathlib.Path(os.environ.get("NABIZ_ACCOUNTS_DB") or DEFAULT_DB).expanduser()
-    return path if path.is_absolute() else REPO_ROOT / path
+    """``NABIZ_ACCOUNTS_DB``, else ``accounts/accounts.sqlite`` under the data root (P00 D2a, I)."""
+    return store_path("NABIZ_ACCOUNTS_DB", "accounts/accounts.sqlite")
 
 
 def _today(now: dt.datetime) -> str:

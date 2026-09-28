@@ -2,12 +2,13 @@
  * pages derive a `needs` list of functional constraints (step_free, stroller, ...) and send that, and
  * only after the visitor ticked the consent line. No identity, no diagnosis, no score.
  *
- * Keys: nabiz.profile.v1 {consent, needs[], stations[], lines[]}; nabiz.memory.v1 [{key, label, added_at}].
+ * Keys: nabiz.profile.v1 {consent, needs[], stations[], lines[]}; nabiz.memory.v2 MemoryRecord[].
  * A memory key is either a need key (then it joins `needs`) or "station:<name>" / "line:<code>"
  * (then it joins the saved places). Anything else is remembered on the device and never sent. */
 
+import { createMemoryStore, NEED_KEYS } from './memory_store.js';
+
 const PROFILE_KEY = 'nabiz.profile.v1';
-const MEMORY_KEY = 'nabiz.memory.v1';
 
 /** The functional needs the server understands. The label is what the visitor reads. */
 const NEEDS = [
@@ -18,8 +19,6 @@ const NEEDS = [
   { key: 'hearing', label: 'Az duyuyorum', hint: 'Anonsların yazılı hâli.', icon: 'bell' },
   { key: 'plain_language', label: 'Sade dil', hint: 'Kısa cümle, tek sayı, kod yerine kelime.', icon: 'list-details' },
 ];
-const NEED_KEYS = new Set([...NEEDS.map((n) => n.key), 'answer_en']);
-
 const EMPTY = { consent: false, needs: [], stations: [], lines: [], saved_at: null };
 
 function readJson(key, fallback) {
@@ -75,26 +74,43 @@ function clearProfile() {
   try { window.localStorage.removeItem(PROFILE_KEY); } catch (err) { /* private mode */ }
 }
 
+let memoryStore = null;
+let memoryStorage = null;
+function store() {
+  let storage = null;
+  try { storage = globalThis.localStorage || null; } catch { /* private mode */ }
+  if (!memoryStore || storage !== memoryStorage) {
+    memoryStorage = storage;
+    memoryStore = createMemoryStore({ storage });
+  }
+  return memoryStore;
+}
+
 function readMemory() {
-  const m = readJson(MEMORY_KEY, []);
-  return Array.isArray(m) ? m.filter((e) => e && typeof e.key === 'string') : [];
+  return store().listProfile().filter((record) => (record.type === 'need' || record.type === 'place')
+    && typeof record.key === 'string')
+    .map((record) => ({ key: record.key, label: record.label, added_at: record.consent_at }));
 }
 
 function addMemory(entry, now) {
-  const list = readMemory().filter((e) => e.key !== entry.key);
-  list.push({ key: entry.key, label: String(entry.label || entry.key), added_at: now || new Date().toISOString() });
-  writeJson(MEMORY_KEY, list);
-  return list;
+  const key = String(entry?.key || '');
+  const type = NEED_KEYS.has(key) ? 'need' : /^(station|line):.+/.test(key) ? 'place' : null;
+  if (!type) return readMemory();
+  const existing = store().listProfile().find((record) => record.type === type && record.key === key);
+  store().addProfile({
+    id: existing?.id, type, key, label: String(entry.label || key), source: 'chat_suggestion',
+    consent_at: now || existing?.consent_at || new Date().toISOString(),
+  });
+  return readMemory();
 }
 
 function removeMemory(key) {
-  const list = readMemory().filter((e) => e.key !== key);
-  writeJson(MEMORY_KEY, list);
-  return list;
+  store().forgetProfileKey(key);
+  return readMemory();
 }
 
 function clearMemory() {
-  try { window.localStorage.removeItem(MEMORY_KEY); } catch (err) { /* private mode */ }
+  store().clearProfileRecords();
 }
 
 const unique = (list) => [...new Set(list)];

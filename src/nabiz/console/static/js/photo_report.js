@@ -245,8 +245,8 @@ function mountPhotoReport(doc, storage) {
   panel.innerHTML = `<summary><h2 id="foto-bildirim-title">${esc(copy(currentLang(), 'title'))}</h2></summary>`
     + '<section aria-labelledby="foto-bildirim-title"><div class="photo-report-content" id="photo-report-content">'
     + '<div id="photo-report-form-region"></div><div id="photo-report-cards"></div></div></section>';
-  if (cityTools) cityTools.append(panel);
-  else if (account && account.parentNode) account.parentNode.insertBefore(panel, account);
+  if (account) account.append(panel);
+  else if (cityTools) cityTools.append(panel);
   else if (main) main.append(panel);
   else return null;
   addStylesheet(doc);

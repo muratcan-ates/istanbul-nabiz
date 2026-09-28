@@ -6,11 +6,12 @@ import { t } from './i18n_text.js';
 export const CATEGORY_IDS = Object.freeze(['halk_ekmek', 'kent_lokantasi', 'sosyal_tesis', 'wifi']);
 export const MAX_POINTS = 60;
 
+// Literal t() calls (P00 D2a): the page's catalogue check reads each key beside its Turkish.
 const LABELS = {
-  halk_ekmek: ['ui.ibbplaces.category.halk_ekmek', 'Halk Ekmek büfeleri'],
-  kent_lokantasi: ['ui.ibbplaces.category.kent_lokantasi', 'Kent Lokantaları'],
-  sosyal_tesis: ['ui.ibbplaces.category.sosyal_tesis', 'İBB sosyal tesisleri'],
-  wifi: ['ui.ibbplaces.category.wifi', 'ibbWiFi noktaları'],
+  halk_ekmek: () => t('ui.ibbplaces.category.halk_ekmek', 'Halk Ekmek büfeleri'),
+  kent_lokantasi: () => t('ui.ibbplaces.category.kent_lokantasi', 'Kent Lokantaları'),
+  sosyal_tesis: () => t('ui.ibbplaces.category.sosyal_tesis', 'İBB sosyal tesisleri'),
+  wifi: () => t('ui.ibbplaces.category.wifi', 'ibbWiFi noktaları'),
 };
 const text = (key, fallback, vars) => esc(t(key, fallback, vars));
 
@@ -53,8 +54,7 @@ function isStale(iso, nowIso = new Date().toISOString()) {
 }
 
 function categoryLabel(id) {
-  const [key, fallback] = LABELS[id] || LABELS.halk_ekmek;
-  return t(key, fallback);
+  return (LABELS[id] || LABELS.halk_ekmek)();
 }
 
 function sourceLine(source) {
@@ -91,8 +91,8 @@ function sectionMarkup(info, lang = 'tr') {
       ? `<a href="${esc(item.dataset_url)}" target="_blank" rel="noopener">${text('ui.ibbplaces.open_dataset', 'Veri setini aç')}</a>` : '';
     const license = item.license ? `<p>${text('ui.ibbplaces.license', 'Lisans')}: <span lang="tr">${esc(item.license)}</span>
       ${item.license_url ? `<a href="${esc(item.license_url)}" target="_blank" rel="noopener">${text('ui.ibbplaces.open_license', 'Lisansı aç')}</a>` : ''}</p>` : '';
-    const dates = `<p>${text('ui.ibbplaces.data_date', 'Veri tarihi')}: ${esc(dateLabel(item.resource_last_modified) || t('ui.ibbplaces.date_unknown', 'kayıtta yok'))}
-      · ${text('ui.ibbplaces.captured_date', "Nabız'a alınma tarihi")}: ${esc(dateLabel(item.captured_at) || t('ui.ibbplaces.date_unknown', 'kayıtta yok'))}</p>`;
+    const dates = `<p>${text('ui.ibbplaces.data_date', 'veri tarihi')}: ${esc(dateLabel(item.resource_last_modified) || t('ui.ibbplaces.date_unknown', 'kayıtta yok'))}
+      · ${text('ui.ibbplaces.captured_date', "Nabız'a alındı")}: ${esc(dateLabel(item.captured_at) || t('ui.ibbplaces.date_unknown', 'kayıtta yok'))}</p>`;
     const stale = item.stale || isStale(item.resource_last_modified)
       ? `<p>${text('ui.ibbplaces.stale_note', 'Bu kayıt eski; nokta değişmiş olabilir.')}</p>` : '';
     return `<li><strong>${esc(categoryLabel(id))}</strong>${link}${license}${dates}${stale}</li>`;
@@ -141,7 +141,7 @@ function statusText(result, where) {
   if (result.truncated) {
     return where === 'nearby'
       ? t('ui.ibbplaces.truncated_nearby', 'Yakınınızda 60 kayıttan fazlası var; en yakın 60 kayıt haritada.')
-      : t('ui.ibbplaces.truncated_district', 'Bu ilçede 60’tan fazla kayıt var; ilk 60 kayıt haritada gösteriliyor.');
+      : t('ui.ibbplaces.truncated_district', "Bu ilçede 60'tan fazla kayıt var; ilk 60 kayıt haritada gösteriliyor.");
   }
   const category = categoryLabel(result.category);
   return where === 'nearby'

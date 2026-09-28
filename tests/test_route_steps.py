@@ -161,3 +161,12 @@ def test_mock_has_sample_badge_and_records_the_generated_route() -> None:
     assert mock["sample_route"] == "Zeytinburnu → Bağcılar"
     assert len(mock["cards"]) == 4
     assert mock["cards"] == route(TestClient(build_app()), "Zeytinburnu", "Bağcılar")["cards"]
+
+
+def test_route_steps_are_never_cached() -> None:
+    """P00 D2a (K): a route names where a person is going; the answer carries no-store, like the rest of /api."""
+    with TestClient(build_app()) as client:
+        found = client.get("/api/route/steps", params={"from": "Zeytinburnu", "to": "Bağcılar", "needs": "step_free"})
+        refused = client.get("/api/route/steps", params={"from": "", "to": "Bağcılar"})
+    assert found.status_code == 200 and found.headers["cache-control"] == "no-store"
+    assert refused.status_code == 422

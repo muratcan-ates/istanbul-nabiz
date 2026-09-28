@@ -46,8 +46,10 @@ from nabiz.console.access import (
     is_operator_path,
     login_page,
 )
-from nabiz.console.accounts_api import account_routes
+from nabiz.console.accounts_api import account_routes, current_account, holder_for
 from nabiz.console.agency_api import agency_routes
+from nabiz.console.appeal_api import appeal_routes
+from nabiz.console.appeals import AppealBook
 from nabiz.console.approval_health_api import approval_health_routes
 from nabiz.console.arrival import arrival_stale_after_s, arrival_view
 from nabiz.console.audience_api import audience_routes
@@ -61,6 +63,7 @@ from nabiz.console.chronic_api import chronic_routes
 from nabiz.console.compare_api import compare_routes
 from nabiz.console.culture_api import culture_routes
 from nabiz.console.culture_events_api import culture_events_routes
+from nabiz.console.data_root import store_path
 from nabiz.console.day_api import day_routes
 from nabiz.console.disaster_kit_api import disaster_kit_routes
 from nabiz.console.drill_api import drill_routes
@@ -89,12 +92,14 @@ from nabiz.console.organs_api import organs_routes
 from nabiz.console.outage_watch_api import outage_routes
 from nabiz.console.outcomes_api import outcome_board_routes
 from nabiz.console.photo_reports_api import photo_report_routes
+from nabiz.console.plans_api import plans_routes
 from nabiz.console.policy import functional_needs
 from nabiz.console.poll_api import poll_routes
 from nabiz.console.ports import Ports, UnwiredStepFree
 from nabiz.console.quick_api import quick_routes
-from nabiz.console.quota import MeteredGuard, QuotaBook
+from nabiz.console.quota import MeteredGuard
 from nabiz.console.quota_api import plan_turn, quota_routes
+from nabiz.console.quota_store import PersistentQuotaBook
 from nabiz.console.receipt_api import receipt_routes
 from nabiz.console.recovery_api import recovery_routes
 from nabiz.console.report_api import report_routes
@@ -103,11 +108,15 @@ from nabiz.console.report_outcome_api import outcome_routes
 from nabiz.console.report_timeline_api import timeline_routes
 from nabiz.console.report_triage import triage_routes
 from nabiz.console.requests_api import request_routes
+from nabiz.console.restriction import RestrictionBook
 from nabiz.console.route_steps_api import route_steps_routes
 from nabiz.console.rules_api import rules_routes
 from nabiz.console.scenario_api import scenario_routes
+from nabiz.console.sessions import SessionStore
 from nabiz.console.skills_api import skills_routes
+from nabiz.console.speech_api import speech_router
 from nabiz.console.stop_card import stop_card_router
+from nabiz.console.street_route_api import street_route_router
 from nabiz.console.troubleshoot_api import troubleshoot_routes
 from nabiz.console.visitor_api import visitor_routes
 
@@ -243,13 +252,27 @@ async def citizen_chat(request: Request, body: ChatRequest) -> Response:
         return paused
     service: ChatService = request.app.state.chat
     limiter: TurnLimiter = request.app.state.chat_limiter
-    if not turn.emergency and not limiter.allow(request.client.host if request.client else "unknown"):
+    person = _person_key(request) or (request.client.host if request.client else "unknown")
+    if not turn.emergency and not limiter.allow(person):
         return port_problem(429, "too_many_turns", "Çok sık soru geldi. Bir dakika sonra yeniden dene.")
     return StreamingResponse(
         turn.events(service, body),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+def _person_key(request: Request) -> str | None:
+    """P08: the trusted, opaque key a limit or a restriction is kept under: the account's or the device's quota
+    pseudonym. Never an address: people behind one connection stay independent, so no device id means no key."""
+    key = holder_for(request).key
+    return None if key.startswith("adres:") else key
+
+
+def _plan_owner(request: Request) -> str | None:
+    """The server calendar is for an account only (owner's decision, P06): a visitor's plans stay on the device."""
+    account = current_account(request)
+    return account.id if account is not None else None
 
 
 def _gate(request: Request) -> Response | None:
@@ -303,7 +326,10 @@ async def _request_log(request: Request, call_next: Callable[[Request], Awaitabl
     log.info("%s %s -> %s in %.1f ms", request.method, _log_path(request, response.status_code), response.status_code, elapsed_ms)
     for name, value in CONSOLE_HEADERS.items():
         response.headers.setdefault(name, value)
-    if not request.url.path.startswith("/api/"):
+    if f"{posixpath.normpath(request.url.path)}/".startswith("/api/console/"):
+        # Operator answers name citizens' reports and requests: no browser or proxy keeps a copy (P00 D2a, gate g).
+        response.headers["Cache-Control"] = "no-store"
+    elif not request.url.path.startswith("/api/"):
         # The page is ES modules with no build step: a cached old module beside a new one
         # breaks the page (the web app's DECISIONS entry on the same trap).
         response.headers.setdefault("Cache-Control", "no-cache")
@@ -326,6 +352,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         state.nabiz = Nabiz(SourceContext.create(settings=state.settings))
     # The chat's guard also meters each person's daily model calls (DECISIONS #38); /healthz reads the plain one.
     state.chat = ChatService(state.nabiz, state.chat_config, MeteredGuard(state.guard), offline=state.settings.offline)
+    # P13: quota days older than two and expired sign-in flows and sessions leave the disk at every start.
+    state.quota.purge_old_days()
+    state.sessions.purge_expired()
     release = None
     if state.wire_nexus:
         from nabiz.console.wiring import wire_ports
@@ -377,6 +406,9 @@ PRODUCT_ROUTERS = (
     how_routes,
     # E50: recorded step-by-step route cards; voice only on request, never street navigation.
     route_steps_routes,
+    # P03: street walking route, POST /api/route/street; only with consent, off until NABIZ_AZURE_MAPS_KEY is set,
+    # coordinates never stored or logged (httpx's own URL line is dropped and quieted in main()).
+    street_route_router,
     map_layers_routes,
     # E79: four recorded İBB open data place lists; at most 60 points, no live occupancy.
     ibb_yerleri_routes,
@@ -417,7 +449,16 @@ PRODUCT_ROUTERS = (
     kill_switch_routes,
     stop_card_router,
     quota_routes,
+    # P08: restriction status and appeals; a restriction closes only the model and uploads, never 112, an appeal,
+    # a follow or a deletion; automatic restriction is off unless NABIZ_AUTO_RESTRICTION=1.
+    appeal_routes,
+    # P04: speech to an editable draft and answer text to audio; off until NABIZ_SPEECH_* are set, each call held on
+    # the person's quota and the shared daily speech ceiling, no audio stored or logged.
+    speech_router,
     account_routes,
+    # P06: the server calendar, /api/plans, for an account only; consent per write, Outlook closed (no token store,
+    # no Graph client) until the Microsoft keys are set.
+    plans_routes,
     # E52: family code; two-sided consent, share only what is chosen, no location.
     family_routes,
     # E65: saved journeys; the check is stateless, account storage needs its own consent.
@@ -462,7 +503,13 @@ def build_console_app(
     state.guard = guard or SpendGuard(BudgetConfig.from_env())
     state.access = access or OperatorAccess.from_env()
     state.chat_limiter = TurnLimiter(env_seconds("NABIZ_CHAT_TURNS_PER_MIN", CHAT_TURNS_PER_MIN))
-    state.quota = QuotaBook.from_env()
+    # P13: the day's counts and sign-in sessions survive a restart and a second replica (NABIZ_QUOTA_DB, NABIZ_SESSIONS_DB).
+    state.quota = PersistentQuotaBook.from_env()
+    state.sessions = SessionStore.from_env()
+    state.plan_principal, state.plan_tokens = _plan_owner, None
+    appeals = store_path("NABIZ_APPEALS_DB", "accounts/appeals.sqlite")  # I: restrictions and appeals survive a restart
+    state.appeal_book = AppealBook(RestrictionBook(path=appeals), path=appeals)
+    state.restriction_subject = _person_key
     state.fresh = Freshness(
         offline=state.settings.offline,
         card_stale_after_s=env_seconds("NABIZ_CARD_STALE_S", CARD_STALE_DEFAULT_S),
@@ -483,6 +530,8 @@ def main() -> None:  # pragma: no cover - process entry point
     import uvicorn
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    # httpx logs every request URL at INFO; a street route's URL carries the citizen's coordinates (P03).
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     load_env_file()
     uvicorn.run(
         build_console_app(wire_nexus=True),

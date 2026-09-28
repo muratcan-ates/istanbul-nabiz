@@ -210,3 +210,17 @@ def ctx(settings: Settings, cache: TTLCache, no_network_transport: httpx.MockTra
         cache=cache,
         settings=settings,
     )
+
+
+@pytest.fixture(autouse=True)
+def _private_account_stores(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """P00 D2a (P13, P06): the product app keeps the day's quota, sign-in sessions and plans in SQLite files. Each test
+    gets its own, so no test writes under the repository's data/ and no count carries from one test into
+    the next. A test that names its own path still wins (it sets the variable after this runs)."""
+    folder = tmp_path_factory.mktemp("stores")
+    monkeypatch.setenv("NABIZ_QUOTA_DB", str(folder / "quota.sqlite"))
+    monkeypatch.setenv("NABIZ_SESSIONS_DB", str(folder / "sessions.sqlite"))
+    monkeypatch.setenv("NABIZ_PLAN_DB_PATH", str(folder / "plans.sqlite3"))  # P06: the server calendar
+    monkeypatch.setenv("NABIZ_APPEALS_DB", str(folder / "appeals.sqlite"))  # P08: restrictions and appeals
+    monkeypatch.delenv("NABIZ_DATA_ROOT", raising=False)
+    monkeypatch.setenv("NABIZ_OUTBOX_DIR", str(folder / "outbox"))  # a sign-in's example e-mail, never under data/

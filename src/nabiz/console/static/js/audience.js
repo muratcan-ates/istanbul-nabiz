@@ -49,9 +49,10 @@ function errorMarkup() {
 
 export async function mountAudience(doc = globalThis.document, win = globalThis.window) {
   if (!doc || !win || MOCK || doc.getElementById('size-gore')) return null;
-  const cityCards = doc.getElementById('city-cards');
+  // P00 D2a: in Hesabım, a closed disclosure right after "Size uygun görünüm"; the chat's end without it.
+  const appearance = doc.getElementById('appearance-options');
   const assistant = doc.getElementById('asistan');
-  const anchor = cityCards || assistant;
+  const anchor = appearance || assistant;
   if (!anchor) return null;
   if (!doc.querySelector('link[rel="stylesheet"][href="/css/audience.css"]')) {
     const link = doc.createElement('link');
@@ -59,10 +60,13 @@ export async function mountAudience(doc = globalThis.document, win = globalThis.
     link.href = '/css/audience.css';
     doc.head.appendChild(link);
   }
-  const position = cityCards ? 'beforebegin' : 'afterend';
+
   let selection = readSelection(win);
   const language = () => currentLang();
-  anchor.insertAdjacentHTML(position, sectionMarkup(selection, language()));
+  const markup = sectionMarkup(selection, language());
+  anchor.insertAdjacentHTML('afterend', appearance
+    ? `<details class="more account-detail" id="size-gore-detay"><summary>${esc(t('ui.aud.title', 'Size göre öneriler'))}</summary>${markup}</details>`
+    : markup);
   let section = doc.getElementById('size-gore');
   if (!section) return null;
   let payload = null;

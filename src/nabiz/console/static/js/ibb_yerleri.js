@@ -26,16 +26,16 @@ function mountIbbPlaces(doc = document) {
 
     function statusText() {
       if (message === 'result') return view.statusText(result, where);
+      // Literal t() calls (P00 D2a): the page's catalogue check reads each key beside its Turkish.
       const messages = {
-        summary_error: ['ui.ibbplaces.error', 'İBB yerleri şu an okunamadı.'],
-        location_error: ['ui.ibbplaces.location_error', 'Konumunuz alınamadı. İlçe seçerek bakabilirsiniz.'],
-        outside: ['ui.ibbplaces.outside_istanbul', 'Bu konum İstanbul aralığında değil. İlçe seçerek bakabilirsiniz.'],
-        points_error: ['ui.ibbplaces.error', 'İBB yerleri şu an okunamadı.'],
-        unavailable: ['ui.ibbplaces.list_unavailable', 'Bu liste alınamadı.'],
-        other_map_layer: ['ui.ibbplaces.other_layer', 'Harita şu an başka bir katmanı gösteriyor.'],
+        summary_error: () => t('ui.ibbplaces.error', 'İBB yerleri şu an okunamadı.'),
+        location_error: () => t('ui.ibbplaces.location_error', 'Konumunuz alınamadı. İlçe seçerek bakabilirsiniz.'),
+        outside: () => t('ui.ibbplaces.outside_istanbul', 'Bu konum İstanbul aralığında değil. İlçe seçerek bakabilirsiniz.'),
+        points_error: () => t('ui.ibbplaces.error', 'İBB yerleri şu an okunamadı.'),
+        unavailable: () => t('ui.ibbplaces.list_unavailable', 'Bu liste alınamadı.'),
+        other_map_layer: () => t('ui.ibbplaces.other_layer', 'Harita şu an başka bir katmanı gösteriyor.'),
       };
-      const [key, fallback] = messages[message] || ['', ''];
-      return key ? t(key, fallback) : '';
+      return messages[message] ? messages[message]() : '';
     }
 
     function render() {

@@ -1,7 +1,8 @@
-/* v17: P00 wave, catalogues and kvkk for the E5x-E7x back ends (v16: the home screen's category pills;
+/* v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
+   E5x-E7x back ends; v16: the home screen's category pills;
    v15: E48's official-path source label in provenance.js; v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v17';
+const VERSION = 'v18';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -18,7 +19,7 @@ const SHELL = [
   '/js/citizen.js', '/js/home.js', '/js/workspace_nav.js', '/js/api.js', '/js/config.js', '/js/cards.js', '/js/chat.js',
   '/js/profile.js', '/js/provenance.js', '/js/history.js', '/js/a11y.js', '/js/disclosure.js',
   '/js/feedback.js', '/js/format.js', '/js/icons.js', '/js/theme.js', '/js/journey.js',
-  '/js/nearby.js', '/js/voice.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
+  '/js/nearby.js', '/js/voice.js', '/js/voice_provider.js', '/js/share.js', '/js/compare.js', '/js/map.js', '/js/pwa.js',
   '/icons.svg', '/icons/nabiz.svg',
   '/icons/nabiz-192.png', '/icons/nabiz-512.png', '/icons/nabiz-maskable-512.png',
   // wave 1 (E01-E25): the citizen page's new modules and sheets, and the kolay page
@@ -54,6 +55,22 @@ const SHELL = [
   '/js/voice_intent.js', '/js/voice_report.js',
   // E30: libraries and museums open now (the answers come from /api/culture and are never cached)
   '/js/culture.js', '/css/culture.css',
+  // P00 D2a (P01): the chat shell's cards; every module index.html, chat.js and citizen.js import is here,
+  // or an offline start cannot load the module graph
+  '/js/chat_cards.js', '/js/chat_card_actions.js', '/js/chat_card_map.js', '/js/chat_scroll.js', '/css/chat_cards.css',
+  // P00 D2a (P02): history and memory (their styles live in conversations.css, already above)
+  '/js/conversation_session.js', '/js/data_reset.js', '/js/memory_card.js', '/js/memory_forget.js',
+  '/js/memory_store.js', '/js/memory_ui.js',
+  // P00 D2a (K): the wave's citizen modules the page now loads, with their views and styles
+  '/js/step_voice.js', '/js/step_voice_core.js', '/css/step_voice.css', '/js/photo_report.js', '/css/photo_report.css',
+  '/js/family.js', '/js/family_view.js', '/css/family.css', '/js/booking.js', '/css/booking.css',
+  '/js/poll.js', '/js/poll_view.js', '/css/poll.css', '/js/notices_center.js', '/css/notices_center.css',
+  '/js/audience.js', '/js/audience_view.js', '/css/audience.css', '/js/visitor.js', '/js/visitor_view.js', '/css/visitor.css',
+  '/js/troubleshoot.js', '/js/troubleshoot_view.js', '/css/troubleshoot.css',
+  '/js/recovery.js', '/js/recovery_view.js', '/css/recovery.css', '/js/bill.js', '/css/bill.css', '/js/fare.js', '/css/fare.css',
+  '/js/disaster_kit.js', '/css/disaster_kit.css', '/js/journey_watch.js', '/css/journey_watch.css',
+  '/js/escort.js', '/css/escort.css', '/js/report_timeline.js', '/css/report_timeline.css',
+  '/js/outage_watch.js', '/css/outage_watch.css', '/js/ibb_yerleri.js', '/js/ibb_yerleri_view.js', '/css/ibb_yerleri.css',
 ];
 
 function ruleFor(url, method, mode) {

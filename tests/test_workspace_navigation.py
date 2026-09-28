@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 
@@ -108,6 +109,11 @@ function setup(hash = '') {
   };
   const add = (parent, tag, id, classes = '') => { const node = new Node(tag, id, classes); parent.append(node); return node; };
   const hero = add(main, 'section', 'home-screen'), chat = add(main, 'section', 'asistan');
+  const assistantHead = add(chat, 'div', '', 'assistant-head');
+  add(assistantHead, 'aside', 'convo-root');
+  const assistantMore = add(assistantHead, 'details', 'assistant-more');
+  add(assistantMore, 'summary'); add(assistantMore, 'ul', 'legacy-more-links');
+  add(main, 'section', 'takvim');
   const log = add(chat, 'ol', 'chat-log'), form = add(hero, 'form', 'chat-form');
   const input = add(form, 'textarea', 'chat-input'), submit = add(form, 'button', 'chat-submit');
   const bottom = add(form, 'div', '', 'composer-bottom');
@@ -119,17 +125,26 @@ function setup(hash = '') {
     'map-workspace': 'harita', 'explore-workspace': 'kultur'};
   for (const [id, child] of Object.entries(nested)) add(add(tools, 'details', id), 'section', child);
   const account = add(main, 'section', 'hesabim');
-  ['profilim', 'takip', 'hafizam'].forEach(id => add(add(account, 'details', `details-${id}`), 'section', id));
+  ['profilim', 'takip', 'hafizam', 'hesap'].forEach(id => add(add(account, 'details', `details-${id}`), 'section', id));
   const footer = add(body, 'footer', 'about'), nav = add(body, 'nav', '', 'topbar-nav');
-  const links = ['asistan', 'city-cards', 'city-tools', 'acik-veri', 'map-workspace', 'explore-workspace',
-    'profilim', 'about', 'takip', 'hafizam']
-    .map(id => { const link = add(nav, 'a', ''); link.setAttribute('href', `#${id}`); return link; });
+  const primary = add(nav, 'ul', '', 'nav-primary'), secondary = add(nav, 'div', '', 'nav-secondary');
+  const legacy = add(secondary, 'ul', 'legacy-nav');
+  add(body, 'ul', 'legacy-topbar');
+  const links = ['asistan', 'takvim', 'hesabim'].map((id, index) => {
+    const link = add(add(primary, 'li'), 'a'); link.setAttribute('href', `#${id}`);
+    link.setAttribute('data-primary', ['assistant', 'calendar', 'account'][index]); return link;
+  });
+  ['city-cards', 'city-tools', 'map-workspace', 'explore-workspace', 'acik-veri', 'takip', '/kolay.html']
+    .forEach((id, index) => { const link = add(add(legacy, 'li'), 'a');
+      link.setAttribute('href', id.startsWith('/') ? id : `#${id}`);
+      link.setAttribute('data-legacy', ['city', 'travel', 'map', 'nearby', 'data', 'follow', 'easy'][index]);
+      links.push(link); });
   let submissions = 0;
   form.requestSubmit = () => { submissions++; form.dispatchEvent(event('submit')); };
   return {doc, body, main, hero, chat, log, form, input, submit, bottom, tools, footer, links,
     submissions: () => submissions, flush: () => observers.forEach(observer => observer.callback([]))};
 }
-const visible = s => ['home-screen', 'asistan', 'city-cards', 'journey-workspace', 'open-data-workspace',
+const visible = s => ['home-screen', 'asistan', 'takvim', 'city-cards', 'journey-workspace', 'open-data-workspace',
   'map-workspace', 'explore-workspace', 'hesabim'].filter(id => !s.doc.getElementById(id).hidden);
 """
 
@@ -149,6 +164,7 @@ def run_workspace(tmp_path, body: str) -> object:
 
 @pytest.mark.parametrize(("target", "view", "expected"), [
     ("", "assistant", ["home-screen", "asistan"]),
+    ("takvim", "calendar", ["takvim"]),
     ("city-cards", "city", ["city-cards"]),
     ("city-tools", "travel", ["journey-workspace"]),
     ("acik-veri", "data", ["open-data-workspace"]),
@@ -173,7 +189,7 @@ def test_links_hashes_and_programmatic_map_actions_reveal_their_destinations(tmp
     values = run_workspace(tmp_path, """
 const s = setup(); workspace.mountWorkspace(s);
 const visit = () => ({view: s.body.dataset.view, visible: visible(s)});
-s.doc.dispatchEvent(event('click', {target: s.links[2]})); const travel = visit();
+s.doc.dispatchEvent(event('click', {target: s.links[4]})); const travel = visit();
 location.hash = '#acik-veri'; window.dispatchEvent(event('hashchange')); const data = visit();
 s.doc.dispatchEvent(event('nabiz:show-on-map')); const map = visit();
 s.doc.dispatchEvent(event('nabiz:reveal', {detail: {id: 'hafizam'}})); const account = visit();
@@ -199,18 +215,20 @@ s.form.addEventListener('submit', () => {
 s.input.focus(); s.input.dispatchEvent(event('keydown', {key: 'Enter'})); s.flush();
 const moved = s.form.parentElement === s.chat && s.chat.children.at(-1) === identity;
 const focusPreserved = s.doc.activeElement === s.input, focusOptions = s.input.focusOptions;
-s.doc.dispatchEvent(event('click', {target: s.links[1]})); s.links[1].focus();
+s.doc.getElementById('assistant-more').open = true;
+s.doc.dispatchEvent(event('click', {target: s.links[3]})); s.links[3].focus();
 s.log.append(new Node('li', '', 'chat-msg is-assistant')); s.flush();
 const cityAfterStream = s.body.dataset.view;
-const cityFocusPreserved = s.doc.activeElement === s.links[1];
+const cityDestinationFocused = s.doc.activeElement === s.doc.getElementById('city-cards');
 s.form.requestSubmit();
-console.log(JSON.stringify({moved, focusPreserved, focusOptions, cityAfterStream, cityFocusPreserved, same: s.form === identity,
+console.log(JSON.stringify({moved, focusPreserved, focusOptions, cityAfterStream, cityDestinationFocused,
+  same: s.form === identity,
   draft: s.input.value, selection: [s.input.selectionStart, s.input.selectionEnd], listenerCalls,
   view: s.body.dataset.view, buttonMoved: s.submit.parentElement === s.bottom}));
 """)
     assert values == {
         "moved": True, "focusPreserved": True, "focusOptions": {"preventScroll": True},
-        "cityAfterStream": "city", "cityFocusPreserved": True, "same": True, "draft": "Kartal\nLevent",
+        "cityAfterStream": "city", "cityDestinationFocused": True, "same": True, "draft": "Kartal\nLevent",
         "selection": [3, 6], "listenerCalls": 2, "view": "assistant", "buttonMoved": True,
     }
 
@@ -236,12 +254,13 @@ s.chat.append = (...nodes) => {{
   append(...nodes);
   if (scenario === 'disabled') s.input.disabled = true;
   if (scenario === 'detached') s.input.remove();
-  if (scenario === 'different-focus') s.links[1].focus();
+  if (scenario === 'different-focus') s.links[3].focus();
 }};
-if (scenario === 'outside-form') s.links[1].focus(); else s.input.focus();
+s.doc.getElementById('assistant-more').open = true;
+if (scenario === 'outside-form') s.links[3].focus(); else s.input.focus();
 s.log.append(new Node('li', '', 'chat-msg is-user')); s.flush();
 console.log(JSON.stringify({{inputFocused: s.doc.activeElement === s.input,
-  expectedFocused: s.doc.activeElement === (scenario.includes('focus') || scenario === 'outside-form' ? s.links[1] : s.body),
+  expectedFocused: s.doc.activeElement === (scenario.includes('focus') || scenario === 'outside-form' ? s.links[3] : s.body),
   restored: !!s.input.focusOptions?.preventScroll}}));
 """)
     assert values == {"inputFocused": False, "expectedFocused": True, "restored": False}
@@ -256,7 +275,7 @@ console.log(JSON.stringify({view: s.body.dataset.view, hash: location.hash,
 """)
     assert values == {
         "view": "account", "hash": "#takibi-birak=fixture.token.123", "visible": True,
-        "resolved": True, "current": ["#takip"],
+        "resolved": True, "current": ["#hesabim"],
     }
 
 
@@ -267,7 +286,7 @@ const s = setup(); workspace.mountWorkspace(s);
 workspace.revealTarget({json.dumps(target)});
 console.log(JSON.stringify(s.links.filter(link => link.hasAttribute('aria-current')).map(link => link.getAttribute('href'))));
 """)
-    assert values == [f"#{target}"]
+    assert values == ["#hesabim"]
 
 
 @pytest.mark.parametrize("has_conversation", [False, True])
@@ -346,3 +365,64 @@ const key = event('keydown', {json.dumps(key)}); s.input.dispatchEvent(key);
 console.log(JSON.stringify({{submits: s.submissions(), prevented: key.defaultPrevented}}));
 """)
     assert values == {"submits": expected_submits, "prevented": expected_prevented}
+
+
+# P00 D2a: the owner's placement. Three entries (Assistant, Calendar, My account); the four city tools under
+# More; Follow inside My account; open data in the console; the easy screen in the top bar. Every old address
+# still opens its destination.
+OWNER_PLACEMENT = {
+    "city": ("#city-cards", "more"), "travel": ("#city-tools", "more"), "map": ("#map-workspace", "more"),
+    "nearby": ("#explore-workspace", "more"), "data": ("#acik-veri", "operator"), "follow": ("#takip", "account"),
+    "easy": ("/kolay.html", "topbar"),
+}
+
+
+def test_the_seven_placement_lines_are_the_owners_and_run_at_load() -> None:
+    source = (STATIC / "js" / "workspace_nav.js").read_text(encoding="utf-8")
+    table = source[source.index("export const LEGACY_PLACEMENT = ["):source.index("];", source.index("LEGACY_PLACEMENT"))]
+    rows = re.findall(r"\{ id: '(\w+)', href: '([^']+)', i18n: '[^']+', placement: '(\w+)' \}", table)
+    assert table.count("placement:") == 7
+    assert {name: (href, placement) for name, href, placement in rows} == OWNER_PLACEMENT
+    mount = source[source.index("export function mountWorkspace("):]
+    assert mount.index("applyLegacyPlacement();") < mount.index("form.before(placeholder);")
+    home = (STATIC / "js" / "home.js").read_text(encoding="utf-8")
+    assert "mountWorkspace({ form, input });" in home
+
+
+def test_every_placed_address_exists_on_the_page() -> None:
+    page = (STATIC / "index.html").read_text(encoding="utf-8")
+    for address in [href for href, _ in OWNER_PLACEMENT.values()] + ["#profilim", "#hafizam"]:
+        if address.startswith("#"):
+            assert page.count(f'id="{address[1:]}"') == 1, address
+        else:
+            assert (STATIC / address.lstrip("/")).is_file(), address
+    account = page[page.index('id="hesabim"'):]
+    assert all(f'id="{anchor}"' in account for anchor in ("profilim", "takip", "hafizam"))
+
+
+def test_owner_placement_hides_moved_rows_and_keeps_every_destination(tmp_path) -> None:
+    values = run_workspace(tmp_path, """
+const s = setup(); workspace.mountWorkspace(s);
+const rows = Object.fromEntries(s.links.filter(link => link.getAttribute('data-legacy')).map(link => [
+  link.getAttribute('data-legacy'), {parent: link.parentElement.parentElement.id, hidden: link.parentElement.hidden,
+    moved: link.getAttribute('data-moved-to')}]));
+const reach = {};
+for (const hash of ['#city-cards', '#city-tools', '#map-workspace', '#explore-workspace', '#acik-veri', '#takip',
+  '#profilim', '#hafizam']) {
+  location.hash = hash; window.dispatchEvent(event('hashchange')); reach[hash] = s.body.dataset.view;
+}
+console.log(JSON.stringify({rows, reach}));
+""")
+    assert values["rows"] == {
+        "city": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "travel": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "map": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "nearby": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "data": {"parent": "legacy-nav", "hidden": True, "moved": "console"},
+        "follow": {"parent": "legacy-nav", "hidden": True, "moved": None},
+        "easy": {"parent": "legacy-topbar", "hidden": False, "moved": None},
+    }
+    assert values["reach"] == {
+        "#city-cards": "city", "#city-tools": "travel", "#map-workspace": "map", "#explore-workspace": "nearby",
+        "#acik-veri": "data", "#takip": "account", "#profilim": "account", "#hafizam": "account",
+    }

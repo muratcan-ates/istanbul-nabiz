@@ -1,5 +1,6 @@
 /* Copy and share the visible cards, plus keep a small list on this device. */
 
+import { releaseCardAction } from './chat_card_actions.js';
 import { NEEDS, readProfile } from './profile.js';
 
 const SAVED_KEY = 'nabiz.saved-cards.v1';
@@ -180,6 +181,47 @@ function createShareControls(article) {
   });
   article.append(group);
 }
+
+// P00 D2a: a chat card's "Paylaş" (P01 ChatCard action "share"). Only the card's title and its first https
+// source leave the page: no answer text, no question, no place, no code, no memory. A memory card or a card
+// with no https source is not shared; the event stays unhandled and the card says the action is not ready.
+function chatCardArticle(cardId) {
+  return [...document.querySelectorAll('article.chat-card')].find((article) => article.dataset.cardId === cardId) || null;
+}
+
+function chatCardShare(article) {
+  const link = [...article.querySelectorAll('.chat-card-sources a[href]')]
+    .find((anchor) => /^https:\/\//.test(anchor.getAttribute('href') || ''));
+  const title = normalText(article.querySelector('h4')?.textContent);
+  return link && title ? { title, url: link.getAttribute('href') } : null;
+}
+
+async function shareChatCard(detail, shared) {
+  const status = document.createElement('p');
+  status.className = 'share-status';
+  status.setAttribute('role', 'status');
+  try {
+    if (typeof navigator.share === 'function') {
+      await navigator.share(shared);
+      setStatus(status, 'Paylaşıldı.');
+    } else await copyToClipboard(shared.url, status);
+  } catch (err) {
+    if (err?.name !== 'AbortError') setStatus(status, 'Paylaşılamadı.', true);
+  } finally {
+    chatCardArticle(detail.card_id)?.querySelector('.chat-card-actions')?.append(status);
+    releaseCardAction(detail.card_id, detail.action);
+  }
+}
+
+document.addEventListener('nabiz:card-action', (event) => {
+  const detail = event.detail || {};
+  if (detail.action !== 'share' || detail.type === 'memory') return;
+  const article = chatCardArticle(detail.card_id);
+  const shared = article && chatCardShare(article);
+  if (!shared) return;
+  event.preventDefault();
+  shareChatCard(detail, shared);
+});
 
 function makeSavedSection() {
   const cards = document.getElementById('cards');

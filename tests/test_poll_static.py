@@ -248,7 +248,8 @@ def test_catalogues_cover_every_key_and_match_fallbacks() -> None:
 
 
 def test_anchors_timing_styles_districts_and_cache_scope() -> None:
-    assert "#city-cards" in POLL.read_text(encoding="utf-8") and "#asistan" in POLL.read_text(encoding="utf-8")
+    # P00 D2a (K): the owner's navigation puts the poll in Hesabım, not before the city cards.
+    assert "const ANCHORS = [['#hesabim', 'beforeend']];" in POLL.read_text(encoding="utf-8")
     assert "setInterval" not in POLL.read_text(encoding="utf-8")
     assert "#citizen-requests" in POLL_CONSOLE.read_text(encoding="utf-8") and "#day" in POLL_CONSOLE.read_text(encoding="utf-8")
     assert "['#polls-mount', 'afterend'], ['#citizen-requests'" in POLL_CONSOLE.read_text(encoding="utf-8")  # P00 G2 mount first

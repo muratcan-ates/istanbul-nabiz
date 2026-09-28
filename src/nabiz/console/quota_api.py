@@ -51,12 +51,13 @@ class TurnPlan:
     book: QuotaBook
     holder: Holder
     message: str
+    model_gate: bool = True  # P08: False while this person is rate limited or restricted; the rules still answer
 
     async def events(self, service: Any, body: Any) -> AsyncIterator[str]:
         """The chat's events, counted against the holder; an emergency is neither counted nor metered."""
-        admitted = False if self.emergency else self.book.admit(self.holder)
-        if not self.emergency:
-            CURRENT_METER.set(Meter(self.book, self.holder, model_open=admitted))
+        admitted = False if self.emergency else self.book.admit(self.holder) and self.model_gate
+        meter = None if self.emergency else Meter(self.book, self.holder, model_open=admitted)
+        CURRENT_METER.set(meter)
         topic = None if self.emergency else suggest_follow(mask(self.message)[0])
         try:
             async for event in service.events(body):
@@ -68,6 +69,9 @@ class TurnPlan:
                     event = with_turn_fields(event, extra)
                 yield event
         finally:
+            # A turn cut off mid-way (the page closed) still holds its claim: give it back (P13).
+            if meter is not None:
+                meter.refund(meter.held)
             CURRENT_METER.set(None)
 
 
@@ -80,4 +84,15 @@ def _plain_answer(event: str) -> bool:
 def plan_turn(request: Request, message: str) -> TurnPlan:
     """Who the turn counts against, and whether it is an emergency. Counts nothing yet."""
     account = current_account(request)
-    return TurnPlan(is_emergency(message), request.app.state.quota, holder_for(request, account), message)
+    emergency = is_emergency(message)
+    return TurnPlan(emergency, request.app.state.quota, holder_for(request, account), message,
+                    model_gate=emergency or model_gate(request))
+
+
+def model_gate(request: Request) -> bool:
+    """P08: whether this person's model rung is open; restriction and appeal live in ``app.state``. No trusted key
+    (a visitor with no device id) or no restriction book: nothing to check, the quota still decides."""
+    state = request.app.state
+    book, resolver = getattr(state, "appeal_book", None), getattr(state, "restriction_subject", None)
+    subject = resolver(request) if book is not None and callable(resolver) else None
+    return subject is None or book.restrictions.check(subject, "model").allowed
