@@ -215,7 +215,8 @@ def _r_places(d: dict[str, Any]) -> list[str]:
     matches = d.get("matches") or []
     if not matches:
         return [f"'{d.get('query')}' için yer bulunamadı."]
-    return [f"• {m.get('label')} — {_num(m.get('lat'), 4)}, {_num(m.get('lon'), 4)}" for m in matches[:3]]
+    # A citizen reads place names, not coordinates; the map card carries the position (28 Sep, owner's review).
+    return [f"• {m.get('label')}" for m in matches[:3]]
 
 
 def _r_freshness(d: dict[str, Any]) -> list[str]:
