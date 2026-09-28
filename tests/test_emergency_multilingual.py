@@ -366,3 +366,48 @@ def test_card_text_has_no_dash_and_no_forbidden_number() -> None:
     blob = json.dumps(CARD_TEXT, ensure_ascii=False) + TEXT_JS.read_text(encoding="utf-8")
     assert "—" not in blob and "–" not in blob
     assert not re.search(r"\b(?:155|110)\b", blob)
+
+
+# --------------------------------------------------------------------------------------
+# KARAR 1: the second opinion for Turkish and English, behind a switch that is off by default
+# --------------------------------------------------------------------------------------
+OPEN_TR_EN = {emergency_model.EMERGENCY_MODEL_LANGS_ENV: "tr,en"}
+
+
+def test_by_default_turkish_and_english_stay_with_the_rules(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = Scripted()
+    monkeypatch.setattr(llm, "chat", fake)
+    assert check("Babam çok solgun, konuşmuyor", guard()) is None
+    assert fake.calls == [] and emergency_model.opened_langs({}) == frozenset()
+
+
+def test_the_switch_opens_turkish_and_english_to_a_second_opinion(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = Scripted(reply('{"emergency": true, "gas": false, "lang": "tr"}'), reply('{"emergency": false, "lang": "en"}'))
+    monkeypatch.setattr(llm, "chat", fake)
+    assert check("Babam çok solgun, konuşmuyor", guard(), OPEN_TR_EN) == {"lang": "tr", "hazard": None}
+    assert check("My dad looks very pale and says nothing", guard(), OPEN_TR_EN) is None
+    assert len(fake.calls) == 2
+    assert emergency_model.opened_langs({emergency_model.EMERGENCY_MODEL_LANGS_ENV: "tr, xx"}) == frozenset({"tr"})
+
+
+@pytest.mark.parametrize("failure", ["timeout", "error", "ceiling"])
+def test_with_the_switch_on_every_failure_is_no_verdict_and_the_rules_still_open_112(
+    monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    async def slow() -> dict[str, Any]:
+        await asyncio.sleep(5)
+        return reply('{"emergency": true, "lang": "tr"}')
+
+    spend = guard()
+    if failure == "timeout":
+        monkeypatch.setattr(emergency_model, "TIMEOUT_S", 0.05)
+        monkeypatch.setattr(llm, "chat", Scripted(slow))
+    elif failure == "error":
+        monkeypatch.setattr(llm, "chat", Scripted(RuntimeError("socket gone")))
+    else:
+        monkeypatch.setattr(llm, "chat", Scripted())
+        spend = guard(calls=1)
+        spend.record(CLOUD.provider, {}, 1)
+    assert check("Babam çok solgun, konuşmuyor", spend, OPEN_TR_EN) is None
+    # The 112 card comes from the rules, which never wait for the model and never ask it.
+    assert policy.emergency_intent("Yangın var, yardım edin") and policy.emergency_card("Yangın var")["lang"] == "tr"

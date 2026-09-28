@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from ibb_mcp.text import fold_tr, normalize_tr
+from nabiz.console.health_mask import mask_health
 
 from .forbidden_terms import find_forbidden
 
@@ -156,7 +157,9 @@ def check_input(text: str) -> InputVerdict:
     elif length > MAX_QUESTION_CHARS:
         verdict = InputVerdict(False, clean, "too_long", too_long_text(length), length, removed)
     else:
-        return InputVerdict(True, clean, None, None, length, removed)
+        # A health statement stops here (P02, KVKK): the model, the index and the earlier questions never see
+        # the diagnosis, and the emergency and refusal rules read its label as a stated condition (KARAR 5).
+        return InputVerdict(True, mask_health(clean)[0], None, None, length, removed)
     _LOG.info("input guard: %s", verdict.reason)
     return verdict
 
