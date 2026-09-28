@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -83,6 +84,7 @@ def test_akom_items_care_and_quotes_match_the_capture() -> None:
     assert kit["assembly"]["afis"]["quote"] == afis["answer"][0]
 
 
+@pytest.mark.skipif(not INDEX.is_file(), reason="the knowledge index is built locally and not committed (CI has none)")
 def test_store_quotes_and_catalog_search_are_read_only_and_exact() -> None:
     kit = disaster_kit.load_kit()
     before = (INDEX.stat().st_size, INDEX.stat().st_mtime_ns)
