@@ -53,6 +53,11 @@ LANE_OWN_PAIRS = {
     "Where can I find official information about İstanbulkart services?", "İSKİ / Bills",
     "Where can I get help with İSKİ services and bills?", "How can I report a problem to İBB?",
     "How can I get from Kadıköy to Levent without stairs?",
+    # workspace_nav.js (P26, 29 Sep) keeps its everyday home examples, placeholder and subtitle the same way.
+    "Kadıköy’den Levent’e en hızlı nasıl giderim?", "What is the fastest way from Kadıköy to Levent?",
+    "Taksim’e metroyla nasıl giderim?", "Beşiktaş’a sadece otobüsle nasıl giderim?",
+    "How can I get to Beşiktaş using only buses?", "Bu hafta sonu ücretsiz ne yapabilirim?",
+    "Ulaşım, etkinlikler ve şehir hizmetleri için sorun.", "İstanbul hakkında bir şey sorun…",
 }
 JS_DIR = STATIC / "js"
 I18N = STATIC / "i18n"

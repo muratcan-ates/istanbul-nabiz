@@ -272,11 +272,13 @@ TARGETS_BY_CHECK: dict[str, dict[str, Target]] = {
     # merging stylesheets bring it down after the demo, and each step lowers or deletes these entries.
     # Raised once at the 28 Sep integration (D2b, the Takvim calendar view, P26's source cards): HTML 7,847 B, CSS
     # 30,662 B, JS 364,848 B in 97 modules, total 403,357 B gzip; the demo build, measured, not loosened for a run.
+    # Raised again for the 29 Sep design round (short answers, Harita in the navigation): CSS 31,987 B, JS 370,113 B,
+    # total 409,947 B gzip.
     CITIZEN_CHECK: {
         "html": Target(LAZY_VIEWS, 9_030),
-        "css": Target(LAZY_VIEWS, 89_419),
-        "js": Target(LAZY_VIEWS, 1_073_894),
-        "total": Target(LAZY_VIEWS, 1_172_343),
+        "css": Target(LAZY_VIEWS, 96_972),
+        "js": Target(LAZY_VIEWS, 1_092_037),
+        "total": Target(LAZY_VIEWS, 1_198_039),
         "stylesheets": Target(LAZY_VIEWS, 12),
     },
 }
