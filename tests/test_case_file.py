@@ -33,6 +33,9 @@ class Clock:
         return self.value
 
 
+# a week ahead: the store accepts reminders from today on, so a fixed date ages out
+REMIND_ON = (dt.date.today() + dt.timedelta(days=7)).isoformat()
+
 def _count(path, table: str) -> int:
     with sqlite3.connect(path) as db:
         return db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
@@ -99,7 +102,7 @@ def test_device_flow_persists_without_storing_the_key(tmp_path) -> None:
     assert key and len(key) >= 30
     owner = ("device", token_hash(key))
     store.set_answer(owner, file["id"], "su", "yenileme")
-    store.set_step(owner, file["id"], "su", done=True, note="Abonelik adımı", ref_code="ISK-AB-321", remind_on="2026-09-28")
+    store.set_step(owner, file["id"], "su", done=True, note="Abonelik adımı", ref_code="ISK-AB-321", remind_on=REMIND_ON)
     raw = path.read_bytes()
     assert key.encode() not in raw
     store.close()
@@ -110,7 +113,7 @@ def test_device_flow_persists_without_storing_the_key(tmp_path) -> None:
         assert saved["answers"] == {"su": "yenileme"}
         step = next(item for item in saved["steps"] if item["step_id"] == "su")
         assert step["done_at"] and step["note"] == "Abonelik adımı"
-        assert step["ref_code"] == "ISK-AB-321" and step["remind_on"] == "2026-09-28"
+        assert step["ref_code"] == "ISK-AB-321" and step["remind_on"] == REMIND_ON
     finally:
         restarted.close()
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from collections.abc import Iterator
 
 import pytest
@@ -12,6 +13,9 @@ from nabiz.console import accounts_api, case_file_api
 from nabiz.console.accounts import AccountStore
 from nabiz.console.case_file import CaseFileStore
 from nabiz.console.citizen_requests import HourlyLimit
+
+# a week ahead: the store accepts reminders from today on, so a fixed date ages out
+REMIND_ON = (dt.date.today() + dt.timedelta(days=7)).isoformat()
 
 
 @pytest.fixture
@@ -88,12 +92,12 @@ def test_device_create_answer_step_refresh_and_delete_flow(client, tmp_path) -> 
             "done": True,
             "note": "İşlem notum",
             "ref_code": "AB-421",
-            "remind_on": "2026-09-28",
+            "remind_on": REMIND_ON,
         },
     )
     step = next(item for item in _file(updated)["steps"] if item["step_id"] == "su")
     assert step["done_at"] and step["note"] == "İşlem notum" and step["ref_code"] == "AB-421"
-    assert step["remind_on"] == "2026-09-28"
+    assert step["remind_on"] == REMIND_ON
     path = app.state.case_files.path
     app.state.case_files.close()
     app.state.case_files = None
