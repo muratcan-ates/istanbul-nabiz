@@ -5,6 +5,7 @@ import json
 import re
 import shutil
 import subprocess
+from html import unescape
 from pathlib import Path
 
 import pytest
@@ -237,3 +238,174 @@ def test_source_only_answer_remains_visible_and_exact(tmp_path, mode, author):
 def test_steps_only_answer_is_not_hidden_behind_an_empty_disclosure(tmp_path):
     html = node_json(tmp_path, "console.log(JSON.stringify(answer.renderAnswerCard({mode:'answer',steps:['Gerekli işlem']})));")
     assert 'Gerekli işlem' in html.split('<details class="ac-details">')[0]
+
+
+@pytest.mark.parametrize("separator,latitude,longitude,evidence", [
+    (", ", "41,0422", "29,0053", {"citations": [{"source": "gazetteer"}]}),
+    (" — ", "41,0422", "29,0053", {"how": {"tool": "places_resolve"}}),
+    (" — ", "41.0422", "29.0053", {"how": {"tools": [{"name": "places_resolve"}]}}),
+])
+def test_place_coordinates_and_known_footer_move_to_existing_details(
+    tmp_path, separator, latitude, longitude, evidence,
+):
+    original = (
+        f"• Beşiktaş İskele (Beşiktaş){separator}{latitude}, {longitude}\n"
+        "İskele geçici olarak kapalı; yola çıkmadan teyit edin.\n"
+        "Veri: kayıtlı · 28.09 16:45.\n"
+        "Kaynak: İBB Açık Veri (CC BY 4.0) · resmî bir servis değildir."
+    )
+    payload = {"mode": "answer", "author": "kural", "answer_text": original, **evidence}
+    rendered = node_json(tmp_path, f"console.log(JSON.stringify(answer.renderAnswerCard({json.dumps(payload)})));")
+    primary, details = rendered.split('<details class="ac-details">')
+    assert "• Beşiktaş İskele (Beşiktaş)" in primary
+    assert "İskele geçici olarak kapalı; yola çıkmadan teyit edin." in primary
+    assert latitude not in primary and longitude not in primary
+    assert "Veri: kayıtlı" not in primary and "Kaynak: İBB Açık Veri" not in primary
+    retained = re.search(r'<p class="ac-technical" data-er-skip>(.*?)</p>', details, re.S).group(1)
+    assert unescape(retained) == original
+    assert rendered.count("<details") == 1
+
+
+@pytest.mark.parametrize("original", [
+    "3 kişi için 1.250,50 TL; 40 dakika ve 2,5 km.",
+    "• Ücret (TL), 40,99, 29,02",
+    "• Beşiktaş İskele (Beşiktaş), 91,0422, 29,0053",
+    "• Beşiktaş İskele (Beşiktaş), 41,0422, 181,0053",
+    "• Beşiktaş İskele (Beşiktaş), 41,0422, 29,0053 km",
+    "Uyarı: 41,0422, 29,0053 konumunda giriş kapalı.",
+    "Veri: eski olabilir; 153 ile teyit edin.\nKaynak: Başka kurum.",
+])
+def test_presentation_preserves_ordinary_numbers_units_and_unrecognised_lines(tmp_path, original):
+    payload = {"mode": "answer", "answer_text": original, "citations": [{"source": "gazetteer"}]}
+    rendered = node_json(tmp_path, f"console.log(JSON.stringify(answer.renderAnswerCard({json.dumps(payload)})));")
+    assert original in unescape(rendered.split('<details class="ac-details">')[0])
+    assert 'class="ac-technical"' not in rendered
+
+
+def test_place_cleanup_needs_evidence_and_never_changes_sentence_mapping(tmp_path):
+    original = "• Beşiktaş İskele (Beşiktaş), 41,0422, 29,0053"
+    payload = {"mode": "answer", "answer_text": original}
+    mapped = {**payload, "citations": [{"source": "gazetteer"}], "how": {"citation_map": {
+        "sentences": [{"text": original, "status": "supported", "support": [{"citation": 0}]}],
+    }}}
+    value = node_json(tmp_path, f"console.log(JSON.stringify({{plain:answer.renderAnswerCard({json.dumps(payload)}),"
+                      f"mapped:answer.renderAnswerCard({json.dumps(mapped)})}}));")
+    for rendered in value.values():
+        assert original in unescape(rendered.split('<details class="ac-details">')[0])
+        assert 'class="ac-technical"' not in rendered
+    assert re.search(r'href="#ac-cite-\d+-1" aria-label="Kaynak 1">\[1\]</a>', value["mapped"])
+
+
+def test_coordinate_cleanup_keeps_exact_quote_once_and_escapes_untrusted_text(tmp_path):
+    quote = "  • Kaynak <script>alert(1)</script> — 41.0422, 29.0053\nSon koşul aynen kalır.  "
+    original = "• İskele <img src=x onerror=alert(1)> (Beşiktaş), 41,0422, 29,0053"
+    citation = {"source": "local:knowledge", "quote": quote}
+    payload = {"mode": "answer", "author": "model", "answer_text": original,
+               "citations": [{"source": "gazetteer"}, citation]}
+    quote_only = {"mode": "quote_only", "author": "kural", "answer_text": original, "citations": [citation]}
+    value = node_json(tmp_path, f"console.log(JSON.stringify({{normal:answer.renderAnswerCard({json.dumps(payload)}),"
+                      f"quote:answer.renderAnswerCard({json.dumps(quote_only)})}}));")
+    for rendered in value.values():
+        assert "<script>" not in rendered and "<img" not in rendered
+        assert unescape(rendered).count(quote) == 1
+    assert '41,0422' not in value["normal"].split('<details class="ac-details">')[0]
+    raw = re.search(r'<p class="ac-technical" data-er-skip>(.*?)</p>', value["normal"], re.S).group(1)
+    assert unescape(raw) == original
+    assert quote in unescape(value["quote"].split('<details class="ac-details">')[0])
+    assert 'class="ac-technical"' not in value["quote"]
+
+
+
+def test_citizen_answer_has_no_source_dump_or_raw_coordinates_and_does_not_mutate_payload(tmp_path):
+    payload = {"mode": "answer", "author": "kural", "answer_text": (
+        "• Beşiktaş İskele (Beşiktaş), 41,0422, 29,0053\n"
+        "Giriş kapalı olabilir; yola çıkmadan teyit edin.\n"
+        "Veri: kayıtlı · 28.09 16:45.\n"
+        "Kaynak: İBB Açık Veri (CC BY 4.0) · resmî bir servis değildir."
+    ), "citations": [{"source": "gazetteer", "url": "https://example.test/source"}],
+        "how": {"tools": [{"name": "places_resolve"}], "rule_id": "TECHNICAL_RULE"}}
+    value = node_json(tmp_path, f"const payload={json.dumps(payload)},before=JSON.stringify(payload);"
+                      "const html=answer.renderAnswerCard(payload,{surface:'citizen'});"
+                      "console.log(JSON.stringify({html,unchanged:JSON.stringify(payload)===before,"
+                      "same:html===answer.renderCitizenAnswerCard(payload)}));")
+    rendered = value["html"]
+    assert value["unchanged"] and value["same"]
+    assert 'data-citizen-answer="true"' in rendered
+    assert "• Beşiktaş İskele (Beşiktaş)" in rendered
+    assert "Giriş kapalı olabilir; yola çıkmadan teyit edin." in rendered
+    for absent in ("41,0422", "29,0053", "İBB Açık Veri", "https://", "citation-card", "ac-technical",
+                   "ac-sources", "cevabı yazan", "TECHNICAL_RULE", "ac-how", "data-ac-copy"):
+        assert absent not in rendered
+    assert '<button type="button" class="btn btn-quiet ac-copy" data-citizen-copy>Kopyala</button>' in rendered
+    assert '<details class="ac-details"><summary>Daha fazla</summary><div class="ac-details-content"></div></details>' in rendered
+
+
+def test_citizen_surface_is_explicit_or_selected_only_by_the_citizen_body(tmp_path):
+    value = node_json(tmp_path, "const payload={mode:'answer',answer_text:'Yanıt',citations:[{source:'gazetteer'}]};"
+                      "const ordinary=answer.renderAnswerCard(payload);"
+                      "globalThis.document={body:{classList:{contains:value=>value==='citizen-page'}}};"
+                      "const citizen=answer.renderAnswerCard(payload);"
+                      "const operator=answer.renderAnswerCard(payload,{surface:'operator'});"
+                      "document.body.classList.contains=()=>false;const other=answer.renderAnswerCard(payload);"
+                      "console.log(JSON.stringify({ordinary,citizen,operator,other}));")
+    assert 'data-citizen-answer="true"' in value["citizen"]
+    assert 'class="citation-card"' not in value["citizen"]
+    for key in ("ordinary", "operator", "other"):
+        assert 'data-citizen-answer=' not in value[key]
+        assert 'class="citation-card"' in value[key]
+
+
+@pytest.mark.parametrize("mode", ["quote_only", "answer"])
+def test_citizen_source_only_primary_quote_is_exact_without_source_chrome(tmp_path, mode):
+    quote = '  Başvuru <script>alert(1)</script> ile değil, merkezden yapılır.\nSon koşul aynen kalır.  '
+    payload = {"mode": mode, "author": "kural", "answer_text": "MODEL_UNUSED",
+               "citations": [{"source": "local:knowledge", "title": "SOURCE_TITLE_UNUSED",
+                              "url": "https://example.test/source", "quote": quote}]}
+    rendered = node_json(tmp_path, f"console.log(JSON.stringify(answer.renderCitizenAnswerCard({json.dumps(payload)})));")
+    primary = rendered.split('<details class="ac-details">')[0]
+    assert quote in unescape(primary) and unescape(rendered).count(quote) == 1
+    assert 'class="answer-short ac-short"' in primary and 'class="quote-text quote-exact" data-er-skip' in primary
+    for absent in ("<script>", "figcaption", "href=", "SOURCE_TITLE_UNUSED", "MODEL_UNUSED", "ac-sources"):
+        assert absent not in rendered
+
+
+def test_citizen_renders_only_real_text_steps_and_preserves_all_numeric_conditions(tmp_path):
+    payload = {"mode": "answer", "answer_text": "M2 için 15 dakika ayırın; 2 aktarma var.",
+               "steps": ["M2'ye binin.", {"text": "OBJECT_NOT_A_STEP"}, "", "Aktarmada 300 metre yürüyün."]}
+    rendered = node_json(tmp_path, f"console.log(JSON.stringify(answer.renderCitizenAnswerCard({json.dumps(payload)})));")
+    primary, details = rendered.split('<details class="ac-details">')
+    for text in ("M2 için 15 dakika ayırın; 2 aktarma var.", "M2'ye binin.", "Aktarmada 300 metre yürüyün."):
+        assert text in unescape(primary)
+    assert primary.count('<li data-er-target>') == 2 and 'OBJECT_NOT_A_STEP' not in rendered
+    assert '[object Object]' not in rendered and '<li' not in details
+
+
+def test_citizen_preserves_stale_missing_source_and_conflict_warnings_without_source_links(tmp_path):
+    payload = {"mode": "answer", "answer_text": "OLD_TEXT", "citations": [{
+        "source": "local:knowledge", "source_updated_at": "2020-01-01T00:00:00Z",
+    }], "how": {"citation_map": {"sentences": [
+        {"text": "Koşul korunur.", "status": "supported", "support": [{"citation": 0}]},
+        {"text": "Doğrulanmayan bölüm.", "status": "no_source"},
+    ], "conflicts": [{"sentence": 0}], "labels": {"no_source": "KAYNAK_YOK", "conflict": "CELISKI_VAR"}}}}
+    rendered = node_json(tmp_path, f"console.log(JSON.stringify(answer.renderCitizenAnswerCard({json.dumps(payload)})));")
+    for text in ("Koşul korunur.", "Doğrulanmayan bölüm.", "KAYNAK_YOK", "CELISKI_VAR", "Eski olabilir, 153 ile teyit edin"):
+        assert text in rendered
+    assert "OLD_TEXT" not in rendered and 'href=' not in rendered and 'ac-sentence-source' not in rendered
+
+
+def test_citizen_safety_modes_do_not_expose_answer_steps_or_sources(tmp_path):
+    value = node_json(tmp_path, "const data={answer_text:'UNSAFE_UNUSED',steps:['STEP_UNUSED'],"
+                      "citations:[{source:'local:knowledge',quote:'QUOTE_UNUSED'}],how:{rule_id:'RULE_UNUSED'}};"
+                      "console.log(JSON.stringify({refused:answer.renderCitizenAnswerCard({...data,mode:'refused'}),"
+                      "unknown:answer.renderCitizenAnswerCard({...data,mode:'unknown'}),"
+                      "emergency:answer.renderCitizenAnswerCard({...data,mode:'answer',emergency:true}),"
+                      "empty:answer.renderCitizenAnswerCard({mode:'answer'}),refusalText:answer.REFUSAL_TEXT}));")
+    assert value["emergency"] == ""
+    assert value["refusalText"] in unescape(value["refused"])
+    for key in ("unknown", "empty"):
+        assert 'Bu bilgiyi doğrulayamadım.' in value[key]
+        assert 'href="tel:153"' in value[key]
+    for key in ("refused", "unknown", "empty"):
+        assert not re.search(r"UNSAFE_UNUSED|STEP_UNUSED|QUOTE_UNUSED|RULE_UNUSED", value[key])
+        assert 'ac-sources' not in value[key] and 'cevabı yazan' not in value[key]
+        assert '<span class="chat-foot" hidden aria-hidden="true"></span>' in value[key]

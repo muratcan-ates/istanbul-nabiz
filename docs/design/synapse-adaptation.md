@@ -132,3 +132,79 @@ agency-card override allows its official link to wrap at enlarged text sizes wit
 
 The return link reuses the existing Asistan/Assistant navigation label and shared translation key;
 this follows the user’s one-intent/one-label rule and avoids a second name for the same destination.
+
+
+## P26 follow-up: concise conversation and an hourly calendar
+
+The user accepted base `7bcbcf8` and explicitly extended ownership to `calendar_view.js`
+and its test. The existing P26 file boundaries still apply. The later user requests take
+precedence over the brief's initially open source list and automatic follow suggestions.
+The requested GPT taste skill contributes readable type, clear hierarchy and purposeful
+feedback. Its randomized fonts, AIDA landing layout, oversized spacing and GSAP instructions
+conflict with the explicit compact civic interface and are not applied. No dependency,
+font, colour family or stylesheet is added.
+
+Normal answers expose the answer first, with one native Details disclosure for sources,
+provenance, completed tool messages, reading tools and feedback. Exact quotes and safety
+warnings remain intact. Only recognised place-result coordinate suffixes and the exact
+provider footer are moved into Details; the complete original text remains available there.
+Arbitrary numbers, unknown answers, emergency/refusal content and citation-mapped text are
+not rewritten. This presentation change does not make a place list into a valid journey
+answer, and does not change the server's model or prompt policy.
+
+Contextual controls appear only for actual available actions. Step by step fills a question
+draft and never submits it; Follow this topic additionally requires a real server offer.
+Add to calendar opens an existing card's consent control only when one exists. The current
+base has no complete event-card save producer/handler, so this work does not claim that
+chat creates plans. Existing automatically submitted legacy suggestions remain an owner
+handoff. Clear button names are retained where an icon alone would be ambiguous.
+
+A memory proposal becomes a small native disclosure. Its original form nodes, listeners,
+checkboxes and consent choices are moved together, preserving focus and approval state.
+Opening it does not save anything; a health proposal's separate-consent notice remains
+visible. The chat composer stays at the bottom, aligned to the transcript's measured width;
+its measured height reserves reading and keyboard-focus space. Earlier messages remain
+scrollable. Entry feedback remains one-shot, citizen-scoped and fully still under reduced
+motion or simple mode.
+
+The calendar shows an Istanbul day with 24 hourly rows, date navigation, all-day events
+and parallel columns for overlapping saved events. It reads the account's existing plans
+with the established identity header and never creates, updates or deletes plans. Signed
+out, empty, invalid and unavailable states are distinct. Account changes, including another
+browser tab, immediately discard cached events and obsolete responses. Brief events keep
+their true start position; events spanning midnight display the actual dates and times.
+
+Verification covers 207 targeted checks, a real offline local app at 375 and 1280 pixels,
+and an explicitly labelled synthetic calendar fixture for overlap and midnight cases.
+The real memory form was opened without selecting or saving a preference. At 375 pixels,
+150% type and high contrast, the page has no horizontal overflow and a focused Copy button
+remains above the composer. Real VoiceOver, operating-system media changes and mobile
+keyboard behaviour have not been verified. The PWA cache gate remains open for owner
+integration of the new modules; translation catalog additions are also handed off.
+No new distinctive Synapse source lines were copied. Existing attribution headers remain.
+
+## 29 September 2026: citizen route and evidence correction
+
+The later direct citizen request supersedes the earlier open-source and closed-source
+presentation paragraphs above. A citizen answer now shows its useful answer, exact quote
+when applicable, and safety or uncertainty warning. The visible answer does not render
+citation cards, coordinates, provider footer, author label, raw text, or technical trace.
+The payload is not mutated. The existing operator decision ledger remains separate; it
+is not a new archive of chat answer citations. An empty hidden completion marker keeps
+the existing feedback control functional, with feedback and reading utilities inside
+native Details. Copy takes the presented answer only.
+
+Recognised place results lose latitude and longitude. If a route question yields only
+place matches, the interface says that directions could not be verified instead of
+presenting those places as a journey. Saved plain-text turns have no preserved citation
+metadata, so only the exact signed place-list pattern is cleaned on restoration; other
+numeric lists remain untouched. The existing step-by-step route offer opens its actual
+origin and destination control. The Map link is a primary section directly after Calendar,
+with one current-page state and the same existing map workspace.
+
+The four first-screen examples now ask about the fastest route, metro travel, bus-only
+travel and free weekend activities. They submit the visible question in Turkish and
+English. A presentation adapter in workspace_nav.js supplies these until the owner of
+home.js and i18n catalogs integrates them at their source; no new navigation surface or
+map-tile dependency was introduced. This does not add real-time journey planning or a
+verified bus itinerary. Missing route data is stated plainly.

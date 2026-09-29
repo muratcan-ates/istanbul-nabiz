@@ -126,9 +126,9 @@
   .citizen-page main [id] { scroll-margin-top: 148px; }
   .citizen-page .topbar-inner { gap: 8px 14px; padding-inline: 20px; }
   .citizen-page .topbar-nav { width: 100%; flex-direction: column; flex-wrap: wrap; gap: 2px; padding-bottom: 6px; }
-  .citizen-page .nav-primary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .citizen-page .nav-primary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 5rem), 1fr)); width: 100%; }
   .citizen-page .nav-primary li { min-width: 0; }
-  .citizen-page .nav-primary a { justify-content: center; width: 100%; min-height: 44px; white-space: nowrap; }
+  .citizen-page .nav-primary a { justify-content: center; width: 100%; min-height: 44px; padding-inline: var(--space-1); white-space: normal; }
   .citizen-page .nav-secondary ul { flex-wrap: wrap; }
   .citizen-page .nav-secondary a { min-height: 44px; }
   .citizen-page .topbar-nav .icon { display: none; }
