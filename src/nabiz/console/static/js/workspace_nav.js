@@ -9,7 +9,7 @@ import { markEntry, mountTranscript } from './transcript.js';
 export const LEGACY_PLACEMENT = [
   { id: 'city', href: '#city-cards', i18n: 'design.nav_city', placement: 'more' },
   { id: 'travel', href: '#city-tools', i18n: 'design.nav_tools', placement: 'more' },
-  { id: 'map', href: '#map-workspace', i18n: 'design.nav_map', placement: 'more' },
+  { id: 'map', href: '#map-workspace', i18n: 'design.nav_map', placement: 'nav' },
   { id: 'nearby', href: '#explore-workspace', i18n: 'design.nav_nearby', placement: 'more' },
   { id: 'data', href: '#acik-veri', i18n: 'design.nav_data', placement: 'operator' },
   { id: 'follow', href: '#takip', i18n: 'ui.shell.nav_follow', placement: 'account' },
@@ -28,8 +28,9 @@ export function applyLegacyPlacement() {
   const moreLinks = document.getElementById('legacy-more-links');
   if (!nav || !more || !moreLinks) return;
   const topbar = document.getElementById('legacy-topbar');
+  const primary = document.querySelector('.nav-primary');
   const links = [...nav.querySelectorAll('a'), ...moreLinks.querySelectorAll('a'),
-    ...(topbar ? topbar.querySelectorAll('a') : [])];
+    ...(topbar ? topbar.querySelectorAll('a') : []), ...(primary ? primary.querySelectorAll('a') : [])];
   for (const item of LEGACY_PLACEMENT) {
     const link = links.find((node) => node.getAttribute('data-legacy') === item.id);
     if (!link) continue;
@@ -44,6 +45,23 @@ export function applyLegacyPlacement() {
       row.removeAttribute('data-moved-to');
       link.removeAttribute('data-moved-to');
     }
+    if (item.id === 'map' && item.placement === 'nav' && primary) {
+      link.setAttribute('data-primary', 'map');
+      let label = link.querySelector('span');
+      if (!label) {
+        const icon = link.querySelector('svg');
+        link.textContent = '';
+        if (icon) link.append(icon);
+        label = document.createElement('span'); link.append(label);
+      }
+      link.removeAttribute('data-i18n'); label.setAttribute('data-i18n', item.i18n);
+      const calendar = [...primary.querySelectorAll('a')].find((node) => node.getAttribute('data-primary') === 'calendar')?.parentElement;
+      if (calendar) {
+        const rows = [...primary.children];
+        if (rows[rows.indexOf(calendar) + 1] !== row) calendar.after(row);
+      } else if (row.parentElement !== primary) primary.append(row);
+      continue;
+    }
     const home = item.placement === 'more' ? moreLinks : item.placement === 'topbar' && topbar ? topbar : nav;
     home.append(row);
   }
@@ -57,6 +75,7 @@ function labelPrimaryNavigation(language) {
   const labels = {
     assistant: ['ui.shell.nav_assistant', 'Asistan', 'Assistant'],
     calendar: ['ui.shell.nav_calendar', 'Takvim', 'Calendar'],
+    map: ['design.nav_map', 'Harita', 'Map'],
     account: ['ui.shell.nav_account', 'Hesabım', 'My account'],
   };
   for (const link of document.querySelectorAll('.nav-primary a')) {
@@ -91,6 +110,38 @@ function targetForId(id) {
   return document.getElementById(targetId || '');
 }
 
+const everydayForms = new WeakSet();
+export function mountEverydayExamples(form, input) {
+  if (!document.body.classList.contains('citizen-page') || everydayForms.has(form)) return;
+  everydayForms.add(form);
+  const list = document.getElementById('capability-examples');
+  const examples = [
+    ['map', 'Kadıköy’den Levent’e en hızlı nasıl giderim?', 'What is the fastest way from Kadıköy to Levent?'],
+    ['train', 'Taksim’e metroyla nasıl giderim?', 'How can I get to Taksim by metro?'],
+    ['bus', 'Beşiktaş’a sadece otobüsle nasıl giderim?', 'How can I get to Beşiktaş using only buses?'],
+    ['external-link', 'Bu hafta sonu ücretsiz ne yapabilirim?', 'What can I do for free this weekend?'],
+  ];
+  const render = (language) => {
+    const en = language === 'en';
+    input.setAttribute('placeholder', en ? 'Ask something about Istanbul…' : 'İstanbul hakkında bir şey sorun…');
+    const subtitle = document.getElementById('home-sub');
+    if (subtitle) subtitle.textContent = en ? 'Ask about transport, events and city services.'
+      : 'Ulaşım, etkinlikler ve şehir hizmetleri için sorun.';
+    list?.querySelectorAll('button').forEach((button, index) => {
+      const item = examples[index]; if (!item) return;
+      button.dataset.example = `everyday_${index + 1}`; button.dataset.question = item[en ? 2 : 1];
+      const label = button.querySelector('span'); if (label) label.textContent = button.dataset.question;
+      button.querySelector('use')?.setAttribute('href', `/icons.svg#i-${item[0]}`);
+    });
+  };
+  render(document.documentElement.lang); onLang(render);
+  list?.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button?.dataset.question || !list.contains(button)) return;
+    input.value = button.dataset.question; form.requestSubmit();
+  });
+}
+
 function openDetails(target) {
   for (let node = target?.closest('details'); node; node = node.parentElement?.closest('details')) node.open = true;
 }
@@ -120,16 +171,26 @@ export function mountWorkspace({ form, input }) {
   if (!main || !hero || !chat || !log) return;
   const doc = document;
   mountTranscript(log, doc);
+  // The Takvim tab's hour grid mounts itself (calendar_view.js, loaded by index.html) and refreshes when shown.
+  const alignComposer = () => {
+    const rect = log.getBoundingClientRect?.();
+    if (!rect || rect.width <= 0) return;
+    form.style.setProperty('--composer-left', `${rect.left}px`);
+    form.style.setProperty('--composer-width', `${rect.width}px`);
+  };
   import('./context_chips.js').then((m) => m.mountContextChips(form, doc)).catch(() => {});
   if (typeof ResizeObserver !== 'undefined') {
     new ResizeObserver(([entry]) => {
       const height = entry.borderBoxSize?.[0]?.blockSize || form.getBoundingClientRect().height;
       if (height > 0) doc.documentElement.style.setProperty('--chat-composer-height', `${Math.ceil(height)}px`);
     }).observe(form);
+    new ResizeObserver(alignComposer).observe(log);
+    window.addEventListener('resize', alignComposer, { passive: true });
   }
   applyLegacyPlacement();
   labelPrimaryNavigation(document.documentElement.lang);
   onLang(labelPrimaryNavigation);
+  mountEverydayExamples(form, input);
   const placeholder = document.createComment('composer home');
   form.before(placeholder);
   const submit = document.getElementById('chat-submit');
@@ -160,12 +221,13 @@ export function mountWorkspace({ form, input }) {
     const footer = document.querySelector('footer');
     if (footer) footer.hidden = name !== 'about';
     const links = [...document.querySelectorAll('.topbar-nav a')];
-    const primaryView = ['city', 'travel', 'map', 'nearby'].includes(name) ? 'assistant' : name;
+    const primaryView = ['city', 'travel', 'nearby'].includes(name) ? 'assistant' : name;
     const current = links.find((link) => link.getAttribute('data-primary') === primaryView);
     links.forEach((link) => {
       if (link === current) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     });
+    if (name === 'assistant') alignComposer();
   };
   const reveal = (id) => {
     const target = targetForId(id);
@@ -180,8 +242,8 @@ export function mountWorkspace({ form, input }) {
       try {
         const id = decodeURIComponent(link.getAttribute('href').slice(1));
         reveal(id);
-        if (link.closest('.nav-primary') && ['takvim', 'hesabim'].includes(id)) {
-          const title = doc.getElementById(id === 'takvim' ? 'takvim-title' : 'you-title');
+        if (link.closest('.nav-primary') && ['takvim', 'map-workspace', 'hesabim'].includes(id)) {
+          const title = doc.getElementById(id === 'takvim' ? 'takvim-title' : id === 'hesabim' ? 'you-title' : id);
           title?.setAttribute('tabindex', '-1');
           title?.focus({ preventScroll: true });
         }
@@ -213,6 +275,7 @@ export function mountWorkspace({ form, input }) {
     if (active && form.parentElement !== chat) chat.append(form);
     if (!active && form.parentElement !== hero) placeholder.after(form);
     if (changed && active) show('assistant');
+    alignComposer();
     // Reparenting drops native focus; restore only the field that lost it during this move.
     if (focused?.isConnected && !focused.matches(':disabled, [aria-disabled="true"]')
       && !focused.closest('[hidden], [inert]')

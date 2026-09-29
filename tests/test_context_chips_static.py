@@ -16,11 +16,13 @@ CATALOG = {
         "ui.chips.group": "Öneriler", "ui.chips.open_route": "Rotayı aç",
         "ui.chips.add_calendar": "Takvime ekle", "ui.chips.follow_topic": "Bu konuyu takip et",
         "ui.chips.follow_draft": "Bunu takip et: {question}",
+        "ui.chips.next_step": "Adım adım", "ui.chips.next_step_draft": "Bu konuda ilk ne yapmalıyım?",
     },
     "en": {
         "ui.chips.group": "Suggestions", "ui.chips.open_route": "Open route",
         "ui.chips.add_calendar": "Add to calendar", "ui.chips.follow_topic": "Follow this topic",
         "ui.chips.follow_draft": "Follow this: {question}",
+        "ui.chips.next_step": "Step by step", "ui.chips.next_step_draft": "What should I do first about this?",
     },
 }
 
@@ -115,7 +117,7 @@ console.log(JSON.stringify({empty, noAction, selected: selected.map(chip => chip
   original, emergency, refused, unavailable}));
 """)
     assert result == {
-        "empty": [], "noAction": [], "selected": ["open_route", "add_calendar", "follow_topic"],
+        "empty": [], "noAction": [], "selected": ["open_route", "add_calendar", "next_step"],
         "original": True, "emergency": [], "refused": [], "unavailable": [],
     }
 
@@ -145,7 +147,7 @@ def test_follow_draft_mount_order_and_lifecycle(tmp_path) -> None:
 let submits = 0, inputs = 0;
 form.addEventListener('submit', () => submits++); input.addEventListener('input', () => inputs++);
 const once = chips.mountContextChips(form, document) === mounted;
-final(); getChip('follow_topic').click();
+final({citations: [{}], follow_suggestion: {topic: 'M2'}}); getChip('follow_topic').click();
 const draft = {text: input.value, submits, inputs, hidden: mounted.hidden, focus: document.activeElement === input};
 input.value = ''; final(); input.value = 'Başka soru'; input.dispatchEvent(new Event('input')); tick();
 const typedHidden = mounted.hidden;
@@ -166,7 +168,7 @@ console.log(JSON.stringify({once, order: form.children[0] === mounted, group: mo
     }
 
 
-def test_late_controls_and_step_offer_focus_without_click(tmp_path) -> None:
+def test_late_controls_open_the_existing_step_offer(tmp_path) -> None:
     result = run_chips(tmp_path, r"""
 final({}); const before = ids();
 const save = card('calendar_draft', 'save_calendar'); tick(); const calendar = ids();
@@ -180,14 +182,14 @@ console.log(JSON.stringify({before, calendar, step, pending, replaced: mounted.h
 """)
     assert result == {
         "before": [], "calendar": ["add_calendar"],
-        "step": {"ids": ["open_route", "add_calendar"], "focus": True, "opened": 0, "scroll": "instant"},
+        "step": {"ids": ["open_route", "add_calendar"], "focus": False, "opened": 1, "scroll": "instant"},
         "pending": ["open_route"], "replaced": True,
     }
 
 
 def test_english_fallback_and_emergency_event(tmp_path) -> None:
     result = run_chips(tmp_path, r"""
-setCatalogs('en', {}, {}); final();
+setCatalogs('en', {}, {}); final({citations: [{}], follow_suggestion: {topic: 'M2'}});
 const label = getChip('follow_topic').textContent; getChip('follow_topic').click();
 const draft = input.value; input.value = ''; final();
 document.dispatchEvent(new CustomEvent('nabiz:emergency', {detail: {}}));
@@ -205,8 +207,25 @@ route.hidden = true; tick(); const hiddenCard = ids();
 console.log(JSON.stringify({away, returned, hiddenCard}));
 """)
     assert result == {
-        "away": ["open_route", "follow_topic"], "returned": ["open_route", "follow_topic"],
-        "hiddenCard": ["follow_topic"],
+        "away": ["open_route", "next_step"], "returned": ["open_route", "next_step"],
+        "hiddenCard": ["next_step"],
+    }
+
+
+def test_step_help_is_a_question_draft_and_follow_requires_an_actual_offer(tmp_path) -> None:
+    result = run_chips(tmp_path, r"""
+let submits = 0;
+form.addEventListener('submit', () => submits++);
+final(); const initial = ids(); getChip('next_step').click();
+const draft = {text: input.value, submits, focus: document.activeElement === input};
+input.value = ''; final({citations: [{}], follow_suggestion: {topic: 'M2'}}); const offered = ids();
+input.value = ''; final({mode: 'unknown', answer_text: 'Bilmiyorum.'}); const unavailable = ids();
+console.log(JSON.stringify({initial, draft, offered, unavailable}));
+""")
+    assert result == {
+        "initial": ["next_step"],
+        "draft": {"text": "Bu konuda ilk ne yapmalıyım?", "submits": 0, "focus": True},
+        "offered": ["next_step", "follow_topic"], "unavailable": [],
     }
 
 

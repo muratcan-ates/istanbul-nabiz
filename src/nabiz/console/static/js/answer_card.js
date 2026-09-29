@@ -83,7 +83,85 @@ function sentenceMarkup(answer, map, citations, answerId, lang) {
   return rows.join('');
 }
 
-function renderAnswerCard(data, { turnId = '', now = Date.now(), lang = currentLang() } = {}) {
+// Only recognised presentation metadata moves; the full answer stays available in Details.
+function answerPresentation(answer, payload, citations, { preserveMap = true } = {}) {
+  const original = { text: answer, raw: '' };
+  if (typeof answer !== 'string' || preserveMap && payload.how?.citation_map) return original;
+  const tools = Array.isArray(payload.how?.tools) ? payload.how.tools : [payload.how];
+  const places = citations.some((item) => item.source === 'gazetteer')
+    || tools.some((tool) => (tool?.name || tool?.tool) === 'places_resolve');
+  const lines = answer.split('\n').map((line) => {
+    if (!places) return line;
+    const point = line.match(/^(\s*•\s+.+?)(?:\s+\u2014\s+|,\s+)([+-]?\d{1,3}[.,]\d{3,8}),\s+([+-]?\d{1,3}[.,]\d{3,8})\s*$/);
+    if (!point || Math.abs(Number(point[2].replace(',', '.'))) > 90
+      || Math.abs(Number(point[3].replace(',', '.'))) > 180) return line;
+    return point[1];
+  });
+  let end = lines.length;
+  while (end && !lines[end - 1].trim()) end--;
+  if (lines[end - 1] === 'Kaynak: İBB Açık Veri (CC BY 4.0) · resmî bir servis değildir.') {
+    lines.splice(end - 1, 1); end--;
+    if (/^Veri: kayıtlı · (?:0[1-9]|[12]\d|3[01])\.(?:0[1-9]|1[0-2]) (?:[01]\d|2[0-3]):[0-5]\d\.$/.test(lines[end - 1] || '')) {
+      lines.splice(end - 1, 1);
+    }
+  }
+  const text = lines.join('\n');
+  return text.trim() && text !== answer ? { text, raw: answer } : original;
+}
+
+function renderCitizenAnswerCard(data, { now = Date.now(), lang = currentLang() } = {}) {
+  const payload = data && typeof data === 'object' ? data : {};
+  const mode = payload.mode || (payload.refused ? 'refused' : 'answer');
+  if (payload.emergency === true || !['answer', 'quote_only', 'refused', 'unknown'].includes(mode)) return '';
+  const citations = Array.isArray(payload.citations) ? payload.citations.filter(Boolean) : [];
+  const quotes = citations.filter((item) => typeof item.quote === 'string' && item.quote.trim());
+  const steps = mode === 'answer' && Array.isArray(payload.steps)
+    ? payload.steps.filter((step) => typeof step === 'string' && step.trim()) : [];
+  const map = payload.how?.citation_map;
+  const sentences = Array.isArray(map?.sentences)
+    ? map.sentences.filter((sentence) => typeof sentence?.text === 'string' && sentence.text.trim()) : [];
+  const answer = payload.answer_text ?? payload.answer ?? '';
+  const showAnswer = mode === 'answer' && (String(answer).trim() || sentences.length)
+    && (!quotes.length || payload.author !== 'kural');
+  const refused = mode === 'refused' || mode === 'quote_only' && !quotes.length;
+  const unknown = mode === 'unknown' || !refused && !showAnswer && !quotes.length && !steps.length;
+  const label = (key, tr, en) => {
+    const fallback = lang === 'en' ? en : tr;
+    return lang === currentLang() ? t(key, fallback) : fallback;
+  };
+  const clean = (text) => answerPresentation(text, payload, citations, { preserveMap: false }).text;
+  let primary = '';
+  if (refused || unknown) {
+    const text = refused ? REFUSAL_TEXT : lang === 'en' ? 'I could not verify this information.' : 'Bu bilgiyi doğrulayamadım.';
+    primary = `<p class="ac-fixed" data-er-skip>${esc(text)}</p>`;
+  } else if (showAnswer) {
+    primary = sentences.length ? sentences.map((sentence) => `<p data-er-target>${esc(clean(sentence.text))}`
+      + (sentence.status === 'no_source' ? ` <span class="ac-no-source">${esc(map.labels?.no_source || citationText('no_source', lang))}</span>` : '')
+      + '</p>').join('') : `<p data-er-target>${esc(clean(answer))}</p>`;
+  } else if (quotes.length) {
+    primary = quotes.map((item) => `<blockquote class="quote-text quote-exact" data-er-skip>${esc(item.quote)}</blockquote>`).join('');
+  }
+  if (!refused && !unknown && steps.length) {
+    primary += `<ol class="ac-steps-list">${steps.map((step) => `<li data-er-target>${esc(step)}</li>`).join('')}</ol>`;
+  }
+  let warnings = '';
+  if (!refused && !unknown && citations.some((item) => isStale(item, now))) {
+    warnings += `<p class="ac-stale">${esc(citationText('stale', lang))}</p>`;
+  }
+  if (!refused && !unknown && Array.isArray(map?.conflicts) && map.conflicts.length) {
+    warnings += `<p class="ac-conflict ac-stale">${esc(map.labels?.conflict || citationText('conflict', lang))}</p>`;
+  }
+  // An empty hidden completion marker preserves the existing feedback attachment contract.
+  const call = refused || unknown ? `<a class="btn btn-quiet ac-call153" href="tel:153">${lang === 'en' ? 'Ask 153' : "153'e sor"}</a>` : '';
+  return `<section class="answer-card${refused || unknown ? ' is-unknown' : ''}" data-citizen-answer="true" data-card="${refused ? 'refused' : unknown ? 'unknown' : mode === 'quote_only' ? 'quote' : 'answer'}">`
+    + `<section class="answer-short ac-short">${primary}</section>${warnings}`
+    + `<div class="btn-row ac-actions">${call}<button type="button" class="btn btn-quiet ac-copy" data-citizen-copy>${esc(label('dyn.copy', 'Kopyala', 'Copy'))}</button></div>`
+    + `<details class="ac-details"><summary>${esc(label('ui.shell.more', 'Daha fazla', 'More'))}</summary><div class="ac-details-content"></div></details><span class="chat-foot" hidden aria-hidden="true"></span></section>`;
+}
+
+function renderAnswerCard(data, { turnId = '', now = Date.now(), lang = currentLang(), surface } = {}) {
+  if (surface === 'citizen' || surface === undefined && typeof document !== 'undefined'
+    && document.body?.classList?.contains('citizen-page')) return renderCitizenAnswerCard(data, { now, lang });
   const payload = data && typeof data === 'object' ? data : {};
   const mode = payload.mode || (payload.refused ? 'refused' : 'answer');
   if (payload.emergency === true) return '';
@@ -102,6 +180,7 @@ function renderAnswerCard(data, { turnId = '', now = Date.now(), lang = currentL
   const hasAnswer = String(answer).trim() || (Array.isArray(map?.sentences)
     && map.sentences.some((sentence) => typeof sentence?.text === 'string' && sentence.text.trim()));
   const showShort = mode === 'answer' && hasAnswer && (quoted.length === 0 || payload.author !== 'kural');
+  const presentation = showShort ? answerPresentation(answer, payload, citations) : { text: answer, raw: '' };
   const steps = mode === 'answer' && Array.isArray(payload.steps) ? payload.steps : [];
   if (!showShort && !quoted.length && !steps.length) return fixedCard('unknown', payload.how, turnId);
   const cardType = mode === 'quote_only' ? 'quote' : 'answer';
@@ -113,7 +192,7 @@ function renderAnswerCard(data, { turnId = '', now = Date.now(), lang = currentL
   const stepList = steps.length ? '<section class="ac-steps"><h3 class="eyebrow">Nasıl yapılır</h3>'
     + `<ol class="ac-steps-list">${steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol></section>` : '';
   if (showShort) html += '<section class="answer-short ac-short"><h3 class="eyebrow">Kısa cevap</h3>'
-    + `${sentenceMarkup(answer, map, citations, answerId, lang)}</section>`;
+    + `${sentenceMarkup(presentation.text, map, citations, answerId, lang)}</section>`;
   else html += `<div class="ac-primary-answer">${quotes || stepList}</div>`;
   if (citations.some((item) => isStale(item, now))) html += `<p class="ac-stale">${esc(citationText('stale', lang))}</p>`;
   if (!showShort && Array.isArray(map?.conflicts) && map.conflicts.length) {
@@ -122,6 +201,7 @@ function renderAnswerCard(data, { turnId = '', now = Date.now(), lang = currentL
   const fallback = lang === 'en' ? 'Details' : 'Ayrıntılar';
   const label = lang === currentLang() ? t('ui.answer.details', fallback) : fallback;
   html += `<details class="ac-details"><summary>${esc(label)}</summary><div class="ac-details-content">`;
+  if (presentation.raw) html += `<p class="ac-technical" data-er-skip>${esc(presentation.raw)}</p>`;
   if (showShort) html += quotes;
   if (showShort || quoted.length) html += stepList;
   html += '<section class="ac-sources"><h3 class="eyebrow">Kaynak</h3>';
@@ -156,6 +236,6 @@ function ensureStyle() {
 if (typeof document !== 'undefined') ensureStyle();
 
 export {
-  renderAnswerCard, sourceLine, kindTag, isStale, institutionLabel, dayDate,
+  renderAnswerCard, renderCitizenAnswerCard, sourceLine, kindTag, isStale, institutionLabel, dayDate,
   REFUSAL_TEXT, UNKNOWN_TEXT, STALE_DAYS,
 };

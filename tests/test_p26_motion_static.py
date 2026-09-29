@@ -186,7 +186,7 @@ globalThis.ResizeObserver = class {
 workspace.mountWorkspace(s);
 console.log(JSON.stringify({observed, heights}));
 """)
-    assert values == {"observed": ["chat-form"],
+    assert values == {"observed": ["chat-form", "chat-log"],
                       "heights": [["--chat-composer-height", "210px"], ["--chat-composer-height", "327px"]]}
 
 
@@ -209,3 +209,336 @@ console.log(JSON.stringify({calendarFocus, accountFocus, label, count,
 """)
     assert values == {"calendarFocus": "takvim-title", "accountFocus": "you-title",
                       "label": "Assistant", "count": 1, "summaryFirst": True, "view": "assistant"}
+
+
+MEMORY_DISCLOSURE_DOM = r"""
+const s = setup(), changes = [], languageListeners = [];
+Node.prototype.before = function(node) {
+  node.remove(); const parent = this.parentElement, index = parent.children.indexOf(this);
+  parent.children.splice(index, 0, node); node.parentElement = parent;
+};
+s.doc.defaultView.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init.detail; } };
+globalThis.MutationObserver = class { constructor(callback) { changes.push(callback); } observe() {} };
+window.addEventListener = (name, callback) => { if (name === 'nabiz:lang') languageListeners.push(callback); };
+const log = s.doc.createElement('ol'); s.doc.append(log);
+const sync = () => changes.forEach(callback => callback());
+const payload = (id = 'memory-1') => ({id, message_id:'m1', conversation_id:'c1', type:'memory',
+  status:'awaiting_confirmation', title:'Hatırlayayım mı?', sensitive:false,
+  body:{items:[{kind:'interest',key:'museum',label:'Müzeler'}]},
+  actions:[{id:'remember_here'},{id:'remember_always'},{id:'change'}]});
+const wrapOuter = root => { const outer = s.doc.createElement('article'); outer.className = 'chat-card';
+  outer.dataset.cardType = 'memory'; const heading = s.doc.createElement('h4'); heading.textContent = 'Hatırlayayım mı?';
+  const state = s.doc.createElement('span'); state.className = 'chat-card-status'; state.textContent = 'Onayınızı bekliyor';
+  outer.append(heading, state, root); log.append(outer); return outer; };
+"""
+
+
+def test_memory_disclosure_preserves_real_controls_and_requires_explicit_remember(tmp_path):
+    from test_memory_ui_static import run_ui
+
+    values = run_ui(tmp_path, {"transcript": "js/transcript.js", "card": "js/memory_card.js"}, MEMORY_DISCLOSURE_DOM + r"""
+let writes = 0; const emitted = [], savedScopes = [];
+const store = {isForgotten:()=>false, list:async()=>[], add:async value=>{writes++;savedScopes.push(value.scope);return value;}};
+const session = {activeId:()=> 'c1', activeRecord:()=>({turns:[{cards:[payload()]}]}),
+  addCard:async()=>{}, refreshActive:async()=>{}};
+await card.mountMemorySuggestions({store,session,registry:{registerCardType(){}},doc:s.doc}).ready;
+s.doc.addEventListener('nabiz:card-action', event=>emitted.push(event.detail));
+const root = card.renderMemoryCard(payload(), {document:s.doc}), outer = wrapOuter(root);
+const check = root.querySelector('input[type="checkbox"]'), scope = root.querySelector('input[value="profile"]');
+const remember = root.querySelector('button[data-cardAction]');
+transcript.mountTranscript(log,s.doc); transcript.mountTranscript(log,s.doc); sync(); sync();
+const details = log.querySelector('details.memory-disclosure'), summary = details.querySelector('summary');
+const closedInitially = !details.open, uncheckedInitially = !check.checked;
+const originalNodes = details.children[1]===outer && details.querySelector('.memory-card')===root;
+click(summary); details.open=true; click(summary); details.open=false;
+const afterToggles = writes;
+details.open=true; check.checked=true; change(check);
+root.querySelector('input[value="conversation"]').checked=false; scope.checked=true; change(scope);
+const afterChoose = writes;
+click(summary); details.open=false; click(summary); details.open=true;
+const selectionsPreserved = root.querySelector('input[type="checkbox"]')===check && check.checked && scope.checked;
+click(remember); await settle(); sync();
+console.log(JSON.stringify({closedInitially,uncheckedInitially,originalNodes,afterToggles,afterChoose,selectionsPreserved,
+  writes,savedScopes,wrappers:log.querySelectorAll('details.memory-disclosure').length,observerCount:changes.length,
+  summary:summary.textContent,stillOpen:details.open,controlsLeft:root.querySelectorAll('button').length,
+  actions:emitted.map(value=>[value.action,value.requires_consent,Boolean(value.consented_at)])}));
+""")
+    assert values == {
+        "closedInitially": True, "uncheckedInitially": True, "originalNodes": True,
+        "afterToggles": 0, "afterChoose": 0, "selectionsPreserved": True,
+        "writes": 1, "savedScopes": ["profile"], "wrappers": 1, "observerCount": 1,
+        "summary": "Seçtiğiniz bilgiler Hafızam bölümüne eklendi.", "stillOpen": True, "controlsLeft": 0,
+        "actions": [["remember_always", True, True]],
+    }
+
+
+def test_memory_disclosure_handles_async_replacement_restoration_and_language(tmp_path):
+    from test_memory_ui_static import run_ui
+
+    values = run_ui(tmp_path, {"transcript": "js/transcript.js", "card": "js/memory_card.js"}, MEMORY_DISCLOSURE_DOM + r"""
+transcript.mountTranscript(log,s.doc);
+const legacy = s.doc.createElement('div'); legacy.className='chat-suggest'; log.append(legacy); sync();
+const legacyUntouched = legacy.parentElement===log;
+const root = card.renderMemoryCard(payload(),{document:s.doc}); legacy.replaceWith(root); sync();
+const details=root.closest('details.memory-disclosure'); details.open=true;
+const replacement=card.renderMemoryCard(payload(),{document:s.doc}); root.replaceWith(replacement); sync(); sync();
+const replacementPreserved=details.open && replacement.closest('details.memory-disclosure')===details;
+s.doc.documentElement.lang='en'; languageListeners.forEach(callback=>callback({detail:{lang:'en'}}));
+const english=details.querySelector('summary').textContent;
+const restored=card.renderMemoryCard(payload('restored'),{document:s.doc,restored:true}); log.append(restored); sync();
+const restoredSummary=restored.closest('details.memory-disclosure').querySelector('summary').textContent;
+const active=card.renderMemoryCard(payload('focused'),{document:s.doc}); log.append(active);
+const check=active.querySelector('input[type="checkbox"]'); check.focus(); sync();
+console.log(JSON.stringify({legacyUntouched,replacementPreserved,english,restoredSummary,
+  restoredButtons:restored.querySelectorAll('button').length,focusedOpen:active.closest('details.memory-disclosure').open,
+  sameFocus:s.doc.activeElement===check,wrappers:log.querySelectorAll('details.memory-disclosure').length,
+  nested:log.querySelectorAll('details.memory-disclosure').some(node=>node.parentElement.closest('details.memory-disclosure'))}));
+""")
+    assert values == {
+        "legacyUntouched": True, "replacementPreserved": True, "english": "Should I remember this?",
+        "restoredSummary": "Bu öneri artık geçerli değil.", "restoredButtons": 0,
+        "focusedOpen": True, "sameFocus": True, "wrappers": 3, "nested": False,
+    }
+
+
+def test_memory_failure_retry_dismiss_and_health_keep_original_state_and_actions(tmp_path):
+    from test_memory_ui_static import run_ui
+
+    values = run_ui(tmp_path, {"transcript": "js/transcript.js", "card": "js/memory_card.js"}, MEMORY_DISCLOSURE_DOM + r"""
+let fail=true,writes=0; const healthEvents=[];
+const store={isForgotten:()=>false,list:async()=>[],add:async value=>{if(fail)throw Error('failed');writes++;return value;}};
+const session={activeId:()=> 'c1',activeRecord:()=>({turns:[{cards:[payload()]}]}),addCard:async()=>{},refreshActive:async()=>{}};
+await card.mountMemorySuggestions({store,session,registry:{registerCardType(){}},doc:s.doc}).ready;
+s.doc.addEventListener('nabiz:memory-health-form', event=>healthEvents.push(event.detail.card_id));
+const root=card.renderMemoryCard(payload(),{document:s.doc}); log.append(root); transcript.mountTranscript(log,s.doc);
+const details=root.closest('details.memory-disclosure'); details.open=true;
+const check=root.querySelector('input[type="checkbox"]');check.checked=true;change(check);
+const remember=root.querySelector('button[data-cardAction]');click(remember);await settle();sync();
+const failed={label:details.querySelector('summary').textContent,open:details.open,writeCount:writes,
+  sameForm:root.querySelector('input[type="checkbox"]')===check && check.checked};
+fail=false;click(remember);await settle();sync();
+const retrySummary=details.querySelector('summary').textContent;
+const dismissed=card.renderMemoryCard(payload('dismissed'),{document:s.doc});log.append(dismissed);sync();
+click(dismissed.querySelector('button[data-memoryDismiss]'));sync();
+const dismissedSummary=dismissed.closest('details.memory-disclosure').querySelector('summary').textContent;
+const health=card.renderMemoryCard({...payload('health'),sensitive:true,body:{kind:'health'},actions:[{id:'change'}]},
+  {document:s.doc});wrapOuter(health);sync();
+const healthDetails=health.closest('details.memory-disclosure');
+const healthClosed=!healthDetails.open,healthSummary=healthDetails.querySelector('summary').textContent;
+healthDetails.open=true;click(health.querySelector('button'));await settle();sync();
+console.log(JSON.stringify({failed,retrySummary,dismissedSummary,writes,healthClosed,healthSummary,
+  healthChecks:health.querySelectorAll('input').length,healthButtons:health.querySelectorAll('button').length,healthEvents}));
+""")
+    assert values == {
+        "failed": {"label": "Kaydedilemedi. Yeniden deneyin.", "open": True, "writeCount": 0, "sameForm": True},
+        "retrySummary": "Seçtiğiniz bilgiler Hafızam bölümüne eklendi.",
+        "dismissedSummary": "Bu öneri artık geçerli değil.", "writes": 1, "healthClosed": True,
+        "healthSummary": "Sağlık beyanı ekle Sağlık beyanı Hafızam bölümünde ayrı onayla eklenir.",
+        "healthChecks": 0, "healthButtons": 1, "healthEvents": ["health"],
+    }
+
+
+ANSWER_DETAILS_DOM = CHAT_DOM + r"""
+Object.defineProperties(Node.prototype, {
+  parentNode: {get() { return this.parentElement; }},
+  firstChild: {get() { return this.children[0] || null; }},
+  firstElementChild: {get() { return this.children[0] || null; }},
+  nextSibling: {get() { const rows=this.parentElement?.children || []; return rows[rows.indexOf(this)+1] || null; }},
+  content: {get() { return this; }},
+});
+Node.prototype.insertBefore = function(node, reference) {
+  if (!reference) return this.appendChild(node);
+  node.remove(); node.parentElement=this; this.children.splice(this.children.indexOf(reference),0,node); return node;
+};
+const originalAttribute=Node.prototype.getAttribute;
+Node.prototype.getAttribute=function(name) {
+  return originalAttribute.call(this,name) ?? (['type','name','value'].includes(name) ? this[name] ?? null : null);
+};
+const storageValues = new Map(), requests = [], mutations = [];
+window.localStorage = {getItem:key=>storageValues.get(key)||null,
+  setItem:(key,value)=>storageValues.set(key,String(value))};
+globalThis.fetch = async (url, options={}) => {
+  requests.push([String(url),options.method||'GET']);
+  if (String(url)==='/data/glossary_tr.json') return {ok:true,json:async()=>({terms:[]})};
+  throw Error('Unexpected request');
+};
+globalThis.MutationObserver = class {
+  constructor(callback) { this.callback=callback; mutations.push(this); }
+  observe(target, options) { this.target=target; this.options=options; }
+};
+const flush = () => mutations.forEach(observer=>observer.callback([]));
+const answerShell = (mode='answer', flags='') => {
+  const shell=add(log,'li','','chat-msg is-assistant '+flags); shell.setAttribute('aria-busy','false');
+  const final=add(shell,'div','','chat-final'), answer=add(final,'section','','answer-card');
+  answer.dataset.card=mode;
+  const text=add(answer,'p'); text.textContent='Cevap';
+  const details=add(answer,'details','','ac-details'); add(details,'summary').textContent='Ayrıntılar';
+  const content=add(details,'div','','ac-details-content');
+  return {shell,final,answer,details,content};
+};
+"""
+
+
+def test_answer_details_preserve_real_reading_and_feedback_controls():
+    values = run_node("real answer utilities", ANSWER_DETAILS_DOM, f"""
+const transcript=await import({json.dumps((STATIC / 'js/transcript.js').as_uri())});
+const answerModule=await import({json.dumps((STATIC / 'js/answer_card.js').as_uri())});
+const shell=add(log,'li','','chat-msg is-assistant'); shell.setAttribute('aria-busy','false');
+const done=add(shell,'p','','chat-tool is-done'); done.textContent='Sorgu bitti.';
+const running=add(shell,'p','','chat-tool is-running'); running.textContent='Soruluyor.';
+const final=add(shell,'div','','chat-final');
+final.innerHTML=answerModule.renderAnswerCard({{mode:'answer',answer_text:'Normal cevap.',author:'model'}},{{turnId:'p26'}});
+const cardModule=await import({json.dumps((STATIC / 'js/memory_card.js').as_uri())});
+const memory=cardModule.renderMemoryCard({{id:'memory',message_id:'m',type:'memory',title:'Hatırlayayım mı?',
+  body:{{key:'museum',label:'Müzeler',kind:'interest'}},status:'awaiting_confirmation',actions:[]}});
+const cards=add(final,'div','','chat-cards'); cards.append(memory);
+await import({json.dumps((STATIC / 'js/easy_read.js').as_uri())});
+await import({json.dumps((STATIC / 'js/feedback.js').as_uri())});
+const bar=final.querySelector('.er-bar'), toggle=bar.querySelector('.er-toggle');
+const feedback=final.querySelector('.feedback'), vote=feedback.querySelector('[data-vote="up"]');
+const slot=final.querySelector('.feedback-slot'), why=feedback.querySelector('.feedback-why');
+const details=final.querySelector('.ac-details'), content=final.querySelector('.ac-details-content');
+transcript.syncAnswerDetails(log,document); transcript.syncAnswerDetails(log,document);
+const originalNodes=[bar,feedback,slot,done].every(node=>node.parentElement===content);
+const initiallyClosed=!details.open, preservedHidden=why.hidden;
+details.open=true;
+toggle.dispatchEvent({{type:'click'}}); const enabled=toggle.getAttribute('aria-pressed');
+toggle.dispatchEvent({{type:'click'}});
+vote.dispatchEvent({{type:'click'}});
+await Promise.resolve(); await Promise.resolve();
+console.log(JSON.stringify({{originalNodes,initiallyClosed,preservedHidden,enabled,
+  disabledAgain:toggle.getAttribute('aria-pressed'),
+  vote:vote.getAttribute('aria-pressed'),feedbackNote:feedback.querySelector('.feedback-note').textContent,
+  counts:JSON.parse(storageValues.get('nabiz.feedback.v1')).up,
+  feedbackCopies:log.querySelectorAll('.feedback').length,barCopies:log.querySelectorAll('.er-bar').length,
+  memoryParent:memory.parentElement===cards,memoryUnchecked:!memory.querySelector('input[type="checkbox"]').checked,
+  runningOutside:running.parentElement===shell,requests}}));
+""")
+    assert values == {
+        "originalNodes": True, "initiallyClosed": True, "preservedHidden": True,
+        "enabled": "true", "disabledAgain": "false", "vote": "true", "feedbackNote": "Teşekkürler.",
+        "counts": 1, "feedbackCopies": 1, "barCopies": 1, "memoryParent": True,
+        "memoryUnchecked": True, "runningOutside": True, "requests": [["/data/glossary_tr.json", "GET"]],
+    }
+
+
+def test_answer_details_wait_for_completion_and_collect_late_nodes_once():
+    values = run_node("late answer utilities", ANSWER_DETAILS_DOM, f"""
+const transcript=await import({json.dumps((STATIC / 'js/transcript.js').as_uri())});
+const entry=answerShell(); entry.shell.setAttribute('aria-busy','true');
+const tool=add(entry.shell,'p','','chat-tool is-done'), bar=add(entry.final,'div','','er-bar');
+const button=add(bar,'button'); let clicks=0; button.addEventListener('click',()=>clicks++);
+transcript.mountTranscript(log,document); flush();
+const busyVisible=tool.parentElement===entry.shell && bar.parentElement===entry.final;
+entry.shell.setAttribute('aria-busy','false'); flush();
+const completedInside=tool.parentElement===entry.content && bar.parentElement===entry.content;
+const feedback=add(entry.final,'div','','feedback'); flush(); flush();
+entry.details.open=true; button.dispatchEvent({{type:'click'}}); flush();
+const count=entry.content.children.length; flush(); flush();
+const stable=entry.content.children.length===count && entry.details.open;
+const restored=answerShell(); const restoredBar=add(restored.final,'div','','er-bar'); flush();
+console.log(JSON.stringify({{busyVisible,completedInside,lateInside:feedback.parentElement===entry.content,
+  clicks,stable,restoredInside:restoredBar.parentElement===restored.content,restoredClosed:!restored.details.open,
+  observerCount:mutations.length,busyObserved:mutations[0].options.attributeFilter.includes('aria-busy')}}));
+""")
+    assert values == {"busyVisible": True, "completedInside": True, "lateInside": True,
+                      "clicks": 1, "stable": True, "restoredInside": True, "restoredClosed": True,
+                      "observerCount": 1, "busyObserved": True}
+
+
+def test_answer_details_exclude_other_modes_cards_and_keep_existing_focus():
+    values = run_node("answer utility boundaries", ANSWER_DETAILS_DOM, f"""
+const transcript=await import({json.dumps((STATIC / 'js/transcript.js').as_uri())});
+const excluded=[answerShell('unknown'),answerShell('refused'),answerShell('quote'),
+  answerShell('answer','is-emergency'),answerShell('answer','is-refused'),answerShell('answer','is-error')];
+const untouched=excluded.map(entry=>add(entry.final,'div','','er-bar'));
+const entry=answerShell(), bar=add(entry.final,'div','','er-bar'), button=add(bar,'button');
+const memory=add(entry.final,'article','','memory-card'), nested=add(memory,'div','','er-bar');
+const suggestion=add(entry.final,'div','','ac-next');
+button.focus();
+const originalRemove=Node.prototype.remove;
+Node.prototype.remove=function() {{ if (this.contains(document.activeElement)) document.activeElement=body;
+  originalRemove.call(this); }};
+transcript.syncAnswerDetails(log,document); transcript.syncAnswerDetails(log,document);
+console.log(JSON.stringify({{untouched:untouched.every((node,index)=>node.parentElement===excluded[index].final),
+  moved:bar.parentElement===entry.content,focus:document.activeElement===button,open:entry.details.open,
+  memoryUnchanged:memory.parentElement===entry.final && nested.parentElement===memory,
+  suggestionPreserved:suggestion.parentElement===entry.content,
+  detailsCount:entry.answer.querySelectorAll('details').length}}));
+""")
+    assert values == {"untouched": True, "moved": True, "focus": True, "open": True,
+                      "memoryUnchanged": True, "suggestionPreserved": True, "detailsCount": 1}
+
+
+def test_citizen_text_only_removes_recognised_place_output():
+    values = run_node("citizen text boundaries", CHAT_DOM, f"""
+const {{citizenText:clean}}=await import({json.dumps((STATIC / 'js/transcript.js').as_uri())});
+const point='• Beşiktaş İskele (Beşiktaş), 41,0422, 29,0053';
+const signed=point+'\\nVeri: kayıtlı · 29.09 19:48.\\nKaynak: İBB Açık Veri (CC BY 4.0) · resmî bir servis değildir.';
+const numeric='• İndirim oranları, 12.500, 15.750';
+const warning='Bu iskelede erişim doğrulanmadı.';
+console.log(JSON.stringify({{history:clean(signed),route:clean(signed,{{route:true}}),
+  unproven:clean(numeric),unprovenRoute:clean(numeric,{{route:true}}),
+  live:clean(point+'\\n'+warning,{{places:true,route:true}}),
+  english:clean(signed,{{route:true,lang:'en'}}),unchanged:point.includes('41,0422')}}));
+""")
+    assert values == {
+        "history": "• Beşiktaş İskele (Beşiktaş)",
+        "route": "Bu yolculuğun güzergâhını henüz doğrulayamadım.",
+        "unproven": "• İndirim oranları, 12.500, 15.750",
+        "unprovenRoute": "• İndirim oranları, 12.500, 15.750",
+        "live": "Bu yolculuğun güzergâhını henüz doğrulayamadım.\n\nBu iskelede erişim doğrulanmadı.",
+        "english": "I could not verify the directions for this journey.", "unchanged": True,
+    }
+
+
+def test_citizen_live_and_restored_routes_are_honest_without_changing_payload():
+    values = run_node("citizen live and history", ANSWER_DETAILS_DOM, f"""
+body.classList.add('citizen-page');
+const transcript=await import({json.dumps((STATIC / 'js/transcript.js').as_uri())});
+const {{renderAnswerCard}}=await import({json.dumps((STATIC / 'js/answer_card.js').as_uri())});
+const raw='• Beşiktaş İskele (Beşiktaş), 41,0422, 29,0053\\n'
+  +'Veri: kayıtlı · 29.09 19:48.\\n'
+  +'Kaynak: İBB Açık Veri (CC BY 4.0) · resmî bir servis değildir.';
+const question='Kadıköy’den Beşiktaş’a nasıl giderim?';
+const prior=add(log,'li','','chat-msg is-user'); add(prior,'p','','chat-text').textContent=question;
+const restored=add(log,'li','','chat-msg is-assistant'); const saved=add(restored,'p','','chat-text'); saved.textContent=raw;
+const entry=answerShell();
+const payload={{mode:'answer',answer_text:raw,citations:[{{source:'gazetteer'}}]}};
+const before=JSON.stringify(payload); entry.final.innerHTML=renderAnswerCard(payload);
+transcript.mountTranscript(log,document);
+document.dispatchEvent(new CustomEvent('nabiz:chat-final',{{detail:{{host:entry.final,final:payload,question}}}}));
+flush(); flush();
+console.log(JSON.stringify({{saved:saved.textContent,live:entry.final.querySelector('.ac-short').textContent,
+  preserved:JSON.stringify(payload)===before,sourceCards:entry.final.querySelectorAll('.ac-sources').length}}));
+""")
+    assert values == {"saved": "Bu yolculuğun güzergâhını henüz doğrulayamadım.",
+                      "live": "Bu yolculuğun güzergâhını henüz doğrulayamadım.",
+                      "preserved": True, "sourceCards": 0}
+
+
+def test_citizen_feedback_and_copy_still_work_without_exposing_evidence():
+    values = run_node("citizen feedback and copy", ANSWER_DETAILS_DOM, f"""
+body.classList.add('citizen-page');
+const transcript=await import({json.dumps((STATIC / 'js/transcript.js').as_uri())});
+const {{renderAnswerCard}}=await import({json.dumps((STATIC / 'js/answer_card.js').as_uri())});
+const copied=[]; document.defaultView={{navigator:{{clipboard:{{writeText:async text=>copied.push(text)}}}}}};
+const entry=answerShell(); entry.final.innerHTML=renderAnswerCard({{mode:'answer',answer_text:'İskeleye yürüyün.',
+ citations:[{{source:'gazetteer',url:'https://example.test/evidence'}}]}});
+const unknown=answerShell('unknown'); unknown.final.innerHTML=renderAnswerCard({{mode:'unknown'}});
+await import({json.dumps((STATIC / 'js/feedback.js').as_uri())});
+transcript.mountTranscript(log,document); flush();
+for (const final of [entry.final,unknown.final]) final.querySelector('[data-citizen-copy]').dispatchEvent({{type:'click'}});
+await Promise.resolve(); await Promise.resolve();
+const feedback=entry.final.querySelector('.feedback');
+feedback.querySelector('[data-vote="up"]').dispatchEvent({{type:'click'}});
+await Promise.resolve();
+console.log(JSON.stringify({{copied,feedbackInside:feedback.parentElement.classList.contains('ac-details-content'),
+ unknownInside:unknown.final.querySelector('.feedback').parentElement.classList.contains('ac-details-content'),
+ closed:!entry.final.querySelector('.ac-details').open,
+ votes:JSON.parse(storageValues.get('nabiz.feedback.v1')).up,
+ emptyMarker:entry.final.querySelector('.chat-foot').hidden && !entry.final.querySelector('.chat-foot').textContent}}));
+""")
+    assert values == {"copied": ["İskeleye yürüyün.", "Bu bilgiyi doğrulayamadım."],
+                      "feedbackInside": True, "unknownInside": True, "closed": True,
+                      "votes": 1, "emptyMarker": True}
