@@ -205,7 +205,7 @@ def test_sw_rules_by_path(tmp_path: Path) -> None:
         ['/api/brief?stations=Kartal','GET','cors'], ['/api/chat','POST','cors'], ['/api/console/queue','GET','cors'],
         ['/console','GET','navigate'], ['/console.html','GET','navigate'], ['/js/console.js','GET','cors'],
         ['/css/console.css','GET','cors'], ['/mock/brief.json','GET','cors'], ['/api/arrival?line=500T','GET','cors'],
-        ['/healthz','GET','cors'], ['https://tile.openstreetmap.org/1/1/1.png','GET','cors'], ['/console/login','POST','cors'],
+        ['/healthz','GET','cors'], ['https://maps.example.test/1/1/1.png','GET','cors'], ['/console/login','POST','cors'],
         ['/i18n/en.json','GET','cors']
       ];
       const result = paths.map(([path, method, mode]) =>
@@ -346,7 +346,8 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     source += "'nabiz-shell-v12','nabiz-brief-v12','nabiz-shell-v13','nabiz-brief-v13','nabiz-shell-v14','nabiz-brief-v14',"
     source += "'nabiz-shell-v15','nabiz-brief-v15','nabiz-shell-v16','nabiz-brief-v16','nabiz-shell-v17','nabiz-brief-v17',"
     source += "'nabiz-shell-v18','nabiz-brief-v18','nabiz-shell-v19','nabiz-brief-v19',"
-    source += "'nabiz-shell-v20','nabiz-brief-v20','baska-site'];"
+    source += "'nabiz-shell-v20','nabiz-brief-v20','nabiz-shell-v21','nabiz-brief-v21',"
+    source += "'nabiz-shell-v22','nabiz-brief-v22','baska-site'];"
     source += "process.stdout.write(JSON.stringify({version:self.nabizSw.VERSION,stale:self.nabizSw.staleCaches(keys)}));"
     result = json.loads(run_node(tmp_path, source, str(SW)))
     stale = [
@@ -358,6 +359,7 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
         "nabiz-shell-v14", "nabiz-brief-v14", "nabiz-shell-v15", "nabiz-brief-v15",
         "nabiz-shell-v16", "nabiz-brief-v16", "nabiz-shell-v17", "nabiz-brief-v17",
         "nabiz-shell-v18", "nabiz-brief-v18", "nabiz-shell-v19", "nabiz-brief-v19",
+        "nabiz-shell-v20", "nabiz-brief-v20", "nabiz-shell-v21", "nabiz-brief-v21",
     ]
     # v7: the 26 Sep integration (DECISIONS #38-#41); v8: its second round; v9: E35's lazy map module (gun2);
     # v10: E40's i18n_text.js in the shell; v11: E27's voice report modules, E33's report list;
@@ -368,7 +370,9 @@ def test_old_caches_are_deleted_on_a_new_version(tmp_path: Path) -> None:
     # v18: P00 D2a, the chat shell (P01) and history and memory (P02) in the shell.
     # v19: the Takvim tab's calendar view (calendar_view.js and calendar_view.css).
     # v20: the emergency card names only 153 (owner's decision, 30 Sep).
-    assert result == {"version": "v20", "stale": stale}
+    # v21: the offline sample base map (map_base.js, map_base.css); no map tile is fetched any more.
+    # v22: voice.js puts the talk button next to the moved submit button.
+    assert result == {"version": "v22", "stale": stale}
 
 def test_pwa_js_labels(tmp_path: Path) -> None:
     source = """

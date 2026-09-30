@@ -1,8 +1,8 @@
-/* v20 (30 Sep: the emergency card names only 153, no emergency line); v19 (+ 30 Sep: mock_calls.js, no real calls): the Takvim tab's calendar view (calendar_view.js/.css) and P26's citation_card.js and context_chips.js; v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
+/* v22 (30 Sep: voice.js puts the talk button next to the moved submit button); v21 (30 Sep: the offline sample base map, map_base.js/.css, no map tiles from any server); v20 (30 Sep: the emergency card names only 153, no emergency line); v19 (+ 30 Sep: mock_calls.js, no real calls): the Takvim tab's calendar view (calendar_view.js/.css) and P26's citation_card.js and context_chips.js; v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
    E5x-E7x back ends; v16: the home screen's category pills;
    v15: E48's official-path source label in provenance.js; v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v20';
+const VERSION = 'v22';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';
@@ -71,6 +71,8 @@ const SHELL = [
   '/js/disaster_kit.js', '/css/disaster_kit.css', '/js/journey_watch.js', '/css/journey_watch.css',
   '/js/escort.js', '/css/escort.css', '/js/report_timeline.js', '/css/report_timeline.css',
   '/js/outage_watch.js', '/css/outage_watch.css', '/js/ibb_yerleri.js', '/js/ibb_yerleri_view.js', '/css/ibb_yerleri.css',
+  // v21: the sample base map every Leaflet map draws instead of fetching tiles
+  '/js/map_base.js', '/css/map_base.css',
 ];
 
 function ruleFor(url, method, mode) {

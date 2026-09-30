@@ -94,3 +94,13 @@ def test_pure_helpers_in_node() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_talk_button_follows_the_submit_button_wherever_it_moves() -> None:
+    """The composer moves #chat-submit into .composer-bottom; inserting into .chat-row threw and no talk button appeared."""
+    js = VOICE_JS.read_text(encoding="utf-8")
+    nav = (STATIC / "js" / "workspace_nav.js").read_text(encoding="utf-8")
+    assert "bottom.append(submit)" in nav
+    assert "row.insertBefore(talkButton, submit)" not in js
+    assert "submit.before(talkButton)" in js
+

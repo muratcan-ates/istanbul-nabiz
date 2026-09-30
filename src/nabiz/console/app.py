@@ -126,18 +126,16 @@ CONSOLE_STATIC_DIR = pathlib.Path(__file__).resolve().parent / "static"
 DEFAULT_CONSOLE_PORT = 8090
 
 #: Same-origin only: the page is vanilla JS served from ``static/``. A page that needs another
-#: origin (a map's tiles) widens this here, with the reason, not in the page. The one widening:
-#: ``img-src`` admits OpenStreetMap's tile hosts, because the citizen map (``js/map.js``, G18) draws
-#: its base layer from ``tile.openstreetmap.org`` as plain images once the visitor asks for their
-#: location. Leaflet itself is vendored (``static/vendor/leaflet``), so scripts and styles stay 'self'.
-OSM_TILE_SOURCES = ("https://tile.openstreetmap.org", "https://*.tile.openstreetmap.org")
+#: origin widens this here, with the reason, not in the page. None does today: the maps draw an
+#: offline sample base in the browser (``js/map_base.js``) instead of fetching tiles, and Leaflet
+#: itself is vendored (``static/vendor/leaflet``), so images, scripts and styles all stay 'self'.
 CONSOLE_HEADERS = {
     "Content-Security-Policy": "; ".join(
         [
             "default-src 'self'",
             "script-src 'self'",
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: " + " ".join(OSM_TILE_SOURCES),
+            "img-src 'self' data:",
             "connect-src 'self'",
             "font-src 'self'",
             "worker-src 'self'",

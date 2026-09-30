@@ -75,7 +75,7 @@ yukarıdaki tabloda, depodan sunulur):
 | Bileşen | Kaynak | Lisans | Kullanım |
 |---|---|---|---|
 | MapLibre GL JS 4.7.1 | `https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/` (`maplibre-gl.min.js`, `maplibre-gl.min.css`) | BSD-3-Clause, <https://github.com/maplibre/maplibre-gl-js/blob/v4.7.1/LICENSE.txt> | web sayfasının haritası; konumu olan ilk yanıtla, SRI özetleriyle sabitlenmiş olarak yüklenir; yüklenemezse konumlar liste olarak gösterilir |
-| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | web sayfası ve vatandaş konsolu harita altlığı; konsolda yalnız ziyaretçi konumunu isteyince yüklenir; atıf harita üzerinde |
+| OpenStreetMap harita karoları | `https://tile.openstreetmap.org/` | veri ODbL 1.0, © OpenStreetMap katkıcıları; karo kullanım politikası: <https://operations.osmfoundation.org/policies/tiles/> | yalnız web sayfasının (`src/nabiz/web`) harita altlığı; atıf harita üzerinde. Vatandaş konsolu 30 Eylül'den beri hiçbir harita sunucusundan karo istemez: haritaları tarayıcıda çizilen örnek altlığı kullanır (`js/map_base.js`, kıyılar yaklaşık, OSM verisi içermez) |
 
 ## Sorumluluk reddi
 

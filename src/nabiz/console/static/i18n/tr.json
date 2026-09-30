@@ -1204,6 +1204,7 @@
   "ui.cards.close_map": "Haritayı kapat",
   "ui.cards.map_failed": "Harita yüklenemedi.",
   "ui.cards.map_points": "Haritadaki konumlar",
+  "ui.cards.map_base": "Örnek harita altlığı; kıyılar yaklaşık",
   "ui.cards.status_preparing": "Hazırlanıyor",
   "ui.cards.status_needs_input": "Bilgi bekliyor",
   "ui.cards.status_ready": "Hazır",
