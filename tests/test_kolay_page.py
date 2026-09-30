@@ -107,7 +107,8 @@ def test_kolay_page_has_one_h1_two_bands_and_three_actions() -> None:
     assert 'id="kolay-ai-band"' in html
     assert 'id="kolay-sor"' in html and 'id="kolay-durak"' in html
     assert 'id="kolay-call-153" class="kolay-call" href="tel:153"' in html
-    assert 'id="kolay-call-112" class="kolay-call-112" href="tel:112"' in html
+    # 30 Sep, owner's decision: no 112 link on the prototype's pages; every tel: link is a mock (js/mock_calls.js).
+    assert 'href="tel:112"' not in html and '<script type="module" src="/js/mock_calls.js"></script>' in html
     assert 'class="skip-link" href="#main"' in html and 'id="main"' in html
     assert 'role="status"' in html and 'aria-live="polite"' in html
     assert 'aria-labelledby="kolay-sor-title"' in html and 'id="kolay-sor-title"' in html

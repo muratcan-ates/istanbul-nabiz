@@ -316,7 +316,5 @@ def render_answer(tool: str, payload: dict[str, Any], lang: str, *, recorded: bo
     stamp = recorded_stamp(payload["provenance"]) if recorded and payload["provenance"].get("age") else None
     if stamp:
         lines.append(f"Veri: {stamp}.")
-    elif payload["provenance"].get("age"):  # nothing read: no age line, never "0 sn önce"
-        lines.append(f"Verinin yaşı: {payload['provenance']['age']}.")
     lines.append(ATTRIBUTION_LINE)
     return "\n".join(line for line in lines if line)

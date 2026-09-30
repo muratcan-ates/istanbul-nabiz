@@ -20,24 +20,22 @@ FIXED: dict[str, dict[str, str]] = {
         "tr": (
             "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: "
             "yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. "
-            "Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak. "
-            "Acil bir durumdaysan 112'yi ara."
+            "Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak."
         ),
         "en": (
             "This question is about rights, fares, fines or health. I do not write answers on these topics: wrong information "
             "could cost you money, a right or your health. For correct information, call İBB's 153 Solution Centre or check "
-            "the official page of the relevant institution. If this is an emergency, call 112."
+            "the official page of the relevant institution."
         ),
     },
     "HANDOFF": {
         "tr": (
             "İnsanla görüşmek için 153 Çözüm Merkezi'ni arayabilirsin; aramayı sen yaparsın, Nabız kimseyi arayamaz. "
-            "Görevliye sorununu, varsa hat, durak ya da ilçe adıyla kısaca anlat. Acil bir durumdaysan 112'yi ara."
+            "Görevliye sorununu, varsa hat, durak ya da ilçe adıyla kısaca anlat."
         ),
         "en": (
             "To talk to a person, you can call İBB's 153 Solution Centre; you make the call, Nabız cannot call anyone. "
-            "Tell the officer your problem briefly, with the line, stop or district name if there is one. "
-            "If this is an emergency, call 112."
+            "Tell the officer your problem briefly, with the line, stop or district name if there is one."
         ),
     },
     "TURN_FAILED": {

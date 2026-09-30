@@ -43,7 +43,7 @@ function writeCodes(storage, items) {
 }
 
 function offerMarkup(doc) {
-  return `<div class="op-offer" data-op="offer"><p>${esc(t('ui.req.offer', 'Bu soruyu bir İBB operatörüne sorabilirsiniz. Acil durumlar için 112.'))}</p>`
+  return `<div class="op-offer" data-op="offer"><p>${esc(t('ui.req.offer', 'Bu soruyu bir İBB operatörüne sorabilirsiniz.'))}</p>`
     + `<button type="button" class="btn" data-op="open">${esc(t('ui.req.offer_button', 'Operatöre sor'))}</button></div>`;
 }
 

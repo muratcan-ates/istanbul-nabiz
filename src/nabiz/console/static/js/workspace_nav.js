@@ -218,6 +218,8 @@ export function mountWorkspace({ form, input }) {
     }
     const tools = main.querySelector('.workspace');
     if (tools) tools.hidden = !['travel', 'data', 'map', 'nearby'].includes(name);
+    // Harita opens on the map: the stations and their lift and escalator records are drawn once, without a click.
+    if (changed && name === 'map' && doc.getElementById('map')?.hidden) doc.getElementById('map-layers-show')?.click();
     const footer = document.querySelector('footer');
     if (footer) footer.hidden = name !== 'about';
     const links = [...document.querySelectorAll('.topbar-nav a')];

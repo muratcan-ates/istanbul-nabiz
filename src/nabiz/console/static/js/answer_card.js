@@ -5,7 +5,9 @@ import { citationMarkup, citationText, kindTag, isStale, institutionLabel as cit
 import { icon } from './icons.js';
 import { AUTHOR_TR, howPanel, sourceLink } from './provenance.js';
 
-const REFUSAL_TEXT = "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak. Acil bir durumdaysan 112'yi ara.";
+const REFUSAL_TEXT = "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak.";
+// A page's line-end hyphenation ("ha- vada") is joined for display only; the stored quote stays as captured.
+export const unwrapHyphens = (text) => String(text ?? '').replace(/(\p{L})- (\p{Ll})/gu, '$1$2');
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
 const INSTITUTIONS = Object.freeze({
   IBB: 'İBB',
@@ -139,7 +141,7 @@ function renderCitizenAnswerCard(data, { now = Date.now(), lang = currentLang() 
       + (sentence.status === 'no_source' ? ` <span class="ac-no-source">${esc(map.labels?.no_source || citationText('no_source', lang))}</span>` : '')
       + '</p>').join('') : `<p data-er-target>${esc(clean(answer))}</p>`;
   } else if (quotes.length) {
-    primary = quotes.map((item) => `<blockquote class="quote-text quote-exact" data-er-skip>${esc(item.quote)}</blockquote>`).join('');
+    primary = quotes.map((item) => `<blockquote class="quote-text quote-exact" data-er-skip>${esc(unwrapHyphens(item.quote))}</blockquote>`).join('');
   }
   if (!refused && !unknown && steps.length) {
     primary += `<ol class="ac-steps-list">${steps.map((step) => `<li data-er-target>${esc(step)}</li>`).join('')}</ol>`;

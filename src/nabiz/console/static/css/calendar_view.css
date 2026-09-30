@@ -83,3 +83,6 @@
   .cal-event, .cal-grid, .cal-detail, .cal-form { border: 1px solid CanvasText; }
   .cal-now, .cal-now::before { background: Highlight; }
 }
+
+/* sample plans (calendar_view.js samplePlans): same block, a dashed edge so they read as examples */
+.cal-event.cal-sample { border-left-style: dashed; }
