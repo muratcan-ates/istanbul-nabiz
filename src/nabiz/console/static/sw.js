@@ -1,8 +1,8 @@
-/* v19 (+ 30 Sep: mock_calls.js, no real calls): the Takvim tab's calendar view (calendar_view.js/.css) and P26's citation_card.js and context_chips.js; v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
+/* v20 (30 Sep: the emergency card names only 153, no emergency line); v19 (+ 30 Sep: mock_calls.js, no real calls): the Takvim tab's calendar view (calendar_view.js/.css) and P26's citation_card.js and context_chips.js; v18: P00 D2a, chat shell, chat cards and memory in the shell (v17: P00 wave, catalogues and kvkk for the
    E5x-E7x back ends; v16: the home screen's category pills;
    v15: E48's official-path source label in provenance.js; v14: redesigned citizen shell and locally served
    Istanbul panorama; v13: E45's answer_actions.js): bump VERSION when this worker's behavior or shell changes. */
-const VERSION = 'v19';
+const VERSION = 'v20';
 const SHELL_CACHE = 'nabiz-shell-' + VERSION;
 const BRIEF_CACHE = 'nabiz-brief-' + VERSION;
 const BRIEF_PATH = '/api/brief';

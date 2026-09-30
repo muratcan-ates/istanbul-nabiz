@@ -168,7 +168,7 @@ def test_fixed_tr_values_match_their_single_sources() -> None:
     chat = (STATIC / "js" / "chat.js").read_text(encoding="utf-8")
     disclosure = (STATIC / "js" / "disclosure.js").read_text(encoding="utf-8")
     unknown = re.search(r'^const UNKNOWN_TEXT = "([^"]*)";$', chat, re.MULTILINE)
-    emergency = re.search(r"^const EMERGENCY_TEXT = '([^']*)';$", chat, re.MULTILINE)
+    emergency = re.search(r'^const EMERGENCY_TEXT = "([^"]*)";$', chat, re.MULTILINE)
     ai_notice = re.search(r"^const AI_NOTICE = '([^']*)';$", disclosure, re.MULTILINE)
     privacy = re.search(r"^const PRIVACY_NOTICE = '([^']*)';$", disclosure, re.MULTILINE)
     warning = re.search(r"^const PII_WARNING = '([^']*)';$", disclosure, re.MULTILINE)
@@ -186,6 +186,18 @@ def test_fixed_tr_values_match_their_single_sources() -> None:
     assert "Soruya TC kimlik, kart numarası, sağlık belgesi gibi kişisel bilgileri yazmayın." in disclosure
 
 
+def test_every_emergency_copy_on_the_page_is_the_one_text() -> None:
+    # Owner's decision, 30 Sep 2026: one emergency text (FIXED["EMERGENCY"]) that names İBB's 153 only.
+    tr, en = FIXED["EMERGENCY"]["tr"], FIXED["EMERGENCY"]["en"]
+    for name in ("chat.js", "kolay.js", "escort.js", "report_timeline.js", "request_status.js", "outage_watch.js"):
+        assert tr in (STATIC / "js" / name).read_text(encoding="utf-8"), name
+    for name in ("escort.js", "report_timeline.js"):
+        assert en in (STATIC / "js" / name).read_text(encoding="utf-8"), name
+    for lang, text in (("tr", tr), ("en", en)):
+        catalog = _catalog(lang)
+        assert catalog["ui.req.emergency"] == catalog["ui.outage.emergency_note"] == text
+
+
 def test_catalogs_carry_the_fixed_answers_verbatim() -> None:
     for lang in LANGS:
         catalog = _catalog(lang)
@@ -199,6 +211,8 @@ def test_help_numbers_are_the_same_in_every_language() -> None:
     for number in ("112", "153"):
         counts = [sum(value.count(number) for value in _flat(catalog).split("\n")) for catalog in catalogs]
         assert counts[0] == counts[1]
+    # Owner's decision, 30 Sep 2026: no catalog names 112 or İGDAŞ 187.
+    assert not any(re.search(r"\b(?:112|187)\b", _flat(catalog)) for catalog in catalogs)
 
 
 def test_no_forbidden_words_anywhere() -> None:

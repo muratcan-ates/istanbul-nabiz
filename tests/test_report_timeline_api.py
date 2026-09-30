@@ -114,7 +114,7 @@ def test_citizen_ongoing_needs_consent_reopens_and_code_limit_is_three(timeline_
     assert client.post(path, json={"action": "fixed"}).status_code == 429
 
 
-def test_emergency_returns_112_without_writing(timeline_client) -> None:
+def test_emergency_returns_the_153_text_without_writing(timeline_client) -> None:
     client, engine, clock = timeline_client
     code = create_report(client, engine, clock)
     resolution(client, code)

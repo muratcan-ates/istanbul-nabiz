@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from conftest import REPO_ROOT
 
+from nabiz.agent.templates_i18n import FIXED
 from nabiz.console import policy
 from nabiz.console.emergency import EMERGENCY_LINES, classify, fold_same_length
 
@@ -191,19 +192,39 @@ def test_negative_messages_are_not_emergencies(message: str) -> None:
     assert not classify(message)["emergency"], message
 
 
-def test_lines_are_only_112_and_153() -> None:
+def test_lines_are_only_153() -> None:
+    # Owner's decision, 30 Sep 2026: the card names 153 only; 112 and 187 are gone from the server side.
     result = classify("Yangın çıktı")
-    assert result["lines"] == ["112", "153"]
+    assert result["lines"] == ["153"]
     result["lines"].clear()
-    assert classify("Yangın çıktı")["lines"] == ["112", "153"]
+    assert classify("Yangın çıktı")["lines"] == ["153"]
     assert classify("Acil değil")["lines"] == []
     forbidden = re.compile(r"\b(?:155|110)\b")
     for path in (PYTHON, JS, CSS):
         assert not forbidden.search(path.read_text(encoding="utf-8")), path
-    # 187 (İGDAŞ gas emergency) has a source in the index (DECISIONS #36) and lives only in the gas link.
-    assert "187" not in PYTHON.read_text(encoding="utf-8") and "187" not in CSS.read_text(encoding="utf-8")
-    assert JS.read_text(encoding="utf-8").count('href="tel:187"') == 1
-    assert EMERGENCY_LINES == ("112", "153")
+    for path in (PYTHON, JS, CSS):
+        assert not re.search(r"\b(?:112|187)\b", path.read_text(encoding="utf-8")), path
+    assert JS.read_text(encoding="utf-8").count('href="tel:187"') == 0
+    assert EMERGENCY_LINES == ("153",)
+
+
+def test_no_emergency_line_is_left_on_the_server_side() -> None:
+    # Owner's decision, 30 Sep 2026: Nabız never sends anyone to 112 or İGDAŞ 187; the card names 153 only.
+    backend = [path for suffix in ("*.py", "*.md", "*.toml") for path in (REPO_ROOT / "src").rglob(suffix)]
+    offenders = [str(path) for path in backend if re.search(r"\b(?:112|187)\b", path.read_text(encoding="utf-8"))]
+    assert offenders == []
+
+
+def test_no_emergency_line_is_left_on_the_page() -> None:
+    # Owner's decision, 30 Sep 2026: the page never names 112 or İGDAŞ 187 (text, tel: link, key or selector).
+    skip = {"vendor", "images", "fonts", "icons"}
+    page = [
+        path for path in STATIC.rglob("*")
+        if path.is_file() and path.suffix in {".js", ".css", ".html", ".json", ".webmanifest"}
+        and not skip.intersection(path.relative_to(STATIC).parts)
+    ]
+    offenders = [str(path) for path in page if re.search(r"\b(?:112|187)\b", path.read_text(encoding="utf-8"))]
+    assert page and offenders == []
 
 
 def test_every_policy_term_is_an_emergency() -> None:
@@ -294,30 +315,32 @@ def test_card_markup_has_the_actions(tmp_path: Path) -> None:
     )
     tr, en, arabic, unknown = values
     for required in (
-        'href="tel:112"', 'href="tel:153"', "Konumumu göster", 'data-act="copy"',
+        'href="tel:153"', "Konumumu göster", 'data-act="copy"',
         "Acil değil, geri dön", 'role="alertdialog"', 'aria-live="assertive"', "Resmî İBB hizmeti değildir",
     ):
         assert required in tr
-    assert re.findall(r'href="(tel:[^"]+)"', tr) == ["tel:112", "tel:153"]
-    assert "Call 112" in en and "Not an official İBB service" in en
+    assert re.findall(r'href="(tel:[^"]+)"', tr) == ["tel:153"]
+    assert "Nabız acil durumlarda yardımcı olamaz" in tr and "İBB'ye 153'ten ulaşabilirsiniz." in tr
+    assert "Call 153" in en and "Not an official İBB service" in en
     # DECISIONS #40 (supersedes #35 for the card only): Arabic is a card language again, right to left inside
     # the card; an unknown code still falls back to Turkish.
-    assert 'lang="ar" dir="rtl"' in arabic and "اتصل بالرقم 112" in arabic
-    assert re.findall(r'href="(tel:[^"]+)"', arabic) == ["tel:112", "tel:153"]
+    assert 'lang="ar" dir="rtl"' in arabic and "اتصل بالرقم 153" in arabic
+    assert re.findall(r'href="(tel:[^"]+)"', arabic) == ["tel:153"]
     assert unknown == tr
 
 
-def test_the_gas_card_adds_187_after_112_and_no_other_card_does(tmp_path: Path) -> None:
+def test_the_gas_card_is_the_plain_card_with_153_only(tmp_path: Path) -> None:
     values = node_json(
         "console.log(JSON.stringify([emergency.cardMarkup('tr', 'gas'), emergency.cardMarkup('en', 'gas'), "
         "emergency.cardMarkup('tr', null), emergency.cardMarkup('tr', 'fire')]));",
         tmp_path,
     )
     gas_tr, gas_en, plain, other = values
-    assert re.findall(r'href="(tel:[^"]+)"', gas_tr) == ["tel:112", "tel:187", "tel:153"]
-    assert "İGDAŞ 187 Doğal Gaz Acil Hattı" in gas_tr and "İGDAŞ 187" in gas_en
-    assert re.findall(r'href="(tel:[^"]+)"', plain) == ["tel:112", "tel:153"]
-    assert other == plain
+    # Owner's decision, 30 Sep 2026: a gas hazard gets the same card; no İGDAŞ 187 and no 112.
+    assert gas_tr == plain and other == plain
+    assert re.findall(r'href="(tel:[^"]+)"', plain) == ["tel:153"]
+    assert re.findall(r'href="(tel:[^"]+)"', gas_en) == ["tel:153"]
+    assert not re.search(r"\b(?:112|187)\b", gas_tr + gas_en)
 
 
 def test_format_coords_and_messages(tmp_path: Path) -> None:
@@ -331,9 +354,9 @@ def test_format_coords_and_messages(tmp_path: Path) -> None:
     )
     assert values == [
         "41.01235, 28.97612", None, None,
-        "Konum alınamadı. Adresinizi 112'ye söyleyin.",
-        "Could not get your location. Tell 112 your address.",
-        "Konumunuz: 41.01235, 28.97612. Bu sayıları 112'ye okuyabilirsiniz.",
+        "Konum alınamadı.",
+        "Could not get your location.",
+        "Konumunuz: 41.01235, 28.97612.",
         "en", "tr", "ar", "tr",
     ]
 
@@ -442,7 +465,8 @@ ACUTE_WITH_CONDITION = (
 def test_a_stated_condition_with_an_everyday_question_is_answered_not_redirected(message: str) -> None:
     assert not policy.emergency_intent(message)
     assert not policy.refuses(message), "the question is judged, not the person"
-    assert emergency_lang.chronic_note(message) == "Acil bir durumda 112'yi arayın."
+    assert emergency_lang.chronic_note(message) == FIXED["EMERGENCY"]["tr"]
+    assert "112" not in emergency_lang.chronic_note(message)
 
 
 @pytest.mark.parametrize("message", ACUTE_WITH_CONDITION)
@@ -464,7 +488,7 @@ def test_without_a_condition_the_rules_are_as_they_were() -> None:
 
 
 def test_the_chat_answers_the_question_on_the_rules_path() -> None:
-    """The rules path runs the same tool it runs without the statement; no 112 card, no refusal."""
+    """The rules path runs the same tool it runs without the statement; no emergency card, no refusal."""
     import httpx
     from conftest import offline_settings, refuse_network
     from fastapi.testclient import TestClient

@@ -5,7 +5,7 @@ Four rules, all decided before any model is asked, all deterministic:
 **Refusal (plan rule R-06).** A question about rights, fares, fines or health gets no
 generated answer, from a model or a template: a wrong fare or a wrong entitlement costs the
 person money or a right, and a wrong health line costs more. The answer points to 153 (İBB's
-call centre) and the relevant institution's official page, and to 112 in an emergency. No
+call centre) and the relevant institution's official page. No
 official URL is printed because none has been verified for this repository yet. Three lines
 hold it: this keyword test (Turkish and English, the way riders actually ask: "bedava mı",
 "akbil parası", "hastasıyım", "How much is a ticket?"), a short follow-up to a refused
@@ -14,7 +14,7 @@ question ("Peki öğrenciler için ne kadar?"), and the model's own prompt
 (:func:`names_a_price`) unless the person asked about car parks, whose tariff is İSPARK's
 own data.
 
-**An emergency comes first** (:func:`emergency_intent`): the page shows 112 before any model,
+**An emergency comes first** (:func:`emergency_intent`): the page shows the emergency card (153) before any model,
 tool or refusal. "acil" and "düştü" count only with company ("acil yardım", "annem düştü"); a gas
 leak or smell ("gaz kaçağı", "doğalgaz kokusu") counts alone. After the Turkish rules come the fixed
 rules of the other card languages (:mod:`~nabiz.console.emergency_lang`, DECISIONS #40): "помогите,
@@ -130,7 +130,7 @@ _FOLLOW_UP = ("ne kadar", "kac", "peki", "ya ", "onlar", "bunun", "bunlar", "o z
 _PRICE = re.compile(r"₺|\b\d+(?:[.,]\d+)?\s*(?:tl|lira)\b", re.IGNORECASE)
 
 # -- emergency vocabulary, over normalize_tr-folded text ----------------------------------
-# An emergency bypasses the model, the tools and the refusal rule: the page shows 112 at once.
+# An emergency bypasses the model, the tools and the refusal rule: the page shows the emergency card at once.
 # A missed emergency costs more than a false alarm, but "acil" and "düştü" alone are everyday
 # words ("acil durum toplanma alanı", "fiyat düştü"), so those two count only with company.
 #: Word stems, matched at a word's start (the first vocabulary; "polis merkezi" still redirects). English
@@ -269,7 +269,7 @@ def asks_for_person(message: str) -> bool:
 
 def emergency_hazard(message: str) -> str | None:
     """``"gas"`` when an emergency is a gas leak or smell, in Turkish or a card language, else ``None``.
-    The page adds İGDAŞ's 187 line to the 112 card for it; 112 stays the first action whatever this says."""
+    The page shows the same emergency card for it; the field stays in the API for callers that read it."""
     if _GAS_RE.search(normalize_tr(message)):
         return "gas"
     hit = emergency_lang.rule_match(message)

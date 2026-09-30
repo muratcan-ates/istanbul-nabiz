@@ -25,29 +25,30 @@ def node_json(source: str):
     return json.loads(result.stdout)
 
 
-def test_kolay_gas_emergency_shows_187_after_112() -> None:
+def test_kolay_gas_emergency_shows_only_153() -> None:
+    # Owner's decision, 30 Sep 2026: a gas emergency gets the same 153 card; no İGDAŞ 187 and no 112.
     markup = node_json(
         "console.log(JSON.stringify(easy.answerMarkup({mode:'redirect',emergency:true,hazard:'gas'})));"
     )
-    assert markup.index("tel:112") < markup.index("tel:187") < markup.index("tel:153")
-    assert 'class="kolay-call kolay-call-187"' in markup
+    assert re.findall(r'href="(tel:[^"]+)"', markup) == ["tel:153"]
+    assert "kolay-call-187" not in markup and not re.search(r"\b(?:112|187)\b", markup)
 
 
-def test_kolay_other_emergencies_do_not_show_187() -> None:
+def test_kolay_other_emergencies_show_only_153() -> None:
     markups = node_json(
         "const rows=[{mode:'redirect',emergency:true},{mode:'redirect',emergency:true,hazard:'fire'}];"
         "console.log(JSON.stringify(rows.map(easy.answerMarkup)));"
     )
-    assert all("tel:187" not in markup for markup in markups)
+    assert all(re.findall(r'href="(tel:[^"]+)"', markup) == ["tel:153"] for markup in markups)
 
 
-def test_kolay_gas_line_matches_the_main_card_text() -> None:
+def test_kolay_emergency_sentence_matches_the_main_card_text() -> None:
     emergency_text_url = json.dumps((STATIC / "js" / "emergency_text.js").as_uri())
-    gas_line, card_text = node_json(
+    sentence, card_text = node_json(
         f"const {{CARD_TEXT}}=await import({emergency_text_url});"
-        "console.log(JSON.stringify([easy.GAS_LINE,CARD_TEXT.tr.gas]));"
+        "console.log(JSON.stringify([easy.finalText({mode:'redirect',emergency:true},'U'),CARD_TEXT.tr.live]));"
     )
-    assert gas_line in card_text
+    assert sentence == card_text
 
 
 def test_kolay_loads_handoff_after_its_own_modules() -> None:

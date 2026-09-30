@@ -197,7 +197,7 @@ def test_official_path_data_is_cited_safe_and_grounded() -> None:
                 )
                 assert starts_with_action, (path["id"], lang, step)
                 for number in re.findall(r"\d{3,}", step):
-                    assert number in {"153", "112"} or any(number in excerpt for excerpt in path_excerpts), (
+                    assert number == "153" or any(number in excerpt for excerpt in path_excerpts), (
                         path["id"], step, number
                     )
             for fallback in (False, True):

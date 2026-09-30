@@ -246,7 +246,7 @@ async def operator_login(request: Request) -> Response:
 
 @citizen_routes.post("/api/chat")
 async def citizen_chat(request: Request, body: ChatRequest) -> Response:
-    # DECISIONS #38: an emergency is never limited or counted; a pause must not hide 112 either.
+    # DECISIONS #38: an emergency is never limited or counted; a pause must not hide the emergency card either.
     turn = plan_turn(request, body.message)
     if not turn.emergency and (paused := chat_gate(request)) is not None:
         return paused
@@ -451,7 +451,7 @@ PRODUCT_ROUTERS = (
     kill_switch_routes,
     stop_card_router,
     quota_routes,
-    # P08: restriction status and appeals; a restriction closes only the model and uploads, never 112, an appeal,
+    # P08: restriction status and appeals; a restriction closes only the model and uploads, never the emergency card, an appeal,
     # a follow or a deletion; automatic restriction is off unless NABIZ_AUTO_RESTRICTION=1.
     appeal_routes,
     # P04: speech to an editable draft and answer text to audio; off until NABIZ_SPEECH_* are set, each call held on

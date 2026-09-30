@@ -1,4 +1,4 @@
-"""The multilingual 112 card (DECISIONS #40): rules per card language, the optional model layer, the card.
+"""The multilingual emergency card (DECISIONS #40): rules per card language, the optional model layer, the card.
 
 No test here reaches a model: ``nabiz.agent.llm.chat`` is replaced by scripted fakes. The card's markup is
 built by node from ``static/js/emergency.js``; a test skips when node is missing, as ``test_emergency`` does.
@@ -18,6 +18,7 @@ import pytest
 from conftest import REPO_ROOT
 
 from nabiz.agent import llm
+from nabiz.agent.templates_i18n import FIXED
 from nabiz.console import emergency_model, policy
 from nabiz.console.budget import BudgetConfig, SpendGuard
 from nabiz.console.emergency_lang import card_lang_for, fold_for_emergency, guess_language, rule_match
@@ -252,7 +253,7 @@ def test_the_timeout_is_one_and_a_half_seconds() -> None:
 
 
 # --------------------------------------------------------------------------------------
-# the card: text parity, RTL, the Turkish block, 187 only for gas, accessibility
+# the card: text parity, RTL, the Turkish block, one 153 link, accessibility
 # --------------------------------------------------------------------------------------
 def node_json(body: str, tmp_path: Path) -> Any:
     node = shutil.which("node")
@@ -305,11 +306,10 @@ def test_every_card_is_whole_rtl_where_needed_and_labelled_when_unchecked(tmp_pa
         # The Turkish block on every card, left to right and in Turkish even inside an RTL card.
         assert f'lang="tr" dir="ltr" tabindex="-1"><p class="emergency-tr-plea">{TR_BLOCK["plea"]}</p>' in plain
         assert 'data-act="grow"' in plain and 'aria-controls="emergency-tr"' in plain
-        # 187 only on the gas card: once as a link after 112, once in the Turkish block.
-        assert "187" not in plain and TR_BLOCK["gas"] not in plain
-        assert re.findall(r'href="(tel:[^"]+)"', plain) == ["tel:112", "tel:153"]
-        assert re.findall(r'href="(tel:[^"]+)"', gas) == ["tel:112", "tel:187", "tel:153"]
-        assert TR_BLOCK["gas"] in gas and CARD_TEXT[lang]["gas"] in gas
+        # Owner's decision, 30 Sep 2026: one number, 153, on every card; the gas card is the plain card.
+        assert CARD_TEXT[lang]["call"] in plain and gas == plain
+        assert re.findall(r'href="(tel:[^"]+)"', plain) == ["tel:153"]
+        assert not re.search(r"\b(?:112|187)\b", plain)
         assert (UNVERIFIED_LABEL in plain) is (lang not in REVIEWED_LANGS), lang
 
 
@@ -358,14 +358,23 @@ def test_rtl_coordinates_stay_left_to_right(tmp_path: Path) -> None:
         tmp_path,
     )
     assert "⁦41.01235, 28.97612⁩" in values[0]
-    assert values[1] == "Ваше местоположение: 41.01235, 28.97612. Продиктуйте эти цифры службе 112."
+    assert values[1] == "Ваше местоположение: 41.01235, 28.97612."
     assert values[2] == CARD_TEXT["fa"]["denied"]
 
 
 def test_card_text_has_no_dash_and_no_forbidden_number() -> None:
     blob = json.dumps(CARD_TEXT, ensure_ascii=False) + TEXT_JS.read_text(encoding="utf-8")
     assert "—" not in blob and "–" not in blob
-    assert not re.search(r"\b(?:155|110)\b", blob)
+    assert not re.search(r"\b(?:155|110|112|187)\b", blob)
+
+
+def test_the_server_card_text_names_153_and_no_emergency_line() -> None:
+    # Owner's decision, 30 Sep 2026: Nabız cannot help in an emergency; the card points to İBB's 153 only.
+    blob = json.dumps({"card": CARD_TEXT, "block": TR_BLOCK}, ensure_ascii=False)
+    assert not re.search(r"\b(?:112|187|155|110|156|177)\b", blob)
+    assert all("153" in texts["call"] and "153" in texts["live"] for texts in CARD_TEXT.values())
+    assert all("gas" not in texts for texts in CARD_TEXT.values()) and set(TR_BLOCK) == {"plea"}
+    assert CARD_TEXT["tr"]["live"] == FIXED["EMERGENCY"]["tr"] and CARD_TEXT["en"]["live"] == FIXED["EMERGENCY"]["en"]
 
 
 # --------------------------------------------------------------------------------------
@@ -391,7 +400,7 @@ def test_the_switch_opens_turkish_and_english_to_a_second_opinion(monkeypatch: p
 
 
 @pytest.mark.parametrize("failure", ["timeout", "error", "ceiling"])
-def test_with_the_switch_on_every_failure_is_no_verdict_and_the_rules_still_open_112(
+def test_with_the_switch_on_every_failure_is_no_verdict_and_the_rules_still_open_the_card(
     monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
     async def slow() -> dict[str, Any]:
@@ -409,5 +418,5 @@ def test_with_the_switch_on_every_failure_is_no_verdict_and_the_rules_still_open
         spend = guard(calls=1)
         spend.record(CLOUD.provider, {}, 1)
     assert check("Babam çok solgun, konuşmuyor", spend, OPEN_TR_EN) is None
-    # The 112 card comes from the rules, which never wait for the model and never ask it.
+    # The emergency card comes from the rules, which never wait for the model and never ask it.
     assert policy.emergency_intent("Yangın var, yardım edin") and policy.emergency_card("Yangın var")["lang"] == "tr"

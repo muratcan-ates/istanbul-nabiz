@@ -8,7 +8,7 @@ import { CARD_TEXT, REVIEWED_LANGS, RTL_LANGS, TR_BLOCK, UNVERIFIED_LABEL } from
 export const QUESTION_KEYS = Object.freeze({
   museums: ['ui.visitor.q_museums', t('ui.visitor.q_museums', 'Hangi müzeler şu an açık?')],
   airport: ['ui.visitor.q_airport', t('ui.visitor.q_airport', 'Havalimanlarına hangi şehir otobüsleri gider?')],
-  emergency: ['ui.visitor.q_emergency', t('ui.visitor.q_emergency', 'Acil numaralar')],
+  emergency: ['ui.visitor.q_emergency', t('ui.visitor.q_emergency', 'Acil bir durumda')],
   istanbulkart: ['ui.visitor.q_istanbulkart', t('ui.visitor.q_istanbulkart', "İstanbulkart'ı nereden alırım?")],
   step_free: ['ui.visitor.q_step_free', t('ui.visitor.q_step_free', 'Metro, tramvay ve vapurda basamaksız erişim')],
 });
@@ -169,14 +169,13 @@ export function emergencyMarkup(lang) {
   const card = CARD_TEXT[lang] || CARD_TEXT.en;
   const options = LANGUAGES.map((code) => `<option value="${code}" lang="${code}">${esc(languageName(code))}</option>`).join('');
   return `<div class="visitor-emergency">
-    <ul class="visitor-numbers"><li><a class="btn" href="tel:112">${esc(card.call)}</a></li>
-      <li><a class="btn btn-quiet" href="tel:187">${esc(card.gas)}</a></li>
-      <li><a class="btn btn-quiet" href="tel:153">${esc(card.line153)}</a></li></ul>
+    <p>${esc(card.live)}</p>
+    <ul class="visitor-numbers"><li><a class="btn" href="tel:153">${esc(card.call)}</a></li></ul>
     <p>${esc(card.show)}</p><p class="visitor-plea" id="visitor-plea" lang="tr">${esc(TR_BLOCK.plea)}</p>
     <button type="button" class="btn btn-quiet" data-visitor="grow" aria-pressed="false" aria-controls="visitor-plea">${esc(card.grow)}</button>
-    <label for="visitor-card-lang">${esc(t('ui.visitor.card_lang', '112 kartı başka bir dilde'))}</label>
+    <label for="visitor-card-lang">${esc(t('ui.visitor.card_lang', 'Acil kartı başka bir dilde'))}</label>
     <select id="visitor-card-lang" aria-describedby="visitor-card-note"><option value="">${esc(t('ui.visitor.card_pick', 'Dil seçin'))}</option>${options}</select>
-    <p class="field-hint" id="visitor-card-note">${esc(t('ui.visitor.card_note', 'Sohbete bu dillerden birinde acil bir durum yazarsanız asistan 112 kartını o dilde açar.'))}</p>
+    <p class="field-hint" id="visitor-card-note">${esc(t('ui.visitor.card_note', 'Sohbete bu dillerden birinde acil bir durum yazarsanız asistan acil kartını o dilde açar.'))}</p>
     <div class="visitor-card-preview" aria-live="polite"></div>
   </div>`;
 }

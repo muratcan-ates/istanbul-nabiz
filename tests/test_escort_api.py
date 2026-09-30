@@ -80,12 +80,12 @@ def test_create_requires_consent_validates_rate_limits_and_returns_normal_code(t
     assert all(response.headers["cache-control"] == "no-store" for response in [denied, invalid, *accepted, limited])
 
 
-def test_emergency_note_returns_112_card_without_storing(tmp_path):
+def test_emergency_note_returns_the_153_card_without_storing(tmp_path):
     with build_client(tmp_path) as client:
         response = client.post("/api/escort/requests", json=valid_body(note="yangın var, nefes alamıyor"))
         queue = client.get("/api/console/escort")
     assert response.status_code == 200 and response.json()["emergency"] is True
-    assert response.json()["tel"] == "112"
+    assert response.json()["tel"] == "153"
     assert queue.json()["items"] == []
 
 

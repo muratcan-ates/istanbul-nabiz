@@ -49,7 +49,7 @@ def test_the_quota_strip_says_what_is_left_and_that_emergencies_stay_open(tmp_pa
     ]
     texts = node_json(tmp_path, VIEW, f"console.log(JSON.stringify({json.dumps(statuses)}.map(view.quotaText)));")
     assert texts[0] == "Bugün kalan: 14/20 soru · daha fazlası için hesap bağla"
-    assert "kural yoluyla" in texts[1] and "112" in texts[1] and "153" in texts[1]
+    assert "kural yoluyla" in texts[1] and "112" not in texts[1] and "153" in texts[1]
     assert texts[2] == "Bugün kalan: 99/150 soru · Örnek İBB"
 
 

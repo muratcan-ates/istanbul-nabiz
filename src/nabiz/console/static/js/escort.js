@@ -55,7 +55,7 @@ const TEXT = {
     delete: 'Bu cihazdan sil', cancel: 'Talebi iptal et', received: 'Talebiniz', noStored: 'Talep bulunamadı ya da saklama süresi doldu.',
     saveError: 'Bu tarayıcı dosyayı saklayamadı. Sayfa açıkken kullanabilirsiniz.', optionsError: 'İstasyon listesi şu an alınamıyor. 153’ü arayabilirsiniz.',
     loading: 'İstasyon listesi yükleniyor', sources: 'Kaynaklar', unverified: 'Adımsız yol doğrulanamadı. Resmî destek için bir talep dosyası hazırlayabilirsiniz.',
-    sourcesNote: 'Kaynak sayfalar genel bilgi verir; talep sonucunu doğrulamaz.', codeLabel: 'Kod', emergency: 'Bu acil bir durum olabilir. Lütfen hemen 112’yi arayın.',
+    sourcesNote: 'Kaynak sayfalar genel bilgi verir; talep sonucunu doğrulamaz.', codeLabel: 'Kod', emergency: "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.",
     badNeed: 'Bir ihtiyaç türü seçin.', badSupport: 'En az bir destek seçin.', badDate: 'Geçerli bir tarih seçin.', badRange: 'Tarih bugün ile 30 gün sonrası arasında olmalı.',
     badTime: 'Saat 05:00 ile 23:59 arasında olmalı.', badWindow: 'Bir zaman aralığı seçin.', badMeet: 'Listeden bir buluşma istasyonu seçin.',
     badTo: 'Listeden bir varış istasyonu seçin.', badSame: 'Buluşma ve varış istasyonları farklı olmalı.', badReturn: 'Dönüş seçeneğini belirleyin.',
@@ -80,7 +80,7 @@ const TEXT = {
     saveError: 'This browser could not keep the file. You can use it while this page stays open.', optionsError: 'The station list is unavailable. You can call 153.',
     loading: 'Loading station list', sources: 'Sources', unverified: 'A step-free route could not be verified. You can prepare a file for official support.',
     sourcesNote: 'These source pages give general information; they do not confirm the outcome of a request.', disclaimer: 'This is not an official İBB service.',
-    codeLabel: 'Code', emergency: 'This may be an emergency. Please call 112 now.', badNeed: 'Choose a type of need.', badSupport: 'Choose at least one kind of support.',
+    codeLabel: 'Code', emergency: 'Nabız cannot help in an emergency. You can reach İBB on 153.', badNeed: 'Choose a type of need.', badSupport: 'Choose at least one kind of support.',
     badDate: 'Choose a valid date.', badRange: 'The date must be between today and 30 days from now.', badTime: 'Time must be between 05:00 and 23:59.',
     badWindow: 'Choose a time range.', badMeet: 'Choose a meeting station from the list.', badTo: 'Choose a destination station from the list.',
     badSame: 'Meeting and destination stations must be different.', badReturn: 'Choose a return option.', badReturnTime: 'Return time must be after the trip time.',
@@ -246,7 +246,7 @@ export function cardMarkup(view, lang = 'tr', localOnly = false) {
 }
 
 function emergencyMarkup(message, lang) {
-  return `<article class="escort-card escort-step escort-emergency" role="alert"><h3 id="escort-status-title" tabindex="-1">${esc(message || t('emergency', lang))}</h3><a class="btn btn-primary" href="tel:112">112’yi ara</a><a href="tel:153">153</a></article>`;
+  return `<article class="escort-card escort-step escort-emergency" role="alert"><h3 id="escort-status-title" tabindex="-1">${esc(message || t('emergency', lang))}</h3><a class="btn btn-primary" href="tel:153">${esc(t('call', lang))}</a></article>`;
 }
 
 function fieldError(id, message) { return `<p class="escort-error" id="${id}-error" role="alert" hidden>${esc(message)}</p>`; }

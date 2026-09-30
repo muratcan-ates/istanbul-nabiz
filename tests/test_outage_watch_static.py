@@ -20,7 +20,6 @@ CATALOG = {
         "ui.outage.announced_summary": "Duyurulan bitiş saati",
         "ui.outage.area_heading": "Bölgeler",
         "ui.outage.area_summary": "{files} dosya · {reports} teyit · son {time}",
-        "ui.outage.call_112": "112’yi arayın",
         "ui.outage.call_153": "153’ü arayın",
         "ui.outage.cancel": "Vazgeç",
         "ui.outage.choose_district": "İlçe seçin",
@@ -46,15 +45,11 @@ CATALOG = {
         "ui.outage.district_label": "İlçe",
         "ui.outage.edit_home": "Evimi değiştir",
         "ui.outage.edit_home_title": "Evimi değiştir",
-        "ui.outage.emergency_note": "Bu acil bir durum olabilir. Operatör kuyruğunda beklemeyin.",
-        "ui.outage.emergency_title": "Acil yardım",
+        "ui.outage.emergency_note": "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.",
+        "ui.outage.emergency_title": "Acil durum",
         "ui.outage.expired": "Talebin saklama süresi doldu.",
         "ui.outage.forget_code": "Talebi cihazdan unut",
-        "ui.outage.gas_187": "İGDAŞ 187 Doğal Gaz Acil Hattı",
-        "ui.outage.gas_emergency_prefix": "Gaz kokusu alıyorsanız bu acildir:",
         "ui.outage.gas_no_source": "Doğal gaz kesintisi için Nabız’da kaynak yok.",
-        "ui.outage.gas_recorded": "kayıtlı · {date} · ibb.istanbul",
-        "ui.outage.gas_source": "İBB Faaliyet Raporu 2025",
         "ui.outage.gas_title": "Doğal gaz",
         "ui.outage.history_count": "Bu mahallede {count} kesinti kaydı.",
         "ui.outage.history_dataset": "2023-2024 veri seti",
@@ -92,11 +87,10 @@ CATALOG = {
         "ui.outage.open_confirm": "Suyum hâlâ gelmedi",
         "ui.outage.open_iski": "İSKİ Arıza Kesinti sayfasını aç",
         "ui.outage.open_quote_source": "Alıntının kaynağını aç",
-        "ui.outage.or": "ve",
         "ui.outage.own_title": "Sizin bildiriminiz",
         "ui.outage.own_note": (
             "Duyurulan süre geçti ama suyunuz hâlâ gelmediyse bildirin. Bu bildirim İSKİ’ye gitmez; Nabız "
-            "operatörüne (prototip, simüle) düşer. Acil durumda 112."
+            "operatörüne (prototip, simüle) düşer."
         ),
         "ui.outage.queue_heading": "Dosyalar",
         "ui.outage.quote_185": "Alo 185",
@@ -128,7 +122,6 @@ CATALOG = {
         "ui.outage.announced_summary": "Announced end time",
         "ui.outage.area_heading": "Areas",
         "ui.outage.area_summary": "{files} files · {reports} confirmations · last {time}",
-        "ui.outage.call_112": "Call 112",
         "ui.outage.call_153": "Call 153",
         "ui.outage.cancel": "Cancel",
         "ui.outage.choose_district": "Choose a district",
@@ -157,15 +150,11 @@ CATALOG = {
         "ui.outage.district_label": "District",
         "ui.outage.edit_home": "Change my home",
         "ui.outage.edit_home_title": "Change my home",
-        "ui.outage.emergency_note": "This may be an emergency. Do not wait in the operator queue.",
-        "ui.outage.emergency_title": "Emergency help",
+        "ui.outage.emergency_note": "Nabız cannot help in an emergency. You can reach İBB on 153.",
+        "ui.outage.emergency_title": "Emergency",
         "ui.outage.expired": "The request retention period has ended.",
         "ui.outage.forget_code": "Forget this request on this device",
-        "ui.outage.gas_187": "İGDAŞ 187 Natural Gas Emergency Line",
-        "ui.outage.gas_emergency_prefix": "If you smell gas, treat it as an emergency:",
         "ui.outage.gas_no_source": "Nabız has no source for natural gas outages.",
-        "ui.outage.gas_recorded": "recorded · {date} · ibb.istanbul",
-        "ui.outage.gas_source": "İBB Activity Report 2025",
         "ui.outage.gas_title": "Natural gas",
         "ui.outage.history_count": "{count} outage records for this neighbourhood.",
         "ui.outage.history_dataset": "2023-2024 dataset",
@@ -204,11 +193,10 @@ CATALOG = {
         "ui.outage.open_confirm": "My water still has not returned",
         "ui.outage.open_iski": "Open İSKİ’s outage page",
         "ui.outage.open_quote_source": "Open the quote source",
-        "ui.outage.or": "and",
         "ui.outage.own_title": "Your confirmation",
         "ui.outage.own_note": (
             "If the announced time has passed and your water has not returned, you can report it. This "
-            "confirmation goes to Nabız’s simulated operator, not to İSKİ. Call 112 in an emergency."
+            "confirmation goes to Nabız’s simulated operator, not to İSKİ."
         ),
         "ui.outage.queue_heading": "Files",
         "ui.outage.quote_185": "Alo 185",
@@ -307,9 +295,10 @@ def test_static_modules_and_css_keep_the_feature_fences(tmp_path) -> None:
     shell = (REPO_ROOT / "src/nabiz/console/static/sw.js").read_text(encoding="utf-8")
     assert page.count('src="/js/outage_watch.js"') == 1 and "console_outage_watch" not in page
     assert "'/js/outage_watch.js', '/css/outage_watch.css'" in shell and "console_outage_watch" not in shell
-    # P00 D2a (K): the gas quote is picked by its evidence id, never by comparing Turkish text.
+    # Owner's decision, 30 Sep 2026: the gas box names İBB's 153 only; no 112, no İGDAŞ 187 and no gas quote.
     citizen = (REPO_ROOT / "src/nabiz/console/static/js/outage_watch.js").read_text(encoding="utf-8")
-    assert "item.id === 'gas_187_title'" in citizen and "item.text ===" not in citizen
+    assert "gas_187" not in citizen and "item.text ===" not in citizen
+    assert not re.search(r"\b(?:112|187)\b", citizen)
     # P00 G5 wired the back end and the console panel; the citizen page and its cache wait for D2.
     app_source = (REPO_ROOT / "src/nabiz/console/app.py").read_text(encoding="utf-8")
     assert "from nabiz.console.outage_watch_api import outage_routes" in app_source

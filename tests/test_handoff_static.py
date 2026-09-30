@@ -169,7 +169,7 @@ def test_summary_has_five_ordered_lines_topic_and_district(tmp_path) -> None:
         assert "kaynak bulunamadı" not in "\n".join(text)
 
 
-def test_card_has_copy_153_112_and_no_tid_until_verified(tmp_path) -> None:
+def test_card_has_copy_153_and_no_tid_until_verified(tmp_path) -> None:
     values = run(
         tmp_path,
         "console.log(JSON.stringify({"
@@ -180,7 +180,6 @@ def test_card_has_copy_153_112_and_no_tid_until_verified(tmp_path) -> None:
     plain = values["plain"]
     for needle in (
         'href="tel:153"',
-        'href="tel:112"',
         'data-handoff="copy"',
         'data-handoff="close"',
         '<label for="handoff-summary"',
@@ -191,8 +190,10 @@ def test_card_has_copy_153_112_and_no_tid_until_verified(tmp_path) -> None:
     ):
         assert needle in plain, needle
     assert "TİD" not in plain and "Çözüm Merkezi" not in plain
-    # Tab order follows the markup: textarea, copy, 153, (TİD), 112, close.
-    order = [plain.index(s) for s in ("<textarea", '"copy"', '"call"', '"emergency"', '"close"')]
+    # Owner's decision, 30 Sep 2026: no emergency line on the card, only İBB's 153.
+    assert 'href="tel:112"' not in plain and 'data-handoff="emergency"' not in plain
+    # Tab order follows the markup: textarea, copy, 153, (TİD), close.
+    order = [plain.index(s) for s in ("<textarea", '"copy"', '"call"', '"close"')]
     assert order == sorted(order)
     assert 'data-handoff="tid"' in values["tid"] and 'rel="noopener noreferrer"' in values["tid"]
     assert "&lt;script&gt;" in values["script"] and "<script>" not in values["script"]

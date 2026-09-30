@@ -6,7 +6,7 @@ entry and the message the same way (case, accents, Arabic and Persian letter for
 and "BRÛLE" are one word. A word ending in ``*`` matches as a prefix; any other word matches whole.
 
 - ``terms``: an emergency on their own ("пожар", "Herzinfarkt", "حريق").
-- ``gas``: the same, and the card also shows İGDAŞ's 187 line.
+- ``gas``: the same; the API marks the turn as a gas emergency.
 - ``pleas``: "help" words. They count alone ("Hilfe!"), shouted ("ayuda!") or next to a person, a call
   or another emergency word (``company``); "necesito ayuda con el billete" is not an emergency.
 - ``gated``: "urgent", "emergency", "earthquake", "fell": only with company or shouted, the same rule
@@ -241,7 +241,7 @@ ACUTE_SIGNS: tuple[str, ...] = (
     "nöbet", "fenalaş", "kötüleş", "kötüyüm", "titri", "morar", "konuşamıy", "kusuy", "felç", "inme geçir",
     "inme indi", "göğsüm", "göğüs", "kalbim", "kalbi dur", "şekerim düş", "şekerim çık", "tansiyonum çık",
     "tansiyonum düş", "tansiyonum yüksel", "uyuşu", "ateş", "zehirlen", "ayılmıy", "hareket etmiyor",
-    "cevap vermiyor", "duman", "alev", "yanıyor", "112!",
+    "cevap vermiyor", "duman", "alev", "yanıyor",
     # English
     "pain", "hurt", "chest", "breath", "faint", "dizzy", "unconscious", "collaps", "bleed", "fell!", "falling",
     "emergency", "help", "attack", "seizure", "vomit", "numb", "poison",

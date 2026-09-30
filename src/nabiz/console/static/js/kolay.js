@@ -7,11 +7,10 @@ import { HISTORY_TURNS } from './config.js';
 import { ageText, ageSentence, sourceLabel, AUTHOR_TR } from './provenance.js';
 import { mountToggles } from './theme.js';
 const KOLAY_KEY = 'nabiz.kolay.v1';
-const GAS_LINE = 'İGDAŞ 187 Doğal Gaz Acil Hattı';
 
 function finalText(data, unknownText) {
   const mode = data.mode || (data.refused ? 'refused' : 'answer');
-  if (mode === 'redirect' && data.emergency === true) return 'Bu acil bir durum olabilir. Hemen arayın.';
+  if (mode === 'redirect' && data.emergency === true) return "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.";
   if (mode === 'unknown' || mode === 'refused') return unknownText;
   return data.answer_text ?? data.answer ?? '';
 }
@@ -23,10 +22,7 @@ function call153() {
 function answerMarkup(data) {
   const mode = data.mode || (data.refused ? 'refused' : 'answer');
   if (mode === 'redirect' && data.emergency === true) {
-    return '<div class="kolay-emergency" role="alert">'
-      + '<a class="kolay-call" href="tel:112">112 Acil</a>'
-      + (data.hazard === 'gas' ? `<a class="kolay-call kolay-call-187" href="tel:187">${GAS_LINE}</a>` : '')
-      + '<a class="kolay-call" href="tel:153">153 İBB</a></div>';
+    return '<div class="kolay-emergency" role="alert"><a class="kolay-call" href="tel:153">153 İBB</a></div>';
   }
   if (mode === 'unknown' || mode === 'refused') return call153();
 
@@ -371,7 +367,7 @@ async function boot() {
 }
 
 export {
-  answerMarkup, finalText, renderFinal, arrivalMarkup, KOLAY_KEY, GAS_LINE, readSavedStop, saveStop, forgetStop, boot,
+  answerMarkup, finalText, renderFinal, arrivalMarkup, KOLAY_KEY, readSavedStop, saveStop, forgetStop, boot,
 };
 
 if (typeof document !== 'undefined') boot();

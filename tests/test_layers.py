@@ -332,7 +332,7 @@ def test_layer_texts_have_no_dash_or_abbreviation() -> None:
     assert "\u2014" not in all_text and "\u2013" not in all_text
     assert re.search(r"\bETA\b", all_text, re.IGNORECASE) is None
     numbers = set(re.findall(r"\b\d{3}\b", all_text))
-    assert numbers <= {"112", "153", "500"}
+    assert numbers <= {"153", "500"}
 
 
 def test_layers_never_swallow_emergency_or_refusal() -> None:

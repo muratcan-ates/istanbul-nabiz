@@ -50,7 +50,7 @@ _TIME = re.compile(r"(?<!\d)\d{1,2}[:.]\d{2}(?!\d)")
 _PERCENT = re.compile(r"(?<![\w/])(?:\d+(?:[.,]\d+)?\s*%|%\s*\d+(?:[.,]\d+)?)(?!\w)")
 _NUMBER = re.compile(r"(?<![\w/])\d+(?:[.,]\d+)?(?![\w/])")
 _DEFAULT_FRESHNESS_SLA_S = 31_536_000.0
-_CALL_NUMBERS = {"112", "153", "185", "187"}
+_CALL_NUMBERS = {"153", "185"}
 
 
 def labels(lang: str) -> dict[str, str]:

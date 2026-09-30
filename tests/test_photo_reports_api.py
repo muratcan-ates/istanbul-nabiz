@@ -128,9 +128,9 @@ def test_consent_emergency_limits_places_and_image_types(api: TestClient) -> Non
     no_consent = api.post("/api/photo-reports", json=payload(consent=False))
     assert no_consent.status_code == 400 and no_consent.json()["error"] == "consent_required"
 
-    emergency = api.post("/api/photo-reports", json=payload(description="Yangın var, 112'yi arayın."))
+    emergency = api.post("/api/photo-reports", json=payload(description="Yangın var, yardım edin."))
     assert emergency.status_code == 200 and emergency.json()["emergency"] is True
-    assert emergency.json()["tel"] == "112"
+    assert emergency.json()["tel"] == "153"
     assert api.get("/api/console/photo-reports", headers=OPERATOR_HEADERS).json()["items"] == []
 
     bad_station = api.post("/api/photo-reports", json=payload(place={"kind": "station", "name": "Bilinmeyen"}))

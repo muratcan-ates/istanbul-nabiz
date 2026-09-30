@@ -216,7 +216,7 @@ def _unsourced_links(answer_links: tuple[str, ...], sources_used: Iterable[Any])
     unsourced: list[str] = []
     for link in answer_links:
         normalized = _normalize_link(link)
-        if normalized in {"tel:112", "tel:153"}:
+        if normalized == "tel:153":
             continue
         if not any(normalized == source or source.startswith(normalized + "/") for source in source_links):
             unsourced.append(link)

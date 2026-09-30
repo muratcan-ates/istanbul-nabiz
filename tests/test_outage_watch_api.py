@@ -60,8 +60,10 @@ def test_info_is_sourced_and_history_matches_only_the_selected_area(tmp_path) ->
     assert len(body["districts"]) == 39
     assert any(quote["id"] == "alo_185" and quote["text"] == "Su Kesintisi Öğrenme" for quote in body["official"]["quotes"])
     assert all("igdas" not in quote.get("source_url", "").lower() for quote in body["official"]["quotes"])
-    gas = next(line for line in body["gas"]["lines"] if line["id"] == "gas_emergency")
-    assert [quote["id"] for quote in gas["quotes"]] == ["gas_187_title", "gas_187_service"]  # P00 D2a: by id
+    # No emergency line is handed to the page (owner's decision, 30 Sep 2026): only the no-source line, with 153.
+    assert [line["id"] for line in body["gas"]["lines"]] == ["no_gas_source"]
+    served_gas = json.dumps(body["gas"], ensure_ascii=False)
+    assert "112" not in served_gas and "187" not in served_gas and "153" in served_gas
     assert body["history"]["source_records"] == 6410
     history = client.get("/api/outage-watch/history", params={"district": "Kadıköy", "neighbourhood": "caferaga"}).json()
     assert history["area"]["count"] == 28
@@ -81,7 +83,7 @@ def test_consent_validation_emergency_masking_repeat_seen_and_expiry(tmp_path) -
     assert pii.status_code == 400 and "yalnız mahalle" in pii.json()["message"]
     emergency = client.post("/api/outage-watch/reports", json=report_body(note="Gaz kokusu var"))
     assert emergency.status_code == 200 and emergency.json()["emergency"] is True
-    assert emergency.json()["tel"] == "112" and store.items() == []
+    assert emergency.json()["tel"] == "153" and store.items() == []
 
     created = client.post("/api/outage-watch/reports", json=report_body(note=TEST_EMAIL))
     assert created.status_code == 201

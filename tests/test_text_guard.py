@@ -244,7 +244,9 @@ def test_output_drops_unsourced_links() -> None:
     combined = check_output("Asansör çalışıyor. Bkz. https://example.com", [], author="model")
     assert combined.reason == "unsourced_link"
     assert combined.terms == ("calisiyor",)
-    assert check_output("Bu bilgi için tel:112 veya tel:153", [], author="model").ok is True
+    assert check_output("Bu bilgi için tel:153", [], author="model").ok is True
+    # 30 Sep, owner's decision: an emergency line is no longer a link the model may give without a source.
+    assert check_output("Bu bilgi için tel:112", [], author="model").ok is False
     deep_path = check_output(
         "https://example.com/guide/details/extra",
         [{"url": "https://example.com/guide/details"}],

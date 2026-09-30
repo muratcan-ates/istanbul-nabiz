@@ -3340,3 +3340,33 @@ first visit to it fetches 16 stylesheets and 95 modules: 388,793 B gzip in all, 
   new numbers and the reason, or the suite fails: the same paperwork #26 leaves to the Integrator for `payload`.
 - Whether lazy loading alone reaches the 25,000 B JS budget is not measured; the page's budget after the sprint is
   the owner's to set.
+
+## 111. No emergency numbers: the product shows only 153, and no button places a call (30 Sep)
+
+### Context
+
+The owner decided on 30 Sep that the product must not send people to emergency services: a city assistant that
+prints 112 invites unnecessary calls to the police and ambulance lines. The earlier removal (7cd1282, fc8ffd0) took
+112 out of the refusal and handoff sentences only; the emergency card, Kolay screen, handoff card, visitor card,
+photo form hint, outage and gas boxes, request status, report timeline, kill-switch band, system prompt and the
+official-number lists still named 112, and the gas card also named İGDAŞ 187.
+
+### Decision
+
+- 112 and 187 are removed from `src/`, `eval/`, `README.md` and the tracked docs: visible text, `tel:` links, i18n
+  values, the system prompt, the official-number and citation lists, the detection vocabulary, comments and
+  identifiers. Tests that asserted 112 now assert that it never appears.
+- Emergency detection stays: an emergency message still never reaches the model. The card it opens shows one line in
+  every language, TR "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.", EN "Nabız cannot
+  help in an emergency. You can reach İBB on 153.", and one 153 button. The gas hazard opens the same card.
+- 153 buttons stay, and `js/mock_calls.js` (7cd1282) keeps every `tel:` click from dialling: the page shows
+  "Örnek: Nabız gerçek arama yapmaz" instead.
+- `faithfulness.OFFICIAL_LINES` keeps 153 and 185 only, so a model answer that prints 112 is caught as an unsourced
+  number. `/api/outage-watch/info` drops the reference rows of kind `emergency`; `data/reference` is unchanged.
+- This supersedes the 112 and 187 parts of #36, #40, #47 and #65.
+
+### Consequences
+
+- Full suite 5,296 passed, offline eval 66/66, lint, guardrails, web budget and UI preflight clean on this tree.
+- Someone in real danger who types into Nabız is told it cannot help and is shown 153, not 112. That is the owner's
+  call for a demo that must never trigger an emergency call; revisit it before any real deployment.

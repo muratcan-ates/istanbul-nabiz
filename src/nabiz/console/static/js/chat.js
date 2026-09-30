@@ -16,14 +16,14 @@ import { progressLine } from './tool_labels.js';
 import { mountAnswerActions } from './answer_actions.js';
 import { t } from './i18n_text.js';
 const UNKNOWN_TEXT = "Bu konuda doğrulayabildiğim güncel bir İBB kaynağı bulamadım. Tahmin yürütmek istemiyorum. 153'e bağlanabilir veya ilgili resmî sayfaya gidebilirsin.";
-const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';
+const EMERGENCY_TEXT = "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.";
 function refusalNote() {
   return `<div class="callout callout-warn">${icon('info-circle')}<div>`
     + '<p class="callout-title">Bu soruda asistan cevap üretmez.</p>'
     + '<p>Hak, ücret, ceza ve sağlık sorularının doğru adresi 153 Çözüm Merkezi ve resmî sayfalardır. '
     + '<a href="tel:153">153\'ü arayın</a> ya da '
-    + '<a href="https://www.ibb.istanbul/" target="_blank" rel="noopener noreferrer">ibb.istanbul</a> sayfasına bakın. '
-    + 'Acil durumda 112.</p></div></div>';
+    + '<a href="https://www.ibb.istanbul/" target="_blank" rel="noopener noreferrer">ibb.istanbul</a> sayfasına bakın.</p>'
+    + '</div></div>';
 }
 function suggestionBox(suggestion) {
   const box = document.createElement('div');
@@ -55,8 +55,7 @@ function answerCard(data, turnId) {
   const how = data.how;
   if (mode === 'redirect' && data.emergency === true) {
     return `<div class="callout callout-warn" role="alert"><div><p>${EMERGENCY_TEXT}</p>`
-      + '<div class="btn-row"><a class="btn btn-danger" href="tel:112">112 (Acil)</a>'
-      + '<a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>' + howPanel(how, turnId);
+      + '<div class="btn-row"><a class="btn btn-primary" href="tel:153">153 (İBB)</a></div></div></div>' + howPanel(how, turnId);
   }
   if (mode === 'small_talk' || mode === 'clarify') {
     const text = esc(data.answer_text ?? data.answer ?? '');

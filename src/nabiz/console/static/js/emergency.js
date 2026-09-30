@@ -26,32 +26,26 @@ function draftLabel(lang) {
 }
 
 // The large Turkish block is on every card: the person shows it to anyone nearby.
-function turkishBlock(gas) {
-  const gasLine = gas ? `<p class="emergency-tr-gas">${TR_BLOCK.gas}</p>` : '';
+function turkishBlock() {
   return `<div class="emergency-tr" id="emergency-tr" lang="tr" dir="ltr" tabindex="-1">`
-    + `<p class="emergency-tr-plea">${TR_BLOCK.plea}</p>${gasLine}</div>`;
+    + `<p class="emergency-tr-plea">${TR_BLOCK.plea}</p></div>`;
 }
 
-// 187 is İGDAŞ's natural gas emergency line, named in İBB's 2025 activity report
-// (uploads.ibb.istanbul/uploads/2025_Faaliyet_Raporu_68f4b037e0.pdf, "187 Doğal Gaz Acil Hattı").
-// It is shown only for a gas hazard and only after the 112 button (DECISIONS #36).
-export function cardMarkup(lang = 'tr', hazard = null) {
+// The card names one number, İBB's 153 (owner's decision, 30 Sep 2026): Nabız cannot help in an
+// emergency and sends no one to an emergency line. A gas hazard gets the same card.
+export function cardMarkup(lang = 'tr') {
   const code = pickLang(lang);
   const text = CARD_TEXT[code];
-  const gas = hazard === 'gas';
-  const gasLink = gas ? `<a class="emergency-gas" href="tel:187">${text.gas}</a>` : '';
   return `<section class="emergency-card" id="emergency-card" role="alertdialog" aria-modal="true" aria-labelledby="emergency-title" aria-describedby="emergency-desc" lang="${code}" dir="${textDir(code)}">`
     + `<h2 id="emergency-title">${text.title}</h2>${draftLabel(code)}`
     + `<p id="emergency-desc">${text.show}</p><p class="emergency-note">${text.note}</p>`
     + '<p class="emergency-live" aria-live="assertive"></p>'
-    + `<a class="emergency-call" href="tel:112">${text.call}</a>`
-    + gasLink
+    + `<a class="emergency-call" href="tel:153">${text.call}</a>`
     + `<button type="button" class="emergency-locate" data-act="locate">${text.locate}</button>`
     + '<p class="emergency-location" role="status"></p>'
     + `<button type="button" class="emergency-copy" data-act="copy" hidden>${text.copy}</button>`
-    + turkishBlock(gas)
+    + turkishBlock()
     + `<button type="button" class="emergency-grow" data-act="grow" aria-pressed="false" aria-controls="emergency-tr">${text.grow}</button>`
-    + `<a class="emergency-153" href="tel:153">${text.line153}</a>`
     + `<button type="button" class="emergency-back" data-act="back">${text.back}</button>`
     + `<p class="emergency-foot">${text.foot}</p></section>`;
 }
@@ -64,7 +58,7 @@ export function formatCoords(lat, lon) {
 }
 
 // Coordinates read left to right in every card: inside an Arabic or Persian sentence they are isolated,
-// or the bidi algorithm could show "28.97612 ,41.01235" to someone reading them to 112.
+// or the bidi algorithm could show "28.97612 ,41.01235" to someone reading them aloud.
 export function locationMessage(kind, coords, lang = 'tr') {
   const code = pickLang(lang);
   const text = CARD_TEXT[code][kind] || CARD_TEXT.tr.denied;
@@ -213,7 +207,7 @@ function wireCard(card, lang) {
   });
 }
 
-export function openEmergency(lang, hazard = null) {
+export function openEmergency(lang) {
   const doc = activeDocument || (typeof document === 'undefined' ? null : document);
   if (!doc?.body) return;
   const current = doc.getElementById('emergency-card');
@@ -224,7 +218,7 @@ export function openEmergency(lang, hazard = null) {
   const message = emergencyMessage(doc);
   const selectedLang = resolveLang(doc, lang, message);
   const holder = doc.createElement('div');
-  holder.innerHTML = cardMarkup(selectedLang, hazard);
+  holder.innerHTML = cardMarkup(selectedLang);
   const card = holder.firstElementChild;
   doc.body.appendChild(card);
   setBackgroundInert(doc, card);
@@ -271,7 +265,6 @@ export function mountEmergency(doc) {
   addStylesheet(doc);
   doc.addEventListener(EMERGENCY_EVENT, (event) => openEmergency(
     resolveLang(doc, event.detail?.lang, emergencyMessage(doc)),
-    event.detail?.hazard,
   ));
   const log = doc.getElementById('chat-log');
   if (!log) return;

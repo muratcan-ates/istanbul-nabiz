@@ -19,7 +19,7 @@ CATALOG = {
         "ui.visitor.note": "İBB kayıtlarından ve resmî sayfalardan kısa cevaplar. Adlar ve adresler Türkçe kalır.",
         "ui.visitor.q_museums": "Hangi müzeler şu an açık?",
         "ui.visitor.q_airport": "Havalimanlarına hangi şehir otobüsleri gider?",
-        "ui.visitor.q_emergency": "Acil numaralar",
+        "ui.visitor.q_emergency": "Acil bir durumda",
         "ui.visitor.q_istanbulkart": "İstanbulkart'ı nereden alırım?",
         "ui.visitor.q_step_free": "Metro, tramvay ve vapurda basamaksız erişim",
         "ui.visitor.district_hint": "Parantez içinde: kayıttaki müze ve galeri sayısı.",
@@ -35,16 +35,16 @@ CATALOG = {
             "Başka işletmeler bu kaynakta yok. "
             "Yola çıkmadan önce saatleri İETT'nin sayfasında kontrol edin."
         ),
-        "ui.visitor.card_lang": "112 kartı başka bir dilde",
+        "ui.visitor.card_lang": "Acil kartı başka bir dilde",
         "ui.visitor.card_pick": "Dil seçin",
-        "ui.visitor.card_note": "Sohbete bu dillerden birinde acil bir durum yazarsanız asistan 112 kartını o dilde açar.",
+        "ui.visitor.card_note": "Sohbete bu dillerden birinde acil bir durum yazarsanız asistan acil kartını o dilde açar.",
     },
     "en": {
         "ui.visitor.title": "Visiting İstanbul?",
         "ui.visitor.note": "Short answers from İBB records and official pages. Names and addresses stay in Turkish.",
         "ui.visitor.q_museums": "Which museums are open now?",
         "ui.visitor.q_airport": "Which city buses go to the airports?",
-        "ui.visitor.q_emergency": "Emergency numbers",
+        "ui.visitor.q_emergency": "In an emergency",
         "ui.visitor.q_istanbulkart": "Where do I get an İstanbulkart?",
         "ui.visitor.q_step_free": "Step-free access on metro, tram and ferry",
         "ui.visitor.district_hint": "In brackets: how many museums and galleries the record lists.",
@@ -60,11 +60,11 @@ CATALOG = {
         "ui.visitor.open_page": "Open the page",
         "ui.visitor.airport_lines": "Airport lines as written on İETT's page:",
         "ui.visitor.airport_note": "Other operators are not in this source. Check the times on İETT's page before you travel.",
-        "ui.visitor.card_lang": "The 112 card in another language",
+        "ui.visitor.card_lang": "The emergency card in another language",
         "ui.visitor.card_pick": "Choose a language",
         "ui.visitor.card_note": (
             "If you describe an emergency in the chat in one of these languages, "
-            "the assistant opens the 112 card in that language."
+            "the assistant opens the emergency card in that language."
         ),
     },
 }
@@ -237,9 +237,13 @@ def test_section_knowledge_markup_and_emergency_card_are_bounded(tmp_path) -> No
     assert values["unknown"] == "" and 'lang="de" dir="ltr"' in values["german"]
     assert 'lang="ar" dir="rtl"' in values["arabic"] and values["language"] == "Deutsch"
     emergency = values["emergency"]
-    assert re.findall(r'href="(tel:[^"]+)"', emergency) == ["tel:112", "tel:187", "tel:153"]
-    assert '<a class="btn" href="tel:112">Call 112</a>' in emergency
-    assert '<p class="visitor-plea" id="visitor-plea" lang="tr">LÜTFEN YARDIM EDİN · 112&#39;Yİ ARAYIN</p>' in emergency
+    # Owner's decision, 30 Sep 2026: one number, İBB's 153; no 112 and no İGDAŞ 187.
+    assert re.findall(r'href="(tel:[^"]+)"', emergency) == ["tel:153"]
+    assert '<a class="btn" href="tel:153">Call 153</a>' in emergency
+    assert "<p>Nabız cannot help in an emergency. You can reach İBB on 153.</p>" in emergency
+    plea = "NABIZ ACİL DURUMLARDA YARDIMCI OLAMAZ. İBB&#39;YE 153&#39;TEN ULAŞABİLİRSİNİZ."
+    assert f'<p class="visitor-plea" id="visitor-plea" lang="tr">{plea}</p>' in emergency
+    assert not re.search(r"\b(?:112|187)\b", emergency)
     assert emergency.count("<option") == 11 and 'data-visitor="grow"' in emergency
 
 

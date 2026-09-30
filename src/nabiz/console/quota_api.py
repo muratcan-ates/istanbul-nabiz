@@ -6,7 +6,7 @@
 gives) is never counted and never limited: it bypasses the per-minute limiter and the daily quota,
 and its card comes from the rules like always. Any other turn is admitted against the daily
 question count; past it the turn still runs, with the model rung closed (:class:`~nabiz.console.
-quota.Meter`), so the rules keep answering and every card still names 153 and 112. A request for a
+quota.Meter`), so the rules keep answering and every card still names 153. A request for a
 person (153) is answered by the rules and the page's handoff card whatever the quota says.
 
 The turn's ``final`` event gains ``quota`` (what is left, whether the model was open) and, when the

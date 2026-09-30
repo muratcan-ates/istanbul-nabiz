@@ -11,6 +11,7 @@ from typing import Any
 
 from ibb_mcp.config import REPO_ROOT
 from ibb_mcp.text import normalize_tr
+from nabiz.console.emergency_text import CARD_TEXT
 from nabiz.console.policy import emergency_intent
 
 AGENCIES_PATH = REPO_ROOT / "data" / "agencies.json"
@@ -185,7 +186,7 @@ def route(question: str, district: str | None = None) -> AgencyRoute:
     data = load_agencies(agencies_path())
     text = normalize_tr(question)
     if emergency_intent(question) or _local_emergency(text):
-        return AgencyRoute(None, None, None, False, None, None, "Acil bir durumdaysanız 112'yi arayın.", True)
+        return AgencyRoute(None, None, None, False, None, None, CARD_TEXT["tr"]["live"], True)
     words = text.split()
     for rule in RULES:
         matched = _match_rule(rule, text, words)

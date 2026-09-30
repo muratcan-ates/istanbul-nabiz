@@ -3,7 +3,7 @@
 Citizen side (open, like the chat):
 
     POST /api/requests               {text, lang: "tr"|"en"|"auto", consent: true}  -> 201 the request card
-                                     an emergency -> 200 {"emergency": true, ...}: the 112 card, no request
+                                     an emergency -> 200 {"emergency": true, ...}: the 153 card, no request
     GET  /api/requests/{code}        the card: waiting, or the reply in the visitor's language and in Turkish
 
 Operator side (behind the console's door, :mod:`nabiz.console.access`, because the paths start
@@ -13,10 +13,10 @@ Operator side (behind the console's door, :mod:`nabiz.console.access`, because t
     POST /api/console/requests/{code}/preview       {text_tr} -> the reply's translation, nothing sent
     POST /api/console/requests/{code}/reply         {text_tr, text_translated} -> sent, sealed in the ledger
 
-**112 first.** The request's text is checked for an emergency before anything else (the chat's
+**The emergency card first.** The request's text is checked for an emergency before anything else (the chat's
 rule, :func:`nabiz.console.policy.emergency_intent`, and the fixed classifier
 :func:`nabiz.console.emergency.classify`): an emergency is never queued for an operator and costs no
-model call. A Turkish translation that reads as an emergency sends the visitor to 112 too.
+model call. A Turkish translation that reads as an emergency gets the visitor the 153 card too.
 
 **A person approves every reply.** A reply in another language cannot be sent before the operator
 has previewed its translation for exactly that Turkish text; what the operator sends (the model's
@@ -38,6 +38,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StrictBool
 
+from nabiz.agent.templates_i18n import FIXED
 from nabiz.console import policy, text_guard
 from nabiz.console.citizen_requests import (
     MAX_CHARS,
@@ -64,11 +65,12 @@ from nexus_core.ledger import Ledger
 log = logging.getLogger("nabiz.console.requests")
 request_routes = APIRouter()
 
-EMERGENCY_TEXT = "Bu acil bir durum olabilir. İBB operatörü 112'nin yerine geçmez: lütfen hemen 112'yi arayın."
+#: The one emergency text (:data:`nabiz.agent.templates_i18n.FIXED`), in Turkish.
+EMERGENCY_TEXT = FIXED["EMERGENCY"]["tr"]
 TOO_LONG = f"Talep en fazla {MAX_CHARS:,} karakter olabilir. Lütfen kısaltın.".replace(",", ".")
 TOO_MANY = (
-    "Bu cihazdan bir saatte en çok {n} talep gönderilebilir. Biraz sonra yeniden deneyin; "
-    "acil bir durumdaysanız 112'yi, diğer konularda 153'ü arayabilirsiniz."
+    "Bu cihazdan bir saatte en çok {n} talep gönderilebilir. Biraz sonra yeniden deneyin "
+    "ya da 153'ü arayabilirsiniz."
 )
 NOT_FOUND = "Talep bulunamadı ya da 30 günlük saklama süresi doldu."
 PREVIEW_NOTE = "Önizleme; henüz hiçbir şey gönderilmedi. Çeviriyi düzeltebilir ya da boş bırakabilirsiniz."
@@ -84,7 +86,7 @@ REPLY_LABELS = {
 }
 #: The prototype's operator is simulated (console band, DECISIONS #25); the visitor is told so.
 SIMULATED_NOTE = "Prototip: operatör rolü simüledir; resmî İBB hizmeti değildir."
-WAITING_NOTE = "Cevap geldiğinde bu kartta görünür. Acil bir durumda beklemeyin, 112'yi arayın."
+WAITING_NOTE = "Cevap geldiğinde bu kartta görünür."
 
 
 class CitizenRequestBody(BaseModel):
@@ -131,7 +133,7 @@ def request_is_emergency(text: str | None) -> bool:
 
 
 def emergency_answer(text: str) -> JSONResponse:
-    body = {"emergency": True, "hazard": policy.emergency_hazard(text), "message": EMERGENCY_TEXT, "tel": "112"}
+    body = {"emergency": True, "hazard": policy.emergency_hazard(text), "message": EMERGENCY_TEXT, "tel": "153"}
     return JSONResponse(status_code=200, content=body, headers={"Cache-Control": "no-store"})
 
 

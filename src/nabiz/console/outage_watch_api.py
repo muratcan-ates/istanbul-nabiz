@@ -135,7 +135,10 @@ def _info_payload() -> dict[str, Any]:
         quote["source_url"] = source.get("url") if _source_url(source.get("url")) else None
         quote["captured_at"] = source.get("captured_at")
     gas = dict(data.get("gas") or {})
-    for line in gas.get("lines", []):
+    # Nabız sends no one to an emergency line (owner's decision, 30 Sep 2026): the recorded gas emergency
+    # line stays in the reference file as a capture, but the page is never handed it.
+    gas["lines"] = [dict(line) for line in gas.get("lines", []) if line.get("kind") != "emergency"]
+    for line in gas["lines"]:
         source = source_by_id.get(line.get("source_id"), {})
         line["source_url"] = source.get("url") if _source_url(source.get("url")) else None
         line["captured_at"] = source.get("captured_at")
@@ -211,7 +214,7 @@ async def create_outage_report(request: Request, body: OutageReportBody) -> JSON
         return port_problem(
             429,
             "too_many_requests",
-            "Bu cihazdan bir saatte en çok 3 teyit gönderilebilir. Biraz sonra yeniden deneyin; acil durumda 112'yi arayın.",
+            "Bu cihazdan bir saatte en çok 3 teyit gönderilebilir. Biraz sonra yeniden deneyin.",
         )
     try:
         row = await asyncio.to_thread(
@@ -258,7 +261,7 @@ async def confirm_outage_again(request: Request, code: str, body: OutageRepeatBo
         return port_problem(
             429,
             "too_many_requests",
-            "Bu cihazdan bir saatte en çok 3 teyit gönderilebilir. Biraz sonra yeniden deneyin; acil durumda 112'yi arayın.",
+            "Bu cihazdan bir saatte en çok 3 teyit gönderilebilir. Biraz sonra yeniden deneyin.",
         )
     updated = await asyncio.to_thread(
         desk.store.confirm_again,

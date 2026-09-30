@@ -53,7 +53,7 @@ def _own_text_is_safe(text: str) -> bool:
     folded = text.casefold()
     return not (_LONG_DASHES.search(text) or re.search(r"\bETA\b|\blive\b|canlı|İBB onaylı", text, re.IGNORECASE)) \
         and not (_EMAIL.search(text) or any(word in folded for word in CLAIM_WORDS)) \
-        and all(match.group() in {"112", "153"} for match in _THREE_DIGITS.finditer(text))
+        and all(match.group() == "153" for match in _THREE_DIGITS.finditer(text))
 
 
 def _agency_ids(agencies: dict) -> set[str]:

@@ -60,7 +60,7 @@ const sensitive = await store.saveTurn(c.id, {role:'user', content:'Sağlık oca
 assert.equal(sensitive.title, 'Yeni sohbet');
 assert.equal(sensitive.turns[0].content, '[hassas bilgi saklanmadı]');
 assert.equal(sensitive.turns[0].redacted, 'sensitive');
-const emergency = await store.saveTurn(c.id, {role:'assistant', content:'112 acil', mode:'redirect'});
+const emergency = await store.saveTurn(c.id, {role:'assistant', content:'153 acil', mode:'redirect'});
 assert.equal(emergency.turns[1].redacted, 'emergency');
 assert.equal(emergency.turns[1].content, '[acil yönlendirme]');
 await store.saveTurn(c.id, {role:'user', content:'Kartal yolculuğu', message_id:'q2'});

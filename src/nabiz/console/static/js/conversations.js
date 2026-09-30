@@ -12,7 +12,7 @@ const CARD_STATUSES = new Set(['preparing', 'needs_input', 'ready', 'awaiting_co
 const CARD_ACTION_KIND = Object.freeze({ use_location: 'device', type_place: 'view', expand_map: 'view', listen: 'view', remember_here: 'device', remember_always: 'device', change: 'view', forget: 'device', save_calendar: 'nabiz', export_ics: 'device', review_report: 'view', send: 'nabiz', open_official: 'external', add_outlook: 'external', confirm_resolved: 'nabiz', reopen: 'nabiz', cancel: 'nabiz', appeal: 'nabiz', share: 'external' });
 const CARD_CONSENT = new Set(['use_location', 'remember_here', 'remember_always', 'save_calendar', 'send', 'add_outlook', 'confirm_resolved', 'reopen', 'cancel', 'appeal', 'share']);
 const CARD_ACTION_ALIASES = Object.freeze({ add_calendar: 'save_calendar', download_ics: 'export_ics', open_map: 'expand_map', remember: 'remember_here' });
-const EMERGENCY_TEXT = /112|acil|ambulans|can güvenliği|imdat/i;
+const EMERGENCY_TEXT = /acil|ambulans|can güvenliği|imdat/i;
 const SENSITIVE_TEXT = /sağlık|hastalık|rahatsızlık|rahatsiz|ameliyat|kalp|kanser|ilaç|doktor|teşhis|tani|kan tahlil|gebelik|hamile|psikolog|terapi|hukuk|avukat|dava|ceza|borç|maaş|banka|kredi|şifre|kimlik|adres|telefon|e-?posta|\b\d{11}\b|\b\d{10,}\b/i;
 let databasePromise, indexedDbUnavailable = false, storageMode = 'unknown', memoryRecords = [];
 function timestamp(value) {

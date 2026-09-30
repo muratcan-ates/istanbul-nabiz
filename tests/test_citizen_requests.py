@@ -289,11 +289,11 @@ def test_hourly_limit_slides() -> None:
     assert limit.allow("a", now=3601)
 
 
-# ---- 112 first ---------------------------------------------------------------------------------
+# ---- the emergency card first -----------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("text", ["Yangın çıktı, ambulans lazım", "There is a fire, call an ambulance", "Annem düştü kalkamıyor"])
-def test_an_emergency_goes_to_112_and_never_to_the_operator(
+def test_an_emergency_gets_the_153_card_and_never_goes_to_the_operator(
     paths: pathlib.Path, monkeypatch: pytest.MonkeyPatch, text: str
 ) -> None:
     fake = FakeModel()
@@ -302,12 +302,12 @@ def test_an_emergency_goes_to_112_and_never_to_the_operator(
     answer = ask(c, text)
     assert answer.status_code == 200
     body = answer.json()
-    assert body["emergency"] is True and body["tel"] == "112" and "code" not in body
+    assert body["emergency"] is True and body["tel"] == "153" and "code" not in body
     assert c.get("/api/console/requests").json()["items"] == []
     assert fake.calls == [] and ledger_entries(paths) == []
 
 
-def test_an_emergency_the_translation_reveals_goes_to_112_too(paths: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_an_emergency_the_translation_reveals_gets_the_153_card_too(paths: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(llm, "chat", FakeModel(model_json("de", "Yangın var! Ambulans çağırın!")))
     c = client(CLOUD)
     body = ask(c, "Es brennt! Rufen Sie einen Krankenwagen!").json()

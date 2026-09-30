@@ -103,7 +103,7 @@ body a.skip-link { background: var(--kolay-btn); color: var(--kolay-btn-ink); }
 .kolay-source { overflow-wrap: anywhere; }
 .kolay-link { display: inline-flex; align-items: center; justify-content: center; padding: .5rem .75rem; border: 2px solid var(--border-strong); border-radius: var(--radius-control); color: var(--kolay-ink); text-align: center; }
 .kolay a { color: var(--kolay-ink); text-underline-offset: .2em; overflow-wrap: anywhere; }
-.kolay .kolay-call, .kolay-footer .kolay-call-112, .kolay-callbar .kolay-call {
+.kolay .kolay-call, .kolay-callbar .kolay-call {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -121,8 +121,7 @@ body a.skip-link { background: var(--kolay-btn); color: var(--kolay-btn-ink); }
   text-align: center;
   text-decoration: none;
 }
-.kolay .kolay-emergency { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .75rem; }
-.kolay .kolay-emergency a[href="tel:112"] { border-color: var(--kolay-danger); background: var(--kolay-danger); color: var(--kolay-danger-ink); }
+.kolay .kolay-emergency { display: grid; gap: .75rem; }
 .kolay-arrival { display: grid; gap: .75rem; }
 .kolay-arrival > p { max-width: none; }
 .kolay-arrival .kolay-minute { font-size: 3rem; font-weight: var(--weight-bold); line-height: 1.4; overflow-wrap: anywhere; }
@@ -139,7 +138,6 @@ body a.skip-link { background: var(--kolay-btn); color: var(--kolay-btn-ink); }
 .kolay-footer { display: grid; gap: 1rem; padding: 1.5rem 16px calc(7rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); color: var(--kolay-ink); font-size: 1rem; }
 .kolay-footer > p { max-width: 44rem; margin-inline: auto; width: 100%; }
 .kolay-footer > a { display: inline-flex; align-items: center; min-height: var(--kolay-tap); max-width: 44rem; width: 100%; margin-inline: auto; color: var(--kolay-ink); }
-.kolay-footer .kolay-call-112 { max-width: 8rem; color: var(--kolay-call-ink); }
 .kolay-callbar { position: fixed; inset-inline: 0; bottom: 0; z-index: var(--z-sticky); padding: .75rem 16px calc(.75rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--border-strong); background: var(--surface-raised); }
 .kolay-callbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: 44rem; margin-inline: auto; }
 .kolay-callbar-inner > span { min-width: 0; font-size: 1.125rem; }

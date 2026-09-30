@@ -140,7 +140,7 @@ def test_answer_cards_keep_quotes_exact_and_hide_unknown_sources(tmp_path) -> No
     assert "Bu nasıl bulundu?" in result["quoteHtml"]  # the empty-tool provenance panel must render
     assert 'href="tel:153"' in result["unknown"]
     assert all(part not in result["unknown"] for part in ("Kaynak", "Nasıl yapılır", "Bu nasıl bulundu?", "chat-foot"))
-    assert 'href="tel:112"' in result["emergency"] and 'href="tel:153"' in result["emergency"]
+    assert 'href="tel:112"' not in result["emergency"] and 'href="tel:153"' in result["emergency"]
     # The emergency card carries the "how was this found" panel outside its alert box (E38, decision 6);
     # the legacy unknown path above still does not.
     assert "Bu nasıl bulundu?" in result["emergency"]
