@@ -134,12 +134,14 @@ function setup(hash = '') {
   add(body, 'ul', 'legacy-topbar');
   const links = ['asistan', 'takvim', 'hesabim'].map((id, index) => {
     const link = add(add(primary, 'li'), 'a'); link.setAttribute('href', `#${id}`);
+    add(link, 'span');
     link.setAttribute('data-primary', ['assistant', 'calendar', 'account'][index]); return link;
   });
   ['city-cards', 'city-tools', 'map-workspace', 'explore-workspace', 'acik-veri', 'takip', '/kolay.html']
     .forEach((id, index) => { const link = add(add(legacy, 'li'), 'a');
       link.setAttribute('href', id.startsWith('/') ? id : `#${id}`);
       link.setAttribute('data-legacy', ['city', 'travel', 'map', 'nearby', 'data', 'follow', 'easy'][index]);
+      add(link, 'svg', '', 'icon');
       links.push(link); });
   let submissions = 0;
   form.requestSubmit = () => { submissions++; form.dispatchEvent(event('submit')); };
@@ -205,6 +207,115 @@ console.log(JSON.stringify({travel, data, map, account, home: assistant}));
         "account": {"view": "account", "visible": ["hesabim"]},
         "home": {"view": "assistant", "visible": ["home-screen", "asistan"]},
     }
+
+
+def test_map_moves_after_calendar_once_and_keeps_its_icon_language_and_focus(tmp_path) -> None:
+    values = run_workspace(tmp_path, """
+const s = setup(), map = s.links.find(link => link.getAttribute('data-legacy') === 'map');
+const icon = map.querySelector('svg'); workspace.mountWorkspace(s);
+const primary = s.doc.querySelector('.nav-primary');
+const turkish = map.querySelector('span').textContent;
+map.focus(); workspace.applyLegacyPlacement(); workspace.applyLegacyPlacement();
+const focused = s.doc.activeElement === map;
+window.dispatchEvent(event('nabiz:lang', {detail: {lang: 'en'}}));
+const english = map.querySelector('span').textContent;
+window.dispatchEvent(event('nabiz:lang', {detail: {lang: 'tr'}}));
+console.log(JSON.stringify({order: primary.querySelectorAll('a').map(link => link.getAttribute('data-primary')),
+  count: s.doc.querySelectorAll('a').filter(link => link.getAttribute('data-legacy') === 'map').length,
+  same: primary.querySelectorAll('a')[2] === map, icon: map.querySelector('svg') === icon,
+  key: map.querySelector('span').getAttribute('data-i18n'), focused, turkish, english,
+  restored: map.querySelector('span').textContent,
+  more: s.doc.getElementById('legacy-more-links').querySelectorAll('a').map(link => link.getAttribute('data-legacy'))}));
+""")
+    assert values == {"order": ["assistant", "calendar", "map", "account"], "count": 1, "same": True, "icon": True,
+                      "key": "design.nav_map", "focused": True, "turkish": "Harita", "english": "Map",
+                      "restored": "Harita", "more": ["city", "travel", "nearby"]}
+
+
+def test_map_click_hash_and_show_on_map_select_only_the_map_primary_link(tmp_path) -> None:
+    values = run_workspace(tmp_path, """
+const s = setup(); workspace.mountWorkspace(s);
+const map = s.links.find(link => link.getAttribute('data-legacy') === 'map');
+const selected = () => s.links.filter(link => link.hasAttribute('aria-current')).map(link =>
+  [link.getAttribute('data-primary'), link.getAttribute('aria-current')]);
+map.dispatchEvent(event('click'));
+const click = {view: s.body.dataset.view, current: selected(), focus: s.doc.activeElement?.id,
+  visible: s.doc.activeElement?.isVisible(), focusOptions: s.doc.activeElement?.focusOptions};
+s.links[1].dispatchEvent(event('click')); const calendar = selected();
+location.hash = '#map-workspace'; window.dispatchEvent(event('hashchange')); const hash = selected();
+s.links[0].dispatchEvent(event('click'));
+s.doc.dispatchEvent(event('nabiz:show-on-map')); const action = {view: s.body.dataset.view, current: selected()};
+console.log(JSON.stringify({click, calendar, hash, action}));
+""")
+    assert values == {"click": {"view": "map", "current": [["map", "page"]], "focus": "map-workspace",
+                               "visible": True, "focusOptions": {"preventScroll": True}},
+                      "calendar": [["calendar", "page"]], "hash": [["map", "page"]],
+                      "action": {"view": "map", "current": [["map", "page"]]}}
+
+
+@pytest.mark.parametrize("citizen", [True, False])
+def test_everyday_examples_submit_visible_questions_once_across_language_rerenders(tmp_path, citizen) -> None:
+    values = run_workspace(tmp_path, f"""
+const {{ setCatalogs }} = await import({json.dumps((STATIC / 'js' / 'i18n_text.js').as_uri())});
+const matches = Node.prototype.matches;
+Node.prototype.matches = function(selector) {{
+  return selector === 'button[data-example]' ? this.tagName === 'button' && Boolean(this.dataset.example)
+    : matches.call(this, selector);
+}};
+Node.prototype.replaceChildren = function(...nodes) {{
+  [...this.children].forEach(node => node.remove()); this.append(...nodes);
+}};
+Object.defineProperty(Node.prototype, 'innerHTML', {{
+  get() {{ return this._html || ''; }},
+  set(value) {{
+    this._html = value; this.replaceChildren();
+    const href = value.match(/<use href="([^"]+)"/);
+    if (href) {{ const svg = new Node('svg'), use = new Node('use');
+      use.setAttribute('href', href[1]); svg.append(use); this.append(svg); }}
+  }},
+}});
+const s = setup(), list = new Node('ul', 'capability-examples'); s.hero.append(list);
+const subtitle = new Node('p', 'home-sub'); subtitle.textContent = 'Original subtitle'; s.hero.append(subtitle);
+if ({json.dumps(citizen)}) s.body.classList.add('citizen-page');
+s.input.setAttribute('placeholder', 'Original placeholder');
+const asked = []; s.form.requestSubmit = () => asked.push(s.input.value);
+home.mountHome(s); workspace.mountEverydayExamples(s.form, s.input); workspace.mountEverydayExamples(s.form, s.input);
+const snapshot = () => list.querySelectorAll('button').map(button => ({{
+  label: button.querySelector('span').textContent, question: button.dataset.question || null,
+  icon: button.querySelector('use').getAttribute('href'), id: button.dataset.example,
+}}));
+const tr = snapshot(), trPlaceholder = s.input.getAttribute('placeholder'), trSubtitle = subtitle.textContent;
+list.querySelectorAll('button').forEach(button => button.querySelector('span').dispatchEvent(event('click')));
+s.doc.documentElement.lang = 'en';
+setCatalogs('en', Object.fromEntries(home.EXAMPLES.map(item => [`ui.shell.${{item.id}}`, item.en])), {{}});
+window.dispatchEvent(event('nabiz:lang', {{detail: {{lang: 'en'}}}}));
+const en = snapshot(), enPlaceholder = s.input.getAttribute('placeholder'), enSubtitle = subtitle.textContent;
+list.querySelectorAll('button').forEach(button => button.dispatchEvent(event('click')));
+s.doc.documentElement.lang = 'tr'; setCatalogs('tr', {{}}, {{}});
+window.dispatchEvent(event('nabiz:lang', {{detail: {{lang: 'tr'}}}}));
+list.querySelectorAll('button')[0].dispatchEvent(event('click'));
+console.log(JSON.stringify({{tr, en, asked, trPlaceholder, enPlaceholder, trSubtitle, enSubtitle,
+  originals: home.EXAMPLES.map(item => ({{tr: item.tr, en: item.en, icon: item.icon}}))}}));
+""")
+    tr = ["Kadıköy’den Levent’e en hızlı nasıl giderim?", "Taksim’e metroyla nasıl giderim?",
+          "Beşiktaş’a sadece otobüsle nasıl giderim?", "Bu hafta sonu ücretsiz ne yapabilirim?"]
+    en = ["What is the fastest way from Kadıköy to Levent?", "How can I get to Taksim by metro?",
+          "How can I get to Beşiktaş using only buses?", "What can I do for free this weekend?"]
+    icons = ["map", "train", "bus", "external-link"]
+    if not citizen:
+        tr = [item["tr"] for item in values["originals"]]
+        en = [item["en"] for item in values["originals"]]
+        icons = [item["icon"] for item in values["originals"]]
+    for language, labels in (("tr", tr), ("en", en)):
+        assert values[language] == [
+            {"label": label, "question": label if citizen else None, "icon": f"/icons.svg#i-{icons[index]}",
+             "id": f"{'everyday' if citizen else 'example'}_{index + 1}"} for index, label in enumerate(labels)
+        ]
+    assert values["asked"] == tr + en + tr[:1]
+    assert values["trPlaceholder"] == ("İstanbul hakkında bir şey sorun…" if citizen else "Original placeholder")
+    assert values["enPlaceholder"] == ("Ask something about Istanbul…" if citizen else "Original placeholder")
+    assert values["trSubtitle"] == ("Ulaşım, etkinlikler ve şehir hizmetleri için sorun." if citizen else "Original subtitle")
+    assert values["enSubtitle"] == ("Ask about transport, events and city services." if citizen else "Original subtitle")
 
 
 def test_composer_moves_as_one_live_form_and_preserves_draft_selection_and_listeners(tmp_path) -> None:
@@ -369,11 +480,10 @@ console.log(JSON.stringify({{submits: s.submissions(), prevented: key.defaultPre
     assert values == {"submits": expected_submits, "prevented": expected_prevented}
 
 
-# P00 D2a: the owner's placement. Three entries (Assistant, Calendar, My account); the four city tools under
-# More; Follow inside My account; open data in the console; the easy screen in the top bar. Every old address
-# still opens its destination.
+# P00 D2a placement plus the owner's Map promotion: four runtime primary entries, with Map after Calendar.
+# The other city tools remain under More. Every old address still opens its destination.
 OWNER_PLACEMENT = {
-    "city": ("#city-cards", "more"), "travel": ("#city-tools", "more"), "map": ("#map-workspace", "more"),
+    "city": ("#city-cards", "more"), "travel": ("#city-tools", "more"), "map": ("#map-workspace", "nav"),
     "nearby": ("#explore-workspace", "more"), "data": ("#acik-veri", "operator"), "follow": ("#takip", "account"),
     "easy": ("/kolay.html", "topbar"),
 }
@@ -418,7 +528,7 @@ console.log(JSON.stringify({rows, reach}));
     assert values["rows"] == {
         "city": {"parent": "legacy-more-links", "hidden": False, "moved": None},
         "travel": {"parent": "legacy-more-links", "hidden": False, "moved": None},
-        "map": {"parent": "legacy-more-links", "hidden": False, "moved": None},
+        "map": {"parent": "", "hidden": False, "moved": None},
         "nearby": {"parent": "legacy-more-links", "hidden": False, "moved": None},
         "data": {"parent": "legacy-nav", "hidden": True, "moved": "console"},
         "follow": {"parent": "legacy-nav", "hidden": True, "moved": None},

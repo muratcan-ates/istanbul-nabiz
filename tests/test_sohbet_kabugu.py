@@ -192,9 +192,9 @@ console.log(JSON.stringify({{original, values, hashView: s.body.dataset.view}}))
 """
     values = run_node("placement", "", script)
     assert len(values["original"]) == 7
-    # The four city workspaces belong under Assistant; their old addresses remain valid.
+    # Map is primary after Calendar; the other city workspaces remain under Assistant.
     assert dict(values["original"]) == {
-        "city": "more", "travel": "more", "map": "more", "nearby": "more",
+        "city": "more", "travel": "more", "map": "nav", "nearby": "more",
         "data": "operator", "follow": "account", "easy": "topbar",
     }
     assert values["values"] == [
@@ -208,7 +208,7 @@ console.log(JSON.stringify({{original, values, hashView: s.body.dataset.view}}))
     assert values["hashView"] == "city"
 
 
-def test_decided_placement_reveals_four_assistant_tools_and_keeps_old_addresses() -> None:
+def test_decided_placement_reveals_three_assistant_tools_and_primary_map_at_old_addresses() -> None:
     script = f"""
 import * as workspace from {json.dumps((JS / 'workspace_nav.js').as_uri())};
 {WORKSPACE_DOM}
@@ -238,14 +238,15 @@ console.log(JSON.stringify({{ids, results, hidden, moreClosedInitially: initiall
   easyParent: easy.parentElement.parentElement.id}}));
 """
     values = run_node("decided_placement", "", script)
-    assert values["ids"] == ["city", "travel", "map", "nearby"]
+    assert values["ids"] == ["city", "travel", "nearby"]
     assert {name: item["view"] for name, item in values["results"].items()} == {
         "city": "city", "travel": "travel", "map": "map", "nearby": "nearby",
     }
     assert {name: item["focus"] for name, item in values["results"].items()} == {
         "city": "city-cards", "travel": "city-tools", "map": "map-workspace", "nearby": "explore-workspace",
     }
-    assert all(item["current"] == ["#asistan"] for item in values["results"].values())
+    assert all(item["current"] == (["#map-workspace"] if name == "map" else ["#asistan"])
+               for name, item in values["results"].items())
     assert values["hidden"] == [
         {"legacy": "follow", "hidden": True, "parent": "legacy-nav", "moved": None},
         {"legacy": "data", "hidden": True, "parent": "legacy-nav", "moved": "console"},
@@ -598,7 +599,7 @@ def test_kolay_ekran_has_a_top_bar_slot_and_every_legacy_link_stays_in_markup() 
     code = (JS / "workspace_nav.js").read_text(encoding="utf-8")
     assert "getElementById('legacy-topbar')" in code
     css = (STATIC / "css" / "citizen.css").read_text(encoding="utf-8")
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
+    assert "grid-template-columns: repeat(auto-fit, minmax(min(100%, 5rem), 1fr))" in css
     assert ".citizen-page .nav-primary a { justify-content: center; width: 100%; min-height: 44px" in css
     assert ".citizen-page .topbar-actions > #a11y-toggle { font-size: 0.8125rem; min-height: 44px" in css
     assert ".citizen-page .topbar-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px" in css

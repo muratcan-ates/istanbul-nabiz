@@ -29,7 +29,10 @@ export function chipsFor(turn = {}) {
   const chips = [];
   if (route) chips.push({ id: 'open_route', label: t('ui.chips.open_route', english() ? 'Open route' : 'Rotayı aç'), target: route });
   if (calendar) chips.push({ id: 'add_calendar', label: t('ui.chips.add_calendar', english() ? 'Add to calendar' : 'Takvime ekle'), target: calendar });
-  if (source || contextual) chips.push({ id: 'follow_topic', label: t('ui.chips.follow_topic', english() ? 'Follow this topic' : 'Bu konuyu takip et'), target: null });
+  if (source || contextual || String(final.answer_text || final.answer || '').trim()) {
+    chips.push({ id: 'next_step', label: t('ui.chips.next_step', english() ? 'Step by step' : 'Adım adım'), target: null });
+  }
+  if (final.follow_suggestion) chips.push({ id: 'follow_topic', label: t('ui.chips.follow_topic', english() ? 'Follow this topic' : 'Bu konuyu takip et'), target: null });
   return chips.slice(0, 3);
 }
 
@@ -59,10 +62,11 @@ export function mountContextChips(form, doc) {
     if (!latest()) { clear(); return; }
     const current = chipsFor(turn).find((item) => item.id === chip.id && item.target === chip.target);
     if (!current) return;
-    if (chip.id === 'follow_topic') {
+    if (chip.id === 'follow_topic' || chip.id === 'next_step') {
       if (!turn.question) return;
-      const draft = t('ui.chips.follow_draft', english() ? 'Follow this: {question}' : 'Bunu takip et: {question}',
-        { question: turn.question });
+      const draft = chip.id === 'next_step'
+        ? t('ui.chips.next_step_draft', english() ? 'What should I do first about this?' : 'Bu konuda ilk ne yapmalıyım?')
+        : t('ui.chips.follow_draft', english() ? 'Follow this: {question}' : 'Bunu takip et: {question}', { question: turn.question });
       input.value = draft.slice(0, input.maxLength > 0 ? input.maxLength : 300);
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.focus({ preventScroll: true });
@@ -71,15 +75,14 @@ export function mountContextChips(form, doc) {
     // The card's own listener opens its consent row. Never publish an action here.
     const target = current.target;
     target.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
-    if (target.matches('button.sv-offer')) target.focus({ preventScroll: true });
-    else target.click();
+    target.click();
   };
   const render = () => {
     row.setAttribute('aria-label', t('ui.chips.group', english() ? 'Suggestions' : 'Öneriler'));
     if (!turn) return;
     if (!latest()) { clear(); return; }
     if (dismissed || input.value.trim()) { row.hidden = true; return; }
-    const chips = chipsFor(turn).filter((chip) => chip.id !== 'follow_topic' || turn.question);
+    const chips = chipsFor(turn).filter((chip) => !['follow_topic', 'next_step'].includes(chip.id) || turn.question);
     if (!chips.length) { previous = []; row.replaceChildren(); row.hidden = true; return; }
     if (previous.length === chips.length && chips.every((chip, index) =>
       chip.id === previous[index].id && chip.target === previous[index].target && chip.label === previous[index].label)) return;

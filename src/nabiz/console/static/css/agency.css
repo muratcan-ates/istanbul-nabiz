@@ -10,3 +10,9 @@
 .agency-district input { min-height: var(--tap); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-raised); }
 .agency-district :focus-visible, .agency-card a:focus-visible, .agency-card button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 @media (min-width: 640px) { .agency-card { max-width: 44rem; } }
+/* In the citizen chat the office card is one quiet line under the answer: the owner asked twice that it not
+   take the chat's space (28 and 29 Sep). The console and kolay keep the full card. */
+.citizen-page .chat-msg.is-agency { padding: 0 var(--space-3) var(--space-2); }
+.citizen-page .chat-msg.is-agency .agency-card { gap: var(--space-1); padding: 0; border: 0; background: transparent; }
+.citizen-page .chat-msg.is-agency :is(.agency-kicker, .agency-why, .agency-note) { display: none; }
+.citizen-page .chat-msg.is-agency h3 { color: var(--text-muted); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
