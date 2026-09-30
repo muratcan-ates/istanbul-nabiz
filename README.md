@@ -4,6 +4,8 @@
 get a short answer with its source and time, and hand a problem to the right office. Underneath it is an
 MCP server (`ibb-mcp`, 18 tools) that any agent, VS Code Copilot included, can call.
 
+**Microsoft AI Innovators 2026:** [3-minute video](https://youtu.be/vw6Czi_nrNw) (Turkish) · [slides (PDF)](docs/sunum/istanbul-nabiz-sunum.pdf)
+
 [![CI](https://github.com/muratcan-ates/istanbul-nabiz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/muratcan-ates/istanbul-nabiz/actions/workflows/ci.yml)
 [![licence](https://img.shields.io/badge/code-MIT-blue)](LICENSE)
 [![data](https://img.shields.io/badge/data-%C4%B0BB%20Open%20Data%20%C2%B7%20CC%20BY%204.0-blue)](https://data.ibb.gov.tr/license)
