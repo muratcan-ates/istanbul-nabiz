@@ -23,7 +23,7 @@ let statusElement = null;
 let locateButton = null;
 let leafletLoad = null;
 let map = null;
-let tileLayer = null;
+let baseModule = null;
 let markers = [];
 let points = [];
 let themeObserver = null;
@@ -64,26 +64,21 @@ function loadScript() {
   });
 }
 
+/* The base map is drawn in this browser (js/map_base.js), imported only once a map opens. */
 function loadLeaflet() {
   leafletLoad = leafletLoad || Promise.all([
     loadStylesheet('/vendor/leaflet/leaflet.css'),
     loadStylesheet('/css/map.css'),
+    loadStylesheet('/css/map_base.css'),
     loadScript(),
+    import('./map_base.js').then((module) => { baseModule = module; }),
   ]);
   return leafletLoad;
 }
 
-/* One adapter owns the tile provider so a later source change stays in one place. */
-function tileSource() {
-  return window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">'
-      + 'OpenStreetMap katkıcıları</a>',
-    minZoom: 3,
-    maxZoom: 19,
-    updateWhenIdle: true,
-    updateWhenZooming: false,
-    keepBuffer: 1,
-  });
+/* One adapter owns the base layer so a later source change stays in one place. Nothing is fetched. */
+function baseSource() {
+  return baseModule.mockBase(window.L, map);
 }
 
 function description(point) {
@@ -130,7 +125,6 @@ function removeMap() {
   darkModeQuery = null;
   if (map) map.remove();
   map = null;
-  tileLayer = null;
   markers = [];
 }
 
@@ -233,25 +227,17 @@ function drawMarkers() {
   markers = groupedPoints().map(({ points: group }) => makeMarker(group));
 }
 
-function mapLoadFailed() {
-  showFallback('Harita karoları yüklenemedi. Konumlar listede gösteriliyor.');
+/* One point opens close; several open framed together, so a first look shows the city, not one street.
+ * The base is vector, not tiles, so the quarter-step zoom (zoomSnap) that frames them tightly stays sharp. */
+function fitPoints() {
+  if (points.length === 1) map.setView([points[0].lat, points[0].lon], 15);
+  else map.fitBounds(points.map((point) => [point.lat, point.lon]), { padding: [48, 48], maxZoom: 15 });
 }
 
 function createMap() {
-  const first = points[0];
-  const mapPoints = points;
-  map = window.L.map(mapElement, { zoomControl: true, attributionControl: true, keyboard: true });
-  map.setView([first.lat, first.lon], 15);
-  tileLayer = tileSource();
-  let loadedTile = false;
-  let failedTile = false;
-  tileLayer.on('loading', () => { loadedTile = false; failedTile = false; });
-  tileLayer.on('tileload', () => { loadedTile = true; });
-  tileLayer.on('tileerror', () => { failedTile = true; });
-  tileLayer.on('load', () => {
-    if (points === mapPoints && map && !loadedTile && failedTile) mapLoadFailed();
-  });
-  tileLayer.addTo(map);
+  map = window.L.map(mapElement, { zoomControl: true, attributionControl: true, keyboard: true, zoomSnap: 0.25 });
+  fitPoints();
+  baseSource().addTo(map);
   map.on('zoomend moveend', drawMarkers);
   watchTheme();
   drawMarkers();
@@ -285,9 +271,7 @@ function showOnMap(list) {
   statusElement.textContent = 'Konumlar haritada gösteriliyor.';
   drawPointList();
   if (map) {
-    const sameLocation = points.length === 1;
-    if (sameLocation) map.setView([points[0].lat, points[0].lon], 15);
-    else map.fitBounds(points.map((point) => [point.lat, point.lon]), { padding: [48, 48], maxZoom: 15 });
+    fitPoints();
     drawMarkers();
     return;
   }
@@ -367,7 +351,7 @@ function initMap() {
   section.setAttribute('aria-labelledby', 'map-title');
   section.innerHTML = `<div class="section-head"><h2 id="map-title">${icon('map')} Harita</h2>
     <span class="section-note">İzin isteğe bağlıdır.</span></div>
-    <p class="map-intro">Konumunuz tarayıcıda işlenir. Harita altlığı için OpenStreetMap'e istek gönderilir.</p>
+    <p class="map-intro">Konumunuz tarayıcıda işlenir. Harita örnek bir altlıktır ve cihazınızda çizilir; dış harita sunucusuna istek gitmez.</p>
     <div class="map-actions">
       <button type="button" class="btn btn-primary" id="map-locate">
         ${icon('map-pin')}<span>Haritada konumum</span>

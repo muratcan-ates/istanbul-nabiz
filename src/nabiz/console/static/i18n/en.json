@@ -1204,6 +1204,7 @@
   "ui.cards.close_map": "Close map",
   "ui.cards.map_failed": "Map could not load.",
   "ui.cards.map_points": "Map locations",
+  "ui.cards.map_base": "Sample base map; coastlines are approximate",
   "ui.cards.status_preparing": "Preparing",
   "ui.cards.status_needs_input": "Needs information",
   "ui.cards.status_ready": "Ready",

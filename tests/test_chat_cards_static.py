@@ -23,6 +23,7 @@ CATALOG = {
         "ui.cards.fallback": "Bu kart gösterilemedi; bilgisi aşağıda.",
         "ui.cards.expand_map": "Haritayı büyüt", "ui.cards.close_map": "Haritayı kapat",
         "ui.cards.map_failed": "Harita yüklenemedi.", "ui.cards.map_points": "Haritadaki konumlar",
+        "ui.cards.map_base": "Örnek harita altlığı; kıyılar yaklaşık",
         "ui.cards.status_preparing": "Hazırlanıyor", "ui.cards.status_needs_input": "Bilgi bekliyor",
         "ui.cards.status_ready": "Hazır", "ui.cards.status_awaiting_confirmation": "Onayınızı bekliyor",
         "ui.cards.status_done": "Tamamlandı", "ui.cards.status_unavailable": "Kullanılamıyor",
@@ -75,6 +76,7 @@ CATALOG = {
         "ui.cards.fallback": "This card could not be shown; its information is below.",
         "ui.cards.expand_map": "Expand map", "ui.cards.close_map": "Close map",
         "ui.cards.map_failed": "Map could not load.", "ui.cards.map_points": "Map locations",
+        "ui.cards.map_base": "Sample base map; coastlines are approximate",
         "ui.cards.status_preparing": "Preparing", "ui.cards.status_needs_input": "Needs information",
         "ui.cards.status_ready": "Ready", "ui.cards.status_awaiting_confirmation": "Awaiting your approval",
         "ui.cards.status_done": "Done", "ui.cards.status_unavailable": "Unavailable",
@@ -212,12 +214,18 @@ globalThis.IntersectionObserver = class {
   observe(node) { this.node = node; }
   disconnect() { this.node = null; }
 };
-let invalidations = 0, markers = 0, mapRemovals = 0;
+let invalidations = 0, markers = 0, mapRemovals = 0, seaShapes = 0, baseLabels = 0, baseNote = '';
+const pane = () => ({style: {}, setAttribute() {}});
 const window = {scrollY: 137, innerHeight: 800, scrollTo(_x, y) { this.scrollY = y; },
-  L: {map() { return {setView() {}, fitBounds() {}, invalidateSize() { invalidations++; },
-    remove() { mapRemovals++; }}; },
-    tileLayer() { return {on() { return this; }, addTo() { return this; }}; },
-    marker() { markers++; return {bindPopup(node) { if (node.tagName !== 'span') throw Error('unsafe popup');
+  L: {map() { const panes = {}; return {setView() {}, fitBounds() {}, invalidateSize() { invalidations++; },
+    remove() { mapRemovals++; }, getContainer() { return {classList: {add() {}}}; }, getPane(name) { return panes[name]; },
+    createPane(name) { panes[name] = pane(); return panes[name]; }, on() {}, getZoom() { return 15; }}; },
+    tileLayer() { throw Error('no map tile server'); },
+    polygon() { seaShapes++; return {}; },
+    divIcon(options) { return options; },
+    layerGroup(layers, options) { baseNote = options.attribution; return {addTo() { return this; }}; },
+    marker(_at, options) { if (options && options.interactive === false) { baseLabels++; return {}; }
+      markers++; return {bindPopup(node) { if (node.tagName !== 'span') throw Error('unsafe popup');
       return this; }, addTo() { return this; }}; }} };
 globalThis.window = window;
 globalThis.requestAnimationFrame = callback => callback();
@@ -289,7 +297,7 @@ const privateMap = cards.appendCard(host, base('map', 'private-map', {body: {poi
 const mapFrame = mapCard.querySelector('.chat-card-map-frame');
 const beforeVisible = invalidations;
 observers.forEach(observer => observer.callback([{isIntersecting: true}]));
-await Promise.resolve(); await Promise.resolve();
+await new Promise(resolve => setTimeout(resolve, 50));
 const expand = mapCard.querySelector('[data-card-action="expand_map"]');
 expand.dispatchEvent({type: 'click'});
 const dialog = document.body.querySelector('dialog');
@@ -322,7 +330,7 @@ console.log(JSON.stringify({rendered, failedFallback: !!failed.querySelector('.c
   privateMapHidden: privateMap.querySelector('.chat-card-map-frame').hidden,
   privateMapButtons: privateMap.querySelectorAll('button').length,
   moved, restoredFrame, escapeRestored, focusRestored: document.activeElement === expand, scrollY: window.scrollY,
-  mapNavigation, mapRemovals, mapStatus: mapCard.dataset.cardStatus}));
+  mapNavigation, mapRemovals, mapStatus: mapCard.dataset.cardStatus, seaShapes, baseLabels, baseNote}));
 """)
     assert values == {
         "rendered": 1, "failedFallback": True, "unknownFallback": True, "unknownButtons": 0,
@@ -334,7 +342,8 @@ console.log(JSON.stringify({rendered, failedFallback: !!failed.querySelector('.c
         "privateMapList": 1, "privateMapHidden": True, "privateMapButtons": 0,
         "invalidations": 5, "markers": 2, "moved": True, "restoredFrame": True, "escapeRestored": True,
         "focusRestored": True, "scrollY": 137, "mapNavigation": 0, "mapRemovals": 0,
-        "mapStatus": "ready",
+        "mapStatus": "ready", "seaShapes": 3, "baseLabels": 12,
+        "baseNote": "Örnek harita altlığı; kıyılar yaklaşık",
     }
 
 

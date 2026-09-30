@@ -1,0 +1,40 @@
+/* The offline sample base map (js/map_base.js): land is the page's map wash, the sea a pale accent.
+ * Tokens only; dark mode follows the same two switches as tokens.css. */
+
+:root {
+  --map-land: var(--map-wash);
+  --map-sea: var(--accent-100);
+  --map-label: var(--text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --map-sea: var(--accent-900); }
+}
+
+:root[data-theme="dark"] { --map-sea: var(--accent-900); }
+
+.leaflet-container.map-base { background: var(--map-land); }
+
+.leaflet-container .map-base-sea { fill: var(--map-sea); stroke: none; }
+
+.leaflet-container .map-base-label {
+  border: 0;
+  background: transparent;
+}
+
+.leaflet-container .map-base-label span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: var(--map-label);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 2px var(--map-land), 0 0 2px var(--map-land);
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .leaflet-container.map-base { background: Canvas; }
+  .leaflet-container .map-base-sea { fill: Canvas; stroke: CanvasText; stroke-width: 1; }
+  .leaflet-container .map-base-label span { color: CanvasText; }
+}

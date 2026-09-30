@@ -5,8 +5,8 @@ import { t } from './i18n_text.js';
 const instances = new Map();
 const LEAFLET_CSS = '/vendor/leaflet/leaflet.css';
 const LEAFLET_JS = '/vendor/leaflet/leaflet.js';
-const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 let leafletLoad = null;
+let baseModule = null;
 let listening = false;
 let dialogCount = 0;
 
@@ -58,9 +58,13 @@ function script() {
   });
 }
 
+/* The sample base map (js/map_base.js) is drawn here, imported only once a map card is in view. */
 function ensureLeaflet() {
-  if (window.L?.map) return Promise.resolve();
-  leafletLoad ||= Promise.all([stylesheet(), script()]);
+  leafletLoad ||= Promise.all([
+    window.L?.map ? null : stylesheet(),
+    script(),
+    import('./map_base.js').then((module) => { baseModule = module; }),
+  ]);
   return leafletLoad;
 }
 
@@ -82,12 +86,9 @@ function createMap(inst) {
   inst.map = map;
   if (inst.points.length === 1) map.setView([inst.points[0].lat, inst.points[0].lon], 15);
   else map.fitBounds(inst.points.map((point) => [point.lat, point.lon]), { padding: [28, 28], maxZoom: 15 });
-  const tiles = window.L.tileLayer(TILE_URL, {
-    attribution: '&copy; OpenStreetMap contributors', minZoom: 3, maxZoom: 19,
-    updateWhenIdle: true, updateWhenZooming: false,
-  });
-  tiles.on?.('tileerror', () => failure(inst));
-  tiles.addTo(map);
+  baseModule.mockBase(window.L, map, {
+    attribution: t('ui.cards.map_base', 'Örnek harita altlığı; kıyılar yaklaşık'),
+  }).addTo(map);
   inst.points.forEach((point) => {
     const popup = textNode('span', '', point.label);
     window.L.marker([point.lat, point.lon]).bindPopup(popup).addTo(map);

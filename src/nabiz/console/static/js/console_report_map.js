@@ -10,6 +10,7 @@ const KIND_TEXT = { not_working: 'asansör kapalıydı', data_wrong: 'kayıt yan
 const stylesheetLoads = new Map();
 
 let leafletLoad = null;
+let baseModule = null;
 let map = null;
 let dots = null;
 
@@ -84,21 +85,16 @@ function loadScript() {
 function loadLeaflet() {
   leafletLoad = leafletLoad || Promise.all([
     loadStylesheet('/vendor/leaflet/leaflet.css'),
+    loadStylesheet('/css/map_base.css'),
     loadScript(),
+    import('./map_base.js').then((module) => { baseModule = module; }),
   ]);
   return leafletLoad;
 }
 
-function tileSource() {
-  return window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer" target="_blank">'
-      + 'OpenStreetMap katkıcıları</a>',
-    minZoom: 3,
-    maxZoom: 19,
-    updateWhenIdle: true,
-    updateWhenZooming: false,
-    keepBuffer: 1,
-  });
+/* The sample base is drawn in the browser (js/map_base.js); no map server is asked for anything. */
+function baseSource() {
+  return baseModule.mockBase(window.L, map);
 }
 
 function drawMap(rows) {
@@ -183,7 +179,7 @@ function mount() {
       await loadLeaflet();
       if (!map) {
         map = window.L.map('rm-canvas');
-        tileSource().addTo(map);
+        baseSource().addTo(map);
         dots = window.L.layerGroup().addTo(map);
       }
       drawMap(rows);

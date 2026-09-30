@@ -28,15 +28,30 @@ def test_map_has_the_local_leaflet_entry_and_point_contract() -> None:
     for exported in ("initMap", "showOnMap", "highlightMarker", "hideMap"):
         assert re.search(rf"\b{exported}\b", source)
     assert "navigator.geolocation.getCurrentPosition" in source
-    assert "https://tile.openstreetmap.org/{z}/{x}/{y}.png" in source
+    # 30 Sep: the base is the offline sample map, imported once a map opens; no tile is fetched.
+    assert "openstreetmap" not in source.lower() and "tileLayer" not in source
     assert "https://cdn." not in source
-    assert "tileSource()" in source
+    assert "baseSource()" in source and "import('./map_base.js')" in source
+    assert "loadStylesheet('/css/map_base.css')" in source
+    assert "Harita örnek bir altlıktır ve cihazınızda çizilir; dış harita sunucusuna istek gitmez." in source
     assert 'section.id = \'harita\'' in source
     assert 'id="map-fallback-list"' in source
     assert 'classList.add(\'is-broken\')' in source
     assert "keyboard: false" in source
     assert "html: button" in source
 
+
+
+def test_the_first_map_view_frames_every_point() -> None:
+    # 30 Sep: with the sample base, opening close on the first station showed only bare land. The first
+    # view and every later list now share one framing: one point close, several fitted together.
+    source = MAP_JS.read_text(encoding="utf-8")
+    create = source[source.index("function createMap()"):source.index("function validPoint(")]
+    assert "fitPoints();" in create and "setView([first.lat" not in create
+    fit = source[source.index("function fitPoints()"):source.index("function createMap()")]
+    assert "points.length === 1" in fit and "map.fitBounds(points.map(" in fit
+    show = source[source.index("function showOnMap("):source.index("function hideMap(")]
+    assert "fitPoints();" in show and "drawPointList();" in show
 
 def test_map_files_follow_static_text_and_token_rules() -> None:
     text = MAP_JS.read_text(encoding="utf-8") + MAP_CSS.read_text(encoding="utf-8")

@@ -249,7 +249,7 @@ function mountVoice() {
       talkButton.id = 'voice-talk';
       talkButton.setAttribute('aria-pressed', 'false');
       talkButton.textContent = 'Bas, konuş';
-      row.insertBefore(talkButton, submit);
+      submit.before(talkButton);
       talkButton.addEventListener('click', () => {
         if (recognition) {
           try {
