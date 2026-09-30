@@ -174,7 +174,7 @@ def test_a_gas_account_question_is_not_an_emergency(question: str) -> None:
 
 
 def test_the_first_vocabulary_still_matches_as_a_word_prefix() -> None:
-    # "polis" has redirected to 112 since the first vocabulary; kept on purpose, not widened.
+    # "polis" has opened the emergency card since the first vocabulary; kept on purpose, not widened.
     assert emergency_intent("Polis merkezi nerede?")
 
 

@@ -178,15 +178,16 @@ def test_answer_markup_unknown_and_refused_show_fixed_text_and_153() -> None:
         assert "U" not in markup and "cites" not in markup and "Resmî kaynağı aç" not in markup
 
 
-def test_answer_markup_emergency_leads_with_112() -> None:
+def test_answer_markup_emergency_shows_only_153() -> None:
     values = node_json(
         "const data={mode:'redirect',emergency:true};const markup=easy.answerMarkup(data);"
         "console.log(JSON.stringify([markup,easy.finalText(data,'U')]));"
     )
     markup, sentence = values
-    assert markup.index("tel:112") < markup.index("tel:153")
+    # Owner's decision, 30 Sep 2026: no 112 button; the card names İBB's 153 only.
+    assert re.findall(r'href="(tel:[^"]+)"', markup) == ["tel:153"] and "112" not in markup
     assert 'role="alert"' in markup
-    assert sentence == "Bu acil bir durum olabilir. Hemen arayın."
+    assert sentence == "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz."
 
 
 def test_arrival_markup_keeps_the_single_minute_rule() -> None:

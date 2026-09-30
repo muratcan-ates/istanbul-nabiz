@@ -405,12 +405,12 @@ def _request_event_copy(notice: Notice, start: dt.datetime, english: bool) -> tu
         if english:
             body = (
                 f"Your operator request was sent on {when} and is waiting for a reply. "
-                "The reply appears on its card on the device where you sent it. In an emergency, call 112."
+                "The reply appears on its card on the device where you sent it."
             )
         else:
             body = (
                 f"Operatör talebiniz {when} tarihinde gönderildi ve yanıt bekliyor. "
-                "Yanıt, talebi gönderdiğiniz cihazdaki kartta görünür. Acil bir durumda 112'yi arayın."
+                "Yanıt, talebi gönderdiğiniz cihazdaki kartta görünür."
             )
     footer = NOT_OFFICIAL if not english else "Not an official İBB service; İstanbul Nabız is an independent student project."
     return summary, f"{body} {footer}"

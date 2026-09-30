@@ -7,7 +7,7 @@ live in :data:`TIERS` and nowhere else; ``NABIZ_QUOTA_<TIER>_<QUESTIONS|MODEL_CA
 them (names in ``.env.example``). They are design parameters, not measured values.
 
 **What a full quota closes.** Only the model rung. The rules still answer every question, and an
-emergency (112) or a request for a person (153) is never counted and never refused: the route
+emergency or a request for a person (153) is never counted and never refused: the route
 decides that before it counts (:mod:`nabiz.console.quota_api`).
 
 **What is kept.** Counters keyed by a salted SHA-256 of the device id, of the address (IPv6 by its

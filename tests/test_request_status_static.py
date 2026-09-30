@@ -50,7 +50,7 @@ def test_the_consent_form_says_the_sentence_and_caps_the_text(tmp_path) -> None:
     html = run(tmp_path, f"console.log(JSON.stringify(rs.formMarkup('<i>soru</i>', {doc()})));")
     assert CONSENT in html
     assert 'type="checkbox" id="op-consent"' in html and 'maxlength="1000"' in html
-    assert "&lt;i&gt;soru&lt;/i&gt;" in html and 'href="tel:112"' in html
+    assert "&lt;i&gt;soru&lt;/i&gt;" in html and 'href="tel:112"' not in html
     for value in ("auto", "tr", "en"):
         assert f'<option value="{value}">' in html
     english = run(tmp_path, f"console.log(JSON.stringify(rs.formMarkup('', {doc('en')})));", lang="en")
@@ -65,7 +65,7 @@ def test_the_waiting_card_shows_the_code_and_the_answered_card_the_reply_with_it
     )
     waiting, answered = values
     assert "Operatöre iletildi · #K7M2QX9P · bekleniyor" in waiting
-    assert "&lt;b&gt;kayıp&lt;/b&gt;" in waiting and 'href="tel:112"' in waiting and 'data-op="remove"' in waiting
+    assert "&lt;b&gt;kayıp&lt;/b&gt;" in waiting and 'href="tel:112"' not in waiting and 'data-op="remove"' in waiting
     assert "İBB operatörü yanıtladı" in answered
     assert '<p lang="de">Sie können sie aufladen.</p>' in answered
     assert "<details><summary>Türkçesi</summary>" in answered and "Doldurabilirsiniz." in answered
@@ -136,8 +136,8 @@ def test_the_handoff_card_offers_the_operator_without_sending_anything(tmp_path)
         "{role: 'user', text: 'insanla görüşmek istiyorum'}])]));",
     )
     card, question = values
-    order = [card.index(s) for s in ('"call"', '"operator"', '"emergency"', '"close"')]
-    assert order == sorted(order) and "Operatöre ilet" in card
+    order = [card.index(s) for s in ('"call"', '"operator"', '"close"')]
+    assert order == sorted(order) and "Operatöre ilet" in card and '"emergency"' not in card
     assert question == "M2 gece çalışıyor mu?"
 
 

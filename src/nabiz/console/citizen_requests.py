@@ -2,8 +2,8 @@
 
 A request is what a visitor sends when the assistant could not help and they chose, with the
 consent sentence in front of them, to ask an İBB operator. It is **not** an emergency path: an
-emergency never reaches this module (:mod:`nabiz.console.requests_api` sends it to the 112 card
-first), and an operator is no replacement for 112.
+emergency never reaches this module (:mod:`nabiz.console.requests_api` sends it to the emergency card
+first), and an operator is no replacement for the emergency services.
 
 **What the server keeps.** Only the masked text (E14's :func:`~nabiz.console.pii_guard.mask_labels`),
 its language, its Turkish translation, a keyword category and the times, in a table of its own

@@ -21,7 +21,7 @@ const COPY = Object.freeze({
     title: 'Fotoğrafla sorun bildirin', warning: 'Fotoğrafta kişi yüzü ya da araç plakası olmamasına dikkat edin. Ad, telefon, TC kimlik gibi bilgileri yazmayın.',
     photo: 'Fotoğraf seçin', photoAlt: 'Gönderilecek fotoğrafın önizlemesi', ready: 'Fotoğraf hazır: {width} × {height} px, {size} KB. Konum ve cihaz bilgileri (EXIF) silindi.',
     type: 'Ne tür bir sorun?', pavement: 'Kaldırım ve yol', lift: 'Asansör ve yürüyen merdiven', litter: 'Çöp ve temizlik', lighting: 'Aydınlatma', other: 'Diğer',
-    description: 'Kısa açıklama (isteğe bağlı)', remaining: 'Kalan {count} karakter', emergencyHint: 'Acil durumda beklemeyin: 112.',
+    description: 'Kısa açıklama (isteğe bağlı)', remaining: 'Kalan {count} karakter',
     where: 'Sorun nerede?', stationKind: 'İstasyon', districtKind: 'İlçe', station: 'İstasyon adı', district: 'İlçe',
     consent: 'Fotoğrafı, açıklamayı ve seçtiğim yeri simüle İBB operatörüne göndermeye ve 30 gün saklanmasına açık rıza veriyorum.',
     details: 'Ayrıntılar', submit: 'Bildir', cancel: 'Vazgeç', loading: 'Bildirim formu yükleniyor.',
@@ -43,7 +43,7 @@ const COPY = Object.freeze({
     title: 'Report a problem with a photo', warning: 'Make sure no faces or vehicle plates appear in the photo. Do not include names, phone numbers, or national ID numbers.',
     photo: 'Choose a photo', photoAlt: 'Preview of the photo to send', ready: 'Photo ready: {width} × {height} px, {size} KB. Location and device details (EXIF) were removed.',
     type: 'What is the problem?', pavement: 'Sidewalk and road', lift: 'Elevator and escalator', litter: 'Waste and cleanliness', lighting: 'Lighting', other: 'Other',
-    description: 'Short description (optional)', remaining: '{count} characters remaining', emergencyHint: 'For an emergency, call 112 now.',
+    description: 'Short description (optional)', remaining: '{count} characters remaining',
     where: 'Where is the problem?', stationKind: 'Station', districtKind: 'District', station: 'Station name', district: 'District',
     consent: 'I consent to sending the photo, description, and place I chose to the simulated İBB operator and keeping them for 30 days.',
     details: 'Details', submit: 'Report', cancel: 'Cancel', loading: 'Loading the report form.',
@@ -138,7 +138,7 @@ function formMarkup(options = {}, language = 'tr', state = {}) {
     + `<div class="field"><label for="photo-file">${esc(t('photo'))}</label><input id="photo-file" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-error-photo">${error('photo')}${preview}</div>`
     + `<fieldset class="photo-report-fieldset"><legend>${esc(t('type'))}</legend>${categoryRows}</fieldset>`
     + `<div class="field"><label for="photo-description">${esc(t('description'))}</label><textarea id="photo-description" maxlength="280" rows="3" aria-describedby="photo-description-count photo-error-description">${esc(state.description || '')}</textarea>`
-    + `<p class="field-hint" id="photo-description-count" aria-live="polite">${esc(t('remaining', { count: 280 - String(state.description || '').length }))}</p>${error('description')}<p class="field-hint">${esc(t('emergencyHint'))}</p></div>`
+    + `<p class="field-hint" id="photo-description-count" aria-live="polite">${esc(t('remaining', { count: 280 - String(state.description || '').length }))}</p>${error('description')}</div>`
     + `<fieldset class="photo-report-fieldset"><legend>${esc(t('where'))}</legend>`
     + `<div><input id="photo-place-station" type="radio" name="photo-place-kind" value="station"${stationChecked ? ' checked' : ''}><label for="photo-place-station">${esc(t('stationKind'))}</label></div>`
     + `<div><input id="photo-place-district" type="radio" name="photo-place-kind" value="district"${districtChecked ? ' checked' : ''}><label for="photo-place-district">${esc(t('districtKind'))}</label></div>`

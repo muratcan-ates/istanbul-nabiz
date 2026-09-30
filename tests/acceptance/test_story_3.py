@@ -58,7 +58,7 @@ def test_one_code_carries_the_request_to_the_operator_and_the_reply_back(client:
     card = created.json()
     code = card["code"]
     assert card["status"] == "waiting" and PHONE not in card["question"] and "[TELEFON]" in card["question"]
-    assert SIMULATED in card["simulated"] and "112" in card["note"]
+    assert SIMULATED in card["simulated"] and "112" not in card["note"]
 
     queue = client.get("/api/console/requests", headers=OPERATOR).json()
     assert [item["code"] for item in queue["items"]] == [code]
@@ -107,9 +107,9 @@ def test_a_guessed_code_opens_nothing(client: TestClient) -> None:
     assert response.status_code == 404 and "kaldırım" not in response.text
 
 
-def test_an_emergency_goes_to_112_and_never_waits_in_the_queue(client: TestClient) -> None:
+def test_an_emergency_gets_the_153_card_and_never_waits_in_the_queue(client: TestClient) -> None:
     response = client.post("/api/requests", json={"text": "Yangın var, binada duman", "lang": "tr", "consent": True})
-    assert response.status_code == 200 and response.json()["emergency"] is True and response.json()["tel"] == "112"
+    assert response.status_code == 200 and response.json()["emergency"] is True and response.json()["tel"] == "153"
     assert client.get("/api/console/requests", headers=OPERATOR).json()["items"] == []
 
 

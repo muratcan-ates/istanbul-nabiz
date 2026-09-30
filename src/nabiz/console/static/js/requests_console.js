@@ -22,7 +22,7 @@ const guardCopy = (guard) => {
 function sectionMarkup() {
   return `<div class="section-head"><h2 id="citizen-requests-title">${esc(t('ui.opq.title', 'Vatandaş talepleri'))}</h2>`
     + '<span class="section-note" id="op-count"></span></div>'
-    + `<p class="section-note">${esc(t('ui.opq.description', 'Asistanın çözemediği, acil olmayan sorular. Acil durumlar buraya gelmez, vatandaşa 112 gösterilir. Kişisel veriler maskelenmiş gelir; 30 gün sonra silinir.'))}</p>`
+    + `<p class="section-note">${esc(t('ui.opq.description', 'Asistanın çözemediği, acil olmayan sorular. Acil durumlar buraya gelmez, vatandaşa 153 kartı gösterilir. Kişisel veriler maskelenmiş gelir; 30 gün sonra silinir.'))}</p>`
     + '<p class="status-line" id="op-queue-status" role="status" aria-live="polite"></p>'
     + `<div class="op-grid op-queue"><ol class="op-list" id="op-list" aria-label="${esc(t('ui.opq.list_label', 'Talepler'))}"><li class="section-note">${esc(t('ui.opq.loading', 'yükleniyor'))}</li></ol>`
     + `<div id="op-detail" tabindex="-1"><p class="section-note">${esc(t('ui.opq.select_request', 'Listeden bir talep seçin.'))}</p></div></div>`;

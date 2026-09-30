@@ -138,6 +138,11 @@ def test_a_bus_line_question_is_left_to_its_tool(question: str) -> None:
     assert not asks_about_a_phone_line(question) and phone_line_answer(question) is None
 
 
+@pytest.mark.parametrize("question", ["İGDAŞ faturam 150 TL geldi, neden?", "Acil toplanma alanı 120 kişilik mi?"])
+def test_an_amount_next_to_a_service_is_no_phone_line(question: str) -> None:
+    assert not asks_about_a_phone_line(question) and phone_line_answer(question) is None
+
+
 def test_an_unknown_number_is_never_confirmed() -> None:
     answer = phone_line_answer("İBB'nin 444 1 999 numaralı yardım hattı çalışıyor mu?") or ""
     assert "doğrulayamıyorum" in answer and "çalışıyor" not in answer.replace("çalışıp çalışmadığını", "")

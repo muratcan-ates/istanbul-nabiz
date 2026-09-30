@@ -39,12 +39,12 @@ FIXED: dict[str, dict[str, str]] = {
         ),
     },
     "TURN_FAILED": {
-        "tr": "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene; acil bir durumdaysan 112'yi ara.",
-        "en": "I cannot answer this question right now. Try again a little later; if this is an emergency, call 112.",
+        "tr": "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene.",
+        "en": "I cannot answer this question right now. Try again a little later.",
     },
     "EMERGENCY": {
-        "tr": "Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).",
-        "en": "This may be an emergency. Please call directly: 112 (Emergency) or 153 (İBB).",
+        "tr": "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.",
+        "en": "Nabız cannot help in an emergency. You can reach İBB on 153.",
     },
     "UNKNOWN": {
         "tr": (

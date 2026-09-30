@@ -18,7 +18,7 @@ const TEXT = {
     officialText: 'Nabız resmî başvuru açmaz ve kurumun kaydını görmez. Resmî kayıt için', publication: 'Yayın kararı (E33):',
     publicationLabels: { waiting: 'Onay bekliyor', approved: 'Onaylandı', not_published: 'Yayımlanmadı', expired: 'Süresi doldu' },
     disclaimer: 'Resmî İBB hizmeti değildir.', unavailable: 'Bu bildirim artık bulunamıyor. E33 listesini yenileyin.',
-    retry: 'Yeniden dene', loading: 'Zaman çizgisi yükleniyor.', emergency: 'Bu acil bir durum olabilir. Lütfen 112’yi arayın.',
+    retry: 'Yeniden dene', loading: 'Zaman çizgisi yükleniyor.', emergency: "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.",
     changed: 'Bu adım güncellendi. Yeniden yükleyip deneyin.', tooMany: 'Bu bildirim için yanıt sınırına ulaştınız.',
     invalid: 'Metni ve rıza kutusunu kontrol edip yeniden deneyin.', serverError: 'Bildirim durumu şu an kullanılamıyor. Yeniden deneyin.',
     noCodes: '',
@@ -34,7 +34,7 @@ const TEXT = {
     officialText: 'Nabız does not open official applications or see agency records. For an official record, call', publication: 'Publication decision (E33):',
     publicationLabels: { waiting: 'Awaiting approval', approved: 'Approved', not_published: 'Not published', expired: 'Expired' },
     disclaimer: 'Not an official İBB service.', unavailable: 'This report is no longer available. Refresh the E33 list.',
-    retry: 'Try again', loading: 'Loading timeline.', emergency: 'This may be an emergency. Please call 112.',
+    retry: 'Try again', loading: 'Loading timeline.', emergency: 'Nabız cannot help in an emergency. You can reach İBB on 153.',
     changed: 'This step changed. Reload and try again.', tooMany: 'You have reached the reply limit for this report.',
     invalid: 'Check the text and consent box, then try again.', serverError: 'The report status is unavailable. Try again.',
     noCodes: '',
@@ -112,7 +112,7 @@ function cardMarkup(data, options = {}) {
   const t = TEXT[locale] || TEXT.tr;
   if (options.emergency) {
     return '<article class="rt-card" data-code="' + esc(data.code) + '"><p class="rt-emergency" role="status">'
-      + esc(t.emergency) + ' <a href="tel:112">112</a></p></article>';
+      + esc(t.emergency) + ' <a href="tel:153">153</a></p></article>';
   }
   const publication = t.publicationLabels[data.publication] || data.publication;
   const agency = data.agency || {};

@@ -43,7 +43,7 @@ export function boxesFor(info, store) {
   };
 }
 export function primaryFor(state) {
-  if (state.emergency) return 'call_112';
+  if (state.emergency) return 'call_153';
   if (state.error) return 'retry';
   if (state.formOpen) return 'send';
   if (state.homeFormOpen || !state.home) return 'save_home';
@@ -71,11 +71,8 @@ function officialMarkup(info, history) {
   const historyMarkup = history ? `<section class="ow-history" aria-labelledby="ow-history-title">     <h4 id="ow-history-title">${esc(t('ui.outage.history_title', 'Geçmiş (kayıtlı, 2023-2024)'))}</h4>     <p>${esc(t('ui.outage.history_count', 'Bu mahallede {count} kesinti kaydı.', { count: Number(history.count).toLocaleString(currentLang() === 'en' ? 'en' : 'tr-TR') }))}</p>     <ul>${(history.causes || []).map((item) => `<li lang="tr">${esc(item.text)} · ${esc(String(item.count))}</li>`).join('')}</ul>     <p class="ow-recorded">${esc(t('ui.outage.history_source', 'Kaynak: İBB Açık Veri, İSKİ'))} · <a class="ow-source" href="${esc(info.history.dataset)}" target="_blank" rel="noopener">${esc(t('ui.outage.history_dataset', '2023-2024 veri seti'))}</a></p>   </section>` : '';
   return `<section class="ow-box" aria-labelledby="ow-official-title"><h3 id="ow-official-title">${esc(t('ui.outage.official_title', 'İSKİ’nin resmî bilgisi'))}</h3>     <p>${esc(t('ui.outage.list_unavailable', 'Planlı kesinti listesi henüz bağlı değil. İSKİ’nin Arıza Kesinti sayfasında mahalle/ilçe filtresiyle sorgulayabilirsiniz.'))}</p>     ${quotes}${link}${captured}${historyMarkup}</section>`;
 }
-function gasMarkup(info) {
-  const emergency = (info.gas && info.gas.lines || []).find((line) => line.id === 'gas_emergency');
-  const quote = emergency && (emergency.quotes || []).find((item) => item.id === 'gas_187_title');
-  const source = quote ? `<div class="ow-quote"><blockquote lang="tr">${esc(quote.text)}</blockquote>     <a class="ow-source" href="${esc(quote.source_url)}" target="_blank" rel="noopener">${esc(t('ui.outage.gas_source', 'İBB Faaliyet Raporu 2025'))}</a>     <p class="ow-recorded">${esc(t('ui.outage.gas_recorded', 'kayıtlı · {date} · ibb.istanbul', { date: dateOnly(emergency.captured_at) }))}</p></div>` : '';
-  return `<section class="ow-box" aria-labelledby="ow-gas-title"><h3 id="ow-gas-title">${esc(t('ui.outage.gas_title', 'Doğal gaz'))}</h3>     <p>${esc(t('ui.outage.gas_no_source', "Doğal gaz kesintisi için Nabız’da kaynak yok."))}</p>     <p><a class="ow-source" href="tel:153">${esc(t('ui.outage.call_153', '153’ü arayın'))}</a></p>     <p class="is-emergency">${esc(t('ui.outage.gas_emergency_prefix', 'Gaz kokusu alıyorsanız bu acildir:'))}       <a href="tel:112">${esc(t('ui.outage.call_112', '112’yi arayın'))}</a> ${esc(t('ui.outage.or', 've'))}       <a href="tel:187">${esc(t('ui.outage.gas_187', 'İGDAŞ 187 Doğal Gaz Acil Hattı'))}</a></p>${source}</section>`;
+function gasMarkup() {
+  return `<section class="ow-box" aria-labelledby="ow-gas-title"><h3 id="ow-gas-title">${esc(t('ui.outage.gas_title', 'Doğal gaz'))}</h3>     <p>${esc(t('ui.outage.gas_no_source', "Doğal gaz kesintisi için Nabız’da kaynak yok."))}</p>     <p><a class="ow-source" href="tel:153">${esc(t('ui.outage.call_153', '153’ü arayın'))}</a></p></section>`;
 }
 function homeFormMarkup(info, home, editing) {
   const districts = Array.isArray(info.districts) ? info.districts : [];
@@ -120,7 +117,7 @@ function mountCitizen(doc) {
   function noticeText() {
     if (!notice) return '';
     const messages = { expired: () => t('ui.outage.expired', 'Talebin saklama süresi doldu.'), home_saved: () => t('ui.outage.home_saved', 'Eviniz bu cihaza kaydedildi.'), storage_error: () => t('ui.outage.storage_error', 'Kaydedilemedi: tarayıcı depolamaya izin vermiyor.'), consent_error: () => t('ui.outage.consent_error', 'Göndermek için onay kutusunu işaretleyin.'), mock_not_sent: () => t('ui.outage.mock_not_sent', 'Örnek: sunucu bağlı değil, teyit gönderilmedi.'),
-      emergency_note: () => t('ui.outage.emergency_note', 'Bu acil bir durum olabilir. Operatör kuyruğunda beklemeyin.'), report_saved: () => t('ui.outage.report_saved', 'Teyidiniz kaydedildi.'), send_error: () => t('ui.outage.send_error', 'Teyit gönderilemedi. Yeniden deneyin.'), home_deleted_note: () => t('ui.outage.home_deleted_note', 'Evim ve talep kodlarım bu cihazdan silindi. Sunucudaki teyitler 7 gün saklanır.'), code_forgotten: () => t('ui.outage.code_forgotten', 'Talep kartı bu cihazdan kaldırıldı.') };
+      emergency_note: () => t('ui.outage.emergency_note', "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz."), report_saved: () => t('ui.outage.report_saved', 'Teyidiniz kaydedildi.'), send_error: () => t('ui.outage.send_error', 'Teyit gönderilemedi. Yeniden deneyin.'), home_deleted_note: () => t('ui.outage.home_deleted_note', 'Evim ve talep kodlarım bu cihazdan silindi. Sunucudaki teyitler 7 gün saklanır.'), code_forgotten: () => t('ui.outage.code_forgotten', 'Talep kartı bu cihazdan kaldırıldı.') };
     return messages[notice.key] ? messages[notice.key]() : '';
   }
   const statusMarkup = () => `<p class="ow-status" role="status" aria-live="polite">${esc(noticeText())}</p>`;
@@ -138,7 +135,7 @@ function mountCitizen(doc) {
     const primary = primaryFor({ home: store.home, homeFormOpen, formOpen, hasReports: boxes.showReports, error, emergency });
     let head = '';
     if (emergency) {
-      head = `<section class="ow-box is-emergency" aria-labelledby="ow-emergency-title"><h3 id="ow-emergency-title">${esc(t('ui.outage.emergency_title', 'Acil yardım'))}</h3>         <p>${esc(t('ui.outage.emergency_note', 'Bu acil bir durum olabilir. Operatör kuyruğunda beklemeyin.'))}</p>         <a class="btn btn-primary" href="tel:112">${esc(t('ui.outage.call_112', '112’yi arayın'))}</a>         <button type="button" class="btn btn-quiet" data-action="close-emergency">${esc(t('ui.outage.close_emergency', 'Kartı kapat'))}</button></section>`;
+      head = `<section class="ow-box is-emergency" aria-labelledby="ow-emergency-title"><h3 id="ow-emergency-title">${esc(t('ui.outage.emergency_title', 'Acil durum'))}</h3>         <p>${esc(t('ui.outage.emergency_note', "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz."))}</p>         <a class="btn btn-primary" href="tel:153">${esc(t('ui.outage.call_153', '153’ü arayın'))}</a>         <button type="button" class="btn btn-quiet" data-action="close-emergency">${esc(t('ui.outage.close_emergency', 'Kartı kapat'))}</button></section>`;
     } else if (!store.home || homeFormOpen) {
       head = homeFormMarkup(info, store.home, editingHome);
     } else if (formOpen) {
@@ -152,14 +149,14 @@ function mountCitizen(doc) {
       ? `<p class="ow-home">${esc(t('ui.outage.home_label', 'Kaydedilen ev'))}: ${esc(store.home.district)} · ${esc(trName(store.home.neighbourhood))}</p>`
         + `<div class="ow-actions"><button type="button" class="btn btn-quiet" data-action="edit-home">${esc(t('ui.outage.edit_home', 'Evimi değiştir'))}</button></div>`
         + `<details class="more"><summary>${esc(t('ui.outage.delete_home_summary', 'Evimi cihazdan sil'))}</summary>           <p>${esc(t('ui.outage.delete_home_note', 'Bu cihazdaki ev ve talep kodları silinir. Sunucudaki teyitler 7 gün saklanır.'))}</p>           <button type="button" class="btn btn-quiet" data-action="forget-home">${esc(t('ui.outage.delete_home', 'Evimi cihazdan sil'))}</button></details>` : '';
-    const ownBox = store.home && !homeFormOpen ? `<section class="ow-box" aria-labelledby="ow-own-title"><h3 id="ow-own-title">${esc(t('ui.outage.own_title', 'Sizin bildiriminiz'))}</h3>       <p>${esc(t('ui.outage.own_note', 'Duyurulan süre geçti ama suyunuz hâlâ gelmediyse bildirin. Bu bildirim İSKİ’ye gitmez; Nabız operatörüne (prototip, simüle) düşer. Acil durumda 112.'))}</p>       <p class="field-hint">${esc(t('ui.outage.not_iski', 'Resmî kesinti bilgisinden ayrıdır; İSKİ’ye iletilmez.'))}</p></section>` : '';
+    const ownBox = store.home && !homeFormOpen ? `<section class="ow-box" aria-labelledby="ow-own-title"><h3 id="ow-own-title">${esc(t('ui.outage.own_title', 'Sizin bildiriminiz'))}</h3>       <p>${esc(t('ui.outage.own_note', 'Duyurulan süre geçti ama suyunuz hâlâ gelmediyse bildirin. Bu bildirim İSKİ’ye gitmez; Nabız operatörüne (prototip, simüle) düşer.'))}</p>       <p class="field-hint">${esc(t('ui.outage.not_iski', 'Resmî kesinti bilgisinden ayrıdır; İSKİ’ye iletilmez.'))}</p></section>` : '';
     const how = `<details class="more ow-how"><summary>${esc(t('ui.outage.how_summary', 'Bu nasıl çalışır?'))}</summary>       <p>${esc(t('ui.outage.how_text', 'Ev seçiminiz yalnız bu cihazda kalır. İsteğe bağlı teyit, açık rızanızdan sonra Nabız’ın simüle operatör kuyruğuna gider ve 7 gün sonra silinir.'))}</p>       <p>${esc(t('ui.outage.not_official', 'Resmî İBB hizmeti değildir.'))}</p></details>`;
-    const sourceBoxes = store.home && !homeFormOpen ? officialMarkup(info, boxes.history) + ownBox + gasMarkup(info) : '';
+    const sourceBoxes = store.home && !homeFormOpen ? officialMarkup(info, boxes.history) + ownBox + gasMarkup() : '';
     const activeReports = boxes.showReports && formOpen
       ? store.reports.map((item) => reportMarkup(views.get(item.code), item.code, false)).join('') : '';
     root.innerHTML = `${head}${homeSummary}${statusMarkup()}${sourceBoxes}${activeReports}${how}`;
     const primaryButton = root.querySelector('.btn-primary');
-    if (primaryButton && primary !== 'call_112') primaryButton.dataset.primary = primary || '';
+    if (primaryButton && primary !== 'call_153') primaryButton.dataset.primary = primary || '';
     if (busy) root.querySelector('[data-primary]')?.setAttribute('aria-busy', 'true');
   }
   async function loadInfo() {

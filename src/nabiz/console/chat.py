@@ -51,7 +51,7 @@ from nabiz.console.policy import emergency_card, functional_needs, memory_sugges
 
 log = logging.getLogger("nabiz.console.chat")
 
-TURN_FAILED = "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene; acil bir durumdaysan 112'yi ara."
+TURN_FAILED = "Şu anda bu soruya cevap veremiyorum. Biraz sonra yeniden dene."
 #: The most model calls one turn can make: the agent's four steps, one forced answer, one repair.
 TURN_CALLS = 6
 #: Model turns running at once; the rest wait their turn. A design parameter.
@@ -332,7 +332,7 @@ class ChatService:
                 item.update(quote_lang=frame["quote_lang"], label=frame["label"])
         trace.checks["kanit"] = bool(cited) and (not sensitive or found.mode == "quote_only")
         if sensitive and found.mode != "quote_only":
-            return None  # no verified quote: the refusal, which also names 112
+            return None  # no verified quote: the refusal
         # E08: the page names the search it waited on, like any tool.
         searched = [sse("tool", {"name": "ibb_services_search", "status": status}) for status in ("start", "end")]
         if fallback := official_path.unknown_fallback(question, found, turn, searched):

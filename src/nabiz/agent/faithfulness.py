@@ -51,10 +51,10 @@ from typing import Any
 __all__ = ["CheckedNumber", "FaithfulnessReport", "check_faithfulness", "extract_numbers"]
 
 #: Official help lines an answer may name without a tool result, only when it tells the person to call:
-#: 112, 153, 185 and 187, the call numbers ``ibb_mcp.knowledge.citation_map`` already allows, and 110, 155, 156
-#: and 177 from the owner's list (brief P09a-2, Görev 0-a). "444 1 999" is not one: eval/red_team.jsonl rt-38
-#: holds it as an invented number.
-OFFICIAL_LINES = ("112", "110", "153", "155", "156", "177", "185", "187")
+#: 153 and 185, the call numbers ``ibb_mcp.knowledge.citation_map`` already allows. Nabız sends no one to an
+#: emergency line (owner's decision, 30 Sep 2026), so an emergency number in a model answer is an unsourced
+#: number like any other. "444 1 999" is not one either: eval/red_team.jsonl rt-38 holds it as an invented number.
+OFFICIAL_LINES = ("153", "185")
 
 # Anything that is a timestamp rather than a measurement. Masked with spaces so that the
 # character offsets of everything else survive, which keeps the context snippets honest.
@@ -79,9 +79,9 @@ _MASKS: tuple[re.Pattern[str], ...] = (
     # boilerplate, not a measurement — and masking it is better than letting it *supply*
     # the values 4 and 0, which would make "4 otopark" unfalsifiable.
     re.compile(r"CC[ -]BY(?:[ -]\w{2})*[ -]\d(?:\.\d)?", re.IGNORECASE),
-    # An official help line in a call ("112'yi arayın", "153'ü arayabilirsiniz", "call 112"): a phone
-    # number, not a measurement. Only the closed list below and only next to a call; "112 numaralı
-    # otobüs" and "112 TL" are still checked.
+    # An official help line in a call ("153'ü arayın", "153'ü arayabilirsiniz", "call 153"): a phone
+    # number, not a measurement. Only the closed list below and only next to a call; "153 numaralı
+    # otobüs" and "153 TL" are still checked.
     re.compile(
         r"(?:\b(?:call|dial|alo)\s+(?:the\s+)?|(?<![\w.,]))(?:" + "|".join(OFFICIAL_LINES) + r")"
         r"(?=(?:['’][^\W\d_]+)?\)?(?:[\s,]+[^\W\d_]+(?:['’][^\W\d_]+)?){0,3}?[\s,]+(?:ara|ulaş|ulas|bildir|başvur|call|dial|contact))",

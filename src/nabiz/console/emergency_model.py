@@ -12,7 +12,7 @@ model is asked only when all of these hold (DECISIONS #40):
 
 It is one classification call with a hard :data:`TIMEOUT_S`. A timeout, an error, a full ceiling or an
 answer it cannot read all mean "no verdict", silently: the turn goes on as if this layer did not exist.
-A "yes" opens the same 112 card as the rules, in the language the model names; a false alarm there is
+A "yes" opens the same emergency card as the rules, in the language the model names; a false alarm there is
 the price of not missing one. The model sees the masked message (E14), as every model call does. The
 call counts against the ceiling like any other, a timed-out one included. Nothing here logs the message.
 """

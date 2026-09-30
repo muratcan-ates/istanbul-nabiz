@@ -4,7 +4,7 @@
  * the code is kept on this device (nabiz.requests.v1, 30 days) so the card survives a reload, and the
  * card asks /api/requests/{code} every 20 seconds while the page is open. Nothing is pushed.
  *
- * An emergency never waits for an operator: the server answers with the 112 card instead of a request,
+ * An emergency never waits for an operator: the server answers with the 153 card instead of a request,
  * and this module hands it to js/emergency.js (nabiz:emergency). */
 
 import { get, post } from './api.js';
@@ -59,7 +59,6 @@ function formMarkup(question, doc) {
     + `<p class="op-consent"><input type="checkbox" id="op-consent"><label for="op-consent">${esc(t('ui.req.consent', 'Sorunuz ve seçtiğiniz dil İBB operatörüne iletilecek. Kişisel veriler maskelenir.'))}</label></p>`
     + '<div class="op-actions">'
     + `<button type="button" class="btn btn-primary" data-op="send">${esc(t('ui.req.send', 'Operatöre ilet'))}</button>`
-    + '<a class="btn btn-danger" href="tel:112">112</a>'
     + `<button type="button" class="btn" data-op="cancel">${esc(t('ui.req.cancel', 'Vazgeç'))}</button></div>`
     + '<p class="op-status" role="status" aria-live="polite"></p></section>';
 }
@@ -75,7 +74,7 @@ function cardMarkup(view, doc) {
     return `<section class="op-card" data-code="${code}" aria-labelledby="op-title-${code}">`
       + `<h3 id="op-title-${code}">${esc(t('ui.req.waiting_title', 'Operatöre iletildi · #{code} · bekleniyor', { code: view.code }))}</h3>${body}${missing}`
       + `<p class="op-meta" lang="tr">${esc(view.note || '')}</p>`
-      + `<div class="op-actions"><a class="btn btn-danger" href="tel:112">112</a>`
+      + '<div class="op-actions">'
       + `<button type="button" class="btn" data-op="remove">${esc(t('ui.req.remove', 'Kartı bu cihazdan kaldır'))}</button></div></section>`;
   }
   body = `<p lang="${esc(view.reply.lang)}">${esc(view.reply.text)}</p>`;
@@ -176,7 +175,7 @@ function mountRequests(doc, storage = globalThis.localStorage) {
     try {
       const view = await post('/api/requests', { text, lang: form.querySelector('#op-lang').value, consent: true });
       if (view.emergency) {
-        form.closest('li').innerHTML = `<p class="callout callout-warn" role="alert">${esc(t('ui.req.emergency', "Bu acil bir durum olabilir. İBB operatörü 112'nin yerine geçmez: lütfen hemen 112'yi arayın."))}</p>`;
+        form.closest('li').innerHTML = `<p class="callout callout-warn" role="alert">${esc(t('ui.req.emergency', "Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz."))}</p>`;
         doc.dispatchEvent(new CustomEvent('nabiz:emergency', { detail: { lang: pageLang(doc), hazard: view.hazard } }));
         return;
       }

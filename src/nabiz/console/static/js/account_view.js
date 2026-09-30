@@ -36,7 +36,7 @@ function tierTable(tiers, current) {
     + `<thead><tr><th scope="col">${esc(t('ui.acct.tier_heading', 'Katman'))}</th><th scope="col">${esc(t('ui.acct.daily_questions', 'Günlük soru'))}</th>`
     + `<th scope="col">${esc(t('ui.acct.daily_model_calls', 'Günlük model çağrısı'))}</th></tr></thead>`
     + `<tbody>${rows}</tbody></table></div>`
-    + `<p class="field-hint">${esc(t('ui.acct.quota_closed', 'Kota dolunca cevaplar kural yoluyla (modelsiz) sürer. Acil durum (112) ve 153 yönlendirmesi kotaya hiç takılmaz.'))}</p>`;
+    + `<p class="field-hint">${esc(t('ui.acct.quota_closed', 'Kota dolunca cevaplar kural yoluyla (modelsiz) sürer. 153 yönlendirmesi kotaya hiç takılmaz.'))}</p>`;
 }
 
 function consentBlock(consent) {
@@ -72,7 +72,7 @@ function quotaParts(status) {
   const link = t('ui.quota.link', 'daha fazlası için hesap bağla');
   if (status.questions_left <= 0 || status.model_open === false) {
     return {
-      text: t('ui.quota.closed', '{left} · model kapalı, cevaplar kural yoluyla sürüyor · acil 112 ve 153 her zaman açık', { left }),
+      text: t('ui.quota.closed', '{left} · model kapalı, cevaplar kural yoluyla sürüyor · 153 her zaman açık', { left }),
       cta: status.has_account ? '' : link,
       tier: '',
     };

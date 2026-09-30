@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -146,9 +147,10 @@ def test_the_emergency_card_is_unchanged(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     value = json.loads(result.stdout)
     source = (STATIC / "js" / "chat.js").read_text(encoding="utf-8")
-    assert "const EMERGENCY_TEXT = 'Bu acil bir durum olabilir. Lütfen doğrudan ara: 112 (Acil) veya 153 (İBB).';" in source
+    assert "const EMERGENCY_TEXT = \"Nabız acil durumlarda yardımcı olamaz. İBB'ye 153'ten ulaşabilirsiniz.\";" in source
     html = value["html"]
-    assert html.index('href="tel:112"') < html.index('href="tel:153"')
+    # Owner's decision, 30 Sep 2026: the card names İBB's 153 only.
+    assert 'href="tel:112"' not in html and re.findall(r'href="(tel:[^"]+)"', html) == ["tel:153"]
     assert html.index("Bu nasıl bulundu?") > html.index("</div></div></div>")
     assert "Kopyala" not in html and "Şunu da sorabilirsiniz" not in html
 

@@ -17,6 +17,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from nabiz.agent.templates_i18n import FIXED
 from nabiz.console.emergency_text import CARD_LANGS
 from nabiz.console.emergency_vocab import ACUTE_SIGNS, MEDICAL_ADVICE, SERVICE_CUES, TURKISH_MASKS, VOCAB, Vocab
 from nabiz.console.health_mask import HEALTH_LABEL, HEALTH_LABEL_OTHER, health_spans
@@ -33,7 +34,7 @@ _POLITE = frozenset(
 )  # fmt: skip
 #: Who a card falls back to when the model names a language the card does not speak.
 #: The line an answer carries below it when the question stated a condition (KARAR 5).
-CHRONIC_NOTE = "Acil bir durumda 112'yi arayın."
+CHRONIC_NOTE = FIXED["EMERGENCY"]["tr"]
 _NEAREST_CARD = {"az": "tr", "tk": "tr", "uz": "ru", "kk": "ru", "ky": "ru", "tg": "ru", "be": "ru"}
 
 
@@ -290,7 +291,7 @@ def pick_card_lang(message: str, langs: frozenset[str]) -> str:
 # -- a stated condition next to an everyday question (KARAR 5) --------------------------------------------
 # "Kalp hastasıyım, M4'te asansör var mı?" states a chronic condition and asks about a lift: the Turkish
 # rules' "kalp" must not take the question away. An acute sign in the same message ("göğsüm çok ağrıyor",
-# "bayılacak gibiyim") keeps every rule as it was, and with a stated condition opens the 112 card on its
+# "bayılacak gibiyim") keeps every rule as it was, and with a stated condition opens the emergency card on its
 # own. The health phrases are the request mask's (nabiz.console.health_mask), so one list says what a
 # condition is.
 
@@ -343,7 +344,7 @@ def without_calm_condition(message: str) -> str:
 
 
 def acute_with_condition(message: str) -> bool:
-    """A stated condition with an acute sign ("Diyabetim var, bayılacak gibiyim"): the 112 card opens."""
+    """A stated condition with an acute sign ("Diyabetim var, bayılacak gibiyim"): the emergency card opens."""
     return bool(_condition_spans(message)) and acute_signal(message)
 
 

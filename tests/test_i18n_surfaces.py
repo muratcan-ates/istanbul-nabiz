@@ -72,7 +72,7 @@ ARABIC_CHARS = re.compile(r"[\u0600-\u06ff]")
 REGEX_LITERAL = re.compile(r"([(,=:!&|?\[]\s*)/(?![/*])((?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n\[])+)/([dgimsuvy]*)")
 HANDOFF_KEYS = {
     "dyn.handoff_title", "dyn.handoff_description", "dyn.handoff_summary_label", "dyn.handoff_copy",
-    "dyn.handoff_call", "dyn.handoff_tid", "dyn.handoff_operator", "dyn.handoff_emergency", "dyn.handoff_close",
+    "dyn.handoff_call", "dyn.handoff_tid", "dyn.handoff_operator", "dyn.handoff_close",
 }
 
 

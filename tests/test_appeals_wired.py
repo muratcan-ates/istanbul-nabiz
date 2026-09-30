@@ -48,7 +48,7 @@ def test_the_turn_limiter_counts_each_person_on_a_shared_address(app) -> None:
         assert client.post("/api/chat", json={"message": "Merhaba"}, headers=TWO).status_code == 200
 
 
-def test_a_restricted_person_gets_the_rules_and_112_and_can_appeal(app) -> None:
+def test_a_restricted_person_gets_the_rules_and_153_and_can_appeal(app) -> None:
     with TestClient(app, base_url="http://127.0.0.1:8090") as client:
         client.get("/api/quota", headers=ONE)
         subject = app.state.quota.holder(device="a" * 24, host="testclient").key

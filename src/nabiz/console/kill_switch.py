@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 
 PAUSE_PATH_ENV = "NABIZ_CHAT_PAUSE_PATH"
 DEFAULT_PAUSE_PATH = REPO_ROOT / "data" / "nexus" / "chat_paused.json"
-PAUSED_MESSAGE = "Sohbet geçici olarak durduruldu. 153'ü arayabilirsiniz. Acil bir durumdaysanız 112'yi arayın."
+PAUSED_MESSAGE = "Sohbet geçici olarak durduruldu. 153'ü arayabilirsiniz."
 HELP_LINE = "153"
 STATE_VERSION = 1
 CHAT_PAUSE_KIND: str = str(getattr(EntryKind, "CHAT_PAUSED", "chat_pause"))

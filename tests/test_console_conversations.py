@@ -185,7 +185,7 @@ const sensitive = await saveTurn(convo.id, { role: 'user', content: 'İlaç dozu
 assert.equal(sensitive.turns[0].content, '[hassas bilgi saklanmadı]');
 assert.equal(sensitive.turns[0].redacted, 'sensitive');
 assert.equal(sensitive.title, 'Yeni sohbet');
-await saveTurn(convo.id, { role: 'assistant', content: 'Bu acil bir durum olabilir. 112 numarasını arayın.' });
+await saveTurn(convo.id, { role: 'assistant', content: 'Nabız acil durumlarda yardımcı olamaz. 153 arayın.' });
 let saved = await load(convo.id);
 assert.equal(saved.turns[1].content, '[acil yönlendirme]');
 assert.equal(saved.turns[1].redacted, 'emergency');

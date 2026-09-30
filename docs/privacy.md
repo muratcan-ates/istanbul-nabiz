@@ -310,7 +310,7 @@ What holds it:
   (`test_one_tap_delete_removes_the_account_its_follows_and_its_outbox`). An e-mail's "takibi bırak" link
   carries a signed token in the URL fragment, which never reaches a server log.
 * **The quota never blocks help.** An emergency is neither counted nor limited, and past the quota the rules
-  keep answering with 112 and 153 on every card
+  keep answering with 153 on every card
   (`test_an_emergency_is_never_counted_never_limited_and_always_answered`).
 
 Deployment gate, not done: before real users, the account file needs encryption at rest and a backup

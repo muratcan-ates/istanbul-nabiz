@@ -57,9 +57,9 @@ güncellenir. Veri bayatsa (`stale: true`) bunu söyle.
 - Bilet ya da kart ücreti, indirim, ücretsiz biniş, engelli ya da yaşlı hakları, ceza, tazminat
   ve kişisel sağlık soruları sorulursa **cevap üretme**: araç sonucunda geçse bile ücret, hak ya da
   sağlık kararı söyleme. Yalnızca şunu söyle: doğru bilgi için 153 Çözüm Merkezi'ni arasın ya da
-  ilgili kurumun resmî sayfasına baksın; acil durumda 112.
+  ilgili kurumun resmî sayfasına baksın.
 - Questions about fares, discounts, free travel, entitlements, fines or personal health get no
-  answer: point to 153 (İBB's call centre) and the institution's official page, 112 in an emergency.
+  answer: point to 153 (İBB's call centre) and the institution's official page.
 
 ## 4b. Asansör ve yürüyen merdiven / Lifts and escalators
 

@@ -84,7 +84,7 @@ class FinalFields:
     steps: list[str] | None = None
     emergency: bool = False
     guard: dict[str, str] | None = None  # E16: {"stage": "input"|"output", "reason"}; no term, no link
-    hazard: str | None = None  # "gas" on a gas emergency: the 112 card also shows İGDAŞ's 187 line
+    hazard: str | None = None  # "gas" on a gas emergency; the page shows the same emergency card
     lang: str | None = None  # an emergency's card language (DECISIONS #40); None on every other turn
     cards: Sequence[dict[str, Any]] = ()  # P01 ChatCards (v0 or v1), validated in final_body; none on an emergency
 
@@ -250,7 +250,7 @@ def early_verdict(
     message: str, earlier: Sequence[str], trace: TurnTrace | None = None, *, input_ok: bool = True
 ) -> EarlyVerdict | None:
     """Whether the turn ends before any tool or model: an emergency first (a long or odd emergency
-    message still gets 112), then the input guard's verdict, then the refusal rule."""
+    message still gets the emergency card), then the input guard's verdict, then the refusal rule."""
     trace = trace if trace is not None else TurnTrace()
     with trace.step("acil"):
         if policy.emergency_intent(message):
@@ -420,7 +420,7 @@ def answer_events(text: str, citations: list[dict[str, Any]], author: str, sugge
 def refusal_events(
     suggestion: Any, started: float, *, lang: str = "tr", trace: TurnTrace | None = None
 ) -> list[str]:
-    """The fixed refusal (it names 112 and 153), written by the rules."""
+    """The fixed refusal (it names 153), written by the rules."""
     fields = FinalFields(refused=True, how=empty_how(started, rule_id="refusal", trace=trace), mode="refused")
     return answer_events(templates_i18n.fixed_text("SENSITIVE_REFUSAL", lang), [], "kural", suggestion, fields)
 
@@ -469,8 +469,8 @@ def emergency_events(
     lang: str | None = None,
     rule_id: str | None = None,
 ) -> list[str]:
-    """The emergency redirect: one ``final`` with no text; the page shows 112 itself (and 187 for gas), in
-    ``lang``. No operator queue: 112 comes first. ``rule_id`` is ``None`` for the rules, set for the model."""
+    """The emergency redirect: one ``final`` with no text; the page shows the emergency card (153) itself, in
+    ``lang``. No operator queue: the card comes first. ``rule_id`` is ``None`` for the rules, set for the model."""
     how = empty_how(started, rule_id=rule_id, trace=trace)
     fields = FinalFields(refused=False, how=how, mode="redirect", emergency=True, hazard=hazard, lang=lang or "tr")
     return [sse("final", final_body("", [], "kural", suggestion, fields))]

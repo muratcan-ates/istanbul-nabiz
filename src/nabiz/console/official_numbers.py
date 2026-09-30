@@ -7,8 +7,9 @@ reply: Nabız cannot test a phone line, the official lines it knows are named, a
 said to be unknown rather than confirmed or denied.
 
 The official lines are :data:`nabiz.agent.faithfulness.OFFICIAL_LINES`, the one list the numeric check
-also allows; the names below are only those this repository already states (112 on the emergency card,
-153 İBB Çözüm Merkezi, 187 İGDAŞ on the gas card).
+also allows; the names below are only those this repository already states (153 İBB Çözüm Merkezi). A
+question naming a service ("İtfaiye ... hattı", "polis ...") with a short line number is a phone line
+question too, whether or not the number is on the list; an unlisted one is said to be unknown.
 """
 
 from __future__ import annotations
@@ -18,8 +19,8 @@ import re
 from ibb_mcp.text import normalize_tr
 from nabiz.agent.faithfulness import OFFICIAL_LINES
 
-#: Names this repository already gives: ``emergency_text`` (112, 187) and ``policy.HANDOFF_TEXT`` (153).
-LINE_NAMES = {"112": "acil çağrı hattı", "153": "İBB Çözüm Merkezi", "187": "İGDAŞ doğalgaz acil hattı"}
+#: Names this repository already gives: ``policy.HANDOFF_TEXT`` (153).
+LINE_NAMES = {"153": "İBB Çözüm Merkezi"}
 #: Words that make a number a telephone line: "yardım hattı", "numaralı hat çalışıyor mu", "telefon".
 _PHONE_WORDS = re.compile(
     r"\b(?:yardim hatt|cagri merkez|cagri hatt|ihbar hatt|destek hatt|telefon|numarayi ara|numarasi|numarali yardim"
@@ -27,23 +28,23 @@ _PHONE_WORDS = re.compile(
 )
 #: "numaralı hat" alone is a bus ("500 numaralı hat") unless the number is written like a phone number.
 _PHONE_NUMBER = re.compile(r"(?<!\d)(?:444\s?\d\s?\d{3}|0?\s?\(?[2-5]\d{2}\)?\s?\d{3}\s?\d{2}\s?\d{2}|1\d{2})(?!\d)")
-#: A service named next to an official line's number: "İtfaiye 110 hattı", "polis 155".
+#: A service named next to a line number: "İtfaiye ... hattı", "polis ...".
 _SERVICE = re.compile(r"\b(?:itfaiye|polis|jandarma|ambulans|acil|igdas|iski|alo)\b")
-_OFFICIAL = re.compile(r"(?<!\d)(?:" + "|".join(OFFICIAL_LINES) + r")(?!\d)")
+#: The same number when it is not an amount or a count: "İGDAŞ faturam 150 TL" and "120 kişilik" are no line.
+_SERVICE_NUMBER = re.compile(
+    _PHONE_NUMBER.pattern + r"(?!\s*(?:(?:tl|lira|kisi\w*|kg|km|metre|m2|dakika|dk|saat|gun|yil|adet|kwh|m3)\b|%))"
+)
 _TRANSPORT = re.compile(r"\b(?:otobus|metrobus|metro|tramvay|vapur|durak|sefer|bus|tram|ferry)\b")
 _NUMBER = re.compile(r"(?<![\d\w])(\d[\d ]{1,12}\d|\d{3})(?![\d\w])")
 
-NO_NUMBER = (
-    "İBB'ye 153 İBB Çözüm Merkezi'nden ulaşabilirsin; Nabız bir telefon hattının çalışıp çalışmadığını "
-    "denetleyemez. Acil bir durumda 112'yi ara."
-)
+NO_NUMBER = "İBB'ye 153 İBB Çözüm Merkezi'nden ulaşabilirsin; Nabız bir telefon hattının çalışıp çalışmadığını denetleyemez."
 UNKNOWN_LINE = (
     "Nabız bir telefon hattının çalışıp çalışmadığını denetleyemez ve bu numarayı kayıtlı kaynaklarında "
-    "bulamadı; doğrulayamıyorum. İBB'ye 153 İBB Çözüm Merkezi'nden ulaşabilirsin. Acil bir durumda 112'yi ara."
+    "bulamadı; doğrulayamıyorum. İBB'ye 153 İBB Çözüm Merkezi'nden ulaşabilirsin."
 )
 KNOWN_LINE = (
     "{number}, {name}. Nabız bir telefon hattının şu an çalışıp çalışmadığını denetleyemez. "
-    "İBB'ye 153 İBB Çözüm Merkezi'nden ulaşabilirsin. Acil bir durumda 112'yi ara."
+    "İBB'ye 153 İBB Çözüm Merkezi'nden ulaşabilirsin."
 )
 
 
@@ -52,7 +53,7 @@ def asks_about_a_phone_line(message: str) -> bool:
     text = normalize_tr(message)
     if _TRANSPORT.search(text):
         return False
-    if _SERVICE.search(text) and _OFFICIAL.search(text):
+    if _SERVICE.search(text) and _SERVICE_NUMBER.search(text):
         return True
     return bool(_PHONE_WORDS.search(text)) and bool(_PHONE_NUMBER.search(text) or "numara" in text or "hatt" in text)
 

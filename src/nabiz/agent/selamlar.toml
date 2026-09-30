@@ -35,8 +35,8 @@ tr = "Hangi istasyonu kastettiniz? İstasyonun adını yazın."
 en = "Which station do you mean? Write the station name."
 
 [clarify.generic]
-tr = "Sorunuzu tam anlayamadım. Otobüs, metro, durak, otopark, hava kalitesi ya da trafikten hangisini soruyorsunuz? Acil bir durumdaysanız 112'yi arayın."
-en = "I did not quite understand. Which do you mean: buses, metro, stops, car parks, air quality or traffic? If this is an emergency, call 112."
+tr = "Sorunuzu tam anlayamadım. Otobüs, metro, durak, otopark, hava kalitesi ya da trafikten hangisini soruyorsunuz?"
+en = "I did not quite understand. Which do you mean: buses, metro, stops, car parks, air quality or traffic?"
 
 [handoff]
 tr = "İki kez anlaşamadık. İsterseniz bir insanla görüşün: 153 Çözüm Merkezi."

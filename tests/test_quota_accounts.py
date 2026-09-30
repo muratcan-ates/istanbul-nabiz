@@ -277,7 +277,7 @@ def test_an_emergency_in_any_card_language_passes_a_spent_quota_and_limiter(
 ) -> None:
     """Integration of hesap-kota-takip and acil-çok-dil: with the daily quota spent and the per-minute limiter
     answering 429, an emergency in Turkish (rules) or a visitor language (the multilingual rules) still gets 200,
-    the 112 card in its own language, and is not counted. The redirect's final has no text: the page draws the
+    the emergency card (153) in its own language, and is not counted. The redirect's final has no text: the page draws the
     card from ``final.lang`` (``emergency_text``)."""
     client, app = make_client(nabiz, tmp_path, book=QuotaBook(tiers(questions=1)))
     with client:
@@ -288,6 +288,7 @@ def test_an_emergency_in_any_card_language_passes_a_spent_quota_and_limiter(
         final = chat(client, message)
         status = client.get("/api/quota", headers={"X-Nabiz-Device": DEVICE}).json()
     assert final["emergency"] is True and final["mode"] == "redirect", final
-    assert final["lang"] == lang and "112" in CARD_TEXT[lang]["call"], "the page opens the 112 card in this language"
+    assert final["lang"] == lang and "153" in CARD_TEXT[lang]["call"], "the page opens the 153 card in this language"
+    assert "112" not in CARD_TEXT[lang]["call"]
     assert final["quota"]["counted"] is False
     assert status["questions_left"] == 0 and status["questions_limit"] == 1, "the emergency took nothing"

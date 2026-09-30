@@ -213,14 +213,14 @@ def test_the_emergency_card_comes_first_and_costs_no_quota(
     assert final["quota"]["questions_left"] == before, "an emergency is never counted"
 
 
-def test_a_paused_chat_still_opens_112(stores: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_paused_chat_still_opens_the_emergency_card(stores: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pause = stores / "chat-paused.json"
     PauseStore(pause).write(ChatPause(paused=True, reason="bakım"))
     monkeypatch.setenv(PAUSE_PATH_ENV, str(pause))
     with TestClient(build_app(offline_nabiz()), base_url=BASE_URL) as client:
         paused = client.post("/api/chat", json={"message": "Metro çalışıyor mu?"})
         plea = client.post("/api/chat", json={"message": "Yangın var"})
-    assert paused.status_code == 503 and "112" in paused.text and "153" in paused.text
+    assert paused.status_code == 503 and "112" not in paused.text and "153" in paused.text
     assert plea.status_code == 200 and stream_events(plea.text)[-1][1]["emergency"] is True
 
 

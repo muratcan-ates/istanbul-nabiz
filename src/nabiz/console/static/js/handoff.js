@@ -43,7 +43,7 @@ const CONNECT_153 = /153\S*\s+(ile\s+)?(bağla|bağlan|görüş|konuş|aktar)/u;
 const SUMMARY_WANT = 'İstenen: Bu konuda bir 153 görevlisinden bilgi almak istiyorum.';
 const SUMMARY_NO_MASK = 'Soru: (kişisel veri denetimi yüklenemedi; sorunuzu kendiniz yazın)';
 const QUESTION_MAX = 240;
-const READY_TEXT = 'İnsanla görüşme kartı hazır: özet, 153 ve 112 düğmeleri.';
+const READY_TEXT = 'İnsanla görüşme kartı hazır: özet ve 153 düğmesi.';
 const COPIED_TEXT = "Özet kopyalandı. 153'ü aradığınızda okuyabilirsiniz.";
 const COPY_FAILED_TEXT = 'Kopyalama bu tarayıcıda açılamadı. Metni seçtim; basılı tutup kopyalayın.';
 const STYLESHEET = '/css/handoff.css';
@@ -141,7 +141,6 @@ function cardMarkup(summary, { tid } = {}) {
     + tidButton
     // Operatöre aktar: js/request_status.js opens its own consent form; nothing leaves the page from here.
     + '<button type="button" class="btn" data-handoff="operator">Operatöre ilet</button>'
-    + '<a class="btn btn-danger" href="tel:112" data-handoff="emergency">Acil durum: 112</a>'
     + '<button type="button" class="btn" data-handoff="close">Kapat</button>'
     + '</div>'
     + '<p class="handoff-status" role="status" aria-live="polite"></p>'

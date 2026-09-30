@@ -154,7 +154,7 @@ def _request_chat(client: Any, case: dict[str, Any]) -> tuple[str, list[Any], di
     if case.get("setup") == "paused":
         paused = client.post("/api/chat", json={"message": "Metro çalışıyor mu?"})
         assert paused.status_code == 503
-        assert "153" in paused.text and "112" in paused.text
+        assert "153" in paused.text and "112" not in paused.text
         rendered = paused.text + "\n"
     request = {"message": case["question"], "needs": [], "history": case.get("history", [])}
     if case.get("request_lang"):

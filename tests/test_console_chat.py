@@ -408,7 +408,7 @@ def test_a_foreign_emergency_opens_the_card_in_its_language_before_any_model(
         stream, final = ask(client, question)
     assert final["mode"] == "redirect" and final["emergency"] is True
     assert final["lang"] == lang and final["hazard"] == hazard and final["how"]["rule_id"] is None
-    # 112 first: no model, no tool, and no operator queue (the redirect is the whole turn).
+    # The emergency card first: no model, no tool, and no operator queue (the redirect is the whole turn).
     assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
     assert [kind for kind, _ in stream] == ["session_started", "final"]
 

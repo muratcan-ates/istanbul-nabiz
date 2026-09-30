@@ -18,7 +18,7 @@ MCP server (`ibb-mcp`, 18 tools) that any agent, VS Code Copilot included, can c
 > Full attribution, personal-data handling and rate-limit policy: **[NOTICE.md](NOTICE.md)**.
 
 **Herkes için, her zaman, her yerde.** Accessibility is the product, not a feature: step-free routes, an
-easy-read screen, answers read aloud, and a 112 card that opens in the visitors' languages, with or without a model.
+easy-read screen, answers read aloud, and an emergency card that points to İBB 153 in the visitors' languages, with or without a model.
 
 ---
 
@@ -64,7 +64,7 @@ core: signals, rules, an evidence "Arena" with three seats, human approval and a
    check rejects any number in an answer that is not in a tool result, and hotline numbers are checked
    against the official list.
 
-**Safety and privacy by construction:** a 112 card that opens from rules alone, even with the model off or
+**Safety and privacy by construction:** an emergency card (153, no answer from the model, and its call button never dials) that opens from rules alone, even with the model off or
 the chat paused; health statements masked before the queue, the log and the model (DECISIONS #65 and the
 P09a-2 notes); no user location server-side; account erasure as one chain over every store (DECISIONS
 #104); a red-team set in `eval/red_team.jsonl` and `eval/red_team_extra.jsonl` run in every test pass.
@@ -443,7 +443,7 @@ varsa doğru kurumu gösterir, sizin yerinize başvuru yapmaz. Altında her ajan
 > Kamu sektörü bilgilerini içerir: İBB Açık Veri Portalı, İBB Açık Veri Lisansı (CC BY 4.0).
 
 **Herkes için, her zaman, her yerde.** Erişilebilirlik bir özellik değil, ürünün kendisi: merdivensiz
-rota, *Kolay ekran*, sesli okuma ve sesle soru, model kapalıyken bile ziyaretçi dillerinde açılan 112 kartı.
+rota, *Kolay ekran*, sesli okuma ve sesle soru, model kapalıyken bile ziyaretçi dillerinde açılan, 153'e yönlendiren acil kartı.
 
 **Gösterimdeki üç hikâye**
 
