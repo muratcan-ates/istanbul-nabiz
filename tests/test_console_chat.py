@@ -715,9 +715,13 @@ def test_a_recorded_lift_answer_is_stamped_with_its_recording_time_and_stays_hon
     """The 2026-09-26 recording has no lift record at Kartal: "no fault recorded", never "it works", never "canlı"."""
     with client_for(nabiz, llm.LlmConfig()) as client:
         _, final = ask(client, "Kartal metro istasyonunda asansör var mı?")
+        _, works = ask(client, "Kartal'da asansör çalışıyor mu?")
     answer = final["answer"]
-    assert answer.startswith("İBB kaydında Kartal istasyonu için asansör arızası yok.")
-    assert "kanıtlamaz" in answer and "çalışıyor" not in answer and "doğrulanamadı" not in answer
+    assert works["answer"].startswith("İBB kaydına göre Kartal istasyonunda 5 asansör var."), "no 'Evet' to 'çalışıyor mu?'"
+    assert answer.startswith("Evet, İBB kaydına göre Kartal istasyonunda 5 asansör var. Kayıtta arızalı görünen asansör yok.\n")
+    assert "Arıza listesi yalnız İBB'nin kaydettiklerini gösterir." in answer and "\nResmî İBB hizmeti değildir.\n" in answer
+    assert "kanıtlamaz" not in answer, "the caveat is said once, in the source line"
+    assert "çalışıyor" not in answer and "doğrulanamadı" not in answer
     assert "Veri: kayıtlı · 26.09 05:15." in answer
     assert "Verinin yaşı" not in answer and "canlı" not in answer.lower()
     cited = [item for item in final["citations"] if item.get("source") == "metro_equipment"]

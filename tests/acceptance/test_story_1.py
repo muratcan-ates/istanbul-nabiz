@@ -72,7 +72,7 @@ def test_the_lift_answer_quotes_the_record_and_offers_to_remember_without_saving
     question = "Kartal metrosunda asansör var mı? Merdivensiz gitmem lazım"
     stream, final = chat(client, question, history=earlier)
     assert "metro_equipment_status" in tools_started(stream)
-    assert "İBB kaydında" in final["answer"] and "çalışıyor" not in final["answer"]
+    assert final["answer"].startswith("Evet, İBB kaydına göre Kartal") and "çalışıyor" not in final["answer"]
     assert_offline_citations(final)
     assert final["memory_suggestion"] == {"key": "step_free", "label": "Adımsız erişim (asansör, rampa)"}
     _, again = chat(client, question, history=earlier)
