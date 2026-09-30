@@ -36,13 +36,13 @@ from ibb_mcp.routing import rail_params, slow_walk_params
 from ibb_mcp.sources.metro import MetroSource
 from ibb_mcp.sources.metro_equipment import (
     DATE_LABEL_TR,
-    EQUIPMENT_DISCLAIMER_TR,
     EQUIPMENT_GROUPS,
     EQUIPMENT_STALE_AFTER_S,
     STATION_UNMATCHED,
     EquipmentRecord,
     EquipmentSnapshot,
     MetroEquipmentSource,
+    equipment_disclaimer,
     line_key,
     match_station,
     resolve_group,
@@ -128,14 +128,19 @@ def lift_state(name: str, platforms: Sequence[MetroStation], faults: dict[Platfo
     lift_count = None if any(c is None for c in counts) else sum(c or 0 for c in counts)
     out = sum(1 for p in platforms for r in faults.get(platform_key(p), []) if r.equipment_type == "elevator")
     if out:
-        total = f" ({lift_count} asansör kayıtlı)" if lift_count else ""
-        text = f"İBB kaydına göre {name} istasyonunda {out} asansör kullanılamıyor{total}."
+        # A count at or above the listed faults is quoted; one below them cannot be squared, so it is left out.
+        text = (
+            f"İBB kaydına göre {name} istasyonunda {lift_count} asansör var; {out} tanesi kullanılamıyor."
+            if lift_count and out <= lift_count
+            else f"İBB kaydına göre {name} istasyonunda {out} asansör kullanılamıyor."
+        )
         return LiftState("out_of_service", lift_count, out, text)
     if lift_count is None:
         return LiftState("unknown", None, 0, f"{name} için asansör bilgisi İBB tarafından paylaşılmamış.", (LIFT_COUNT_UNKNOWN,))
     if lift_count == 0:
         return LiftState("unknown", 0, 0, f"İBB kaydına göre {name} istasyonunda asansör yok.", (NO_LIFT_RECORDED,))
-    return LiftState("working", lift_count, 0, f"İBB kaydında {name} istasyonu için asansör arızası yok.")
+    text = f"İBB kaydına göre {name} istasyonunda {lift_count} asansör var. Kayıtta arızalı görünen asansör yok."
+    return LiftState("working", lift_count, 0, text)
 
 
 def lifts_readable(snapshot: EquipmentSnapshot | None) -> bool:
@@ -215,8 +220,8 @@ def find_alternative(
     seconds, station = best
     minutes = max(1, math.ceil(seconds / 60))
     reason = (
-        f"{station.name} ({station.line_name}) istasyonunda {station.lifts} asansör kayıtlı ve İBB kaydında "
-        f"asansör arızası yok. {origin} ile arası tahminen {minutes} dk. {ALTERNATIVE_NOTE_TR}"
+        f"{station.name} ({station.line_name}) istasyonunda {station.lifts} asansör kayıtlı; kayıtta arızalı "
+        f"görünen asansör yok. {origin} ile arası tahminen {minutes} dk. {ALTERNATIVE_NOTE_TR}"
     )
     return StepFreeAlternative(station.name or "", station.line_name or "", minutes, reason)
 
@@ -370,7 +375,7 @@ def equipment_status_data(
         "groups_missing": snapshot.groups_missing,
         "uncertainty": codes,
         "date_label": DATE_LABEL_TR,
-        "disclaimer": EQUIPMENT_DISCLAIMER_TR,
+        "disclaimer": equipment_disclaimer(with_dates=any(r.ibb_date for r in records)),
     }
     if platforms:
         name = platforms[0].name or station or ""
@@ -390,7 +395,8 @@ def status_note(data: dict[str, Any]) -> str | None:
         return "Metro ekipman kaydı okunamadı; asansör durumu doğrulanamadı."
     if data["stale"]:
         return "Veri bayat: gösterilen, son bilinen durumdur; doğrulanamadı."
-    if data["count"] == 0:
+    if data["count"] == 0 and not (data.get("station") and "Asansör" in data["groups_read"]):
+        # A station whose lifts were read already says it; the disclaimer says what the list cannot prove.
         return "İBB kaydında bu filtre için kullanılamayan ekipman yok. Bu, ekipmanın kullanılabilir olduğunu kanıtlamaz."
     return None
 

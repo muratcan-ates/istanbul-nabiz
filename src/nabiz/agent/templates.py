@@ -8,8 +8,10 @@ within its size budget. Nothing here calls a tool or a model.
 from __future__ import annotations
 
 import datetime as dt
+import re
 from typing import Any
 
+from ibb_mcp.text import normalize_tr
 from nabiz.agent.minutes import METHOD_TR, shown_minutes
 
 CONFIDENCE_TR = {"high": "yüksek", "medium": "orta", "low": "düşük"}
@@ -107,16 +109,47 @@ def _r_arrivals(d: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _r_equipment(d: dict[str, Any]) -> list[str]:
+#: "Kartal'da asansör var mı?": asks whether a lift is there, not whether one works or is broken.
+_ASKS_IF_THERE = re.compile(r"\b(var mi|varmi|bulunuyor mu|is there|are there)\b")
+_LIFT_WORDS = ("asansor", "lift", "elevator")
+#: A question about faults, use or another kind of equipment gets no "Evet": it would read as "yes, it works".
+_NOT_A_PRESENCE_QUESTION = ("ariz", "bozuk", "calis", "kullan", "acik", "kapali", "yuruyen", "escalator", "walkway",
+                            "work", "broken", "fault", "service", "usable", "available")
+#: Said under a "çalışıyor mu / kullanılabiliyor mu" question when no lift is listed as out.
+NO_PROOF_OF_USE_TR = "Bu kayıt, asansörün şu an kullanılabildiğini kanıtlamaz."
+
+
+def _lift_lead(station: dict[str, Any], question: str) -> str:
+    """The station's first line. "Evet" only for "asansör var mı?" and only when some lift is not listed as out."""
+    folded = normalize_tr(question)
+    there = bool(_ASKS_IF_THERE.search(folded)) and any(w in folded for w in _LIFT_WORDS)
+    count, out = station.get("lift_count") or 0, station.get("unavailable_lift_count") or 0
+    if there and not any(w in folded for w in _NOT_A_PRESENCE_QUESTION):
+        if station.get("lift_status") == "working" and count:
+            return f"Evet, {station['text']}"
+        if station.get("lift_status") == "out_of_service" and 0 < out < count:
+            return f"Evet, {station.get('name')} istasyonunda {count} asansör var; İBB kaydına göre {out} tanesi kullanılamıyor."
+    return str(station["text"])
+
+
+def _asks_if_usable(question: str) -> bool:
+    folded = normalize_tr(question)
+    return any(w in folded for w in ("calis", "kullan", "acik mi", "work", "usable", "available", "in service"))
+
+
+def _r_equipment(d: dict[str, Any], question: str = "") -> list[str]:
     """İBB's fault record for a station or a line. A lift is never said to work: at most "arıza yok"."""
     station = d.get("station") or {}
-    lines = [str(station["text"])] if station.get("text") else []
+    lines = [_lift_lead(station, question)] if station.get("text") else []
+    if station.get("lift_status") == "working" and _asks_if_usable(question):
+        lines.append(NO_PROOF_OF_USE_TR)
     records = d.get("records") or []
     if not station and d.get("available"):
         lines.append(f"İBB kaydında {d.get('count')} ekipman kullanılamıyor olarak listeli.")
     lines += [f"• {row.get('text')}" for row in records[:5] if row.get("text")]
-    if d.get("disclaimer"):
-        lines.append(str(d["disclaimer"]))
+    # "Resmî İBB hizmeti değildir" on a line of its own, after the one source line.
+    source, cut, official = str(d.get("disclaimer") or "").rpartition(" Resmî ")
+    lines += [source, f"Resmî {official}"] if cut else [official]
     return lines
 
 
@@ -303,14 +336,17 @@ def recorded_stamp(provenance: dict[str, Any]) -> str | None:
     return f"kayıtlı · {moment.astimezone(dt.timezone(dt.timedelta(hours=3))):%d.%m %H:%M}"
 
 
-def render_answer(tool: str, payload: dict[str, Any], lang: str, *, recorded: bool = False) -> str:
+def render_answer(tool: str, payload: dict[str, Any], lang: str, *, recorded: bool = False, question: str = "") -> str:
     """Turn one tool payload into a templated answer carrying its age and attribution.
+
+    ``question``: the equipment answer reads it to say "Evet" only to "asansör var mı?".
 
     ``recorded``: the answer comes from recorded fixtures (offline), so it carries the
     recording's time ("kayıtlı · GG.AA SS:DD") instead of an age that would read as live.
     """
     lines = [EN_PREFACE] if lang == "en" else []
-    lines += RENDERERS.get(tool, _r_generic)(payload.get("data") or {})
+    data = payload.get("data") or {}
+    lines += _r_equipment(data, question) if tool == "metro_equipment_status" else RENDERERS.get(tool, _r_generic)(data)
     if payload.get("note"):
         lines.append(str(payload["note"]))
     stamp = recorded_stamp(payload["provenance"]) if recorded and payload["provenance"].get("age") else None

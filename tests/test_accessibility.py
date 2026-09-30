@@ -31,6 +31,7 @@ from ibb_mcp.accessibility import (
     faults_by_platform,
     lift_state,
     resolve_platforms,
+    status_note,
 )
 from ibb_mcp.equipment_signals import HUB_FAULT_THRESHOLD, signal_candidates, stale_signal, transfer_hubs
 from ibb_mcp.metro_graph import MetroGraph
@@ -43,6 +44,7 @@ from ibb_mcp.sources.metro_equipment import (
     EquipmentSnapshot,
     MetroEquipmentSource,
 )
+from nabiz.agent.templates import render_answer
 from nexus_core.missions import load_mission
 from nexus_core.reflex import matches, render, signal_values
 from nexus_core.signals import Origin, Signal
@@ -141,7 +143,62 @@ def test_no_alternative_is_said_as_a_code() -> None:
 def test_a_station_with_no_listed_fault_needs_no_alternative_and_is_not_called_working() -> None:
     answer = accessible_alternative("Kartal", stations=STATIONS, snapshot=snapshot(), graph=GRAPH)
     assert answer["lift_status"] == "working" and answer["alternative"] is None
-    assert answer["text"] == "İBB kaydında Kartal istasyonu için asansör arızası yok."
+    assert answer["text"] == "İBB kaydına göre Kartal istasyonunda 5 asansör var. Kayıtta arızalı görünen asansör yok."
+
+
+def test_asking_whether_kartal_has_a_lift_is_answered_with_the_count_first() -> None:
+    """30 Sep: "asansör var mı?" gets the recorded count, then the fault record; never "çalışıyor".
+
+    The tool's sentence is neutral; only the answer to "var mı?" starts with "Evet", and only when
+    some lift is not listed as out. A fault, use or escalator question never gets "Evet".
+    """
+    def station(snap: EquipmentSnapshot, platforms: Any = None) -> dict[str, Any]:
+        return equipment_status_data(snap, provenance(), platforms or STATIONS, station="Kartal")
+
+    def lead(data: dict[str, Any], question: str) -> str:
+        payload = {"data": data, "provenance": {"age": None}}
+        return render_answer("metro_equipment_status", payload, "tr", question=question).split("\n")[0]
+
+    lifts = [s.model_copy(update={"lifts": 1}) if s.name == "Kartal" else s for s in STATIONS]
+    clear, out, all_out = station(snapshot()), station(snapshot(record())), station(snapshot(record()), lifts)
+    none = station(snapshot(), [s.model_copy(update={"lifts": 0}) if s.name == "Kartal" else s for s in STATIONS])
+    unknown = station(snapshot(), [s.model_copy(update={"lifts": None}) if s.name == "Kartal" else s for s in STATIONS])
+    assert clear["station"]["text"] == "İBB kaydına göre Kartal istasyonunda 5 asansör var. Kayıtta arızalı görünen asansör yok."
+    assert out["station"]["text"] == "İBB kaydına göre Kartal istasyonunda 5 asansör var; 1 tanesi kullanılamıyor."
+    asks = "Kartal metrosunda asansör var mı? Merdivensiz gitmem lazım"
+    assert lead(clear, asks) == "Evet, İBB kaydına göre Kartal istasyonunda 5 asansör var. Kayıtta arızalı görünen asansör yok."
+    assert lead(out, asks) == "Evet, Kartal istasyonunda 5 asansör var; İBB kaydına göre 1 tanesi kullanılamıyor."
+    assert lead(all_out, asks) == "İBB kaydına göre Kartal istasyonunda 1 asansör var; 1 tanesi kullanılamıyor."
+    assert lead(none, asks) == "İBB kaydına göre Kartal istasyonunda asansör yok."
+    assert lead(unknown, asks) == "Kartal için asansör bilgisi İBB tarafından paylaşılmamış."
+    for question in ("Kartal'da asansör çalışıyor mu?", "Kartal metro istasyonunda asansör şu an kullanılabiliyor mu?",
+                     "Kartal'da asansör arızası var mı?", "Kartal istasyonunda asansör bozuk mu?",
+                     "Kartal'da yürüyen merdiven var mı?", "Is the lift at Kartal working?"):
+        assert lead(clear, question) == clear["station"]["text"], question
+        assert lead(out, question) == out["station"]["text"], question
+    usable = render_answer("metro_equipment_status", {"data": clear, "provenance": {"age": None}}, "tr",
+                           question="Kartal'da asansör çalışıyor mu?")
+    assert "Bu kayıt, asansörün şu an kullanılabildiğini kanıtlamaz." in usable
+    for data in (clear, out, all_out, none, unknown):
+        for question in (asks, "Kartal'da asansör çalışıyor mu?"):
+            text = render_answer("metro_equipment_status", {"data": data, "provenance": {"age": None}}, "tr", question=question)
+            assert "çalışıyor" not in text and "arızası yok" not in text
+
+
+def test_a_station_answer_says_the_list_caveat_once() -> None:
+    """The source line keeps the caveat; the "bu filtre için" note is not added under a station answer."""
+    clear = equipment_status_data(snapshot(), provenance(), STATIONS, station="Kartal")
+    assert status_note(clear) is None
+    assert clear["disclaimer"] == (
+        "Kaynak: Metro İstanbul açık verisi (İBB Açık Veri Lisansı). Arıza listesi yalnız İBB'nin kaydettiklerini "
+        "gösterir. Resmî İBB hizmeti değildir."
+    )
+    dated = equipment_status_data(snapshot(record()), provenance(), STATIONS, station="Kartal")
+    assert "Tarih, İBB kaydındaki tarihtir; anlamı belgelenmemiştir." in dated["disclaimer"]
+    line_only = equipment_status_data(snapshot(), provenance(), STATIONS, line="M4")
+    assert status_note(line_only) and "kanıtlamaz" in status_note(line_only)
+    escalators = equipment_status_data(snapshot(groups=("Yürüyen Merdiven",)), provenance(), STATIONS, station="Kartal")
+    assert status_note(escalators) and "kanıtlamaz" in status_note(escalators)
 
 
 def test_without_the_lift_list_nothing_is_claimed() -> None:

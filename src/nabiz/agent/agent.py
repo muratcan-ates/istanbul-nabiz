@@ -514,7 +514,7 @@ class NabizAgent:
         with span("nabiz.agent.deterministic", **{"nabiz.tool.name": tool}):
             record = await self._call_tool(tool, arguments)
         if record.ok and record.payload is not None:
-            text = render_answer(tool, record.payload, lang, recorded=self.nabiz.settings.offline)
+            text = render_answer(tool, record.payload, lang, recorded=self.nabiz.settings.offline, question=question)
         else:
             text = f"{record.error}\n\n{ATTRIBUTION_LINE}" if record.error else NO_DATA[lang]
         # The error is relayed verbatim, so its own numbers ("bu durağa uğrayan hatlar:

@@ -90,11 +90,20 @@ STATION_UNKNOWN = "station_unknown"
 _NESTED_ROW_KEYS = ("Equipments", "EquipmentServiceStatus")
 
 DATE_LABEL_TR = "İBB kaydındaki tarih (anlamı belgelenmemiş; dönüş tarihi değildir)"
-EQUIPMENT_DISCLAIMER_TR = (
-    "Metro İstanbul açık verisinden, İBB Açık Veri Lisansı ile. Listede olmayan bir ekipmanın kullanılabilir "
-    "olduğu doğrulanmış değildir: liste yalnız İBB'nin kaydettiğini gösterir. Tarih, İBB kaydındaki tarihtir; "
-    "anlamı belgelenmemiştir. Resmî İBB hizmeti değildir."
+#: One short source line. Its meaning is the old longer note's: a lift missing from the list is
+#: not shown to be usable, the list only holds what İBB recorded (30 Sep, owner's review).
+EQUIPMENT_SOURCE_TR = (
+    "Kaynak: Metro İstanbul açık verisi (İBB Açık Veri Lisansı). Arıza listesi yalnız İBB'nin kaydettiklerini gösterir."
 )
+#: Said only when a record, and so a date, is shown.
+EQUIPMENT_DATE_NOTE_TR = "Tarih, İBB kaydındaki tarihtir; anlamı belgelenmemiştir."
+NOT_OFFICIAL_TR = "Resmî İBB hizmeti değildir."
+EQUIPMENT_DISCLAIMER_TR = f"{EQUIPMENT_SOURCE_TR} {EQUIPMENT_DATE_NOTE_TR} {NOT_OFFICIAL_TR}"
+
+
+def equipment_disclaimer(*, with_dates: bool) -> str:
+    """The source line, the date caveat only when dates are shown, and "Resmî İBB hizmeti değildir"."""
+    return EQUIPMENT_DISCLAIMER_TR if with_dates else f"{EQUIPMENT_SOURCE_TR} {NOT_OFFICIAL_TR}"
 
 #: Words that name the summary's counts. Only "Inactive" was seen (2026-09-24); see the module docstring.
 _INACTIVE_WORDS = ("inactive", "pasif", "arizali")
