@@ -56,6 +56,7 @@ function copy() {
     now: t('ui.calendar.now', 'Şimdi'),
     account: t('ui.calendar.from_account', 'Hesabınızdaki kayıt'),
     dayPlan: t('ui.calendar.day_plan', 'Gün planı'),
+    sample: t('ui.calendar.sample_note', 'Örnek etkinlik: gösterim için eklendi.'),
   };
 }
 
@@ -70,6 +71,32 @@ export function readDevicePlans() {
 }
 function writeDevicePlans(plans) {
   try { window.localStorage.setItem(STORE_KEY, JSON.stringify(plans)); return true; } catch (error) { return false; }
+}
+
+/* Four sample plans, written once into an empty calendar so the week is not blank on first open (owner, 30 Sep).
+   They are marked sample: the panel says so, and they can be deleted like any other plan. The first is the
+   recorded Kültür AŞ listing; the others are examples, not real events. */
+export const SAMPLES_KEY = 'nabiz.calendar.samples.v1';
+export function samplePlans(today = new Date()) {
+  const day = (offset) => isoDay(addDays(startOfDay(today), offset));
+  const saturday = (6 - today.getDay() + 7) % 7 || 7;
+  return [
+    { id: 'sample-1', sample: true, title: t('ui.calendar.sample_1', 'Harbiye Açık Hava konseri'), place: t('ui.calendar.sample_1_place', 'Harbiye Cemil Topuzlu Açık Hava Tiyatrosu'),
+      starts_at: `${day(0)}T20:30`, ends_at: `${day(0)}T22:30`, source_url: 'https://kultur.istanbul/' },
+    { id: 'sample-2', sample: true, title: t('ui.calendar.sample_2', 'Çocuk atölyesi'), place: t('ui.calendar.sample_2_place', 'Kadıköy'),
+      starts_at: `${day(1)}T14:00`, ends_at: `${day(1)}T15:30` },
+    { id: 'sample-3', sample: true, title: t('ui.calendar.sample_3', 'Kütüphane randevusu'), place: t('ui.calendar.sample_3_place', 'Atatürk Kitaplığı'),
+      starts_at: `${day(2)}T10:00`, ends_at: `${day(2)}T11:00` },
+    { id: 'sample-4', sample: true, title: t('ui.calendar.sample_4', 'Ailece orman yürüyüşü'), place: t('ui.calendar.sample_4_place', 'Belgrad Ormanı'),
+      starts_at: `${day(saturday)}T11:00`, ends_at: `${day(saturday)}T13:00` },
+  ];
+}
+function seedSamples() {
+  try {
+    if (window.localStorage.getItem(SAMPLES_KEY) || readDevicePlans().length) return;
+    writeDevicePlans(samplePlans());
+    window.localStorage.setItem(SAMPLES_KEY, '1');
+  } catch (error) { /* storage may be disabled: the calendar stays empty */ }
 }
 function parseMoment(value, allDay) {
   if (typeof value !== 'string' || !value) return null;
@@ -90,7 +117,7 @@ export function normalize(plan, origin) {
   if (!end || end <= start) end = allDay ? addDays(start, 1) : new Date(start.getTime() + 3600000);
   return {
     id: `${origin}:${plan.id}`, rawId: plan.id, origin, title: String(plan.title), start, end, allDay,
-    place: plan.place || '', url: plan.source_url || '',
+    place: plan.place || '', url: plan.source_url || '', sample: Boolean(plan.sample),
   };
 }
 function dayPlanItem() {
@@ -202,7 +229,7 @@ function createView(doc, host) {
   function eventButton(item, c) {
     const time = item.allDay ? c.allDay : `${hhmm(item.start)}-${hhmm(item.end)}`;
     const label = t('ui.calendar.event_label', '{time}, {title}', { time, title: item.title });
-    return `<button type="button" class="cal-event cal-origin-${item.origin}" data-open="${esc(item.id)}" aria-label="${esc(label)}${item.place ? `, ${esc(item.place)}` : ''}">
+    return `<button type="button" class="cal-event cal-origin-${item.origin}${item.sample ? ' cal-sample' : ''}" data-open="${esc(item.id)}" aria-label="${esc(label)}${item.place ? `, ${esc(item.place)}` : ''}">
       <span class="cal-event-title">${esc(item.title)}</span>
       <span class="cal-event-meta">${esc(item.allDay ? (item.place || c.allDay) : `${hhmm(item.start)}${item.place ? ` · ${item.place}` : ''}`)}</span></button>`;
   }
@@ -246,7 +273,7 @@ function createView(doc, host) {
     const when = item.allDay
       ? `${new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long' }).format(item.start)} · ${c.allDay}`
       : `${new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long' }).format(item.start)} · ${hhmm(item.start)}-${hhmm(item.end)}`;
-    const note = item.origin === 'account' ? c.account : item.origin === 'dayplan' ? c.dayPlan : '';
+    const note = item.sample ? c.sample : item.origin === 'account' ? c.account : item.origin === 'dayplan' ? c.dayPlan : '';
     const remove = item.origin === 'device'
       ? (state.confirm ? `<p class="cal-ask">${esc(c.delAsk)}</p><button type="button" class="btn" data-delete-yes>${esc(c.del)}</button><button type="button" class="btn-quiet" data-delete-no>${esc(c.cancel)}</button>`
         : `<button type="button" class="btn-quiet" data-delete>${esc(c.del)}</button>`) : '';
@@ -374,6 +401,7 @@ function mount(doc) {
   if (!host || host.dataset.calendar) return null;
   host.dataset.calendar = 'on';
   doc.getElementById('takvim-empty')?.setAttribute('hidden', '');
+  seedSamples();
   const view = createView(doc, host);
   if (!doc.querySelector('link[data-calendar-style]')) {
     const link = doc.createElement('link');

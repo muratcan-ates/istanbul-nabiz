@@ -400,7 +400,8 @@ def test_offline_page_bands_and_phones() -> None:
     html = read("offline.html")
     assert '<html lang="tr">' in html
     assert "Resmî İBB hizmeti değildir" in html
-    assert 'href="tel:153"' in html and 'href="tel:112"' in html
+    # 30 Sep, owner's decision: no 112 link on the prototype's pages; tel: links are mocks (js/mock_calls.js).
+    assert 'href="tel:153"' in html and 'href="tel:112"' not in html and '/js/mock_calls.js' in html
     assert 'id="pwa-offline-band"' in html and 'id="offline-cards"' in html
     assert 'id="pwa-bar"' in html and 'id="pwa-band-detail"' in html
     assert not re.search(r"<script(?![^>]*\bsrc=)", html)

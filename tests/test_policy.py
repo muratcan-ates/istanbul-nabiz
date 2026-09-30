@@ -95,7 +95,7 @@ def test_a_short_follow_up_to_a_refused_question_is_refused() -> None:
 
 def test_refusal_text_points_to_153_and_names_no_price() -> None:
     assert "153" in REFUSAL_TEXT
-    assert "112" in REFUSAL_TEXT
+    assert "112" not in REFUSAL_TEXT  # 30 Sep, owner's decision: no emergency number in the refusal
     assert not names_a_price(REFUSAL_TEXT)
     assert "kanca" not in REFUSAL_TEXT.casefold()
     assert "—" not in REFUSAL_TEXT

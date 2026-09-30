@@ -174,14 +174,13 @@ _CONNECT_153 = re.compile(r"153\S*\s+(?:ile\s+)?(?:bağla|bağlan|görüş|konu�
 
 HANDOFF_TEXT = (
     "İnsanla görüşmek için 153 Çözüm Merkezi'ni arayabilirsin; aramayı sen yaparsın, Nabız kimseyi arayamaz. "
-    "Görevliye sorununu, varsa hat, durak ya da ilçe adıyla kısaca anlat. Acil bir durumdaysan 112'yi ara."
+    "Görevliye sorununu, varsa hat, durak ya da ilçe adıyla kısaca anlat."
 )
 
 REFUSAL_TEXT = (
     "Bu soru hak, ücret, ceza ya da sağlıkla ilgili. Bu konularda cevap üretmiyorum: "
     "yanlış bir bilgi sana para, hak ya da sağlık kaybettirebilir. "
-    "Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak. "
-    "Acil bir durumdaysan 112'yi ara."
+    "Doğru bilgi için 153 Çözüm Merkezi'ni ara ya da ilgili kurumun resmî sayfasına bak."
 )
 
 

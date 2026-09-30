@@ -153,3 +153,9 @@ details.more > summary { min-height: var(--tap); color: var(--link); }
   .badge, .chip, .callout, .card, .stat, .cite, .tag, .brief, .fresh, .more > summary, .glass { border: 1px solid CanvasText; }
   .glass { background: var(--surface-raised); backdrop-filter: none; }
 }
+
+/* js/mock_calls.js: a call button answers with this note instead of dialling (30 Sep). */
+.mock-call-note { position: fixed; left: 50%; bottom: var(--space-6); z-index: var(--z-popover); max-width: min(32rem, calc(100% - 2 * var(--space-4)));
+  margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-control); background: var(--surface-inverse);
+  color: var(--text-inverse); font-size: var(--text-sm); transform: translateX(-50%); box-shadow: var(--shadow-2); }
+.mock-call-note[hidden] { display: none; }

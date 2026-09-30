@@ -386,7 +386,8 @@ def test_a_request_for_a_person_gets_the_handoff_not_the_index(
     with client_for(nabiz, CLOUD) as client:
         stream, final = ask(client, question)
     assert final["mode"] == "handoff" and final["how"]["rule_id"] == "layer:handoff" and final["author"] == "kural"
-    assert final["answer"] == HANDOFF_TEXT and "153" in final["answer"] and "112" in final["answer"]
+    # 30 Sep, owner's decision: the prototype names no emergency number in its handoff and refusal text.
+    assert final["answer"] == HANDOFF_TEXT and "153" in final["answer"] and "112" not in final["answer"]
     assert final["citations"] == [] and final["refused"] is False and final["emergency"] is False
     assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
 
@@ -522,7 +523,7 @@ def test_rights_fares_fines_and_health_are_refused_without_a_model(
     with client_for(nabiz, CLOUD) as client:
         stream, final = ask(client, question)
     assert final["refused"] is True and final["author"] == "kural"
-    assert "153" in final["answer"] and "112" in final["answer"]
+    assert "153" in final["answer"] and "112" not in final["answer"]  # 30 Sep, owner's decision
     assert final["citations"] == []
     assert fake.calls == [] and not any(kind == "tool" for kind, _ in stream)
 

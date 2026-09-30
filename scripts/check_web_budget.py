@@ -274,11 +274,12 @@ TARGETS_BY_CHECK: dict[str, dict[str, Target]] = {
     # 30,662 B, JS 364,848 B in 97 modules, total 403,357 B gzip; the demo build, measured, not loosened for a run.
     # Raised again for the 29 Sep design round (short answers, Harita in the navigation): CSS 31,987 B, JS 370,113 B,
     # total 409,947 B gzip.
+    # And for the 30 Sep demo fixes (mock calls, sample plans, Harita opens on the map): total 411,738 B gzip.
     CITIZEN_CHECK: {
-        "html": Target(LAZY_VIEWS, 9_030),
-        "css": Target(LAZY_VIEWS, 96_972),
-        "js": Target(LAZY_VIEWS, 1_092_037),
-        "total": Target(LAZY_VIEWS, 1_198_039),
+        "html": Target(LAZY_VIEWS, 9_086),
+        "css": Target(LAZY_VIEWS, 97_504),
+        "js": Target(LAZY_VIEWS, 1_095_696),
+        "total": Target(LAZY_VIEWS, 1_202_286),
         "stylesheets": Target(LAZY_VIEWS, 12),
     },
 }
